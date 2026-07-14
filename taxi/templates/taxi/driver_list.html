@@ -390,7 +390,7 @@ function openDriverDetail(id, name, phone, carModel, carNumber, isActive, date) 
 function openRechargeModal(driverId, driverName) {
     document.getElementById('recharge-driver-name').textContent = driverName;
     const form = document.getElementById('rechargeForm');
-    form.action = `/drivers/${driverId}/recharge/`;
+    form.action = `/panel/drivers/${driverId}/recharge/`;
     openModal('rechargeModal');
 }
 </script>
