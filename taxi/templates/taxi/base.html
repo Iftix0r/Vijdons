@@ -8,314 +8,323 @@
     <script>
         tailwind.config = {
             darkMode: 'class',
-            theme: { extend: {} }
-        }
-    </script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Outfit', sans-serif; }
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-        }
-        .dark .glass-panel {
-            background: rgba(31, 41, 55, 0.7);
-            border-bottom: 1px solid rgba(55, 65, 81, 0.5);
-        }
-        .sidebar-link { transition: all 0.3s ease; }
-        .sidebar-link:hover, .sidebar-link.active {
-            background: linear-gradient(90deg, #fef3c7, transparent);
-            color: #d97706;
-            border-left: 4px solid #f59e0b;
-        }
-        .dark .sidebar-link:hover, .dark .sidebar-link.active {
-            background: linear-gradient(90deg, rgba(245, 158, 11, 0.15), transparent);
-            color: #fbbf24;
-        }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
-        .dark ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
-    </style>
-</head>
-<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 antialiased overflow-hidden flex h-screen transition-colors duration-300">
-    <aside class="w-64 bg-white dark:bg-gray-800 shadow-xl flex-shrink-0 z-20 flex flex-col transition-colors duration-300">
-        <div class="h-20 flex items-center px-6 border-b border-gray-100 dark:border-gray-700">
-            <div class="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center shadow-lg shadow-yellow-200 dark:shadow-none">
-                <i class="fas fa-taxi text-white text-xl"></i>
-            </div>
-            <span class="ml-3 font-extrabold text-xl tracking-tight text-gray-900 dark:text-white">Vijdon<span class="text-yellow-500">Taxi</span></span>
-        </div>
-        
-        <div class="flex-1 overflow-y-auto py-6">
-            <nav class="space-y-1">
-                <a href="{% url 'taxi:panel_dashboard' %}" class="sidebar-link {% if request.resolver_match.url_name == 'panel_dashboard' %}active{% endif %} flex items-center px-6 py-3 text-gray-600 dark:text-gray-300 font-medium">
-                    <i class="fas fa-layer-group w-6 text-lg"></i><span>Dashboard</span>
-                </a>
-                <a href="{% url 'taxi:order_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'order_list' %}active{% endif %} flex items-center px-6 py-3 text-gray-600 dark:text-gray-300 font-medium">
-                    <i class="fas fa-route w-6 text-lg"></i><span>Buyurtmalar</span>
-                </a>
-                <a href="{% url 'taxi:driver_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'driver_list' %}active{% endif %} flex items-center px-6 py-3 text-gray-600 dark:text-gray-300 font-medium">
-                    <i class="fas fa-id-card w-6 text-lg"></i><span>Haydovchilar</span>
-                </a>
-                <a href="{% url 'taxi:client_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'client_list' %}active{% endif %} flex items-center px-6 py-3 text-gray-600 dark:text-gray-300 font-medium">
-                    <i class="fas fa-users w-6 text-lg"></i><span>Mijozlar</span>
-                </a>
-            </nav>
-            <div class="mt-8 px-6">
-                <h3 class="text-xs uppercase text-gray-400 dark:text-gray-500 font-bold tracking-wider mb-4">Sozlamalar</h3>
-                <nav class="space-y-1">
-                    <a href="/admin/" class="sidebar-link flex items-center px-6 py-3 text-gray-600 dark:text-gray-300 font-medium -mx-6">
-                        <i class="fas fa-cog w-6 text-lg ml-6"></i><span>Tizim Sozlamalari</span>
-                    </a>
-                </nav>
-            </div>
-        </div>
-        <div class="p-6 border-t border-gray-100 dark:border-gray-700">
-            <div class="flex items-center">
-                <img src="https://ui-avatars.com/api/?name=Admin&background=facc15&color=fff" alt="Admin" class="w-10 h-10 rounded-full border-2 border-yellow-200 dark:border-gray-600">
-                <div class="ml-3">
-                    <p class="text-sm font-semibold text-gray-800 dark:text-white">Administrator</p>
-                    <a href="/admin/logout/" class="text-xs text-red-500 dark:text-red-400 font-medium hover:underline">Chiqish</a>
-                </div>
-            </div>
-        </div>
-    </aside>
-
-    <main class="flex-1 flex flex-col h-screen overflow-hidden">
-        <header class="h-20 glass-panel z-10 flex items-center justify-between px-8">
-            <div class="flex items-center bg-white dark:bg-gray-800 rounded-full px-4 py-2 w-96 border border-gray-200 dark:border-gray-700 focus-within:border-yellow-400 focus-within:ring-2 focus-within:ring-yellow-100 dark:focus-within:ring-yellow-900 transition-all shadow-sm">
-                <i class="fas fa-search text-gray-400"></i>
-                <input type="text" placeholder="Qidirish..." class="bg-transparent border-none outline-none ml-3 w-full text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400">
-            </div>
-            
-            <div class="flex items-center space-x-5">
-                <button id="theme-toggle" class="relative text-gray-500 dark:text-gray-400 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors bg-gray-100 dark:bg-gray-800 p-2 rounded-full w-10 h-10 flex items-center justify-center shadow-sm">
-                    <i id="theme-toggle-dark-icon" class="fas fa-moon text-lg hidden"></i>
-                    <i id="theme-toggle-light-icon" class="fas fa-sun text-lg hidden"></i>
-                </button>
-                <button class="relative text-gray-500 dark:text-gray-400 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors p-2">
-                    <i class="far fa-bell text-xl"></i>
-                    <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></span>
-                </button>
-                <button onclick="openOrderModal()" class="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white font-semibold py-2 px-5 rounded-full shadow-lg shadow-yellow-200 dark:shadow-none transition-all transform hover:-translate-y-0.5 flex items-center">
-                    <i class="fas fa-plus mr-2"></i><span>Yangi Buyurtma</span>
-                </button>
-            </div>
-        </header>
-
-        <div class="flex-1 overflow-y-auto p-8">
-            {% block content %}{% endblock %}
-        </div>
-    </main>
-
-    <!-- Modal Background -->
-    <div id="orderModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center backdrop-blur-sm transition-opacity duration-300 opacity-0 pointer-events-none">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl transform transition-transform duration-300 scale-95" id="orderModalContent">
-            <div class="flex justify-between items-center mb-5 border-b border-gray-100 dark:border-gray-700 pb-3">
-                <h2 class="text-xl font-bold text-gray-900 dark:text-white"><i class="fas fa-plus-circle text-yellow-500 mr-2"></i> Yangi Buyurtma</h2>
-                <button onclick="closeOrderModal()" class="text-gray-400 hover:text-red-500 transition-colors">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-            
-            <form action="{% url 'taxi:order_create' %}" method="POST">
-                {% csrf_token %}
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mijoz telefon raqami</label>
-                        <input type="text" name="phone_number" required placeholder="+99890..." class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 dark:bg-gray-700 dark:text-white outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Qayerdan (Manzil)</label>
-                        <input type="text" name="from_address" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 dark:bg-gray-700 dark:text-white outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Qayerga (Manzil)</label>
-                        <input type="text" name="to_address" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 dark:bg-gray-700 dark:text-white outline-none">
-                    </div>
-                    <div class="flex justify-end mt-6 space-x-3 pt-4 border-t border-gray-100 dark:border-gray-700">
-                        <button type="button" onclick="closeOrderModal()" class="px-5 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 font-medium transition-colors">
-                            Bekor qilish
-                        </button>
-                        <button type="submit" class="px-5 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-lg shadow-md transition-colors">
-                            Yaratish
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Driver Modal -->
-    <div id="driverModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center backdrop-blur-sm transition-opacity duration-300 opacity-0 pointer-events-none">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl transform transition-transform duration-300 scale-95" id="driverModalContent">
-            <div class="flex justify-between items-center mb-5 border-b border-gray-100 dark:border-gray-700 pb-3">
-                <h2 class="text-xl font-bold text-gray-900 dark:text-white"><i class="fas fa-car text-blue-500 mr-2"></i> Yangi Haydovchi</h2>
-                <button onclick="closeDriverModal()" class="text-gray-400 hover:text-red-500 transition-colors">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-            
-            <form action="{% url 'taxi:driver_create' %}" method="POST">
-                {% csrf_token %}
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Haydovchi ismi</label>
-                        <input type="text" name="full_name" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-400 dark:bg-gray-700 dark:text-white outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Telefon raqami</label>
-                        <input type="text" name="phone_number" required placeholder="+99890..." class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-400 dark:bg-gray-700 dark:text-white outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mashina modeli</label>
-                        <input type="text" name="car_model" required placeholder="Chevrolet Cobalt" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-400 dark:bg-gray-700 dark:text-white outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mashina raqami</label>
-                        <input type="text" name="car_number" required placeholder="01 A 123 AA" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-400 dark:bg-gray-700 dark:text-white outline-none">
-                    </div>
-                    <div class="flex justify-end mt-6 space-x-3 pt-4 border-t border-gray-100 dark:border-gray-700">
-                        <button type="button" onclick="closeDriverModal()" class="px-5 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 font-medium transition-colors">
-                            Bekor qilish
-                        </button>
-                        <button type="submit" class="px-5 py-2 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg shadow-md transition-colors">
-                            Qo'shish
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Client Modal -->
-    <div id="clientModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center backdrop-blur-sm transition-opacity duration-300 opacity-0 pointer-events-none">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl transform transition-transform duration-300 scale-95" id="clientModalContent">
-            <div class="flex justify-between items-center mb-5 border-b border-gray-100 dark:border-gray-700 pb-3">
-                <h2 class="text-xl font-bold text-gray-900 dark:text-white"><i class="fas fa-user-plus text-green-500 mr-2"></i> Yangi Mijoz</h2>
-                <button onclick="closeClientModal()" class="text-gray-400 hover:text-red-500 transition-colors">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-            
-            <form action="{% url 'taxi:client_create' %}" method="POST">
-                {% csrf_token %}
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mijoz ismi (Ixtiyoriy)</label>
-                        <input type="text" name="full_name" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-400 dark:bg-gray-700 dark:text-white outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Telefon raqami</label>
-                        <input type="text" name="phone_number" required placeholder="+99890..." class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-400 dark:bg-gray-700 dark:text-white outline-none">
-                    </div>
-                    <div class="flex justify-end mt-6 space-x-3 pt-4 border-t border-gray-100 dark:border-gray-700">
-                        <button type="button" onclick="closeClientModal()" class="px-5 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 font-medium transition-colors">
-                            Bekor qilish
-                        </button>
-                        <button type="submit" class="px-5 py-2 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg shadow-md transition-colors">
-                            Qo'shish
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        var themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
-        var themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
-        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            themeToggleLightIcon.classList.remove('hidden');
-            document.documentElement.classList.add('dark');
-        } else {
-            themeToggleDarkIcon.classList.remove('hidden');
-            document.documentElement.classList.remove('dark');
-        }
-        var themeToggleBtn = document.getElementById('theme-toggle');
-        themeToggleBtn.addEventListener('click', function() {
-            themeToggleDarkIcon.classList.toggle('hidden');
-            themeToggleLightIcon.classList.toggle('hidden');
-            if (localStorage.getItem('color-theme')) {
-                if (localStorage.getItem('color-theme') === 'light') {
-                    document.documentElement.classList.add('dark');
-                    localStorage.setItem('color-theme', 'dark');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                    localStorage.setItem('color-theme', 'light');
-                }
-            } else {
-                if (document.documentElement.classList.contains('dark')) {
-                    document.documentElement.classList.remove('dark');
-                    localStorage.setItem('color-theme', 'light');
-                } else {
-                    document.documentElement.classList.add('dark');
-                    localStorage.setItem('color-theme', 'dark');
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { DEFAULT: '#f59e0b', light: '#fef3c7', dark: '#d97706' }
+                    }
                 }
             }
-        });
-
-        const orderModal = document.getElementById('orderModal');
-        const orderModalContent = document.getElementById('orderModalContent');
-
-        function openOrderModal() {
-            orderModal.classList.remove('hidden');
-            // Allow display block to render before animating opacity
-            setTimeout(() => {
-                orderModal.classList.remove('opacity-0', 'pointer-events-none');
-                orderModalContent.classList.remove('scale-95');
-                orderModalContent.classList.add('scale-100');
-            }, 10);
-        }
-
-        function closeOrderModal() {
-            orderModal.classList.add('opacity-0', 'pointer-events-none');
-            orderModalContent.classList.remove('scale-100');
-            orderModalContent.classList.add('scale-95');
-            setTimeout(() => {
-                orderModal.classList.add('hidden');
-            }, 300);
-        }
-
-        const driverModal = document.getElementById('driverModal');
-        const driverModalContent = document.getElementById('driverModalContent');
-        function openDriverModal() {
-            driverModal.classList.remove('hidden');
-            setTimeout(() => {
-                driverModal.classList.remove('opacity-0', 'pointer-events-none');
-                driverModalContent.classList.remove('scale-95');
-                driverModalContent.classList.add('scale-100');
-            }, 10);
-        }
-        function closeDriverModal() {
-            driverModal.classList.add('opacity-0', 'pointer-events-none');
-            driverModalContent.classList.remove('scale-100');
-            driverModalContent.classList.add('scale-95');
-            setTimeout(() => { driverModal.classList.add('hidden'); }, 300);
-        }
-
-        const clientModal = document.getElementById('clientModal');
-        const clientModalContent = document.getElementById('clientModalContent');
-        function openClientModal() {
-            clientModal.classList.remove('hidden');
-            setTimeout(() => {
-                clientModal.classList.remove('opacity-0', 'pointer-events-none');
-                clientModalContent.classList.remove('scale-95');
-                clientModalContent.classList.add('scale-100');
-            }, 10);
-        }
-        function closeClientModal() {
-            clientModal.classList.add('opacity-0', 'pointer-events-none');
-            clientModalContent.classList.remove('scale-100');
-            clientModalContent.classList.add('scale-95');
-            setTimeout(() => { clientModal.classList.add('hidden'); }, 300);
         }
     </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Outfit', sans-serif; }
+
+        /* Sidebar active / hover */
+        .nav-link { transition: all .25s; border-left: 3px solid transparent; }
+        .nav-link:hover  { background: linear-gradient(90deg,#fef9ec,transparent); color:#d97706; border-left-color:#f59e0b; }
+        .nav-link.active { background: linear-gradient(90deg,#fef3c7,transparent); color:#b45309; border-left-color:#f59e0b; font-weight:700; }
+        .dark .nav-link:hover  { background: linear-gradient(90deg,rgba(245,158,11,.12),transparent); color:#fbbf24; }
+        .dark .nav-link.active { background: linear-gradient(90deg,rgba(245,158,11,.18),transparent); color:#fcd34d; }
+
+        /* scrollbar */
+        ::-webkit-scrollbar { width:5px; height:5px; }
+        ::-webkit-scrollbar-track { background:transparent; }
+        ::-webkit-scrollbar-thumb { background:#e2e8f0; border-radius:8px; }
+        ::-webkit-scrollbar-thumb:hover { background:#94a3b8; }
+        .dark ::-webkit-scrollbar-thumb { background:#374151; }
+
+        /* glass header */
+        .glass { background:rgba(255,255,255,.8); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+        .dark .glass { background:rgba(17,24,39,.8); }
+
+        /* modal transition */
+        .modal-wrap { transition: opacity .25s, visibility .25s; }
+        .modal-wrap.hidden-modal { opacity:0; visibility:hidden; pointer-events:none; }
+        .modal-wrap.hidden-modal .modal-box { transform: scale(.95) translateY(8px); }
+        .modal-box { transition: transform .25s; transform: scale(1) translateY(0); }
+
+        /* badge pulse */
+        @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.4} }
+        .pulse-dot { animation: pulse-dot 1.4s ease-in-out infinite; }
+
+        /* toast */
+        #toast { transition: opacity .3s, bottom .3s; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-gray-950 text-gray-800 dark:text-gray-200 antialiased flex h-screen overflow-hidden transition-colors duration-300">
+
+<!-- ══════════ SIDEBAR ══════════ -->
+<aside id="sidebar" class="w-64 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 flex-shrink-0 flex flex-col z-30 transition-all duration-300">
+    <!-- logo -->
+    <div class="h-16 flex items-center gap-3 px-5 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 flex items-center justify-center shadow-lg shadow-yellow-200/60 dark:shadow-none">
+            <i class="fas fa-taxi text-white text-base"></i>
+        </div>
+        <span class="font-extrabold text-lg tracking-tight text-gray-900 dark:text-white">Vijdon<span class="text-yellow-500">Taxi</span></span>
+    </div>
+
+    <!-- nav -->
+    <nav class="flex-1 overflow-y-auto py-4 space-y-0.5 px-2">
+        <p class="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest font-bold text-gray-400 dark:text-gray-600">Asosiy</p>
+        <a href="{% url 'taxi:panel_dashboard' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'panel_dashboard' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-gauge-high w-5 text-center"></i> Dashboard
+        </a>
+        <a href="{% url 'taxi:order_list' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'order_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-route w-5 text-center"></i> Buyurtmalar
+        </a>
+        <a href="{% url 'taxi:driver_list' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'driver_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-id-card w-5 text-center"></i> Haydovchilar
+        </a>
+        <a href="{% url 'taxi:client_list' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'client_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-users w-5 text-center"></i> Mijozlar
+        </a>
+
+        <p class="px-3 pt-4 pb-1 text-[10px] uppercase tracking-widest font-bold text-gray-400 dark:text-gray-600">Tizim</p>
+        <a href="/admin/"
+           class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-shield-halved w-5 text-center"></i> Admin Panel
+        </a>
+    </nav>
+
+    <!-- user -->
+    <div class="px-4 py-4 border-t border-gray-100 dark:border-gray-800 flex items-center gap-3">
+        <img src="https://ui-avatars.com/api/?name=Admin&background=f59e0b&color=fff&bold=true" alt="Admin"
+             class="w-9 h-9 rounded-full ring-2 ring-yellow-300 dark:ring-yellow-700">
+        <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-gray-800 dark:text-white truncate">Administrator</p>
+            <a href="/admin/logout/" class="text-xs text-red-500 hover:text-red-600 font-medium">
+                <i class="fas fa-right-from-bracket mr-1"></i>Chiqish
+            </a>
+        </div>
+    </div>
+</aside>
+
+<!-- ══════════ MAIN ══════════ -->
+<div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+    <!-- top header -->
+    <header class="glass h-16 flex-shrink-0 flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-800 z-20">
+        <!-- search -->
+        <form method="get" class="flex items-center bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-2 w-80 focus-within:ring-2 focus-within:ring-yellow-400 transition-all">
+            <i class="fas fa-search text-gray-400 text-sm"></i>
+            <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Qidirish..."
+                   class="bg-transparent border-none outline-none ml-2.5 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 w-full">
+        </form>
+
+        <!-- right actions -->
+        <div class="flex items-center gap-3">
+            <!-- theme toggle -->
+            <button id="theme-toggle" title="Temani o'zgartirish"
+                    class="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-yellow-500 transition-colors">
+                <i id="icon-moon" class="fas fa-moon text-sm"></i>
+                <i id="icon-sun"  class="fas fa-sun  text-sm hidden"></i>
+            </button>
+
+            <!-- new order button -->
+            <button onclick="openModal('orderModal')"
+                    class="flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-500 hover:to-amber-600 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow-md shadow-yellow-200 dark:shadow-none transition-all hover:-translate-y-0.5">
+                <i class="fas fa-plus text-xs"></i> Yangi Buyurtma
+            </button>
+        </div>
+    </header>
+
+    <!-- page content -->
+    <main class="flex-1 overflow-y-auto p-6">
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<!-- ══════════ MODALS ══════════ -->
+
+<!-- Order modal -->
+<div id="orderModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white"><i class="fas fa-plus-circle text-yellow-500 mr-2"></i>Yangi Buyurtma</h2>
+            <button onclick="closeModal('orderModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form action="{% url 'taxi:order_create' %}" method="POST" class="px-6 py-5 space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Mijoz telefon raqami</label>
+                <input type="text" name="phone_number" required placeholder="+998 90 000 00 00"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Qayerdan</label>
+                <input type="text" name="from_address" required placeholder="Boshlang'ich manzil"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Qayerga</label>
+                <input type="text" name="to_address" required placeholder="Manzil"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Haydovchi (ixtiyoriy)</label>
+                <select name="driver_id" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                    <option value="">— Biriktirilmagan —</option>
+                    {% for driver in active_drivers %}
+                    <option value="{{ driver.pk }}">{{ driver.full_name }} ({{ driver.car_number }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('orderModal')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-bold shadow-md shadow-yellow-200 dark:shadow-none transition">
+                    Yaratish
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Driver modal -->
+<div id="driverModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white"><i class="fas fa-car text-blue-500 mr-2"></i>Yangi Haydovchi</h2>
+            <button onclick="closeModal('driverModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form action="{% url 'taxi:driver_create' %}" method="POST" class="px-6 py-5 space-y-4">
+            {% csrf_token %}
+            <div class="grid grid-cols-2 gap-4">
+                <div class="col-span-2">
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">To'liq ismi</label>
+                    <input type="text" name="full_name" required placeholder="Ism Familya"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Telefon raqami</label>
+                    <input type="text" name="phone_number" required placeholder="+998 90 000 00 00"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Mashina modeli</label>
+                    <input type="text" name="car_model" required placeholder="Cobalt 2"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Mashina raqami</label>
+                    <input type="text" name="car_number" required placeholder="01 A 123 AA"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition">
+                </div>
+            </div>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('driverModal')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold shadow-md shadow-blue-200 dark:shadow-none transition">
+                    Qo'shish
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Client modal -->
+<div id="clientModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white"><i class="fas fa-user-plus text-emerald-500 mr-2"></i>Yangi Mijoz</h2>
+            <button onclick="closeModal('clientModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form action="{% url 'taxi:client_create' %}" method="POST" class="px-6 py-5 space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Ism (ixtiyoriy)</label>
+                <input type="text" name="full_name" placeholder="Ism Familya"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 dark:text-white transition">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Telefon raqami</label>
+                <input type="text" name="phone_number" required placeholder="+998 90 000 00 00"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 dark:text-white transition">
+            </div>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('clientModal')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold shadow-md shadow-emerald-200 dark:shadow-none transition">
+                    Qo'shish
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ══════════ SCRIPTS ══════════ -->
+<script>
+    // ── Theme ──
+    const html  = document.documentElement;
+    const moon  = document.getElementById('icon-moon');
+    const sun   = document.getElementById('icon-sun');
+
+    function applyTheme(dark) {
+        html.classList.toggle('dark', dark);
+        moon.classList.toggle('hidden', dark);
+        sun.classList.toggle('hidden', !dark);
+    }
+
+    const saved = localStorage.getItem('theme');
+    applyTheme(saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches));
+
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+        const dark = !html.classList.contains('dark');
+        applyTheme(dark);
+        localStorage.setItem('theme', dark ? 'dark' : 'light');
+    });
+
+    // ── Modals ──
+    function openModal(id) {
+        document.getElementById(id).classList.remove('hidden-modal');
+    }
+    function closeModal(id) {
+        document.getElementById(id).classList.add('hidden-modal');
+    }
+    // close on backdrop click
+    document.querySelectorAll('.modal-wrap').forEach(m => {
+        m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); });
+    });
+    // legacy aliases used by some pages
+    function openOrderModal()  { openModal('orderModal');  }
+    function closeOrderModal() { closeModal('orderModal'); }
+    function openDriverModal() { openModal('driverModal'); }
+    function closeDriverModal(){ closeModal('driverModal');}
+    function openClientModal() { openModal('clientModal'); }
+    function closeClientModal(){ closeModal('clientModal');}
+
+    // ── Delete confirm ──
+    function confirmDelete(formId) {
+        if (confirm("Rostdan ham o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaydi.")) {
+            document.getElementById(formId).submit();
+        }
+    }
+
+    // ── active_drivers in order modal ──
+    // populated from server via template — nothing extra needed
+</script>
+{% block extra_js %}{% endblock %}
 </body>
 </html>

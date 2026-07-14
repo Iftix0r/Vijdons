@@ -1,42 +1,98 @@
 {% extends 'taxi/base.html' %}
-{% block title %}Haydovchilar - Vijdon Taxi{% endblock %}
+{% block title %}Haydovchilar — Vijdon Taxi{% endblock %}
+
 {% block content %}
-<div class="mb-6 flex justify-between items-center">
-    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Haydovchilar</h1>
-    <button onclick="openDriverModal()" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded shadow">
-        <i class="fas fa-plus mr-2"></i> Qo'shish
+<!-- Header -->
+<div class="flex flex-wrap justify-between items-center gap-4 mb-5">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white">Haydovchilar</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ drivers|length }} ta yozuv topildi</p>
+    </div>
+    <button onclick="openModal('driverModal')"
+            class="flex items-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-xl shadow-sm shadow-blue-200 dark:shadow-none transition-all hover:-translate-y-0.5">
+        <i class="fas fa-plus"></i> Haydovchi qo'shish
     </button>
 </div>
-<div class="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-sm overflow-hidden">
-    <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-            <thead>
-                <tr class="bg-gray-50 dark:bg-gray-700 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-bold">
-                    <th class="px-6 py-4">Ism</th>
-                    <th class="px-6 py-4">Telefon</th>
-                    <th class="px-6 py-4">Mashina</th>
-                    <th class="px-6 py-4">Holati</th>
-                </tr>
-            </thead>
-            <tbody class="text-sm font-medium text-gray-700 dark:text-gray-300 divide-y divide-gray-50 dark:divide-gray-700/50">
-                {% for driver in drivers %}
-                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <td class="px-6 py-4">{{ driver.full_name }}</td>
-                    <td class="px-6 py-4">{{ driver.phone_number }}</td>
-                    <td class="px-6 py-4">{{ driver.car_model }} ({{ driver.car_number }})</td>
-                    <td class="px-6 py-4">
-                        {% if driver.is_active %}
-                            <span class="text-green-500"><i class="fas fa-check-circle"></i> Faol</span>
-                        {% else %}
-                            <span class="text-red-500"><i class="fas fa-times-circle"></i> Nofaol</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="4" class="text-center py-8 text-gray-500">Haydovchilar topilmadi.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+
+<!-- Search -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm px-5 py-4 mb-5">
+    <form method="get" class="flex flex-wrap gap-3">
+        <div class="flex items-center bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 flex-1 min-w-[200px] focus-within:ring-2 focus-within:ring-blue-400 transition-all">
+            <i class="fas fa-search text-gray-400 text-sm"></i>
+            <input type="text" name="q" value="{{ q }}" placeholder="Ism, telefon, mashina..."
+                   class="bg-transparent border-none outline-none ml-2 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 w-full">
+        </div>
+        <button type="submit"
+                class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-xl transition-colors">
+            <i class="fas fa-search mr-1"></i> Qidirish
+        </button>
+        {% if q %}
+        <a href="{% url 'taxi:driver_list' %}"
+           class="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-semibold rounded-xl transition-colors">
+            <i class="fas fa-times mr-1"></i> Tozalash
+        </a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Grid cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+    {% for driver in drivers %}
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all p-5 group">
+        <div class="flex items-start justify-between mb-4">
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 flex items-center justify-center text-lg font-bold flex-shrink-0">
+                    {{ driver.full_name|slice:":1"|upper }}
+                </div>
+                <div>
+                    <h3 class="font-bold text-gray-900 dark:text-white text-sm leading-tight">{{ driver.full_name }}</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">{{ driver.phone_number }}</p>
+                </div>
+            </div>
+            <!-- active toggle -->
+            <form action="{% url 'taxi:driver_toggle_active' driver.pk %}" method="POST">
+                {% csrf_token %}
+                <button type="submit" title="Holatni o'zgartirish"
+                        class="{% if driver.is_active %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400{% else %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400{% endif %} text-xs font-bold px-2.5 py-1 rounded-full transition-colors hover:opacity-80">
+                    {% if driver.is_active %}<i class="fas fa-circle-check mr-1"></i>Faol{% else %}<i class="fas fa-circle-xmark mr-1"></i>Nofaol{% endif %}
+                </button>
+            </form>
+        </div>
+
+        <div class="bg-gray-50 dark:bg-gray-800/60 rounded-xl p-3 mb-4 space-y-1.5">
+            <div class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                <i class="fas fa-car text-blue-400 w-4 text-center"></i>
+                <span class="font-semibold">{{ driver.car_model }}</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <i class="fas fa-hashtag text-gray-300 dark:text-gray-600 w-4 text-center"></i>
+                <span class="font-mono tracking-wide">{{ driver.car_number }}</span>
+            </div>
+        </div>
+
+        <!-- actions -->
+        <div class="flex gap-2">
+            <a href="{% url 'taxi:order_list' %}?q={{ driver.full_name }}"
+               class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 text-gray-600 dark:text-gray-400 rounded-xl transition-colors">
+                <i class="fas fa-route text-[10px]"></i> Buyurtmalari
+            </a>
+            <form id="del-driver-{{ driver.pk }}" action="{% url 'taxi:driver_delete' driver.pk %}" method="POST">
+                {% csrf_token %}
+            </form>
+            <button type="button" onclick="confirmDelete('del-driver-{{ driver.pk }}')"
+                    class="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold bg-red-50 dark:bg-red-900/20 text-red-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/40 dark:hover:text-red-400 rounded-xl transition-colors">
+                <i class="fas fa-trash-can text-[10px]"></i>
+            </button>
+        </div>
     </div>
+    {% empty %}
+    <div class="col-span-3 text-center py-14">
+        <div class="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-300 dark:text-gray-600 text-2xl mx-auto mb-3">
+            <i class="fas fa-car-side"></i>
+        </div>
+        <p class="font-semibold text-gray-700 dark:text-gray-300">Haydovchilar topilmadi</p>
+        <p class="text-xs text-gray-400 mt-1">Qidiruv shartini o'zgartiring yoki yangi haydovchi qo'shing.</p>
+    </div>
+    {% endfor %}
 </div>
 {% endblock %}
