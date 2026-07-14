@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="uz" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Vijdon Taxi - Boshqaruv Paneli{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: {} }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Outfit', sans-serif; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .dark .glass-panel {
+            background: rgba(31, 41, 55, 0.7);
+            border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+        }
+        .sidebar-link { transition: all 0.3s ease; }
+        .sidebar-link:hover, .sidebar-link.active {
+            background: linear-gradient(90deg, #fef3c7, transparent);
+            color: #d97706;
+            border-left: 4px solid #f59e0b;
+        }
+        .dark .sidebar-link:hover, .dark .sidebar-link.active {
+            background: linear-gradient(90deg, rgba(245, 158, 11, 0.15), transparent);
+            color: #fbbf24;
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 antialiased overflow-hidden flex h-screen transition-colors duration-300">
+    <aside class="w-64 bg-white dark:bg-gray-800 shadow-xl flex-shrink-0 z-20 flex flex-col transition-colors duration-300">
+        <div class="h-20 flex items-center px-6 border-b border-gray-100 dark:border-gray-700">
+            <div class="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center shadow-lg shadow-yellow-200 dark:shadow-none">
+                <i class="fas fa-taxi text-white text-xl"></i>
+            </div>
+            <span class="ml-3 font-extrabold text-xl tracking-tight text-gray-900 dark:text-white">Vijdon<span class="text-yellow-500">Taxi</span></span>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto py-6">
+            <nav class="space-y-1">
+                <a href="{% url 'taxi:panel_dashboard' %}" class="sidebar-link {% if request.resolver_match.url_name == 'panel_dashboard' %}active{% endif %} flex items-center px-6 py-3 text-gray-600 dark:text-gray-300 font-medium">
+                    <i class="fas fa-layer-group w-6 text-lg"></i><span>Dashboard</span>
+                </a>
+                <a href="{% url 'taxi:order_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'order_list' %}active{% endif %} flex items-center px-6 py-3 text-gray-600 dark:text-gray-300 font-medium">
+                    <i class="fas fa-route w-6 text-lg"></i><span>Buyurtmalar</span>
+                </a>
+                <a href="{% url 'taxi:driver_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'driver_list' %}active{% endif %} flex items-center px-6 py-3 text-gray-600 dark:text-gray-300 font-medium">
+                    <i class="fas fa-id-card w-6 text-lg"></i><span>Haydovchilar</span>
+                </a>
+                <a href="{% url 'taxi:client_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'client_list' %}active{% endif %} flex items-center px-6 py-3 text-gray-600 dark:text-gray-300 font-medium">
+                    <i class="fas fa-users w-6 text-lg"></i><span>Mijozlar</span>
+                </a>
+            </nav>
+            <div class="mt-8 px-6">
+                <h3 class="text-xs uppercase text-gray-400 dark:text-gray-500 font-bold tracking-wider mb-4">Sozlamalar</h3>
+                <nav class="space-y-1">
+                    <a href="/admin/" class="sidebar-link flex items-center px-6 py-3 text-gray-600 dark:text-gray-300 font-medium -mx-6">
+                        <i class="fas fa-cog w-6 text-lg ml-6"></i><span>Tizim Sozlamalari</span>
+                    </a>
+                </nav>
+            </div>
+        </div>
+        <div class="p-6 border-t border-gray-100 dark:border-gray-700">
+            <div class="flex items-center">
+                <img src="https://ui-avatars.com/api/?name=Admin&background=facc15&color=fff" alt="Admin" class="w-10 h-10 rounded-full border-2 border-yellow-200 dark:border-gray-600">
+                <div class="ml-3">
+                    <p class="text-sm font-semibold text-gray-800 dark:text-white">Administrator</p>
+                    <a href="/admin/logout/" class="text-xs text-red-500 dark:text-red-400 font-medium hover:underline">Chiqish</a>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen overflow-hidden">
+        <header class="h-20 glass-panel z-10 flex items-center justify-between px-8">
+            <div class="flex items-center bg-white dark:bg-gray-800 rounded-full px-4 py-2 w-96 border border-gray-200 dark:border-gray-700 focus-within:border-yellow-400 focus-within:ring-2 focus-within:ring-yellow-100 dark:focus-within:ring-yellow-900 transition-all shadow-sm">
+                <i class="fas fa-search text-gray-400"></i>
+                <input type="text" placeholder="Qidirish..." class="bg-transparent border-none outline-none ml-3 w-full text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400">
+            </div>
+            
+            <div class="flex items-center space-x-5">
+                <button id="theme-toggle" class="relative text-gray-500 dark:text-gray-400 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors bg-gray-100 dark:bg-gray-800 p-2 rounded-full w-10 h-10 flex items-center justify-center shadow-sm">
+                    <i id="theme-toggle-dark-icon" class="fas fa-moon text-lg hidden"></i>
+                    <i id="theme-toggle-light-icon" class="fas fa-sun text-lg hidden"></i>
+                </button>
+                <button class="relative text-gray-500 dark:text-gray-400 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors p-2">
+                    <i class="far fa-bell text-xl"></i>
+                    <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></span>
+                </button>
+                <button onclick="openOrderModal()" class="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white font-semibold py-2 px-5 rounded-full shadow-lg shadow-yellow-200 dark:shadow-none transition-all transform hover:-translate-y-0.5 flex items-center">
+                    <i class="fas fa-plus mr-2"></i><span>Yangi Buyurtma</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Modal Background -->
+    <div id="orderModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center backdrop-blur-sm transition-opacity duration-300 opacity-0 pointer-events-none">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl transform transition-transform duration-300 scale-95" id="orderModalContent">
+            <div class="flex justify-between items-center mb-5 border-b border-gray-100 dark:border-gray-700 pb-3">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white"><i class="fas fa-plus-circle text-yellow-500 mr-2"></i> Yangi Buyurtma</h2>
+                <button onclick="closeOrderModal()" class="text-gray-400 hover:text-red-500 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form action="{% url 'taxi:order_create' %}" method="POST">
+                {% csrf_token %}
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mijoz telefon raqami</label>
+                        <input type="text" name="phone_number" required placeholder="+99890..." class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 dark:bg-gray-700 dark:text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Qayerdan (Manzil)</label>
+                        <input type="text" name="from_address" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 dark:bg-gray-700 dark:text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Qayerga (Manzil)</label>
+                        <input type="text" name="to_address" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-400 dark:bg-gray-700 dark:text-white outline-none">
+                    </div>
+                    <div class="flex justify-end mt-6 space-x-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                        <button type="button" onclick="closeOrderModal()" class="px-5 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 font-medium transition-colors">
+                            Bekor qilish
+                        </button>
+                        <button type="submit" class="px-5 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-lg shadow-md transition-colors">
+                            Yaratish
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        var themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        var themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            themeToggleLightIcon.classList.remove('hidden');
+            document.documentElement.classList.add('dark');
+        } else {
+            themeToggleDarkIcon.classList.remove('hidden');
+            document.documentElement.classList.remove('dark');
+        }
+        var themeToggleBtn = document.getElementById('theme-toggle');
+        themeToggleBtn.addEventListener('click', function() {
+            themeToggleDarkIcon.classList.toggle('hidden');
+            themeToggleLightIcon.classList.toggle('hidden');
+            if (localStorage.getItem('color-theme')) {
+                if (localStorage.getItem('color-theme') === 'light') {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('color-theme', 'dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('color-theme', 'light');
+                }
+            } else {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('color-theme', 'light');
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('color-theme', 'dark');
+                }
+            }
+        });
+
+        const orderModal = document.getElementById('orderModal');
+        const orderModalContent = document.getElementById('orderModalContent');
+
+        function openOrderModal() {
+            orderModal.classList.remove('hidden');
+            // Allow display block to render before animating opacity
+            setTimeout(() => {
+                orderModal.classList.remove('opacity-0', 'pointer-events-none');
+                orderModalContent.classList.remove('scale-95');
+                orderModalContent.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeOrderModal() {
+            orderModal.classList.add('opacity-0', 'pointer-events-none');
+            orderModalContent.classList.remove('scale-100');
+            orderModalContent.classList.add('scale-95');
+            setTimeout(() => {
+                orderModal.classList.add('hidden');
+            }, 300);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+{% extends 'taxi/base.html' %}
+{% block title %}Barcha Buyurtmalar - Vijdon Taxi{% endblock %}
+{% block content %}
+<div class="mb-6 flex justify-between items-center">
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Barcha Buyurtmalar</h1>
+    <button onclick="openOrderModal()" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded shadow">
+        <i class="fas fa-plus mr-2"></i> Yangi
+    </button>
+</div>
+<div class="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-gray-50 dark:bg-gray-700 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-bold">
+                    <th class="px-6 py-4">ID</th>
+                    <th class="px-6 py-4">Mijoz</th>
+                    <th class="px-6 py-4">Yo'nalish</th>
+                    <th class="px-6 py-4">Haydovchi</th>
+                    <th class="px-6 py-4">Holati</th>
+                    <th class="px-6 py-4">Vaqti</th>
+                </tr>
+            </thead>
+            <tbody class="text-sm font-medium text-gray-700 dark:text-gray-300 divide-y divide-gray-50 dark:divide-gray-700/50">
+                {% for order in orders %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td class="px-6 py-4">#{{ order.id }}</td>
+                    <td class="px-6 py-4">{{ order.client.full_name|default:order.client.phone_number }}</td>
+                    <td class="px-6 py-4">{{ order.from_address }} <i class="fas fa-arrow-right mx-1 text-gray-400"></i> {{ order.to_address }}</td>
+                    <td class="px-6 py-4">{{ order.driver.full_name|default:"-" }}</td>
+                    <td class="px-6 py-4">{{ order.get_status_display }}</td>
+                    <td class="px-6 py-4">{{ order.created_at|date:"d M Y, H:i" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center py-8 text-gray-500">Buyurtmalar yo'q.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
