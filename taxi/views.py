@@ -141,11 +141,12 @@ def driver_recharge(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == 'POST':
         amount = request.POST.get('amount')
+        from decimal import Decimal
         try:
-            amount = float(amount)
+            amount = Decimal(amount)
             driver.balance += amount
             driver.save(update_fields=['balance'])
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, Exception):
             pass
     return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
 
