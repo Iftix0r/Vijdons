@@ -37,6 +37,13 @@ class ProfileScreen extends StatelessWidget {
             ]),
             const SizedBox(height: 12),
 
+            // ── Finance card ───────────────────────────────────────────────
+            _infoCard(context, 'Moliya', [
+              _row(context, Icons.account_balance_wallet_rounded, AppColors.success, 'Balans', '${driver!.balance} UZS',
+                  valueColor: double.tryParse(driver!.balance) != null && double.parse(driver!.balance) < 0 ? AppColors.danger : AppColors.success, mono: true),
+            ]),
+            const SizedBox(height: 12),
+
             // ── Contact card ───────────────────────────────────────────────
             _infoCard(context, 'Aloqa', [
               _row(context, Icons.phone_rounded, AppColors.success, 'Telefon', driver!.phoneNumber, mono: true,

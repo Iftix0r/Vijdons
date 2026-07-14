@@ -95,6 +95,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             phoneNumber: _driver!.phoneNumber, carModel: _driver!.carModel,
             carNumber: _driver!.carNumber, isActive: _driver!.isActive,
             isOnDuty: nowOnDuty, approvalStatus: _driver!.approvalStatus,
+            balance: _driver!.balance,
           );
         });
       }
@@ -120,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       await ApiService.orderAction(ep);
       _snack(_actionLabel(action), icon: _actionIcon(action));
-      await _loadOrders(silent: true);
+      await Future.wait([_loadOrders(silent: true), _loadProfile()]);
     } catch (e) {
       _snack(e.toString(), error: true);
     }
@@ -290,7 +291,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
                 if (_driver != null)
                   Container(
-                    margin: const EdgeInsets.top(4),
+                    margin: const EdgeInsets.only(top: 4),
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: AppColors.info.withValues(alpha: 0.1),
@@ -579,51 +580,51 @@ class _OrderDetailSheet extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
               ),
-              child: Row(children: [
-                Container(width: 42, height: 42,
-                  decoration: BoxDecoration(
-                    color: AppColors.info.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12)),
-                  child: const Icon(Icons.person_rounded, color: AppColors.info, size: 20)),
-                const SizedBox(width: 12),
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(order.clientName.isNotEmpty ? order.clientName : 'Nomsiz mijoz',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                    Text(order.clientPhone,
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontFamily: 'monospace')),
-                  ],
-                )),
-              ]),
-              if (order.distanceKm != null || order.commission != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Row(children: [
-                    if (order.distanceKm != null)
-                      Expanded(
-                        child: Text('Masofa: ${order.distanceKm!.toStringAsFixed(1)} km',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.info)),
-                      ),
-                    if (order.commission != null)
-                      Expanded(
-                        child: Text('Komissiya: ${order.commission} so\'m',
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.danger)),
-                      ),
-                  ]),
-                ),
-            ),
-                if (order.price != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Column(children: [
+                Row(children: [
+                  Container(width: 42, height: 42,
                     decoration: BoxDecoration(
-                      color: AppColors.success.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
+                      color: AppColors.info.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12)),
+                    child: const Icon(Icons.person_rounded, color: AppColors.info, size: 20)),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(order.clientName.isNotEmpty ? order.clientName : 'Nomsiz mijoz',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      Text(order.clientPhone,
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontFamily: 'monospace')),
+                    ],
+                  )),
+                  if (order.price != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text('${order.price} so\'m',
+                          style: const TextStyle(fontWeight: FontWeight.bold,
+                              color: AppColors.success, fontSize: 13)),
                     ),
-                    child: Text('${order.price} so\'m',
-                        style: const TextStyle(fontWeight: FontWeight.bold,
-                            color: AppColors.success, fontSize: 13)),
+                ]),
+                if (order.distanceKm != null || order.commission != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Row(children: [
+                      if (order.distanceKm != null)
+                        Expanded(
+                          child: Text('Masofa: ${order.distanceKm!.toStringAsFixed(1)} km',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.info)),
+                        ),
+                      if (order.commission != null)
+                        Expanded(
+                          child: Text('Komissiya: ${order.commission} so\'m',
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.danger)),
+                        ),
+                    ]),
                   ),
               ]),
             ),
