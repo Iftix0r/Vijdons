@@ -297,11 +297,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             width: 44, height: 44,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFFFCD34D), Color(0xFFF59E0B)],
+                colors: [Color(0xFF4ADE80), Color(0xFF16A34A)],
                 begin: Alignment.topLeft, end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(14),
-              boxShadow: [BoxShadow(color: AppColors.amber.withValues(alpha: 0.35), blurRadius: 12, offset: const Offset(0, 4))],
+              boxShadow: [BoxShadow(color: AppColors.green.withValues(alpha: 0.35), blurRadius: 12, offset: const Offset(0, 4))],
             ),
             child: const Icon(Icons.local_taxi_rounded, color: Colors.white, size: 24),
           ),

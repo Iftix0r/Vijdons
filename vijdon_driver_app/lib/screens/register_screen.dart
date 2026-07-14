@@ -179,7 +179,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Container(
                   width: 42, height: 42,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [Color(0xFFFCD34D), Color(0xFFF59E0B)]),
+                    gradient: const LinearGradient(colors: [Color(0xFF4ADE80), Color(0xFF16A34A)]),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.local_taxi_rounded, color: Colors.white, size: 22),

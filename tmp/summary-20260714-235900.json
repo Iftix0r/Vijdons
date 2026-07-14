@@ -1,0 +1,4 @@
+{
+  "summary": "Flutter haydovchi ilovasining rangi amber/sariqdan yashil (green) rangga o'zgartirildi. AppColors klassida yangi green (#16A34A) va green2 (#15803D) brandlar qo'shildi, amber/amber2/amberBg eski nomlar alias sifatida saqlab qolindi (backward compatibility uchun). Dark mode fon ranglari ham yashil tonlarga (#071310, #0D1F1A) o'zgartirildi. login_screen.dart, splash_screen.dart, home_screen.dart, register_screen.dart va profile_screen.dart fayllaridagi hardcoded amber/yellow gradient (#FCD34D, #F59E0B, #FFFBEB) qiymatlari yashil gradientlarga (#4ADE80, #16A34A, #F0FDF4) almashtrildi. flutter analyze 2 ta info (avvaldan mavjud) ko'rsatdi, xato yo'q.",
+  "current_status": "Django backend to'liq ishlamoqda. Flutter haydovchi ilovasi endi yashil rang sxemasida — splash, login, register, home, profile ekranlari barchasi yashil brendga o'tdi. Ilova kompilyatsiya xatosisiz."
+}

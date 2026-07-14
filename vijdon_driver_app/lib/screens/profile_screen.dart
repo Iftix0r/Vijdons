@@ -112,11 +112,11 @@ class ProfileScreen extends StatelessWidget {
             width: 64, height: 64,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFFFCD34D), Color(0xFFF59E0B)],
+                colors: [Color(0xFF4ADE80), Color(0xFF16A34A)],
                 begin: Alignment.topLeft, end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [BoxShadow(color: AppColors.amber.withValues(alpha: 0.5), blurRadius: 14, offset: const Offset(0, 4))],
+              boxShadow: [BoxShadow(color: AppColors.green.withValues(alpha: 0.5), blurRadius: 14, offset: const Offset(0, 4))],
             ),
             child: Center(
               child: Text(

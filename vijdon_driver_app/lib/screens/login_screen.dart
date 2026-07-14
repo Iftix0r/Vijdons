@@ -89,10 +89,10 @@ class _LoginScreenState extends State<LoginScreen>
           decoration: BoxDecoration(
             gradient: dark
                 ? const LinearGradient(
-                    colors: [Color(0xFF0A0F1E), Color(0xFF111827)],
+                    colors: [Color(0xFF071310), Color(0xFF0D1F1A)],
                     begin: Alignment.topCenter, end: Alignment.bottomCenter)
                 : const LinearGradient(
-                    colors: [Color(0xFFFFFBEB), Color(0xFFF1F5F9)],
+                    colors: [Color(0xFFF0FDF4), Color(0xFFF1F5F9)],
                     begin: Alignment.topLeft, end: Alignment.bottomRight),
           ),
           child: SafeArea(
@@ -163,7 +163,7 @@ class _LoginScreenState extends State<LoginScreen>
           width: 88, height: 88,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFFFCD34D), Color(0xFFF59E0B)],
+              colors: [Color(0xFF4ADE80), Color(0xFF16A34A)],
               begin: Alignment.topLeft, end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(28),

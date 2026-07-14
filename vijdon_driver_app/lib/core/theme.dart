@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class AppColors {
-  // Brand
-  static const Color amber    = Color(0xFFF59E0B);
-  static const Color amber2   = Color(0xFFD97706);
-  static const Color amberBg  = Color(0xFFFFFBEB);
+  // Brand — Green palette
+  static const Color green    = Color(0xFF16A34A); // primary green
+  static const Color green2   = Color(0xFF15803D); // darker green
+  static const Color greenBg  = Color(0xFFF0FDF4); // light green background
+
+  // Keep old names as aliases for backward compatibility
+  static const Color amber    = green;
+  static const Color amber2   = green2;
+  static const Color amberBg  = greenBg;
 
   // Status
   static const Color success  = Color(0xFF10B981);
@@ -21,16 +26,16 @@ class AppColors {
   static const Color textSecondary = Color(0xFF64748B);
 
   // Dark mode
-  static const Color bgDark   = Color(0xFF0A0F1E);
-  static const Color cardDark = Color(0xFF141B2D);
-  static const Color surfaceDark = Color(0xFF1C2438);
-  static const Color borderDark = Color(0xFF252E42);
+  static const Color bgDark   = Color(0xFF071310);
+  static const Color cardDark = Color(0xFF0D1F1A);
+  static const Color surfaceDark = Color(0xFF142920);
+  static const Color borderDark = Color(0xFF1E3A2E);
 }
 
 class AppTheme {
   // Keep backward compat
-  static const Color primary  = AppColors.amber;
-  static const Color primary2 = AppColors.amber2;
+  static const Color primary  = AppColors.green;
+  static const Color primary2 = AppColors.green2;
   static const Color success  = AppColors.success;
   static const Color danger   = AppColors.danger;
   static const Color info     = AppColors.info;
@@ -38,7 +43,7 @@ class AppTheme {
 
   static ThemeData get light => ThemeData(
     useMaterial3: true,
-    colorSchemeSeed: AppColors.amber,
+    colorSchemeSeed: AppColors.green,
     fontFamily: 'Roboto',
     scaffoldBackgroundColor: AppColors.bgLight,
     cardColor: AppColors.cardLight,
@@ -54,16 +59,16 @@ class AppTheme {
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: Colors.white,
-      indicatorColor: AppColors.amber.withValues(alpha: 0.15),
+      indicatorColor: AppColors.green.withValues(alpha: 0.15),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return const IconThemeData(color: AppColors.amber);
+          return const IconThemeData(color: AppColors.green);
         }
         return const IconThemeData(color: AppColors.textSecondary);
       }),
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.amber);
+          return const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.green);
         }
         return const TextStyle(fontSize: 11, color: AppColors.textSecondary);
       }),
@@ -76,7 +81,7 @@ class AppTheme {
   static ThemeData get darkTheme => ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-    colorSchemeSeed: AppColors.amber,
+    colorSchemeSeed: AppColors.green,
     fontFamily: 'Roboto',
     scaffoldBackgroundColor: AppColors.bgDark,
     cardColor: AppColors.cardDark,
@@ -92,16 +97,16 @@ class AppTheme {
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: AppColors.cardDark,
-      indicatorColor: AppColors.amber.withValues(alpha: 0.2),
+      indicatorColor: AppColors.green.withValues(alpha: 0.2),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return const IconThemeData(color: AppColors.amber);
+          return const IconThemeData(color: AppColors.green);
         }
         return IconThemeData(color: Colors.grey.shade500);
       }),
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.amber);
+          return const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.green);
         }
         return TextStyle(fontSize: 11, color: Colors.grey.shade500);
       }),
