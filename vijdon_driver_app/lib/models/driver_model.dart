@@ -7,6 +7,7 @@ class DriverModel {
   final bool isActive;
   final bool isOnDuty;
   final String approvalStatus;
+  final String balance;
 
   DriverModel({
     required this.id,
@@ -17,6 +18,7 @@ class DriverModel {
     required this.isActive,
     required this.isOnDuty,
     required this.approvalStatus,
+    required this.balance,
   });
 
   factory DriverModel.fromJson(Map<String, dynamic> j) => DriverModel(
@@ -28,5 +30,6 @@ class DriverModel {
     isActive:       j['is_active'] ?? false,
     isOnDuty:       j['is_on_duty'] ?? false,
     approvalStatus: j['approval_status'] ?? 'pending',
+    balance:        j['balance']?.toString() ?? '0',
   );
 }

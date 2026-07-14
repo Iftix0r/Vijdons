@@ -6,6 +6,8 @@ class OrderModel {
   final String fromAddress;
   final String toAddress;
   final String? price;
+  final String? commission;
+  final double? distanceKm;
   final String status;
   final String statusLabel;
   final String createdAt;
@@ -18,6 +20,8 @@ class OrderModel {
     required this.fromAddress,
     required this.toAddress,
     this.price,
+    this.commission,
+    this.distanceKm,
     required this.status,
     required this.statusLabel,
     required this.createdAt,
@@ -31,6 +35,8 @@ class OrderModel {
     fromAddress: j['from_address'] ?? '',
     toAddress:   j['to_address'] ?? '',
     price:       j['price']?.toString(),
+    commission:  j['commission']?.toString(),
+    distanceKm:  j['distance_km'] != null ? double.tryParse(j['distance_km'].toString()) : null,
     status:      j['status'] ?? 'pending',
     statusLabel: j['status_label'] ?? '',
     createdAt:   j['created_at'] ?? '',
