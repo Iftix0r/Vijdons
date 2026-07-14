@@ -1,0 +1,45 @@
+class OrderModel {
+  final int id;
+  final String clientName;
+  final String clientPhone;
+  final String? driverName;
+  final String fromAddress;
+  final String toAddress;
+  final String? price;
+  final String status;
+  final String statusLabel;
+  final String createdAt;
+
+  OrderModel({
+    required this.id,
+    required this.clientName,
+    required this.clientPhone,
+    this.driverName,
+    required this.fromAddress,
+    required this.toAddress,
+    this.price,
+    required this.status,
+    required this.statusLabel,
+    required this.createdAt,
+  });
+
+  factory OrderModel.fromJson(Map<String, dynamic> j) => OrderModel(
+    id:          j['id'],
+    clientName:  j['client_name'] ?? '',
+    clientPhone: j['client_phone'] ?? '',
+    driverName:  j['driver_name'],
+    fromAddress: j['from_address'] ?? '',
+    toAddress:   j['to_address'] ?? '',
+    price:       j['price']?.toString(),
+    status:      j['status'] ?? 'pending',
+    statusLabel: j['status_label'] ?? '',
+    createdAt:   j['created_at'] ?? '',
+  );
+
+  bool get isPending   => status == 'pending';
+  bool get isAccepted  => status == 'accepted';
+  bool get isOnWay     => status == 'on_way';
+  bool get isCompleted => status == 'completed';
+  bool get isCancelled => status == 'cancelled';
+  bool get isActive    => isAccepted || isOnWay;
+}

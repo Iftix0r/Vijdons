@@ -26,7 +26,6 @@ def order_create(request):
 
 
 def order_update_status(request, pk):
-    """Change status or assign driver via POST."""
     order = get_object_or_404(Order, pk=pk)
     if request.method == 'POST':
         new_status = request.POST.get('status')
@@ -60,6 +59,8 @@ def driver_create(request):
                 phone_number=phone_number,
                 car_model=car_model,
                 car_number=car_number,
+                approval_status=Driver.APPROVAL_APPROVED,
+                is_active=True,
             )
     return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
 
@@ -67,7 +68,10 @@ def driver_create(request):
 def driver_delete(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == 'POST':
-        driver.delete()
+        if driver.user:
+            driver.user.delete()
+        else:
+            driver.delete()
     return redirect('taxi:driver_list')
 
 
@@ -75,7 +79,24 @@ def driver_toggle_active(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == 'POST':
         driver.is_active = not driver.is_active
-        driver.save()
+        driver.save(update_fields=['is_active'])
+    return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
+
+
+def driver_approve(request, pk):
+    driver = get_object_or_404(Driver, pk=pk)
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'approve':
+            driver.approval_status = Driver.APPROVAL_APPROVED
+            driver.is_active = True
+            if driver.user:
+                driver.user.is_active = True
+                driver.user.save(update_fields=['is_active'])
+        elif action == 'reject':
+            driver.approval_status = Driver.APPROVAL_REJECTED
+            driver.is_active = False
+        driver.save(update_fields=['approval_status', 'is_active'])
     return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
 
 
@@ -104,14 +125,17 @@ def client_delete(request, pk):
 
 def panel_dashboard(request):
     orders = Order.objects.select_related('client', 'driver').order_by('-created_at')[:10]
+    pending_drivers = Driver.objects.filter(approval_status=Driver.APPROVAL_PENDING).order_by('-registered_at')
     context = {
-        'orders':         orders,
-        'total_orders':   Order.objects.count(),
-        'total_drivers':  Driver.objects.filter(is_active=True).count(),
-        'total_clients':  Client.objects.count(),
-        'pending_orders': Order.objects.filter(status='pending').count(),
-        'completed_orders': Order.objects.filter(status='completed').count(),
-        'active_drivers': Driver.objects.filter(is_active=True),
+        'orders':               orders,
+        'total_orders':         Order.objects.count(),
+        'total_drivers':        Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED).count(),
+        'total_clients':        Client.objects.count(),
+        'pending_orders':       Order.objects.filter(status='pending').count(),
+        'completed_orders':     Order.objects.filter(status='completed').count(),
+        'active_drivers':       Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED),
+        'pending_drivers':      pending_drivers,
+        'pending_driver_count': pending_drivers.count(),
     }
     return render(request, 'taxi/panel.html', context)
 
@@ -132,7 +156,7 @@ def order_list(request):
         qs = qs.filter(status=status)
     context = {
         'orders':   qs,
-        'drivers':  Driver.objects.filter(is_active=True),
+        'drivers':  Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED),
         'q':        q,
         'status':   status,
         'statuses': Order.STATUS_CHOICES,
@@ -141,8 +165,9 @@ def order_list(request):
 
 
 def driver_list(request):
-    q = request.GET.get('q', '').strip()
-    qs = Driver.objects.all()
+    q   = request.GET.get('q', '').strip()
+    tab = request.GET.get('tab', 'approved')
+    qs  = Driver.objects.all()
     if q:
         qs = qs.filter(
             Q(full_name__icontains=q) |
@@ -150,11 +175,25 @@ def driver_list(request):
             Q(car_model__icontains=q) |
             Q(car_number__icontains=q)
         )
-    return render(request, 'taxi/driver_list.html', {'drivers': qs, 'q': q})
+    if tab == 'pending':
+        qs = qs.filter(approval_status=Driver.APPROVAL_PENDING)
+    elif tab == 'rejected':
+        qs = qs.filter(approval_status=Driver.APPROVAL_REJECTED)
+    else:
+        qs = qs.filter(approval_status=Driver.APPROVAL_APPROVED)
+
+    return render(request, 'taxi/driver_list.html', {
+        'drivers':        qs,
+        'q':              q,
+        'tab':            tab,
+        'pending_count':  Driver.objects.filter(approval_status=Driver.APPROVAL_PENDING).count(),
+        'approved_count': Driver.objects.filter(approval_status=Driver.APPROVAL_APPROVED).count(),
+        'rejected_count': Driver.objects.filter(approval_status=Driver.APPROVAL_REJECTED).count(),
+    })
 
 
 def client_list(request):
-    q = request.GET.get('q', '').strip()
+    q  = request.GET.get('q', '').strip()
     qs = Client.objects.all()
     if q:
         qs = qs.filter(
