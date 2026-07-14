@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q
 from .models import Order, Driver, Client
+from .utils import haversine, find_nearest_driver
 
 
 # ── Order ──────────────────────────────────────────────────────────────────────
@@ -11,16 +12,48 @@ def order_create(request):
         from_address = request.POST.get('from_address', '').strip()
         to_address   = request.POST.get('to_address', '').strip()
         driver_id    = request.POST.get('driver_id') or None
+        
+        from_lat = request.POST.get('from_lat')
+        from_lng = request.POST.get('from_lng')
+        to_lat   = request.POST.get('to_lat')
+        to_lng   = request.POST.get('to_lng')
 
         if phone_number and from_address and to_address:
             client, _ = Client.objects.get_or_create(phone_number=phone_number)
             driver = Driver.objects.filter(pk=driver_id).first() if driver_id else None
+            
+            # Convert to float
+            f_lat = float(from_lat) if from_lat else None
+            f_lng = float(from_lng) if from_lng else None
+            t_lat = float(to_lat) if to_lat else None
+            t_lng = float(to_lng) if to_lng else None
+            
+            distance_km = None
+            price = None
+            if f_lat and f_lng and t_lat and t_lng:
+                distance_km = haversine(f_lat, f_lng, t_lat, t_lng)
+                if distance_km:
+                    # Example: 3000 UZS base + 1500 UZS per km
+                    price = 3000 + (distance_km * 1500)
+            
+            if driver is None and f_lat and f_lng:
+                active_drivers = Driver.objects.filter(is_active=True, is_on_duty=True, approval_status=Driver.APPROVAL_APPROVED)
+                nearest_driver, _ = find_nearest_driver(active_drivers, f_lat, f_lng)
+                if nearest_driver:
+                    driver = nearest_driver
+
             Order.objects.create(
                 client=client,
                 from_address=from_address,
+                from_lat=f_lat,
+                from_lng=f_lng,
                 to_address=to_address,
+                to_lat=t_lat,
+                to_lng=t_lng,
+                distance_km=distance_km,
+                price=price,
                 driver=driver,
-                status='pending',
+                status='pending' if not driver else 'accepted',
             )
     return redirect(request.META.get('HTTP_REFERER', 'taxi:panel_dashboard'))
 

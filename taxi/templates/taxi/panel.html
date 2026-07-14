@@ -140,10 +140,18 @@
                         </div>
                     </td>
                     <td class="px-6 py-3.5 max-w-[200px]">
-                        <div class="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
+                        <div class="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 font-semibold">
                             <span class="truncate max-w-[80px]">{{ order.from_address }}</span>
                             <i class="fas fa-arrow-right text-gray-300 dark:text-gray-600 flex-shrink-0"></i>
                             <span class="truncate max-w-[80px]">{{ order.to_address }}</span>
+                        </div>
+                        <div class="flex items-center gap-3 mt-1">
+                            {% if order.distance_km %}
+                            <span class="text-[10px] text-blue-500 font-bold"><i class="fas fa-route mr-1"></i>{{ order.distance_km|floatformat:1 }} km</span>
+                            {% endif %}
+                            {% if order.price %}
+                            <span class="text-[10px] text-green-500 font-bold">{{ order.price }} UZS</span>
+                            {% endif %}
                         </div>
                     </td>
                     <td class="px-6 py-3.5 text-xs">

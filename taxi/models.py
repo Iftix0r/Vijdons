@@ -25,6 +25,8 @@ class Driver(models.Model):
     )
     fcm_token    = models.TextField(blank=True, null=True, verbose_name="FCM Token")
     is_on_duty   = models.BooleanField(default=False, verbose_name="Ish navbatida")
+    latitude     = models.FloatField(null=True, blank=True, verbose_name="Kenglik (Latitude)")
+    longitude    = models.FloatField(null=True, blank=True, verbose_name="Uzunlik (Longitude)")
     registered_at = models.DateTimeField(auto_now_add=True, verbose_name="Ro'yxatdan o'tgan vaqt")
 
     def __str__(self):
@@ -59,7 +61,12 @@ class Order(models.Model):
     client       = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='orders', verbose_name="Mijoz")
     driver       = models.ForeignKey(Driver, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders', verbose_name="Haydovchi")
     from_address = models.CharField(max_length=255, verbose_name="Qayerdan")
+    from_lat     = models.FloatField(null=True, blank=True, verbose_name="Qayerdan Kenglik (Lat)")
+    from_lng     = models.FloatField(null=True, blank=True, verbose_name="Qayerdan Uzunlik (Lng)")
     to_address   = models.CharField(max_length=255, verbose_name="Qayerga")
+    to_lat       = models.FloatField(null=True, blank=True, verbose_name="Qayerga Kenglik (Lat)")
+    to_lng       = models.FloatField(null=True, blank=True, verbose_name="Qayerga Uzunlik (Lng)")
+    distance_km  = models.FloatField(null=True, blank=True, verbose_name="Masofa (km)")
     price        = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Narxi")
     status       = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="Holati")
     created_at   = models.DateTimeField(auto_now_add=True, verbose_name="Yaratilgan vaqti")
