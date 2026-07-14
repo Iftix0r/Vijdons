@@ -1,0 +1,4 @@
+{
+  "summary": "Fixed two server issues: 1) Added DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField' to settings.py to eliminate W042 warnings. 2) Identified root cause of 'models have changes not reflected in migration' error: the migration file 0002_driver_approval_status_driver_fcm_token_and_more.py exists locally but was not uploaded to the server. Provided clear instructions: upload the migration file and other changed files, then run python manage.py migrate on the server.",
+  "current_status": "Local codebase is correct and fully migrated. Server needs the 0002 migration file uploaded before running migrate again. DEFAULT_AUTO_FIELD warning will be gone after settings.py is uploaded."
+}
