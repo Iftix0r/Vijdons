@@ -158,6 +158,7 @@
                     <th class="px-5 py-3.5">Haydovchi</th>
                     <th class="px-5 py-3.5">Telefon</th>
                     <th class="px-5 py-3.5">Mashina</th>
+                    <th class="px-5 py-3.5">Balans</th>
                     <th class="px-5 py-3.5">Ro'yxat sanasi</th>
                     <th class="px-5 py-3.5">Holati</th>
                     <th class="px-5 py-3.5 text-right">Amal</th>
@@ -194,6 +195,13 @@
                     <td class="px-5 py-4">
                         <div class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ driver.car_model }}</div>
                         <div class="text-xs font-mono text-gray-400 dark:text-gray-500 mt-0.5">{{ driver.car_number }}</div>
+                    </td>
+
+                    <!-- Balance -->
+                    <td class="px-5 py-4">
+                        <div class="text-sm font-bold {% if driver.balance < 0 %}text-red-500{% else %}text-emerald-500{% endif %}">
+                            {{ driver.balance }} UZS
+                        </div>
                     </td>
 
                     <!-- Date -->
@@ -243,6 +251,13 @@
                                class="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
                                 <i class="fas fa-route text-xs"></i>
                             </a>
+
+                            <!-- Recharge button -->
+                            <button onclick="openRechargeModal({{ driver.pk }}, '{{ driver.full_name|escapejs }}')"
+                                    title="Hisobni to'ldirish"
+                                    class="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 hover:bg-emerald-100 hover:text-emerald-600 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-400 transition-colors">
+                                <i class="fas fa-wallet text-xs"></i>
+                            </button>
 
                             <!-- Detail button -->
                             <button onclick="openDriverDetail({{ driver.pk }}, '{{ driver.full_name|escapejs }}', '{{ driver.phone_number }}', '{{ driver.car_model|escapejs }}', '{{ driver.car_number }}', {{ driver.is_active|lower }}, '{% if driver.registered_at %}{{ driver.registered_at|date:"d.m.Y H:i" }}{% endif %}')"
@@ -321,6 +336,37 @@
     </div>
 </div>
 
+<!-- ══ Recharge Modal ══ -->
+<div id="rechargeModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-base font-bold text-gray-900 dark:text-white"><i class="fas fa-wallet text-emerald-500 mr-2"></i>Hisobni to'ldirish</h2>
+            <button onclick="closeModal('rechargeModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form id="rechargeForm" method="POST" class="px-6 py-5 space-y-4">
+            {% csrf_token %}
+            <div>
+                <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Haydovchi: <span id="recharge-driver-name" class="text-blue-600 dark:text-blue-400"></span></p>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Summa (UZS)</label>
+                <input type="number" name="amount" required placeholder="50000" min="1"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 dark:text-white transition">
+            </div>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('rechargeModal')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold shadow-md shadow-emerald-200 dark:shadow-none transition">
+                    To'ldirish
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -339,6 +385,13 @@ function openDriverDetail(id, name, phone, carModel, carNumber, isActive, date) 
         badge.innerHTML = '<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">Nofaol</span>';
     }
     openModal('driverDetailModal');
+}
+
+function openRechargeModal(driverId, driverName) {
+    document.getElementById('recharge-driver-name').textContent = driverName;
+    const form = document.getElementById('rechargeForm');
+    form.action = `/drivers/${driverId}/recharge/`;
+    openModal('rechargeModal');
 }
 </script>
 {% endblock %}
