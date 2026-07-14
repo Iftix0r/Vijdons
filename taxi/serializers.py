@@ -40,7 +40,7 @@ class DriverProfileSerializer(serializers.ModelSerializer):
         model  = Driver
         fields = [
             'id', 'full_name', 'phone_number', 'car_model', 'car_number',
-            'is_active', 'is_on_duty', 'approval_status', 'registered_at',
+            'is_active', 'is_on_duty', 'approval_status', 'registered_at', 'balance'
         ]
         read_only_fields = ['approval_status', 'registered_at']
 
@@ -61,7 +61,21 @@ class OrderSerializer(serializers.ModelSerializer):
         model  = Order
         fields = [
             'id', 'client_name', 'client_phone', 'driver_name',
-            'from_address', 'to_address', 'price',
+            'from_address', 'to_address', 'price', 'commission', 'distance_km',
             'status', 'status_label', 'created_at', 'updated_at',
         ]
         read_only_fields = ['created_at', 'updated_at']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        driver = None
+        if request and hasattr(request.user, 'driver_profile'):
+            driver = request.user.driver_profile
+        
+        # Hide contact details if the order is not accepted by this driver
+        if instance.status == 'pending' or (instance.driver and driver and instance.driver.id != driver.id):
+            data['client_phone'] = '+998 ** *** ** **'
+            data['client_name'] = 'Mijoz'
+            
+        return data

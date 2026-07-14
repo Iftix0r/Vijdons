@@ -12,6 +12,9 @@ def order_create(request):
         from_address = request.POST.get('from_address', '').strip()
         to_address   = request.POST.get('to_address', '').strip()
         driver_id    = request.POST.get('driver_id') or None
+        commission   = request.POST.get('commission')
+        
+        commission = float(commission) if commission else 1000.0
         
         from_lat = request.POST.get('from_lat')
         from_lng = request.POST.get('from_lng')
@@ -52,6 +55,7 @@ def order_create(request):
                 to_lng=t_lng,
                 distance_km=distance_km,
                 price=price,
+                commission=commission,
                 driver=driver,
                 status='pending' if not driver else 'accepted',
             )
@@ -130,6 +134,19 @@ def driver_approve(request, pk):
             driver.approval_status = Driver.APPROVAL_REJECTED
             driver.is_active = False
         driver.save(update_fields=['approval_status', 'is_active'])
+    return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
+
+
+def driver_recharge(request, pk):
+    driver = get_object_or_404(Driver, pk=pk)
+    if request.method == 'POST':
+        amount = request.POST.get('amount')
+        try:
+            amount = float(amount)
+            driver.balance += amount
+            driver.save(update_fields=['balance'])
+        except (ValueError, TypeError):
+            pass
     return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
 
 

@@ -168,7 +168,7 @@ def available_orders(request, driver):
         Q(status='pending', driver__isnull=True) |
         Q(driver=driver, status__in=['accepted', 'on_way'])
     ).order_by('-created_at')
-    return Response(OrderSerializer(qs, many=True).data)
+    return Response(OrderSerializer(qs, many=True, context={'request': request}).data)
 
 
 @api_view(['GET'])
@@ -176,7 +176,7 @@ def available_orders(request, driver):
 @driver_required
 def my_orders(request, driver):
     qs = Order.objects.select_related('client').filter(driver=driver).order_by('-created_at')[:50]
-    return Response(OrderSerializer(qs, many=True).data)
+    return Response(OrderSerializer(qs, many=True, context={'request': request}).data)
 
 
 def _order_action(request, driver, pk, allowed_statuses, new_status):
@@ -193,10 +193,16 @@ def _order_action(request, driver, pk, allowed_statuses, new_status):
         return Response({'detail': 'Bu buyurtma sizga tegishli emas.'}, status=403)
 
     if new_status == 'accepted':
+        if driver.balance < order.commission:
+            return Response({'detail': f'Balansingizda yetarli mablag\' yo\'q. Komissiya: {order.commission} UZS.'}, status=400)
+        
+        driver.balance -= order.commission
+        driver.save(update_fields=['balance'])
         order.driver = driver
+
     order.status = new_status
     order.save(update_fields=['status', 'driver', 'updated_at'] if new_status == 'accepted' else ['status', 'updated_at'])
-    return Response(OrderSerializer(order).data)
+    return Response(OrderSerializer(order, context={'request': request}).data)
 
 
 @api_view(['POST'])
