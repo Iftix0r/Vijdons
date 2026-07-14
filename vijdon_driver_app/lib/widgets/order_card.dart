@@ -10,98 +10,245 @@ class OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _borderColor().withOpacity(.4), width: 1.5),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(.05), blurRadius: 8, offset: const Offset(0, 2))],
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: _statusColor().withValues(alpha: order.isPending ? 0.5 : 0.25),
+          width: order.isPending ? 1.5 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _statusColor().withValues(alpha: order.isPending ? 0.12 : 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: _bgColor().withOpacity(.08),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: _bgColor(), borderRadius: BorderRadius.circular(8)),
-                  child: Text('#${order.id}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(order.clientName.isNotEmpty ? order.clientName : 'Nomsiz',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                ),
-                _statusBadge(),
-              ],
-            ),
-          ),
-
-          // Body
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _addressRow(Icons.my_location_rounded, AppTheme.success, order.fromAddress),
-                const Padding(
-                  padding: EdgeInsets.only(left: 11),
-                  child: SizedBox(height: 12,
-                      child: VerticalDivider(color: Colors.grey, width: 1, thickness: 1)),
-                ),
-                _addressRow(Icons.location_on_rounded, AppTheme.danger, order.toAddress),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Icon(Icons.phone_outlined, size: 15, color: Colors.grey),
-                    const SizedBox(width: 6),
-                    Text(order.clientPhone, style: const TextStyle(fontSize: 13, color: Colors.grey)),
-                    if (order.price != null) ...[
-                      const Spacer(),
-                      const Icon(Icons.payments_outlined, size: 15, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      Text('${order.price} so\'m', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Action buttons
-          if (_showActions())
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Row(children: _buildActions()),
-            ),
+          // ── Header ─────────────────────────────────────────────────────────
+          _buildHeader(context),
+          // ── Body ───────────────────────────────────────────────────────────
+          _buildBody(),
+          // ── Actions ────────────────────────────────────────────────────────
+          if (_showActions()) _buildActions(),
         ],
       ),
     );
   }
 
-  Widget _addressRow(IconData icon, Color color, String text) => Row(
-    children: [
-      Icon(icon, color: color, size: 18),
-      const SizedBox(width: 8),
-      Expanded(child: Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500))),
-    ],
-  );
-
-  Widget _statusBadge() {
+  Widget _buildHeader(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: _bgColor().withOpacity(.15), borderRadius: BorderRadius.circular(20)),
-      child: Text(order.statusLabel, style: TextStyle(color: _bgColor(), fontSize: 11, fontWeight: FontWeight.bold)),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: _statusColor().withValues(alpha: isDark ? 0.12 : 0.07),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
+      ),
+      child: Row(
+        children: [
+          // Order ID chip
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(
+              color: _statusColor(),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [BoxShadow(color: _statusColor().withValues(alpha: 0.4), blurRadius: 6, offset: const Offset(0, 2))],
+            ),
+            child: Text('#${order.id}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+          ),
+          const SizedBox(width: 10),
+          // Client name
+          Expanded(
+            child: Text(
+              order.clientName.isNotEmpty ? order.clientName : 'Nomsiz mijoz',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Status badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(
+              color: _statusColor().withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _statusColor().withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (order.isPending) ...[
+                  Container(
+                    width: 6, height: 6,
+                    decoration: BoxDecoration(color: _statusColor(), shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+                Text(order.statusLabel, style: TextStyle(color: _statusColor(), fontSize: 11, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Color _bgColor() {
+  Widget _buildBody() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+      child: Column(
+        children: [
+          // Route
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                _routeRow(Icons.my_location_rounded, AppTheme.success, 'Qayerdan', order.fromAddress),
+                Padding(
+                  padding: const EdgeInsets.only(left: 9),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 1.5,
+                        height: 18,
+                        color: Colors.grey.withValues(alpha: 0.25),
+                        margin: const EdgeInsets.symmetric(vertical: 2),
+                      ),
+                    ],
+                  ),
+                ),
+                _routeRow(Icons.location_on_rounded, AppTheme.danger, 'Qayerga', order.toAddress),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Phone + price row
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppTheme.info.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.phone_rounded, size: 13, color: AppTheme.info),
+                    const SizedBox(width: 5),
+                    Text(order.clientPhone, style: const TextStyle(fontSize: 12, color: AppTheme.info, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              if (order.price != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.success.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.payments_rounded, size: 13, color: AppTheme.success),
+                      const SizedBox(width: 5),
+                      Text('${order.price} so\'m', style: const TextStyle(fontSize: 12, color: AppTheme.success, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _routeRow(IconData icon, Color color, String label, String text) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Container(
+        width: 20, height: 20,
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
+        child: Icon(icon, size: 12, color: color),
+      ),
+      const SizedBox(width: 10),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+            Text(text, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis),
+          ],
+        ),
+      ),
+    ],
+  );
+
+  Widget _buildActions() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+      child: Row(
+        children: [
+          if (order.isPending)
+            Expanded(child: _actionBtn('Qabul qilish', Icons.check_circle_rounded, AppTheme.success, 'accept')),
+          if (order.isAccepted)
+            Expanded(child: _actionBtn("Yo'lda", Icons.directions_car_rounded, const Color(0xFF8B5CF6), 'on_way')),
+          if (order.isOnWay)
+            Expanded(child: _actionBtn('Yakunlash', Icons.flag_rounded, AppTheme.success, 'complete')),
+          if (order.isAccepted || order.isOnWay) ...[
+            const SizedBox(width: 8),
+            _cancelBtn(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _actionBtn(String label, IconData icon, Color color, String action) {
+    return ElevatedButton.icon(
+      onPressed: () => onAction(action),
+      icon: Icon(icon, size: 16),
+      label: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        shadowColor: color.withValues(alpha: 0.4),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+      ),
+    );
+  }
+
+  Widget _cancelBtn() {
+    return SizedBox(
+      width: 44,
+      height: 44,
+      child: OutlinedButton(
+        onPressed: () => onAction('cancel'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppTheme.danger,
+          side: BorderSide(color: AppTheme.danger.withValues(alpha: 0.5)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          padding: EdgeInsets.zero,
+        ),
+        child: const Icon(Icons.close_rounded, size: 18),
+      ),
+    );
+  }
+
+  Color _statusColor() {
     switch (order.status) {
       case 'pending':   return AppTheme.warning;
       case 'accepted':  return AppTheme.info;
@@ -112,56 +259,5 @@ class OrderCard extends StatelessWidget {
     }
   }
 
-  Color _borderColor() => _bgColor();
-
   bool _showActions() => order.isPending || order.isAccepted || order.isOnWay;
-
-  List<Widget> _buildActions() {
-    final btns = <Widget>[];
-
-    if (order.isPending) {
-      btns.add(_btn('Qabul qilish', Icons.check_circle_outline, AppTheme.success, 'accept'));
-    }
-    if (order.isAccepted) {
-      btns.add(_btn("Yo'lda", Icons.directions_car_rounded, const Color(0xFF8B5CF6), 'on_way'));
-    }
-    if (order.isOnWay) {
-      btns.add(_btn('Yakunlash', Icons.flag_rounded, AppTheme.success, 'complete'));
-    }
-    if (order.isAccepted || order.isOnWay) {
-      btns.add(const SizedBox(width: 8));
-      btns.add(_btn('Bekor', Icons.cancel_outlined, AppTheme.danger, 'cancel', outlined: true));
-    }
-
-    return btns;
-  }
-
-  Widget _btn(String label, IconData icon, Color color, String action, {bool outlined = false}) {
-    return Expanded(
-      child: outlined
-          ? OutlinedButton.icon(
-              onPressed: () => onAction(action),
-              icon: Icon(icon, size: 16),
-              label: Text(label, style: const TextStyle(fontSize: 13)),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: color,
-                side: BorderSide(color: color),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-              ),
-            )
-          : ElevatedButton.icon(
-              onPressed: () => onAction(action),
-              icon: Icon(icon, size: 16),
-              label: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: color,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-              ),
-            ),
-    );
-  }
 }

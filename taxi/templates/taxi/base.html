@@ -79,7 +79,13 @@
         </a>
         <a href="{% url 'taxi:driver_list' %}"
            class="nav-link {% if request.resolver_match.url_name == 'driver_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-id-card w-5 text-center"></i> Haydovchilar
+            <i class="fas fa-id-card w-5 text-center"></i>
+            <span class="flex-1">Haydovchilar</span>
+            {% with pending=pending_driver_count %}
+            {% if pending > 0 %}
+            <span class="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center pulse-dot">{{ pending }}</span>
+            {% endif %}
+            {% endwith %}
         </a>
         <a href="{% url 'taxi:client_list' %}"
            class="nav-link {% if request.resolver_match.url_name == 'client_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">

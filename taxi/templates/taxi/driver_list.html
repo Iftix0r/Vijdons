@@ -2,152 +2,343 @@
 {% block title %}Haydovchilar — Vijdon Taxi{% endblock %}
 
 {% block content %}
-<div class="flex flex-wrap justify-between items-center gap-4 mb-5">
+
+<!-- Page header -->
+<div class="flex flex-wrap justify-between items-center gap-4 mb-6">
     <div>
         <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white">Haydovchilar</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ drivers|length }} ta yozuv topildi</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            Jami: <b class="text-gray-700 dark:text-gray-200">{{ approved_count }}</b> tasdiqlangan ·
+            <b class="text-amber-600">{{ pending_count }}</b> kutilmoqda ·
+            <b class="text-red-500">{{ rejected_count }}</b> rad etilgan
+        </p>
     </div>
     <button onclick="openModal('driverModal')"
-            class="flex items-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-xl shadow-sm shadow-blue-200 dark:shadow-none transition-all hover:-translate-y-0.5">
+            class="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm shadow-blue-200 dark:shadow-none transition-all hover:-translate-y-0.5">
         <i class="fas fa-plus"></i> Haydovchi qo'shish
     </button>
 </div>
 
-<!-- Tabs -->
-<div class="flex gap-2 mb-5 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-1.5 w-fit">
-    <a href="?tab=approved{% if q %}&q={{ q }}{% endif %}"
-       class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all
-              {% if tab == 'approved' %}bg-blue-500 text-white shadow-sm{% else %}text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800{% endif %}">
-        <i class="fas fa-check-circle text-xs"></i> Tasdiqlangan
-        <span class="{% if tab == 'approved' %}bg-blue-400{% else %}bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300{% endif %} text-xs px-1.5 py-0.5 rounded-full font-bold">{{ approved_count }}</span>
-    </a>
-    <a href="?tab=pending{% if q %}&q={{ q }}{% endif %}"
-       class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all
-              {% if tab == 'pending' %}bg-amber-500 text-white shadow-sm{% else %}text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800{% endif %}">
-        <i class="fas fa-clock text-xs"></i> Kutilmoqda
-        {% if pending_count > 0 %}
-        <span class="{% if tab == 'pending' %}bg-amber-400{% else %}bg-amber-100 text-amber-700{% endif %} text-xs px-1.5 py-0.5 rounded-full font-bold pulse-dot">{{ pending_count }}</span>
-        {% endif %}
-    </a>
-    <a href="?tab=rejected{% if q %}&q={{ q }}{% endif %}"
-       class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all
-              {% if tab == 'rejected' %}bg-red-500 text-white shadow-sm{% else %}text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800{% endif %}">
-        <i class="fas fa-times-circle text-xs"></i> Rad etilgan
-        <span class="{% if tab == 'rejected' %}bg-red-400{% else %}bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300{% endif %} text-xs px-1.5 py-0.5 rounded-full font-bold">{{ rejected_count }}</span>
-    </a>
-</div>
-
-<!-- Search -->
-<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm px-5 py-4 mb-5">
-    <form method="get" class="flex flex-wrap gap-3">
-        <input type="hidden" name="tab" value="{{ tab }}">
-        <div class="flex items-center bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 flex-1 min-w-[200px] focus-within:ring-2 focus-within:ring-blue-400 transition-all">
-            <i class="fas fa-search text-gray-400 text-sm"></i>
-            <input type="text" name="q" value="{{ q }}" placeholder="Ism, telefon, mashina..."
-                   class="bg-transparent border-none outline-none ml-2 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 w-full">
+<!-- Tabs + Search in one bar -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4 mb-5">
+    <div class="flex flex-wrap gap-3 items-center justify-between">
+        <!-- Tabs -->
+        <div class="flex gap-1.5 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
+            <a href="?tab=approved{% if q %}&q={{ q }}{% endif %}"
+               class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all
+                      {% if tab == 'approved' %}bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm{% else %}text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200{% endif %}">
+                <i class="fas fa-check-circle text-xs {% if tab == 'approved' %}text-blue-500{% endif %}"></i>
+                Tasdiqlangan
+                <span class="{% if tab == 'approved' %}bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300{% else %}bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400{% endif %} text-[11px] px-1.5 py-0.5 rounded-md font-bold min-w-[20px] text-center">{{ approved_count }}</span>
+            </a>
+            <a href="?tab=pending{% if q %}&q={{ q }}{% endif %}"
+               class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all
+                      {% if tab == 'pending' %}bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-400 shadow-sm{% else %}text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200{% endif %}">
+                <i class="fas fa-clock text-xs {% if tab == 'pending' %}text-amber-500{% endif %}"></i>
+                Kutilmoqda
+                {% if pending_count > 0 %}
+                <span class="{% if tab == 'pending' %}bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300{% else %}bg-amber-100 text-amber-700{% endif %} text-[11px] px-1.5 py-0.5 rounded-md font-bold min-w-[20px] text-center pulse-dot">{{ pending_count }}</span>
+                {% else %}
+                <span class="bg-gray-200 dark:bg-gray-700 text-gray-500 text-[11px] px-1.5 py-0.5 rounded-md font-bold">0</span>
+                {% endif %}
+            </a>
+            <a href="?tab=rejected{% if q %}&q={{ q }}{% endif %}"
+               class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all
+                      {% if tab == 'rejected' %}bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 shadow-sm{% else %}text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200{% endif %}">
+                <i class="fas fa-ban text-xs {% if tab == 'rejected' %}text-red-500{% endif %}"></i>
+                Rad etilgan
+                <span class="{% if tab == 'rejected' %}bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300{% else %}bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400{% endif %} text-[11px] px-1.5 py-0.5 rounded-md font-bold min-w-[20px] text-center">{{ rejected_count }}</span>
+            </a>
         </div>
-        <button type="submit" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-xl transition-colors">
-            <i class="fas fa-search mr-1"></i>Qidirish
-        </button>
-        {% if q %}
-        <a href="?tab={{ tab }}" class="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-gray-600 dark:text-gray-300 text-sm font-semibold rounded-xl transition-colors">
-            <i class="fas fa-times mr-1"></i>Tozalash
-        </a>
-        {% endif %}
-    </form>
+
+        <!-- Search -->
+        <form method="get" class="flex gap-2">
+            <input type="hidden" name="tab" value="{{ tab }}">
+            <div class="flex items-center bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 w-64 focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all">
+                <i class="fas fa-search text-gray-400 text-xs"></i>
+                <input type="text" name="q" value="{{ q }}" placeholder="Ism, telefon, mashina..."
+                       class="bg-transparent border-none outline-none ml-2 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 w-full">
+                {% if q %}<button type="button" onclick="window.location='?tab={{ tab }}'" class="text-gray-400 hover:text-red-500 ml-1"><i class="fas fa-times text-xs"></i></button>{% endif %}
+            </div>
+            <button type="submit" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors">
+                <i class="fas fa-search"></i>
+            </button>
+        </form>
+    </div>
 </div>
 
-<!-- Cards -->
-<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+<!-- ══ PENDING TAB: big cards ══ -->
+{% if tab == 'pending' %}
+{% if drivers %}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
     {% for driver in drivers %}
-    <div class="bg-white dark:bg-gray-900 rounded-2xl border {% if tab == 'pending' %}border-amber-200 dark:border-amber-800/40{% else %}border-gray-100 dark:border-gray-800{% endif %} shadow-sm hover:shadow-md transition-all p-5">
-        <div class="flex items-start justify-between mb-4">
-            <div class="flex items-center gap-3">
-                <div class="w-11 h-11 rounded-xl {% if tab == 'pending' %}bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400{% elif tab == 'rejected' %}bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400{% else %}bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400{% endif %} flex items-center justify-center text-lg font-bold flex-shrink-0">
-                    {{ driver.full_name|slice:":1"|upper }}
-                </div>
-                <div>
-                    <h3 class="font-bold text-gray-900 dark:text-white text-sm">{{ driver.full_name }}</h3>
-                    <p class="text-xs text-gray-400 mt-0.5">{{ driver.phone_number }}</p>
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border-2 border-amber-200 dark:border-amber-800/50 shadow-sm p-5 hover:shadow-lg transition-all">
+        <div class="flex items-start gap-4 mb-4">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center text-2xl font-black text-white flex-shrink-0 shadow-md shadow-amber-200/60">
+                {{ driver.full_name|slice:":1"|upper }}
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-start justify-between gap-2">
+                    <div>
+                        <h3 class="font-bold text-gray-900 dark:text-white text-base leading-tight">{{ driver.full_name }}</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                            <i class="fas fa-phone text-[10px] mr-1"></i>{{ driver.phone_number }}
+                        </p>
+                    </div>
+                    <span class="flex-shrink-0 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 pulse-dot"></span>Yangi ariza
+                    </span>
                 </div>
             </div>
-            {% if tab == 'approved' %}
-            <form action="{% url 'taxi:driver_toggle_active' driver.pk %}" method="POST">
-                {% csrf_token %}
-                <button type="submit" class="{% if driver.is_active %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400{% else %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400{% endif %} text-xs font-bold px-2.5 py-1 rounded-full transition-colors hover:opacity-80">
-                    {% if driver.is_active %}<i class="fas fa-circle-check mr-1"></i>Faol{% else %}<i class="fas fa-circle-xmark mr-1"></i>Nofaol{% endif %}
-                </button>
-            </form>
-            {% elif tab == 'pending' %}
-            <span class="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-bold px-2.5 py-1 rounded-full">
-                <span class="pulse-dot inline-block w-1.5 h-1.5 rounded-full bg-amber-500 mr-1 align-middle"></span>Yangi
-            </span>
-            {% endif %}
         </div>
 
-        <div class="bg-gray-50 dark:bg-gray-800/60 rounded-xl p-3 mb-4 space-y-1.5">
-            <div class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
-                <i class="fas fa-car text-blue-400 w-4 text-center"></i>
-                <span class="font-semibold">{{ driver.car_model }}</span>
+        <!-- Car info -->
+        <div class="grid grid-cols-2 gap-2 mb-4">
+            <div class="bg-gray-50 dark:bg-gray-800/60 rounded-xl px-3 py-2.5">
+                <p class="text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500 font-bold mb-0.5">Mashina modeli</p>
+                <p class="text-sm font-semibold text-gray-800 dark:text-white flex items-center gap-1.5">
+                    <i class="fas fa-car text-blue-400 text-xs"></i>{{ driver.car_model }}
+                </p>
             </div>
-            <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                <i class="fas fa-hashtag text-gray-300 dark:text-gray-600 w-4 text-center"></i>
-                <span class="font-mono tracking-wide">{{ driver.car_number }}</span>
+            <div class="bg-gray-50 dark:bg-gray-800/60 rounded-xl px-3 py-2.5">
+                <p class="text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500 font-bold mb-0.5">Davlat raqami</p>
+                <p class="text-sm font-bold text-gray-800 dark:text-white font-mono flex items-center gap-1.5">
+                    <i class="fas fa-hashtag text-gray-400 text-xs"></i>{{ driver.car_number }}
+                </p>
             </div>
-            {% if driver.registered_at %}
-            <div class="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
-                <i class="fas fa-calendar-alt w-4 text-center"></i>
-                <span>{{ driver.registered_at|date:"d.m.Y H:i" }}</span>
-            </div>
-            {% endif %}
         </div>
+
+        {% if driver.registered_at %}
+        <p class="text-xs text-gray-400 dark:text-gray-500 mb-4 flex items-center gap-1.5">
+            <i class="fas fa-clock text-gray-300 dark:text-gray-600"></i>
+            Ariza topshirilgan: {{ driver.registered_at|date:"d.m.Y H:i" }}
+        </p>
+        {% endif %}
 
         <!-- Actions -->
-        {% if tab == 'pending' %}
-        <div class="flex gap-2">
+        <div class="flex gap-3">
             <form action="{% url 'taxi:driver_approve' driver.pk %}" method="POST" class="flex-1">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="approve">
-                <button type="submit" class="w-full flex items-center justify-center gap-1.5 py-2.5 text-sm font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-sm transition-colors">
-                    <i class="fas fa-check"></i> Tasdiqlash
+                <button type="submit"
+                        class="w-full flex items-center justify-center gap-2 py-3 text-sm font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-sm shadow-emerald-200/60 dark:shadow-none transition-all hover:-translate-y-0.5">
+                    <i class="fas fa-check-circle"></i> Tasdiqlash
                 </button>
             </form>
             <form action="{% url 'taxi:driver_approve' driver.pk %}" method="POST" class="flex-1">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="reject">
-                <button type="submit" class="w-full flex items-center justify-center gap-1.5 py-2.5 text-sm font-bold bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 rounded-xl transition-colors">
-                    <i class="fas fa-times"></i> Rad etish
+                <button type="submit"
+                        class="w-full flex items-center justify-center gap-2 py-3 text-sm font-bold bg-white dark:bg-gray-800 border-2 border-red-200 dark:border-red-800/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all">
+                    <i class="fas fa-times-circle"></i> Rad etish
                 </button>
             </form>
         </div>
-        {% else %}
-        <div class="flex gap-2">
-            <a href="{% url 'taxi:order_list' %}?q={{ driver.full_name }}"
-               class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 text-gray-600 dark:text-gray-400 rounded-xl transition-colors">
-                <i class="fas fa-route text-[10px]"></i> Buyurtmalari
-            </a>
-            <form id="del-driver-{{ driver.pk }}" action="{% url 'taxi:driver_delete' driver.pk %}" method="POST">
-                {% csrf_token %}
-            </form>
-            <button type="button" onclick="confirmDelete('del-driver-{{ driver.pk }}')"
-                    class="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold bg-red-50 dark:bg-red-900/20 text-red-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/40 rounded-xl transition-colors">
-                <i class="fas fa-trash-can text-[10px]"></i>
-            </button>
-        </div>
-        {% endif %}
-    </div>
-    {% empty %}
-    <div class="col-span-3 text-center py-14">
-        <div class="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-300 dark:text-gray-600 text-2xl mx-auto mb-3">
-            {% if tab == 'pending' %}<i class="fas fa-clock"></i>{% else %}<i class="fas fa-car-side"></i>{% endif %}
-        </div>
-        <p class="font-semibold text-gray-700 dark:text-gray-300">
-            {% if tab == 'pending' %}Yangi so'rovlar yo'q{% elif tab == 'rejected' %}Rad etilgan haydovchilar yo'q{% else %}Haydovchilar topilmadi{% endif %}
-        </p>
-        <p class="text-xs text-gray-400 mt-1">
-            {% if tab == 'pending' %}Haydovchi ilovadan ro'yxatdan o'tganda shu yerda ko'rinadi.{% else %}Qidiruv shartini o'zgartiring.{% endif %}
-        </p>
     </div>
     {% endfor %}
 </div>
+{% else %}
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 py-20 text-center">
+    <div class="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-400 text-3xl mx-auto mb-4">
+        <i class="fas fa-clock"></i>
+    </div>
+    <p class="font-bold text-gray-700 dark:text-gray-300 text-lg">Yangi arizalar yo'q</p>
+    <p class="text-sm text-gray-400 mt-1">Haydovchi ilovadan ro'yxatdan o'tganda shu yerda ko'rinadi.</p>
+</div>
+{% endif %}
+
+<!-- ══ APPROVED / REJECTED TAB: table ══ -->
+{% else %}
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+    {% if drivers %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-[11px] uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
+                    <th class="px-5 py-3.5">Haydovchi</th>
+                    <th class="px-5 py-3.5">Telefon</th>
+                    <th class="px-5 py-3.5">Mashina</th>
+                    <th class="px-5 py-3.5">Ro'yxat sanasi</th>
+                    <th class="px-5 py-3.5">Holati</th>
+                    <th class="px-5 py-3.5 text-right">Amal</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50 dark:divide-gray-800">
+                {% for driver in drivers %}
+                <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-800/50 transition-colors group">
+                    <!-- Name + avatar -->
+                    <td class="px-5 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl {% if tab == 'rejected' %}bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400{% else %}bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400{% endif %} flex items-center justify-center font-bold text-sm flex-shrink-0">
+                                {{ driver.full_name|slice:":1"|upper }}
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-900 dark:text-white text-sm leading-tight">{{ driver.full_name }}</p>
+                                {% if driver.is_on_duty %}
+                                <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5 mt-0.5">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot inline-block"></span> Navbatda
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- Phone -->
+                    <td class="px-5 py-4">
+                        <a href="tel:{{ driver.phone_number }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-mono transition-colors">
+                            {{ driver.phone_number }}
+                        </a>
+                    </td>
+
+                    <!-- Car -->
+                    <td class="px-5 py-4">
+                        <div class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ driver.car_model }}</div>
+                        <div class="text-xs font-mono text-gray-400 dark:text-gray-500 mt-0.5">{{ driver.car_number }}</div>
+                    </td>
+
+                    <!-- Date -->
+                    <td class="px-5 py-4 text-xs text-gray-400 whitespace-nowrap">
+                        {% if driver.registered_at %}{{ driver.registered_at|date:"d.m.Y H:i" }}{% else %}—{% endif %}
+                    </td>
+
+                    <!-- Status badge -->
+                    <td class="px-5 py-4">
+                        {% if tab == 'rejected' %}
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800/40">
+                            <i class="fas fa-ban text-[9px]"></i> Rad etilgan
+                        </span>
+                        {% else %}
+                        <form action="{% url 'taxi:driver_toggle_active' driver.pk %}" method="POST" class="inline">
+                            {% csrf_token %}
+                            <button type="submit"
+                                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all hover:opacity-80
+                                           {% if driver.is_active %}bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800/40{% else %}bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700{% endif %}">
+                                {% if driver.is_active %}
+                                <i class="fas fa-circle-check text-[9px]"></i> Faol
+                                {% else %}
+                                <i class="fas fa-circle text-[9px]"></i> Nofaol
+                                {% endif %}
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+
+                    <!-- Actions -->
+                    <td class="px-5 py-4">
+                        <div class="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {% if tab == 'rejected' %}
+                            <!-- Re-approve button -->
+                            <form action="{% url 'taxi:driver_approve' driver.pk %}" method="POST" class="inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="approve">
+                                <button type="submit" title="Qayta tasdiqlash"
+                                        class="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors">
+                                    <i class="fas fa-rotate-left text-xs"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+
+                            <!-- Orders link -->
+                            <a href="{% url 'taxi:order_list' %}?q={{ driver.full_name }}" title="Buyurtmalari"
+                               class="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
+                                <i class="fas fa-route text-xs"></i>
+                            </a>
+
+                            <!-- Detail button -->
+                            <button onclick="openDriverDetail({{ driver.pk }}, '{{ driver.full_name|escapejs }}', '{{ driver.phone_number }}', '{{ driver.car_model|escapejs }}', '{{ driver.car_number }}', {{ driver.is_active|lower }}, '{% if driver.registered_at %}{{ driver.registered_at|date:"d.m.Y H:i" }}{% endif %}')"
+                                    title="Batafsil"
+                                    class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-yellow-100 hover:text-yellow-600 dark:hover:bg-yellow-900/30 dark:hover:text-yellow-400 transition-colors">
+                                <i class="fas fa-eye text-xs"></i>
+                            </button>
+
+                            <!-- Delete -->
+                            <form id="del-driver-{{ driver.pk }}" action="{% url 'taxi:driver_delete' driver.pk %}" method="POST" class="inline">
+                                {% csrf_token %}
+                            </form>
+                            <button type="button" onclick="confirmDelete('del-driver-{{ driver.pk }}')" title="O'chirish"
+                                    class="flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/40 transition-colors">
+                                <i class="fas fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="py-20 text-center">
+        <div class="w-16 h-16 rounded-2xl {% if tab == 'rejected' %}bg-red-50 dark:bg-red-900/20 text-red-300{% else %}bg-blue-50 dark:bg-blue-900/20 text-blue-300{% endif %} flex items-center justify-center text-3xl mx-auto mb-4">
+            <i class="fas fa-car-side"></i>
+        </div>
+        <p class="font-bold text-gray-700 dark:text-gray-300 text-lg">
+            {% if tab == 'rejected' %}Rad etilgan haydovchilar yo'q{% else %}Haydovchilar topilmadi{% endif %}
+        </p>
+        <p class="text-sm text-gray-400 mt-1">Qidiruv shartini o'zgartiring yoki yangi haydovchi qo'shing.</p>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- ══ Driver Detail Modal ══ -->
+<div id="driverDetailModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-base font-bold text-gray-900 dark:text-white"><i class="fas fa-id-card text-blue-500 mr-2"></i>Haydovchi ma'lumotlari</h2>
+            <button onclick="closeModal('driverDetailModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <div class="px-6 py-5 space-y-4">
+            <!-- Avatar -->
+            <div class="flex justify-center">
+                <div id="dd-avatar" class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-3xl font-black shadow-lg shadow-blue-200/60 dark:shadow-none"></div>
+            </div>
+            <div class="text-center">
+                <p id="dd-name" class="text-xl font-bold text-gray-900 dark:text-white"></p>
+                <p id="dd-status-badge" class="mt-1"></p>
+            </div>
+            <!-- Info rows -->
+            <div class="bg-gray-50 dark:bg-gray-800/60 rounded-xl divide-y divide-gray-100 dark:divide-gray-700/50">
+                <div class="flex items-center gap-3 px-4 py-3">
+                    <i class="fas fa-phone text-blue-400 w-4 text-center text-sm"></i>
+                    <div><p class="text-[10px] text-gray-400 uppercase font-bold">Telefon</p><p id="dd-phone" class="text-sm font-semibold text-gray-700 dark:text-gray-200 font-mono"></p></div>
+                </div>
+                <div class="flex items-center gap-3 px-4 py-3">
+                    <i class="fas fa-car text-blue-400 w-4 text-center text-sm"></i>
+                    <div><p class="text-[10px] text-gray-400 uppercase font-bold">Mashina</p><p id="dd-car" class="text-sm font-semibold text-gray-700 dark:text-gray-200"></p></div>
+                </div>
+                <div class="flex items-center gap-3 px-4 py-3">
+                    <i class="fas fa-hashtag text-blue-400 w-4 text-center text-sm"></i>
+                    <div><p class="text-[10px] text-gray-400 uppercase font-bold">Davlat raqami</p><p id="dd-plate" class="text-sm font-bold text-gray-700 dark:text-gray-200 font-mono"></p></div>
+                </div>
+                <div class="flex items-center gap-3 px-4 py-3">
+                    <i class="fas fa-calendar-alt text-blue-400 w-4 text-center text-sm"></i>
+                    <div><p class="text-[10px] text-gray-400 uppercase font-bold">Ro'yxat sanasi</p><p id="dd-date" class="text-sm text-gray-700 dark:text-gray-200"></p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openDriverDetail(id, name, phone, carModel, carNumber, isActive, date) {
+    document.getElementById('dd-avatar').textContent  = name.charAt(0).toUpperCase();
+    document.getElementById('dd-name').textContent    = name;
+    document.getElementById('dd-phone').textContent   = phone;
+    document.getElementById('dd-car').textContent     = carModel;
+    document.getElementById('dd-plate').textContent   = carNumber;
+    document.getElementById('dd-date').textContent    = date || '—';
+    const badge = document.getElementById('dd-status-badge');
+    if (isActive) {
+        badge.innerHTML = '<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot"></span>Faol</span>';
+    } else {
+        badge.innerHTML = '<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">Nofaol</span>';
+    }
+    openModal('driverDetailModal');
+}
+</script>
 {% endblock %}
