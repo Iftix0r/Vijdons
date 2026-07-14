@@ -1,0 +1,4 @@
+{
+  "summary": "Fixed DisallowedHost error by adding 'vijdontaxi.uz', 'www.vijdontaxi.uz', 'localhost', and '127.0.0.1' to ALLOWED_HOSTS in config/settings.py. Django system check passed with 0 issues.",
+  "current_status": "ALLOWED_HOSTS is now properly configured for production (vijdontaxi.uz) and local development. The fix needs to be deployed/uploaded to the server for the error to go away."
+}
