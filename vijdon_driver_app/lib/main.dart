@@ -1,29 +1,33 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart';
 import 'core/theme.dart';
-import 'screens/login_screen.dart';
-import 'screens/home_screen.dart';
+import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final prefs = await SharedPreferences.getInstance();
-  final token  = prefs.getString('auth_token');
-  runApp(VijdonDriverApp(initialRoute: token != null ? 'home' : 'login'));
+
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    systemNavigationBarColor: Colors.transparent,
+  ));
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
+  runApp(const VijdonDriverApp());
 }
 
 class VijdonDriverApp extends StatelessWidget {
-  final String initialRoute;
-  const VijdonDriverApp({super.key, required this.initialRoute});
+  const VijdonDriverApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'VijdonTaxi',
       debugShowCheckedModeBanner: false,
-      theme:      AppTheme.light,
-      darkTheme:  AppTheme.darkTheme,
-      themeMode:  ThemeMode.system,
-      home: initialRoute == 'home' ? const HomeScreen() : const LoginScreen(),
+      theme:     AppTheme.light,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
+      home: const SplashScreen(),
     );
   }
 }

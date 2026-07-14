@@ -5,14 +5,17 @@ import '../models/order_model.dart';
 class OrderCard extends StatelessWidget {
   final OrderModel order;
   final void Function(String action) onAction;
+  final VoidCallback? onTap;
 
-  const OrderCard({super.key, required this.order, required this.onAction});
+  const OrderCard({super.key, required this.order, required this.onAction, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
@@ -39,7 +42,8 @@ class OrderCard extends StatelessWidget {
           if (_showActions()) _buildActions(),
         ],
       ),
-    );
+    ), // Container
+    ); // GestureDetector
   }
 
   Widget _buildHeader(BuildContext context) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core/api_service.dart';
 import '../core/theme.dart';
 
@@ -9,86 +10,143 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _formKey    = GlobalKey<FormState>();
-  final _nameCtr    = TextEditingController();
-  final _phoneCtr   = TextEditingController();
-  final _carMCtr    = TextEditingController();
-  final _carNCtr    = TextEditingController();
-  final _passCtr    = TextEditingController();
-  final _pass2Ctr   = TextEditingController();
-  bool _loading     = false;
-  bool _obscure     = true;
-  int _step         = 0; // 0 = form, 1 = success
+  final _formKey  = GlobalKey<FormState>();
+  final _nameCtr  = TextEditingController();
+  final _phoneCtr = TextEditingController(text: '+998');
+  final _carMCtr  = TextEditingController();
+  final _carNCtr  = TextEditingController();
+  final _passCtr  = TextEditingController();
+  final _pass2Ctr = TextEditingController();
+  bool _loading   = false;
+  bool _obscure   = true;
+  int  _step      = 0;
+
+  @override
+  void dispose() {
+    for (final c in [_nameCtr, _phoneCtr, _carMCtr, _carNCtr, _passCtr, _pass2Ctr]) c.dispose();
+    super.dispose();
+  }
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
+    HapticFeedback.lightImpact();
     setState(() => _loading = true);
     try {
       await ApiService.register({
         'full_name':    _nameCtr.text.trim(),
         'phone_number': _phoneCtr.text.trim(),
         'car_model':    _carMCtr.text.trim(),
-        'car_number':   _carNCtr.text.trim(),
+        'car_number':   _carNCtr.text.trim().toUpperCase(),
         'password':     _passCtr.text,
       });
+      HapticFeedback.mediumImpact();
       setState(() => _step = 1);
     } on ApiException catch (e) {
-      _showError(e.message);
+      HapticFeedback.vibrate();
+      _snack(e.message);
     } catch (_) {
-      _showError('Server bilan ulanishda xatolik.');
+      HapticFeedback.vibrate();
+      _snack('Server bilan ulanishda xatolik.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: AppTheme.danger),
-    );
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(
+        content: Row(children: [
+          const Icon(Icons.error_outline_rounded, color: Colors.white, size: 18),
+          const SizedBox(width: 10),
+          Expanded(child: Text(msg, style: const TextStyle(fontWeight: FontWeight.w600))),
+        ]),
+        backgroundColor: AppColors.danger,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        margin: const EdgeInsets.all(16),
+      ));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Ro'yxatdan o'tish")),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        title: Text(_step == 0 ? "Ro'yxatdan o'tish" : '',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+        leading: _step == 0
+            ? const BackButton()
+            : const SizedBox.shrink(),
+      ),
       body: SafeArea(
-        child: _step == 1 ? _successView() : _formView(),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          child: _step == 1 ? _successPage() : _formPage(),
+        ),
       ),
     );
   }
 
-  Widget _successView() => Center(
+  // ── Success ──────────────────────────────────────────────────────────────────
+
+  Widget _successPage() => Center(
+    key: const ValueKey('success'),
     child: Padding(
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.symmetric(horizontal: 36),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 80, height: 80,
-            decoration: BoxDecoration(color: AppTheme.success.withOpacity(.1), borderRadius: BorderRadius.circular(24)),
-            child: const Icon(Icons.check_circle_outline_rounded, color: AppTheme.success, size: 48),
+            width: 96, height: 96,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [Color(0xFF34D399), Color(0xFF10B981)]),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [BoxShadow(color: AppColors.success.withValues(alpha: 0.4), blurRadius: 24, offset: const Offset(0, 10))],
+            ),
+            child: const Icon(Icons.check_rounded, color: Colors.white, size: 52),
           ),
-          const SizedBox(height: 20),
-          const Text("Muvaffaqiyatli ro'yxatdan o'tdingiz!", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+          const SizedBox(height: 28),
+          const Text("Ariza yuborildi!",
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+              textAlign: TextAlign.center),
           const SizedBox(height: 12),
-          const Text(
-            "Arizangiz admin ko'rib chiqmoqda.\nAdmin tasdiqlagan so'ng hisobingizga kirishingiz mumkin bo'ladi.",
+          Text(
+            "Arizangiz admin tomonidan ko'rib chiqiladi.\nTasdiqlangandan so'ng tizimga kirishingiz mumkin.",
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey, height: 1.5),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade500, height: 1.6),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.warning.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.access_time_rounded, color: AppColors.warning, size: 16),
+                const SizedBox(width: 8),
+                Text('Odatda 1-24 soat ichida tasdiqlanadi',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 36),
           SizedBox(
-            width: double.infinity,
-            height: 52,
+            width: double.infinity, height: 56,
             child: ElevatedButton(
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primary,
+                backgroundColor: AppColors.amber,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 0,
               ),
-              child: const Text('Kirish sahifasiga qaytish', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text('Kirish sahifasiga qaytish',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             ),
           ),
         ],
@@ -96,53 +154,104 @@ class _RegisterScreenState extends State<RegisterScreen> {
     ),
   );
 
-  Widget _formView() => SingleChildScrollView(
-    padding: const EdgeInsets.all(24),
+  // ── Form ─────────────────────────────────────────────────────────────────────
+
+  Widget _formPage() => SingleChildScrollView(
+    key: const ValueKey('form'),
+    padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
     child: Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text("Ma'lumotlaringizni kiriting", style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-          const Text("Admin tekshirganidan so'ng hisobingiz faollashadi", style: TextStyle(fontSize: 13, color: Colors.grey)),
+          // Header card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.amber.withValues(alpha: 0.12), AppColors.amber.withValues(alpha: 0.04)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.amber.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 42, height: 42,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xFFFCD34D), Color(0xFFF59E0B)]),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.local_taxi_rounded, color: Colors.white, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text("Haydovchi sifatida qo'shiling",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      Text("Barcha maydonlarni to'ldiring",
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 24),
 
-          _field(controller: _nameCtr, label: "To'liq ism familya", hint: 'Ism Familya', icon: Icons.person_outline,
+          _sectionLabel('Shaxsiy ma\'lumotlar'),
+          const SizedBox(height: 12),
+          _field(_nameCtr,  'To\'liq ism familya', 'Ism Familya', Icons.person_rounded,
               validator: (v) => v!.trim().isEmpty ? 'Ism kiriting' : null),
-          const SizedBox(height: 14),
-          _field(controller: _phoneCtr, label: 'Telefon raqami', hint: '+998 90 000 00 00', icon: Icons.phone_outlined,
-              type: TextInputType.phone, validator: (v) => v!.trim().length < 9 ? 'Telefon kiriting' : null),
-          const SizedBox(height: 14),
-          _field(controller: _carMCtr, label: 'Mashina modeli', hint: 'Chevrolet Cobalt', icon: Icons.directions_car_outlined,
-              validator: (v) => v!.trim().isEmpty ? 'Mashina modelini kiriting' : null),
-          const SizedBox(height: 14),
-          _field(controller: _carNCtr, label: 'Mashina davlat raqami', hint: '01 A 123 AA', icon: Icons.confirmation_number_outlined,
-              validator: (v) => v!.trim().isEmpty ? 'Mashina raqamini kiriting' : null),
-          const SizedBox(height: 14),
-          _field(controller: _passCtr, label: 'Parol', hint: '••••••••', icon: Icons.lock_outline, obscure: _obscure,
-              suffixIcon: IconButton(
-                icon: Icon(_obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+          const SizedBox(height: 12),
+          _field(_phoneCtr, 'Telefon raqami', '+998 90 000 00 00', Icons.phone_rounded,
+              type: TextInputType.phone,
+              validator: (v) => v!.trim().length < 9 ? 'To\'g\'ri raqam kiriting' : null),
+
+          const SizedBox(height: 20),
+          _sectionLabel('Mashina ma\'lumotlari'),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: _field(_carMCtr, 'Mashina modeli', 'Cobalt', Icons.directions_car_rounded,
+                validator: (v) => v!.trim().isEmpty ? 'Kiriting' : null)),
+            const SizedBox(width: 12),
+            Expanded(child: _field(_carNCtr, 'Davlat raqami', '01A123AA', Icons.tag_rounded,
+                validator: (v) => v!.trim().isEmpty ? 'Kiriting' : null)),
+          ]),
+
+          const SizedBox(height: 20),
+          _sectionLabel('Parol'),
+          const SizedBox(height: 12),
+          _field(_passCtr, 'Parol', '••••••••', Icons.lock_rounded,
+              obscure: _obscure,
+              suffix: IconButton(
+                icon: Icon(_obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                    size: 20, color: Colors.grey.shade400),
                 onPressed: () => setState(() => _obscure = !_obscure),
               ),
-              validator: (v) => v!.length < 6 ? 'Parol kamida 6 ta belgi' : null),
-          const SizedBox(height: 14),
-          _field(controller: _pass2Ctr, label: 'Parolni tasdiqlang', hint: '••••••••', icon: Icons.lock_outline, obscure: true,
+              validator: (v) => v!.length < 6 ? 'Kamida 6 ta belgi' : null),
+          const SizedBox(height: 12),
+          _field(_pass2Ctr, 'Parolni tasdiqlang', '••••••••', Icons.lock_rounded,
+              obscure: true,
               validator: (v) => v != _passCtr.text ? 'Parollar mos emas' : null),
-          const SizedBox(height: 28),
 
+          const SizedBox(height: 32),
           SizedBox(
-            height: 52,
+            height: 56,
             child: ElevatedButton(
               onPressed: _loading ? null : _register,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primary,
+                backgroundColor: AppColors.amber,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 0,
               ),
               child: _loading
-                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                  : const Text("Ro'yxatdan o'tish", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                  : const Text("Ariza yuborish",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.3)),
             ),
           ),
         ],
@@ -150,40 +259,55 @@ class _RegisterScreenState extends State<RegisterScreen> {
     ),
   );
 
-  Widget _field({
-    required TextEditingController controller,
-    required String label, required String hint, required IconData icon,
-    TextInputType type = TextInputType.text,
-    String? Function(String?)? validator,
-    bool obscure = false,
-    Widget? suffixIcon,
-  }) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey)),
-      const SizedBox(height: 6),
-      TextFormField(
-        controller: controller,
-        keyboardType: type,
-        obscureText: obscure,
-        decoration: InputDecoration(
-          hintText: hint,
-          prefixIcon: Icon(icon, size: 20),
-          suffixIcon: suffixIcon,
-          filled: true,
-          fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(.4),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppTheme.primary, width: 2)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        ),
-        validator: validator,
-      ),
-    ],
-  );
+  Widget _sectionLabel(String t) => Row(children: [
+    Container(width: 3, height: 16, decoration: BoxDecoration(color: AppColors.amber, borderRadius: BorderRadius.circular(2))),
+    const SizedBox(width: 8),
+    Text(t, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.2)),
+  ]);
 
-  @override
-  void dispose() {
-    for (final c in [_nameCtr, _phoneCtr, _carMCtr, _carNCtr, _passCtr, _pass2Ctr]) c.dispose();
-    super.dispose();
+  Widget _field(
+    TextEditingController ctrl, String label, String hint, IconData icon, {
+    TextInputType type = TextInputType.text,
+    bool obscure = false,
+    Widget? suffix,
+    String? Function(String?)? validator,
+  }) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade500)),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: ctrl,
+          keyboardType: type,
+          obscureText: obscure,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: Colors.grey.shade400, fontWeight: FontWeight.normal, fontSize: 13),
+            prefixIcon: Icon(icon, size: 18, color: Colors.grey.shade400),
+            suffixIcon: suffix,
+            filled: true,
+            fillColor: dark ? AppColors.surfaceDark : Colors.white,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.18))),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.18))),
+            focusedBorder: const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(14)),
+                borderSide: BorderSide(color: AppColors.amber, width: 2)),
+            errorBorder: const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(14)),
+                borderSide: BorderSide(color: AppColors.danger)),
+            focusedErrorBorder: const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(14)),
+                borderSide: BorderSide(color: AppColors.danger, width: 2)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          ),
+          validator: validator,
+        ),
+      ],
+    );
   }
 }
