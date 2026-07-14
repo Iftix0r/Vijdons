@@ -288,6 +288,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.5),
                   maxLines: 1, overflow: TextOverflow.ellipsis,
                 ),
+                if (_driver != null)
+                  Container(
+                    margin: const EdgeInsets.top(4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.info.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'Balans: ${_driver!.balance} UZS',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.info),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -582,6 +595,25 @@ class _OrderDetailSheet extends StatelessWidget {
                         style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontFamily: 'monospace')),
                   ],
                 )),
+              ]),
+              if (order.distanceKm != null || order.commission != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Row(children: [
+                    if (order.distanceKm != null)
+                      Expanded(
+                        child: Text('Masofa: ${order.distanceKm!.toStringAsFixed(1)} km',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.info)),
+                      ),
+                    if (order.commission != null)
+                      Expanded(
+                        child: Text('Komissiya: ${order.commission} so\'m',
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.danger)),
+                      ),
+                  ]),
+                ),
+            ),
                 if (order.price != null)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
