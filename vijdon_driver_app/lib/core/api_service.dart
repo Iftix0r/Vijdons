@@ -120,6 +120,32 @@ class ApiService {
     await _post(AppConstants.location, body: {'latitude': lat, 'longitude': lng});
   }
 
+  /// Yandex Geocoder API orqali koordinatalarni manzilga aylantiradi
+  static Future<String?> reverseGeocode(double lat, double lng) async {
+    const apiKey = '47c2d55e-2e50-4ff8-a39b-6440ea704700'; // Yandex Geocoder API key
+    final url = Uri.parse(
+      'https://geocode-maps.yandex.ru/1.x/'
+      '?apikey=$apiKey'
+      '&geocode=$lng,$lat'
+      '&format=json'
+      '&results=1'
+      '&lang=uz_UZ',
+    );
+    try {
+      final resp = await http.get(url).timeout(const Duration(seconds: 6));
+      if (resp.statusCode != 200) return null;
+      final data = json.decode(utf8.decode(resp.bodyBytes));
+      final members = data['response']?['GeoObjectCollection']
+          ?['featureMember'] as List?;
+      if (members == null || members.isEmpty) return null;
+      final text = members[0]['GeoObject']?['metaDataProperty']
+          ?['GeocoderMetaData']?['text'] as String?;
+      return text;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ── Orders ─────────────────────────────────────────────────────────────────
 
   static Future<List<dynamic>> getAvailableOrders() async {

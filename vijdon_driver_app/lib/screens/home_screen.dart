@@ -32,7 +32,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final Set<int> _knownOrderIds = {};
   bool _firstLoad = true;
   double? _lat;
-  double? _lng;
+  String? _address;
+  bool _fetchingAddress = false;
 
   @override
   void initState() {
@@ -86,12 +87,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         desiredAccuracy: LocationAccuracy.high,
         timeLimit: const Duration(seconds: 5),
       );
-      setState(() {
-        _lat = pos.latitude;
-        _lng = pos.longitude;
-      });
-      await ApiService.updateLocation(pos.latitude, pos.longitude);
-    } catch (_) {}
+      final lat = pos.latitude;
+      final lng = pos.longitude;
+      if (mounted) setState(() { _lat = lat; });
+      // Backend ga yuborish
+      await ApiService.updateLocation(lat, lng);
+      // Yandex Geocoder orqali haqiqiy manzilni olish
+      if (!_fetchingAddress) {
+        _fetchingAddress = true;
+        final addr = await ApiService.reverseGeocode(lat, lng);
+        if (mounted) setState(() { _address = addr; });
+        _fetchingAddress = false;
+      }
+    } catch (_) {
+      _fetchingAddress = false;
+    }
   }
 
   Future<void> _init() async {
@@ -491,11 +501,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    _lat != null && _lng != null
-                        ? 'GPS: ${_lat!.toStringAsFixed(4)}, ${_lng!.toStringAsFixed(4)}'
-                        : 'GPS qidirilmoqda...',
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w700),
+                  Row(
+                    children: [
+                      Icon(
+                        _address != null ? Icons.location_on_rounded : Icons.gps_fixed_rounded,
+                        size: 12,
+                        color: _address != null ? AppColors.primary : Colors.grey.shade400,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          _address ?? (_lat != null ? 'Manzil aniqlanmoqda...' : 'GPS qidirilmoqda...'),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: _address != null ? Colors.grey.shade500 : Colors.grey.shade400,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
