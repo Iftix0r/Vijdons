@@ -75,12 +75,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       });
 
       final onDuty = _driver?.isOnDuty ?? false;
-      final orderInterval = onDuty ? 2 : 30; // Navbatchilikda har 2 sekundda tekshiradi
 
       setState(() {
-        _nextRefreshIn = orderInterval - (t.tick % orderInterval);
+        // Vizual kutish vaqti har doim 30 soniyadan orqaga sanaydi, haydovchi adashmasligi uchun
+        _nextRefreshIn = 30 - (t.tick % 30);
       });
 
+      // Orqa fonda esa navbatchilikda har 2 sekundda, off-duty bo'lsa har 30 sekundda yuklaymiz
+      final orderInterval = onDuty ? 2 : 30;
       if (t.tick % orderInterval == 0) {
         _loadOrders(silent: true);
       }
