@@ -126,7 +126,7 @@ class _HistoryScreenState extends State<HistoryScreen>
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF10B981), Color(0xFF059669)],
+                    colors: [AppColors.primary, AppColors.primaryDark],
                     begin: Alignment.topLeft, end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(22),

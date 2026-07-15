@@ -246,7 +246,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           if (icon != null) ...[Icon(icon, color: Colors.white, size: 20), const SizedBox(width: 12)],
           Expanded(child: Text(msg, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
         ]),
-        backgroundColor: error ? AppColors.danger : const Color(0xFF0F172A),
+        backgroundColor: error ? AppColors.danger : (dark ? AppColors.cardDark : AppColors.textPrimary),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         margin: const EdgeInsets.all(20),
@@ -301,12 +301,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-                  begin: Alignment.topLeft, end: Alignment.bottomRight,
-                ),
+                color: AppColors.primary,
                 border: Border(bottom: BorderSide(
-                  color: dark ? AppColors.borderDark : AppColors.borderLight)),
+                  color: AppColors.primaryDark)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,20 +311,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   Container(
                     width: 60, height: 60,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF00E676), Color(0xFF00C853)],
-                      ),
+                      color: Colors.black.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(color: AppColors.primary.withValues(alpha: 0.4),
-                            blurRadius: 12, offset: const Offset(0, 4)),
-                      ],
                     ),
                     child: Center(
                       child: Text(
                         _driver?.fullName.isNotEmpty == true
                             ? _driver!.fullName[0].toUpperCase() : '?',
-                        style: const TextStyle(color: Colors.black,
+                        style: const TextStyle(color: AppColors.textPrimary,
                             fontSize: 24, fontWeight: FontWeight.w900),
                       ),
                     ),
@@ -335,32 +326,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   const SizedBox(height: 12),
                   Text(
                     _driver?.fullName ?? '...',
-                    style: const TextStyle(color: Colors.white,
+                    style: const TextStyle(color: AppColors.textPrimary,
                         fontSize: 17, fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     _driver?.phoneNumber ?? '',
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.55),
+                    style: TextStyle(color: AppColors.textPrimary.withValues(alpha: 0.6),
                         fontSize: 13, fontFamily: 'monospace'),
                   ),
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
+                      color: Colors.black.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                      border: Border.all(color: Colors.black.withValues(alpha: 0.2)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(Icons.account_balance_wallet_rounded,
-                            color: AppColors.primary, size: 16),
+                            color: AppColors.textPrimary, size: 16),
                         const SizedBox(width: 8),
                         Text(
                           '${balance.toStringAsFixed(0)} UZS',
-                          style: const TextStyle(color: AppColors.primary,
+                          style: const TextStyle(color: AppColors.textPrimary,
                               fontWeight: FontWeight.w900, fontSize: 14),
                         ),
                       ],
