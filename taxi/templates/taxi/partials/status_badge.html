@@ -6,6 +6,14 @@
 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800/40">
     <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>Qabul qilindi
 </span>
+{% elif status == 'on_way' %}
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-800/40">
+    <span class="w-1.5 h-1.5 rounded-full bg-purple-500 pulse-dot"></span>Yo'lda
+</span>
+{% elif status == 'arrived' %}
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/40">
+    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 pulse-dot"></span>Yetib keldi
+</span>
 {% elif status == 'completed' %}
 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40">
     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Yakunlandi

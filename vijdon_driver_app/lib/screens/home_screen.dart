@@ -152,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
         setState(() {
           _orders = orders;
-          _activeOrderCount = orders.where((o) => o.isAccepted || o.isOnWay).length;
+          _activeOrderCount = orders.where((o) => o.isActive).length;
           _loadingOrders = false;
         });
       }

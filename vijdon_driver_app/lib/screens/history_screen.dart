@@ -47,7 +47,7 @@ class _HistoryScreenState extends State<HistoryScreen>
     _shown = switch (f) {
       'completed' => _all.where((o) => o.isCompleted).toList(),
       'cancelled' => _all.where((o) => o.isCancelled).toList(),
-      'active'    => _all.where((o) => o.isAccepted || o.isOnWay).toList(),
+      'active'    => _all.where((o) => o.isActive).toList(),
       _           => List.from(_all),
     };
   }

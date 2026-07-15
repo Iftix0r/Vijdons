@@ -18,6 +18,7 @@ urlpatterns = [
     path('drivers/<int:pk>/toggle/', views.driver_toggle_active, name='driver_toggle_active'),
     path('drivers/<int:pk>/approve/', views.driver_approve, name='driver_approve'),
     path('drivers/<int:pk>/recharge/', views.driver_recharge, name='driver_recharge'),
+    path('tariff/', views.tariff_settings, name='tariff_settings'),
     path('drivers/map/', views.driver_map, name='driver_map'),
     path('drivers/api/locations/', views.active_drivers_locations, name='active_drivers_locations'),
 

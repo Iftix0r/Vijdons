@@ -70,15 +70,27 @@
                     </td>
                     <td class="px-5 py-3.5 max-w-[140px]">
                         <span class="truncate block text-xs font-semibold">{{ order.from_address }}</span>
-                        {% if order.price %}
-                        <span class="text-[10px] text-green-500 font-bold block mt-0.5">{{ order.price }} UZS</span>
-                        {% endif %}
+                        <div class="flex items-center gap-2 mt-0.5">
+                            {% if order.price %}
+                            <span class="text-[10px] text-green-500 font-bold">💰 {{ order.price }} UZS</span>
+                            {% endif %}
+                            {% if order.payment_type == 'card' %}
+                            <span class="text-[10px] text-blue-500 font-bold">💳 Karta</span>
+                            {% else %}
+                            <span class="text-[10px] text-gray-400 font-bold">💵 Naqd</span>
+                            {% endif %}
+                        </div>
                     </td>
                     <td class="px-5 py-3.5 max-w-[140px]">
                         <span class="truncate block text-xs font-semibold">{{ order.to_address }}</span>
-                        {% if order.distance_km %}
-                        <span class="text-[10px] text-blue-500 font-bold block mt-0.5"><i class="fas fa-route mr-1"></i>{{ order.distance_km|floatformat:1 }} km</span>
-                        {% endif %}
+                        <div class="flex items-center gap-2 mt-0.5">
+                            {% if order.distance_km %}
+                            <span class="text-[10px] text-blue-500 font-bold"><i class="fas fa-route mr-1"></i>{{ order.distance_km|floatformat:1 }} km</span>
+                            {% endif %}
+                            {% if order.note %}
+                            <span class="text-[10px] text-amber-500 font-bold" title="{{ order.note }}"><i class="fas fa-note-sticky"></i></span>
+                            {% endif %}
+                        </div>
                     </td>
                     <td class="px-5 py-3.5">
                         <!-- Assign driver inline -->
@@ -102,10 +114,18 @@
                             {% csrf_token %}
                             {% if order.driver_id %}<input type="hidden" name="driver_id" value="{{ order.driver_id }}">{% endif %}
                             <select name="status" onchange="this.form.submit()"
-                                    class="{% if order.status == 'pending' %}bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/40{% elif order.status == 'accepted' %}bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800/40{% elif order.status == 'completed' %}bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/40{% else %}bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/40{% endif %} border rounded-lg px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-yellow-400 cursor-pointer transition-all">
+                                    class="border rounded-lg px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-yellow-400 cursor-pointer transition-all
+                                    {% if order.status == 'pending' %}bg-amber-50 text-amber-700 border-amber-200
+                                    {% elif order.status == 'accepted' %}bg-blue-50 text-blue-700 border-blue-200
+                                    {% elif order.status == 'on_way' %}bg-purple-50 text-purple-700 border-purple-200
+                                    {% elif order.status == 'arrived' %}bg-indigo-50 text-indigo-700 border-indigo-200
+                                    {% elif order.status == 'completed' %}bg-emerald-50 text-emerald-700 border-emerald-200
+                                    {% else %}bg-red-50 text-red-700 border-red-200{% endif %}">
                                 <option value="pending"   {% if order.status == 'pending' %}selected{% endif %}>⏳ Kutilmoqda</option>
-                                <option value="accepted"  {% if order.status == 'accepted' %}selected{% endif %}>🚗 Qabul qilindi</option>
-                                <option value="completed" {% if order.status == 'completed' %}selected{% endif %}>✅ Yakunlandi</option>
+                                <option value="accepted"  {% if order.status == 'accepted' %}selected{% endif %}>✅ Qabul qilindi</option>
+                                <option value="on_way"    {% if order.status == 'on_way' %}selected{% endif %}>🚗 Yo'lda</option>
+                                <option value="arrived"   {% if order.status == 'arrived' %}selected{% endif %}>📍 Yetib keldi</option>
+                                <option value="completed" {% if order.status == 'completed' %}selected{% endif %}>🏁 Yakunlandi</option>
                                 <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>❌ Bekor qilindi</option>
                             </select>
                         </form>
