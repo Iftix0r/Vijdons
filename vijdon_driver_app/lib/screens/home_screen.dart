@@ -13,6 +13,7 @@ import '../widgets/skeleton_card.dart';
 import 'login_screen.dart';
 import 'history_screen.dart';
 import 'profile_screen.dart';
+import 'chat_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -34,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   double? _lat;
   String? _address;
   bool _fetchingAddress = false;
+  int _chatUnread = 0;
 
   @override
   void initState() {
@@ -46,9 +48,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (!mounted) return;
       setState(() => _nextRefreshIn = 30 - (t.tick % 30));
       if (t.tick % 30 == 0) _loadOrders(silent: true);
-      if (t.tick % 15 == 0) {
-        _updateDriverLocation();
-      }
+      if (t.tick % 15 == 0) _updateDriverLocation();
+      if (t.tick % 10 == 0) _loadChatUnread();
     });
   }
 
@@ -111,7 +112,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _init() async {
-    await Future.wait([_loadProfile(), _loadOrders()]);
+    await Future.wait([_loadProfile(), _loadOrders(), _loadChatUnread()]);
+  }
+
+  Future<void> _loadChatUnread() async {
+    try {
+      final count = await ApiService.getChatUnreadCount();
+      if (mounted) setState(() => _chatUnread = count);
+    } catch (_) {}
   }
 
   Future<void> _loadProfile() async {
@@ -271,6 +279,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         children: [
           _ordersTab(dark),
           const HistoryScreen(),
+          const ChatScreen(),
           ProfileScreen(driver: _driver, onLogout: _logout),
         ],
       ),
@@ -312,7 +321,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
           NavigationDestination(
             icon: Badge(
-              isLabelVisible: _driver?.isOnDuty == true && _tab != 2,
+              isLabelVisible: _chatUnread > 0 && _tab != 2,
+              label: Text('$_chatUnread'),
+              child: const Icon(Icons.chat_bubble_outline_rounded),
+            ),
+            selectedIcon: const Icon(Icons.chat_bubble_rounded),
+            label: 'Chat',
+          ),
+          NavigationDestination(
+            icon: Badge(
+              isLabelVisible: _driver?.isOnDuty == true && _tab != 3,
               backgroundColor: AppColors.success,
               child: const Icon(Icons.person_outline_rounded),
             ),
