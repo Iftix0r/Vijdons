@@ -2,18 +2,21 @@
 REST API — Haydovchi mobil ilovasi uchun.
 
 Endpoints:
-  POST /api/driver/register/      — Ro'yxatdan o'tish (admin tasdiqlashini kutadi)
-  POST /api/driver/login/         — Kirish → token qaytaradi
-  GET  /api/driver/profile/       — O'z profili
-  POST /api/driver/duty/          — is_on_duty toggle
-  PUT  /api/driver/fcm/           — FCM token yangilash
+  POST /api/driver/register/        — Ro'yxatdan o'tish
+  POST /api/driver/login/           — Kirish → token
+  GET  /api/driver/profile/         — O'z profili
+  POST /api/driver/duty/            — is_on_duty toggle
+  PUT  /api/driver/fcm/             — FCM token yangilash
+  POST /api/driver/location/        — GPS lokatsiyani yangilash
 
-  GET  /api/orders/available/     — Haydovchiga tegishli / pending buyurtmalar
-  GET  /api/orders/my/            — O'z buyurtmalari (history)
-  POST /api/orders/<id>/accept/   — Buyurtmani qabul qilish
-  POST /api/orders/<id>/on_way/   — Yo'lda
-  POST /api/orders/<id>/complete/ — Yakunlash
-  POST /api/orders/<id>/cancel/   — Bekor qilish
+  GET  /api/orders/available/       — Pending + o'z faol buyurtmalari
+  GET  /api/orders/my/              — O'z tarixi
+  POST /api/orders/<id>/accept/     — Qabul qilish (komissiya yechiladi)
+  POST /api/orders/<id>/on_way/     — Yo'lda
+  POST /api/orders/<id>/complete/   — Yakunlash
+  POST /api/orders/<id>/cancel/     — Bekor qilish
+
+  GET  /api/tariff/                 — Joriy tariff (base_price, price_per_km)
 """
 
 from django.contrib.auth import authenticate
@@ -24,7 +27,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 
-from .models import Driver, Order
+from .models import Driver, Order, TariffSettings
 from .serializers import (
     DriverRegisterSerializer,
     DriverLoginSerializer,
@@ -36,7 +39,6 @@ from .serializers import (
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 def get_driver(request):
-    """Return Driver for the authenticated user, or None."""
     try:
         return request.user.driver_profile
     except Driver.DoesNotExist:
@@ -44,9 +46,7 @@ def get_driver(request):
 
 
 def driver_required(fn):
-    """Decorator: user must have a driver profile and be approved."""
     from functools import wraps
-
     @wraps(fn)
     def wrapper(request, *args, **kwargs):
         driver = get_driver(request)
@@ -58,8 +58,14 @@ def driver_required(fn):
                 status=403,
             )
         return fn(request, driver, *args, **kwargs)
-
     return wrapper
+
+
+def get_driver_by_user(user):
+    try:
+        return user.driver_profile
+    except Exception:
+        return None
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -89,39 +95,21 @@ def driver_login(request):
 
     phone    = serializer.validated_data['phone_number']
     password = serializer.validated_data['password']
+    user     = authenticate(request, username=phone, password=password)
 
-    # username == phone_number
-    user = authenticate(request, username=phone, password=password)
     if user is None:
-        return Response({'detail': 'Telefon raqami yoki parol noto\'g\'ri.'}, status=401)
+        return Response({'detail': "Telefon raqami yoki parol noto'g'ri."}, status=401)
 
     driver = get_driver_by_user(user)
     if driver is None:
         return Response({'detail': 'Haydovchi profili topilmadi.'}, status=403)
-
     if driver.approval_status == Driver.APPROVAL_REJECTED:
-        return Response({'detail': 'Hisobingiz rad etilgan. Admin bilan bog\'laning.'}, status=403)
-
+        return Response({'detail': "Hisobingiz rad etilgan. Admin bilan bog'laning."}, status=403)
     if driver.approval_status == Driver.APPROVAL_PENDING:
-        return Response(
-            {'detail': 'Hisobingiz hali tasdiqlanmagan. Admin tasdiqlashini kuting.'},
-            status=403,
-        )
+        return Response({'detail': 'Hisobingiz hali tasdiqlanmagan. Admin tasdiqlashini kuting.'}, status=403)
 
     token, _ = Token.objects.get_or_create(user=user)
-    return Response(
-        {
-            'token': token.key,
-            'driver': DriverProfileSerializer(driver).data,
-        }
-    )
-
-
-def get_driver_by_user(user):
-    try:
-        return user.driver_profile
-    except Exception:
-        return None
+    return Response({'token': token.key, 'driver': DriverProfileSerializer(driver).data})
 
 
 # ── Profile ───────────────────────────────────────────────────────────────────
@@ -142,7 +130,7 @@ def driver_duty_toggle(request, driver):
     return Response({'is_on_duty': driver.is_on_duty})
 
 
-@api_view(['PUT'])
+@api_view(['PUT', 'POST'])
 @permission_classes([IsAuthenticated])
 @driver_required
 def driver_fcm_update(request, driver):
@@ -154,6 +142,38 @@ def driver_fcm_update(request, driver):
     return Response({'detail': 'FCM token yangilandi.'})
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@driver_required
+def driver_location_update(request, driver):
+    """GPS koordinatalarni yangilash."""
+    lat = request.data.get('latitude')
+    lng = request.data.get('longitude')
+    if lat is None or lng is None:
+        return Response({'detail': 'latitude va longitude talab qilinadi.'}, status=400)
+    try:
+        driver.latitude  = float(lat)
+        driver.longitude = float(lng)
+        driver.save(update_fields=['latitude', 'longitude'])
+        return Response({'detail': 'Lokatsiya yangilandi.', 'latitude': driver.latitude, 'longitude': driver.longitude})
+    except (ValueError, TypeError):
+        return Response({'detail': "Noto'g'ri koordinatalar."}, status=400)
+
+
+# ── Tariff ────────────────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_tariff(request):
+    """Joriy tariff ma'lumotlarini qaytaradi (ilovada narx hisoblash uchun)."""
+    t = TariffSettings.get()
+    return Response({
+        'base_price':   str(t.base_price),
+        'price_per_km': str(t.price_per_km),
+        'commission':   str(t.commission),
+    })
+
+
 # ── Orders ────────────────────────────────────────────────────────────────────
 
 @api_view(['GET'])
@@ -161,8 +181,7 @@ def driver_fcm_update(request, driver):
 @driver_required
 def available_orders(request, driver):
     """
-    Pending orders that have no driver assigned yet
-    + orders already assigned to this driver that are active.
+    Pending (driver yo'q) + bu haydovchiga assigned faol buyurtmalar.
     """
     qs = Order.objects.select_related('client', 'driver').filter(
         Q(status='pending', driver__isnull=True) |
@@ -181,27 +200,38 @@ def my_orders(request, driver):
 
 def _order_action(request, driver, pk, allowed_statuses, new_status):
     try:
-        order = Order.objects.get(pk=pk)
+        order = Order.objects.select_related('client', 'driver').get(pk=pk)
     except Order.DoesNotExist:
         return Response({'detail': 'Buyurtma topilmadi.'}, status=404)
 
     if order.status not in allowed_statuses:
-        return Response({'detail': f'Bu amalni {order.get_status_display()} holatida bajarib bo\'lmaydi.'}, status=400)
+        return Response(
+            {'detail': f"Bu amalni '{order.get_status_display()}' holatida bajarib bo'lmaydi."},
+            status=400,
+        )
 
-    # Only assigned driver can change (except accepting unassigned ones)
     if order.driver_id and order.driver_id != driver.id:
         return Response({'detail': 'Bu buyurtma sizga tegishli emas.'}, status=403)
 
+    update_fields = ['status', 'updated_at']
+
     if new_status == 'accepted':
-        if driver.balance < order.commission:
-            return Response({'detail': f'Balansingizda yetarli mablag\' yo\'q. Komissiya: {order.commission} UZS.'}, status=400)
-        
-        driver.balance -= order.commission
+        tariff = TariffSettings.get()
+        commission = order.commission if order.commission else tariff.commission
+        if driver.balance < commission:
+            return Response(
+                {'detail': f"Balansingizda yetarli mablag' yo'q. Komissiya: {commission} UZS. Joriy balans: {driver.balance} UZS."},
+                status=400,
+            )
+        from decimal import Decimal
+        driver.balance -= Decimal(str(commission))
         driver.save(update_fields=['balance'])
         order.driver = driver
+        order.commission = commission
+        update_fields = ['status', 'driver', 'commission', 'updated_at']
 
     order.status = new_status
-    order.save(update_fields=['status', 'driver', 'updated_at'] if new_status == 'accepted' else ['status', 'updated_at'])
+    order.save(update_fields=update_fields)
     return Response(OrderSerializer(order, context={'request': request}).data)
 
 

@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q
-from .models import Order, Driver, Client
+from .models import Order, Driver, Client, TariffSettings
 from .utils import haversine, find_nearest_driver
 
 
@@ -12,35 +12,35 @@ def order_create(request):
         from_address = request.POST.get('from_address', '').strip()
         to_address   = request.POST.get('to_address', '').strip()
         driver_id    = request.POST.get('driver_id') or None
-        commission   = request.POST.get('commission')
-        
-        commission = float(commission) if commission else 1000.0
-        
+
         from_lat = request.POST.get('from_lat')
         from_lng = request.POST.get('from_lng')
         to_lat   = request.POST.get('to_lat')
         to_lng   = request.POST.get('to_lng')
 
         if phone_number and from_address and to_address:
+            tariff = TariffSettings.get()
             client, _ = Client.objects.get_or_create(phone_number=phone_number)
             driver = Driver.objects.filter(pk=driver_id).first() if driver_id else None
-            
-            # Convert to float
+
             f_lat = float(from_lat) if from_lat else None
             f_lng = float(from_lng) if from_lng else None
             t_lat = float(to_lat) if to_lat else None
             t_lng = float(to_lng) if to_lng else None
-            
+
             distance_km = None
             price = None
             if f_lat and f_lng and t_lat and t_lng:
                 distance_km = haversine(f_lat, f_lng, t_lat, t_lng)
                 if distance_km:
-                    # Example: 3000 UZS base + 1500 UZS per km
-                    price = 3000 + (distance_km * 1500)
-            
-            if driver is None and f_lat and f_lng:
-                active_drivers = Driver.objects.filter(is_active=True, is_on_duty=True, approval_status=Driver.APPROVAL_APPROVED)
+                    price = tariff.calc_price(distance_km)
+
+            # Avtomatik taqsimlash
+            if driver is None and tariff.auto_dispatch and f_lat and f_lng:
+                active_drivers = Driver.objects.filter(
+                    is_active=True, is_on_duty=True,
+                    approval_status=Driver.APPROVAL_APPROVED
+                )
                 nearest_driver, _ = find_nearest_driver(active_drivers, f_lat, f_lng)
                 if nearest_driver:
                     driver = nearest_driver
@@ -48,16 +48,14 @@ def order_create(request):
             Order.objects.create(
                 client=client,
                 from_address=from_address,
-                from_lat=f_lat,
-                from_lng=f_lng,
+                from_lat=f_lat, from_lng=f_lng,
                 to_address=to_address,
-                to_lat=t_lat,
-                to_lng=t_lng,
+                to_lat=t_lat, to_lng=t_lng,
                 distance_km=distance_km,
                 price=price,
-                commission=commission,
+                commission=tariff.commission,
                 driver=driver,
-                status='pending' if not driver else 'accepted',
+                status='pending',
             )
     return redirect(request.META.get('HTTP_REFERER', 'taxi:panel_dashboard'))
 
@@ -177,16 +175,21 @@ def client_delete(request, pk):
 def panel_dashboard(request):
     orders = Order.objects.select_related('client', 'driver').order_by('-created_at')[:10]
     pending_drivers = Driver.objects.filter(approval_status=Driver.APPROVAL_PENDING).order_by('-registered_at')
+    on_duty_drivers = Driver.objects.filter(
+        is_active=True, is_on_duty=True, approval_status=Driver.APPROVAL_APPROVED
+    ).count()
     context = {
         'orders':               orders,
         'total_orders':         Order.objects.count(),
         'total_drivers':        Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED).count(),
+        'on_duty_drivers':      on_duty_drivers,
         'total_clients':        Client.objects.count(),
         'pending_orders':       Order.objects.filter(status='pending').count(),
         'completed_orders':     Order.objects.filter(status='completed').count(),
         'active_drivers':       Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED),
         'pending_drivers':      pending_drivers,
         'pending_driver_count': pending_drivers.count(),
+        'tariff':               TariffSettings.get(),
     }
     return render(request, 'taxi/panel.html', context)
 

@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from decimal import Decimal
 
 
 class Driver(models.Model):
@@ -81,3 +82,48 @@ class Order(models.Model):
         verbose_name = "Buyurtma"
         verbose_name_plural = "Buyurtmalar"
 
+
+class TariffSettings(models.Model):
+    """Singleton: admin paneldan narx sozlamalari."""
+    base_price      = models.DecimalField(
+        max_digits=10, decimal_places=2, default=5000,
+        verbose_name="Boshlang'ich narx (UZS)",
+        help_text="Har bir buyurtma uchun minimal narx"
+    )
+    price_per_km    = models.DecimalField(
+        max_digits=10, decimal_places=2, default=2000,
+        verbose_name="1 km narxi (UZS)"
+    )
+    commission      = models.DecimalField(
+        max_digits=10, decimal_places=2, default=1000,
+        verbose_name="Haydovchi komissiyasi (UZS)",
+        help_text="Har bir qabul qilingan buyurtma uchun haydovchi balansidan yechiladi"
+    )
+    auto_dispatch   = models.BooleanField(
+        default=True,
+        verbose_name="Avtomatik taqsimlash",
+        help_text="Yoqilgan bo'lsa eng yaqin haydovchiga avtomatik beriladi"
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        # Singleton — always pk=1
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def calc_price(self, distance_km):
+        if distance_km is None:
+            return None
+        return self.base_price + Decimal(str(distance_km)) * self.price_per_km
+
+    def __str__(self):
+        return f"Tariff: {self.base_price} + {self.price_per_km}/km, komissiya={self.commission}"
+
+    class Meta:
+        verbose_name = "Tariff sozlamalari"
+        verbose_name_plural = "Tariff sozlamalari"

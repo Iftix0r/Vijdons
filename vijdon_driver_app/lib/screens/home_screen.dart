@@ -26,14 +26,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _togglingDuty  = false;
   Timer? _refreshTimer;
   int _activeOrderCount = 0;
+  int _nextRefreshIn = 30;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _init();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (mounted) _loadOrders(silent: true);
+    _refreshTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return;
+      setState(() => _nextRefreshIn = 30 - (t.tick % 30));
+      if (t.tick % 30 == 0) _loadOrders(silent: true);
     });
   }
 
@@ -273,6 +276,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         : hour < 17 ? 'Xayrli kun 🌤'
         : hour < 21 ? 'Xayrli kech 🌆'
         : 'Yaxshi tun 🌙';
+    final balance = double.tryParse(_driver?.balance ?? '') ?? 0;
+    final balanceNeg = balance < 0;
+    final balColor = balanceNeg ? AppColors.danger : AppColors.success;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
       child: Row(
@@ -290,35 +296,48 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   maxLines: 1, overflow: TextOverflow.ellipsis,
                 ),
                 if (_driver != null)
-                  Container(
-                    margin: const EdgeInsets.only(top: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.info.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'Balans: ${_driver!.balance} UZS',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.info),
+                  GestureDetector(
+                    onTap: () => setState(() => _tab = 2),
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 5),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: balColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: balColor.withValues(alpha: 0.25)),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.account_balance_wallet_rounded, size: 13, color: balColor),
+                        const SizedBox(width: 5),
+                        Text(
+                          '${balance.toStringAsFixed(0)} UZS',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: balColor),
+                        ),
+                      ]),
                     ),
                   ),
               ],
             ),
           ),
           const SizedBox(width: 12),
-          // Logo
-          Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF4ADE80), Color(0xFF16A34A)],
-                begin: Alignment.topLeft, end: Alignment.bottomRight,
+          // Logo + refresh countdown
+          Column(children: [
+            Container(
+              width: 48, height: 48,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF4ADE80), Color(0xFF16A34A)],
+                  begin: Alignment.topLeft, end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [BoxShadow(color: AppColors.green.withValues(alpha: 0.35), blurRadius: 12, offset: const Offset(0, 4))],
               ),
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [BoxShadow(color: AppColors.green.withValues(alpha: 0.35), blurRadius: 12, offset: const Offset(0, 4))],
+              child: const Icon(Icons.local_taxi_rounded, color: Colors.white, size: 26),
             ),
-            child: const Icon(Icons.local_taxi_rounded, color: Colors.white, size: 24),
-          ),
+            const SizedBox(height: 4),
+            Text('${_nextRefreshIn}s',
+                style: TextStyle(fontSize: 10, color: Colors.grey.shade400, fontWeight: FontWeight.w600)),
+          ]),
         ],
       ),
     );
