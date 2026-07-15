@@ -47,8 +47,43 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     Future.delayed(const Duration(seconds: 2), _updateDriverLocation);
     _refreshTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) return;
-      setState(() => _nextRefreshIn = 30 - (t.tick % 30));
-      if (t.tick % 30 == 0) _loadOrders(silent: true);
+
+      // Har soniyada ekrandagi yangi buyurtmalarni vaqtini 1 ga kamaytirib turamiz (smooth countdown)
+      setState(() {
+        for (var i = 0; i < _orders.length; i++) {
+          final o = _orders[i];
+          if (o.isPending && o.secondsLeft != null && o.secondsLeft! > 0) {
+            _orders[i] = OrderModel(
+              id: o.id,
+              clientName: o.clientName,
+              clientPhone: o.clientPhone,
+              driverName: o.driverName,
+              fromAddress: o.fromAddress,
+              toAddress: o.toAddress,
+              price: o.price,
+              commission: o.commission,
+              distanceKm: o.distanceKm,
+              status: o.status,
+              statusLabel: o.statusLabel,
+              createdAt: o.createdAt,
+              paymentType: o.paymentType,
+              note: o.note,
+              secondsLeft: o.secondsLeft! - 1,
+            );
+          }
+        }
+      });
+
+      final onDuty = _driver?.isOnDuty ?? false;
+      final orderInterval = onDuty ? 2 : 30; // Navbatchilikda har 2 sekundda tekshiradi
+
+      setState(() {
+        _nextRefreshIn = orderInterval - (t.tick % orderInterval);
+      });
+
+      if (t.tick % orderInterval == 0) {
+        _loadOrders(silent: true);
+      }
       if (t.tick % 15 == 0) _updateDriverLocation();
       if (t.tick % 10 == 0) _loadChatUnread();
     });
@@ -143,8 +178,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (mounted) {
         final orders = list.map((e) => OrderModel.fromJson(e)).toList();
 
+        final pendingOrders = orders.where((o) => o.isPending).toList();
+        if (pendingOrders.isEmpty) {
+          NotificationService.stopOrderSound();
+        }
+
         if (!_firstLoad && _driver?.isOnDuty == true) {
-          final pendingOrders = orders.where((o) => o.isPending).toList();
           final newOrders = pendingOrders
               .where((o) => !_knownOrderIds.contains(o.id))
               .toList();

@@ -64,8 +64,35 @@ class OrderCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          if (order.isPending)
+          if (order.isPending) ...[
             _PulsingDot(color: color),
+            if (order.secondsLeft != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.danger.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.timer_rounded, color: AppColors.danger, size: 14),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${order.secondsLeft} s',
+                      style: const TextStyle(
+                        color: AppColors.danger,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
           
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
