@@ -43,8 +43,17 @@ class _ChatScreenState extends State<ChatScreen> {
         _loading  = false;
       });
       _scrollToBottom();
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        if (!silent) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ));
+        }
+      }
     }
   }
 
@@ -57,7 +66,19 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       await ApiService.sendChatMessage(text);
       await _load(silent: true);
+    } on ApiException catch (e) {
+      _controller.text = text; // xabarni qaytarib qo'y
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.message),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.all(16),
+        ));
+      }
     } catch (e) {
+      _controller.text = text;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(e.toString()),
