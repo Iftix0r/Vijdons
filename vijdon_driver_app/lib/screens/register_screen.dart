@@ -23,7 +23,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
-    for (final c in [_nameCtr, _phoneCtr, _carMCtr, _carNCtr, _passCtr, _pass2Ctr]) c.dispose();
+    for (final c in [_nameCtr, _phoneCtr, _carMCtr, _carNCtr, _passCtr, _pass2Ctr]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -129,7 +131,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
             const SizedBox(height: 10),
-            Text(
+            const Text(
               "Administrator ko'rib chiqgandan so'ng tizimga kirishingiz mumkin bo'ladi.",
               style: TextStyle(
                 fontSize: 15, height: 1.5,

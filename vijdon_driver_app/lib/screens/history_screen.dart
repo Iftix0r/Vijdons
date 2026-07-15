@@ -365,7 +365,9 @@ class _HistoryScreenState extends State<HistoryScreen>
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '${o.fromAddress} → ${o.toAddress}',
+                      o.toAddress.isNotEmpty
+                          ? '${o.fromAddress} → ${o.toAddress}'
+                          : o.fromAddress,
                       style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                       maxLines: 1, overflow: TextOverflow.ellipsis,
                     ),

@@ -10,12 +10,15 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
-  final _controller  = TextEditingController();
-  final _scrollCtrl  = ScrollController();
+class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  final _controller = TextEditingController();
+  final _scrollCtrl = ScrollController();
   List<Map<String, dynamic>> _messages = [];
-  bool  _loading  = true;
-  bool  _sending  = false;
+  bool  _loading = true;
+  bool  _sending = false;
   Timer? _timer;
 
   @override
@@ -34,7 +37,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _load({bool silent = false}) async {
-    if (!silent) setState(() => _loading = true);
+    if (!silent && mounted) setState(() => _loading = true);
     try {
       final list = await ApiService.getChatMessages();
       if (!mounted) return;
@@ -43,17 +46,8 @@ class _ChatScreenState extends State<ChatScreen> {
         _loading  = false;
       });
       _scrollToBottom();
-    } catch (e) {
-      if (mounted) {
-        setState(() => _loading = false);
-        if (!silent) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ));
-        }
-      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -66,19 +60,7 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       await ApiService.sendChatMessage(text);
       await _load(silent: true);
-    } on ApiException catch (e) {
-      _controller.text = text; // xabarni qaytarib qo'y
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.message),
-          backgroundColor: AppColors.danger,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          margin: const EdgeInsets.all(16),
-        ));
-      }
     } catch (e) {
-      _controller.text = text;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(e.toString()),
@@ -107,26 +89,43 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('💬', style: TextStyle(fontSize: 20)),
-            SizedBox(width: 8),
-            Text('Vijdon Chat', style: TextStyle(fontWeight: FontWeight.w900)),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _load,
-          ),
-        ],
-      ),
-      body: Column(
+    return SafeArea(
+      child: Column(
         children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+            decoration: BoxDecoration(
+              color: dark ? AppColors.cardDark : Colors.white,
+              border: Border(bottom: BorderSide(
+                  color: dark ? AppColors.borderDark : AppColors.borderLight, width: 0.8)),
+            ),
+            child: Row(
+              children: [
+                const Text('💬', style: TextStyle(fontSize: 22)),
+                const SizedBox(width: 10),
+                const Text('Vijdon Chat',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.3)),
+                const Spacer(),
+                GestureDetector(
+                  onTap: _load,
+                  child: Container(
+                    width: 36, height: 36,
+                    decoration: BoxDecoration(
+                      color: dark ? AppColors.surfaceDark : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: dark ? AppColors.borderDark : AppColors.borderLight),
+                    ),
+                    child: const Icon(Icons.refresh_rounded, size: 18, color: Colors.grey),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Messages
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -139,6 +138,8 @@ class _ChatScreenState extends State<ChatScreen> {
                         itemBuilder: (_, i) => _bubble(_messages[i], dark),
                       ),
           ),
+
+          // Input
           _inputBar(dark),
         ],
       ),
@@ -156,18 +157,24 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           if (!isMe) ...[
             Container(
-              width: 28, height: 28,
+              width: 30, height: 30,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFFF59E0B), Color(0xFFD97706)]),
-                borderRadius: BorderRadius.circular(8),
+                gradient: const LinearGradient(
+                    colors: [Color(0xFFF59E0B), Color(0xFFD97706)]),
+                borderRadius: BorderRadius.circular(9),
               ),
-              child: const Center(child: Text('O', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900))),
+              child: const Center(
+                child: Text('O',
+                    style: TextStyle(color: Colors.white, fontSize: 13,
+                        fontWeight: FontWeight.w900)),
+              ),
             ),
             const SizedBox(width: 8),
           ],
           Flexible(
             child: Container(
-              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+              constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.72),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: isMe
@@ -182,8 +189,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+                    blurRadius: 6, offset: const Offset(0, 2),
                   )
                 ],
               ),
@@ -193,19 +199,18 @@ class _ChatScreenState extends State<ChatScreen> {
                   Text(
                     msg['text'] ?? '',
                     style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isMe ? Colors.black : (dark ? Colors.white : AppColors.textPrimary),
-                      height: 1.4,
+                      fontSize: 14, fontWeight: FontWeight.w600, height: 1.4,
+                      color: isMe
+                          ? Colors.black
+                          : (dark ? Colors.white : AppColors.textPrimary),
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     time,
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 10, fontWeight: FontWeight.w600,
                       color: isMe ? Colors.black54 : Colors.grey.shade400,
-                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -220,10 +225,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _inputBar(bool dark) {
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 10, 16, MediaQuery.of(context).padding.bottom + 10),
+      padding: EdgeInsets.fromLTRB(
+          16, 10, 16, MediaQuery.of(context).padding.bottom + 10),
       decoration: BoxDecoration(
         color: dark ? AppColors.cardDark : Colors.white,
-        border: Border(top: BorderSide(color: dark ? AppColors.borderDark : AppColors.borderLight)),
+        border: Border(top: BorderSide(
+            color: dark ? AppColors.borderDark : AppColors.borderLight)),
       ),
       child: Row(
         children: [
@@ -231,48 +238,52 @@ class _ChatScreenState extends State<ChatScreen> {
             child: TextField(
               controller: _controller,
               textCapitalization: TextCapitalization.sentences,
+              onSubmitted: (_) => _send(),
               decoration: InputDecoration(
                 hintText: 'Xabar yozing...',
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide(color: dark ? AppColors.borderDark : AppColors.borderLight),
+                  borderSide: BorderSide(
+                      color: dark ? AppColors.borderDark : AppColors.borderLight),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide(color: dark ? AppColors.borderDark : AppColors.borderLight),
+                  borderSide: BorderSide(
+                      color: dark ? AppColors.borderDark : AppColors.borderLight),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                  borderSide:
+                      const BorderSide(color: AppColors.primary, width: 2),
                 ),
                 filled: true,
-                fillColor: dark ? AppColors.surfaceDark : const Color(0xFFF8FAFC),
+                fillColor:
+                    dark ? AppColors.surfaceDark : const Color(0xFFF8FAFC),
               ),
-              onSubmitted: (_) => _send(),
             ),
           ),
           const SizedBox(width: 10),
           GestureDetector(
             onTap: _send,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
+            child: Container(
               width: 48, height: 48,
               decoration: BoxDecoration(
                 color: _sending ? Colors.grey.shade300 : AppColors.primary,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.4),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+                    color: AppColors.primary.withValues(alpha: 0.35),
+                    blurRadius: 10, offset: const Offset(0, 4),
                   )
                 ],
               ),
               child: _sending
                   ? const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      padding: EdgeInsets.all(13),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
                     )
                   : const Icon(Icons.send_rounded, color: Colors.black, size: 22),
             ),
@@ -295,12 +306,11 @@ class _ChatScreenState extends State<ChatScreen> {
           child: const Center(child: Text('💬', style: TextStyle(fontSize: 36))),
         ),
         const SizedBox(height: 16),
-        const Text('Hali xabar yo\'q', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+        const Text("Hali xabar yo'q",
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
         const SizedBox(height: 6),
-        Text(
-          'Operator bilan muloqot boshlang',
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-        ),
+        Text('Operator bilan muloqot boshlang',
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
       ],
     ),
   );

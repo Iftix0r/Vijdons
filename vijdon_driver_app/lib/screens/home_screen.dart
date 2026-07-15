@@ -239,6 +239,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }[a] ?? Icons.info_rounded;
 
   void _snack(String msg, {bool error = false, IconData? icon}) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(SnackBar(
@@ -300,7 +301,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppColors.primary,
                 border: Border(bottom: BorderSide(
                   color: AppColors.primaryDark)),
@@ -1066,24 +1067,26 @@ class _OrderDetailSheet extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  _infoRow(Icons.radio_button_checked_rounded, AppColors.success, 'QAYERDAN', order.fromAddress),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 15),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Column(
-                        children: List.generate(
-                          3,
-                          (_) => Container(
-                            margin: const EdgeInsets.symmetric(vertical: 2),
-                            width: 2, height: 5,
-                            color: dark ? Colors.grey.shade700 : Colors.grey.shade300,
+                  _infoRow(Icons.radio_button_checked_rounded, AppColors.success, 'MIJOZ MANZILI', order.fromAddress),
+                  if (order.toAddress.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(left: 15),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Column(
+                          children: List.generate(
+                            3,
+                            (_) => Container(
+                              margin: const EdgeInsets.symmetric(vertical: 2),
+                              width: 2, height: 5,
+                              color: dark ? Colors.grey.shade700 : Colors.grey.shade300,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  _infoRow(Icons.location_on_rounded, AppColors.danger, 'QAYERGA', order.toAddress),
+                    _infoRow(Icons.location_on_rounded, AppColors.danger, 'QAYERGA', order.toAddress),
+                  ],
                 ],
               ),
             ),

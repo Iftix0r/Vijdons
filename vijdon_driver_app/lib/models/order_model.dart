@@ -4,7 +4,7 @@ class OrderModel {
   final String clientPhone;
   final String? driverName;
   final String fromAddress;
-  final String toAddress;
+  final String toAddress;  // bo'sh bo'lishi mumkin
   final String? price;
   final String? commission;
   final double? distanceKm;

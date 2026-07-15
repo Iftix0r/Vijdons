@@ -50,7 +50,7 @@
                 <tr class="text-left text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
                     <th class="px-5 py-3.5">#</th>
                     <th class="px-5 py-3.5">Mijoz</th>
-                    <th class="px-5 py-3.5">Qayerdan</th>
+                    <th class="px-5 py-3.5">Manzil</th>
                     <th class="px-5 py-3.5">Qayerga</th>
                     <th class="px-5 py-3.5">Haydovchi</th>
                     <th class="px-5 py-3.5">Holati</th>
@@ -82,7 +82,11 @@
                         </div>
                     </td>
                     <td class="px-5 py-3.5 max-w-[140px]">
+                        {% if order.to_address %}
                         <span class="truncate block text-xs font-semibold">{{ order.to_address }}</span>
+                        {% else %}
+                        <span class="text-xs text-gray-400 italic">Haydovchi hal qiladi</span>
+                        {% endif %}
                         <div class="flex items-center gap-2 mt-0.5">
                             {% if order.distance_km %}
                             <span class="text-[10px] text-blue-500 font-bold"><i class="fas fa-route mr-1"></i>{{ order.distance_km|floatformat:1 }} km</span>

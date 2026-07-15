@@ -189,16 +189,16 @@
             </div>
             
             <div id="yandex-map" style="width: 100%; height: 250px; border-radius: 12px; overflow: hidden; margin-top: 10px;"></div>
-            <div class="text-xs text-gray-500 mt-1">Xaritada qayerdan (A) va qayerga (B) nuqtalarini bosing.</div>
+            <div class="text-xs text-gray-500 mt-1">Xaritada mijoz manziliga bosing.</div>
             
             <div>
-                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Qayerdan</label>
-                <input type="text" name="from_address" id="from_address" required placeholder="Boshlang'ich manzil"
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Mijoz manzili <span class="text-red-400">*</span></label>
+                <input type="text" name="from_address" id="from_address" required placeholder="Ko'cha, uy raqami..."
                        class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
             </div>
             <div>
-                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Qayerga</label>
-                <input type="text" name="to_address" id="to_address" required placeholder="Manzil"
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Qayerga <span class="text-gray-400 font-normal">(ixtiyoriy)</span></label>
+                <input type="text" name="to_address" id="to_address" placeholder="Haydovchi o'zi hal qiladi..."
                        class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
             </div>
             <div>
@@ -386,32 +386,14 @@
 
         map.events.add('click', function (e) {
             var coords = e.get('coords');
-            if (!fromPlacemark) {
-                // Set from
-                document.getElementById('from_lat').value = coords[0];
-                document.getElementById('from_lng').value = coords[1];
-                fromPlacemark = new ymaps.Placemark(coords, { iconContent: 'A' }, { preset: 'islands#redIcon' });
-                map.geoObjects.add(fromPlacemark);
-                getAddress(coords, 'from_address');
-            } else if (!toPlacemark) {
-                // Set to
-                document.getElementById('to_lat').value = coords[0];
-                document.getElementById('to_lng').value = coords[1];
-                toPlacemark = new ymaps.Placemark(coords, { iconContent: 'B' }, { preset: 'islands#blueIcon' });
-                map.geoObjects.add(toPlacemark);
-                getAddress(coords, 'to_address');
-            } else {
-                // Reset
-                map.geoObjects.removeAll();
-                fromPlacemark = null;
-                toPlacemark = null;
-                document.getElementById('from_lat').value = '';
-                document.getElementById('from_lng').value = '';
-                document.getElementById('to_lat').value = '';
-                document.getElementById('to_lng').value = '';
-                document.getElementById('from_address').value = '';
-                document.getElementById('to_address').value = '';
-            }
+            // Eski markerni o'chirish
+            if (fromPlacemark) map.geoObjects.remove(fromPlacemark);
+            // Mijoz manzilini belgilash
+            document.getElementById('from_lat').value = coords[0];
+            document.getElementById('from_lng').value = coords[1];
+            fromPlacemark = new ymaps.Placemark(coords, { iconContent: '📍' }, { preset: 'islands#redIcon' });
+            map.geoObjects.add(fromPlacemark);
+            getAddress(coords, 'from_address');
         });
     }
 

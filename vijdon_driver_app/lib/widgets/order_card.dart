@@ -147,28 +147,30 @@ class OrderCard extends StatelessWidget {
             ),
             child: Column(
               children: [
-                _routeRow(Icons.radio_button_checked_rounded, AppColors.success, 'Qayerdan (Boshlanish)', order.fromAddress),
-                Padding(
-                  padding: const EdgeInsets.only(left: 9),
-                  child: Row(
-                    children: [
-                      Column(
-                        children: List.generate(
-                          3,
-                          (_) => Container(
-                            margin: const EdgeInsets.symmetric(vertical: 2.5),
-                            width: 2, height: 4,
-                            decoration: BoxDecoration(
-                              color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
-                              borderRadius: BorderRadius.circular(1),
+                _routeRow(Icons.radio_button_checked_rounded, AppColors.success, 'MIJOZ MANZILI', order.fromAddress),
+                if (order.toAddress.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(left: 9),
+                    child: Row(
+                      children: [
+                        Column(
+                          children: List.generate(
+                            3,
+                            (_) => Container(
+                              margin: const EdgeInsets.symmetric(vertical: 2.5),
+                              width: 2, height: 4,
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
+                                borderRadius: BorderRadius.circular(1),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                _routeRow(Icons.location_on_rounded, AppColors.danger, 'Qayerga (Yakuniy)', order.toAddress),
+                  _routeRow(Icons.location_on_rounded, AppColors.danger, 'QAYERGA', order.toAddress),
+                ],
               ],
             ),
           ),

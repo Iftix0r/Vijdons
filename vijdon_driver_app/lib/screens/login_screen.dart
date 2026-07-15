@@ -126,7 +126,7 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                           ),
                           const SizedBox(height: 6),
-                          Text(
+                          const Text(
                             'Hisobingizga kiring',
                             style: TextStyle(
                               fontSize: 15,

@@ -19,7 +19,7 @@ def order_create(request):
         to_lat   = request.POST.get('to_lat')
         to_lng   = request.POST.get('to_lng')
 
-        if phone_number and from_address and to_address:
+        if phone_number and from_address:
             tariff = TariffSettings.get()
             client, _ = Client.objects.get_or_create(phone_number=phone_number)
             driver = Driver.objects.filter(pk=driver_id).first() if driver_id else None
@@ -69,8 +69,9 @@ def order_create(request):
             send_telegram(
                 f"🚨 <b>Yangi buyurtma #{order.id}</b>\n"
                 f"👤 Mijoz: {client.full_name or phone_number} ({phone_number})\n"
-                f"📍 {from_address} → {to_address}\n"
-                f"💰 Narx: {price or '—'} UZS | {distance_km and f'{distance_km:.1f} km' or '—'}\n"
+                f"📍 Manzil: {from_address}"
+                + (f" → {to_address}" if to_address else "")
+                + f"\n💰 Narx: {price or '—'} UZS | {distance_km and f'{distance_km:.1f} km' or '—'}\n"
                 f"🚗 Haydovchi: {driver_txt}\n"
                 f"💳 To'lov: {'Naqd' if payment_type == 'cash' else 'Karta'}"
                 + (f"\n📝 Izoh: {note}" if note else "")
