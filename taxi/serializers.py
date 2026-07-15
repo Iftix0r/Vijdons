@@ -56,6 +56,7 @@ class OrderSerializer(serializers.ModelSerializer):
     client_phone = serializers.CharField(source='client.phone_number', read_only=True)
     driver_name  = serializers.CharField(source='driver.full_name', read_only=True, allow_null=True)
     status_label = serializers.CharField(source='get_status_display', read_only=True)
+    seconds_left = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model  = Order
@@ -64,8 +65,25 @@ class OrderSerializer(serializers.ModelSerializer):
             'from_address', 'to_address', 'price', 'commission', 'distance_km',
             'payment_type', 'note',
             'status', 'status_label', 'created_at', 'updated_at',
+            'seconds_left',
         ]
         read_only_fields = ['created_at', 'updated_at']
+
+    def get_seconds_left(self, instance):
+        request = self.context.get('request')
+        driver = None
+        if request and hasattr(request.user, 'driver_profile'):
+            driver = request.user.driver_profile
+
+        if instance.status == 'pending' and instance.dispatched_to == driver:
+            from django.utils import timezone
+            from .models import TariffSettings
+            tariff = TariffSettings.get()
+            if instance.dispatched_at:
+                passed = (timezone.now() - instance.dispatched_at).total_seconds()
+                return max(0, int(tariff.dispatch_timeout - passed))
+            return tariff.dispatch_timeout
+        return None
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

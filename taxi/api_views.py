@@ -182,11 +182,15 @@ def get_tariff(request):
 @driver_required
 def available_orders(request, driver):
     """
-    Faqat bu haydovchiga dispatch qilingan pending buyurtma + o'z faol buyurtmalari.
+    Faqat bu haydovchiga dispatch qilingan pending buyurtma, umumiy tablodagi buyurtmalar (dispatched_to__isnull=True),
+    va o'zining faol qabul qilingan buyurtmalari.
     """
     qs = Order.objects.select_related('client', 'driver').filter(
         Q(status='pending', dispatched_to=driver) |
+        Q(status='pending', dispatched_to__isnull=True) |
         Q(driver=driver, status__in=['accepted', 'on_way', 'arrived'])
+    ).exclude(
+        Q(status='pending', rejected_by=driver)
     ).order_by('-created_at')
     return Response(OrderSerializer(qs, many=True, context={'request': request}).data)
 
@@ -217,6 +221,11 @@ def _order_action(request, driver, pk, allowed_statuses, new_status):
     update_fields = ['status', 'updated_at']
 
     if new_status == 'accepted':
+        # Agar buyurtma pending bo'lsa, u bu haydovchiga yuborilgan yoki umumiy tabloda bo'lishi kerak
+        if order.status == 'pending':
+            if order.dispatched_to and order.dispatched_to != driver:
+                return Response({'detail': 'Bu buyurtma sizga yuborilmagan.'}, status=403)
+
         tariff = TariffSettings.get()
         commission = order.commission if order.commission else tariff.commission
         if driver.balance < commission:
@@ -229,7 +238,8 @@ def _order_action(request, driver, pk, allowed_statuses, new_status):
         driver.save(update_fields=['balance'])
         order.driver = driver
         order.commission = commission
-        update_fields = ['status', 'driver', 'commission', 'updated_at']
+        order.dispatched_to = None
+        update_fields = ['status', 'driver', 'commission', 'dispatched_to', 'updated_at']
 
     order.status = new_status
     order.save(update_fields=update_fields)
@@ -244,19 +254,26 @@ def _order_action(request, driver, pk, allowed_statuses, new_status):
 @permission_classes([IsAuthenticated])
 @driver_required
 def order_reject(request, driver, pk):
-    """Haydovchi rad etadi — keyingi yaqin haydovchiga yuboriladi."""
+    """Haydovchi rad etadi — keyingi yaqin haydovchiga yuboriladi yoki umumiy tablodan yashiriladi."""
     try:
-        order = Order.objects.get(pk=pk, status='pending', dispatched_to=driver)
+        order = Order.objects.filter(
+            Q(pk=pk, status='pending'),
+            Q(dispatched_to=driver) | Q(dispatched_to__isnull=True)
+        ).get()
     except Order.DoesNotExist:
         return Response({'detail': 'Buyurtma topilmadi.'}, status=404)
 
-    order.rejected_by.add(driver)
-    order.dispatched_to = None
-    order.save(update_fields=['dispatched_to'])
+    was_dispatched = (order.dispatched_to == driver)
 
-    # Keyingi haydovchiga yuborish
-    import threading
-    threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
+    order.rejected_by.add(driver)
+    
+    if was_dispatched:
+        order.dispatched_to = None
+        order.save(update_fields=['dispatched_to'])
+
+        # Keyingi haydovchiga yuborish
+        import threading
+        threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
 
     return Response({'detail': 'Rad etildi.'})
 
