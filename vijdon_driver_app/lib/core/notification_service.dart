@@ -32,7 +32,7 @@ class NotificationService {
     );
 
     await _notif.initialize(
-      initSettings,
+      settings: initSettings,
       onDidReceiveNotificationResponse: (_) {},
     );
 
@@ -109,9 +109,9 @@ class NotificationService {
 
     await _notif.show(
       id: 1001,
-      title,
-      body,
-      details,
+      title: title,
+      body: body,
+      notificationDetails: details,
     );
   }
 
