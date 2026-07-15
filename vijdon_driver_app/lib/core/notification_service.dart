@@ -68,10 +68,18 @@ class NotificationService {
   static Future<void> _playOrderSound() async {
     try {
       await _player.stop();
+      await _player.setReleaseMode(ReleaseMode.loop);
       await _player.play(AssetSource('sounds/new_order.wav'));
     } catch (_) {
       // Ovoz chiqmasa ham ilovani to'xtatmaymiz
     }
+  }
+
+  /// Ovoz chalishni to'xtatish
+  static Future<void> stopOrderSound() async {
+    try {
+      await _player.stop();
+    } catch (_) {}
   }
 
   static Future<void> _showNotification(int count) async {

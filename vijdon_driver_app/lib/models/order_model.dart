@@ -13,6 +13,7 @@ class OrderModel {
   final String createdAt;
   final String paymentType;
   final String note;
+  final int? secondsLeft;
 
   OrderModel({
     required this.id,
@@ -29,6 +30,7 @@ class OrderModel {
     required this.createdAt,
     this.paymentType = 'cash',
     this.note = '',
+    this.secondsLeft,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> j) => OrderModel(
@@ -46,6 +48,7 @@ class OrderModel {
     createdAt:   j['created_at'] ?? '',
     paymentType: j['payment_type'] ?? 'cash',
     note:        j['note'] ?? '',
+    secondsLeft: j['seconds_left'] != null ? int.tryParse(j['seconds_left'].toString()) : null,
   );
 
   bool get isPending   => status == 'pending';

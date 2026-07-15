@@ -291,6 +291,8 @@ def tariff_settings(request):
             tariff.price_per_km = Decimal(request.POST.get('price_per_km', tariff.price_per_km))
             tariff.commission   = Decimal(request.POST.get('commission', tariff.commission))
             tariff.auto_dispatch = request.POST.get('auto_dispatch') == 'on'
+            tariff.max_dispatch_attempts = int(request.POST.get('max_dispatch_attempts', tariff.max_dispatch_attempts))
+            tariff.dispatch_timeout      = int(request.POST.get('dispatch_timeout', tariff.dispatch_timeout))
             tariff.save()
         except (InvalidOperation, ValueError):
             pass

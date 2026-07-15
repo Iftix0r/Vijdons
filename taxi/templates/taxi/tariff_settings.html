@@ -58,6 +58,26 @@
                 </label>
             </div>
 
+            <!-- Max dispatch attempts -->
+            <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                    <i class="fas fa-users-cog text-purple-500 mr-1"></i>Maksimal urinishlar soni
+                </label>
+                <input type="number" name="max_dispatch_attempts" value="{{ tariff.max_dispatch_attempts }}" min="1" required
+                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                <p class="text-xs text-gray-400 mt-1">Buyurtma umumiy tabloda tushishidan oldin ko'pi bilan nechta yaqin haydovchiga navbatma-navbat ko'rsatiladi</p>
+            </div>
+
+            <!-- Dispatch timeout -->
+            <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                    <i class="fas fa-hourglass-half text-orange-500 mr-1"></i>Kutish vaqti (sekund)
+                </label>
+                <input type="number" name="dispatch_timeout" value="{{ tariff.dispatch_timeout }}" min="5" required
+                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                <p class="text-xs text-gray-400 mt-1">Har bir haydovchiga buyurtmani qabul qilish uchun beriladigan soniya</p>
+            </div>
+
             <!-- Preview -->
             <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/40 rounded-xl p-4">
                 <p class="text-xs font-bold text-yellow-700 dark:text-yellow-400 uppercase tracking-wide mb-2">
