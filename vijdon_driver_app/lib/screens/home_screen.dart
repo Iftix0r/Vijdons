@@ -38,6 +38,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _fetchingAddress = false;
   int _chatUnread = 0;
 
+  // ── Taximetr holatlar ───────────────────────────────────────────────────────
+  bool   _taxiRunning  = false;   // taximetr ishlayaptimi
+  double _taxiKm       = 0.0;     // bosib o'tilgan km
+  double _taxiFare     = 0.0;     // hisoblangan narx (UZS)
+  double? _taxiPrevLat;           // oldingi koordinata
+  double? _taxiPrevLng;
+  Timer?  _taxiTimer;             // 2-soniyalik GPS taymer
+  // taximetr sozlamalari (TariffSettings dan olinadi, tezroq demo uchun default)
+  double _baseFare     = 5000;
+  double _farePerKm    = 2000;
+
   @override
   void initState() {
     super.initState();
@@ -99,8 +110,68 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _taxiTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  // ── Taximetr metodlari ──────────────────────────────────────────────────────
+
+  void _startTaximeter() {
+    if (_taxiRunning) return;
+    setState(() {
+      _taxiRunning = true;
+      _taxiKm      = 0.0;
+      _taxiFare    = _baseFare;  // boshlang'ich narxdan boshlanadi
+      _taxiPrevLat = null;
+      _taxiPrevLng = null;
+    });
+    _taxiTimer = Timer.periodic(const Duration(seconds: 2), (_) => _taxiTick());
+  }
+
+  void _stopTaximeter() {
+    _taxiTimer?.cancel();
+    _taxiTimer = null;
+    if (mounted) setState(() => _taxiRunning = false);
+  }
+
+  Future<void> _taxiTick() async {
+    try {
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 3),
+      );
+      final lat = pos.latitude;
+      final lng = pos.longitude;
+
+      if (!mounted) return;
+
+      if (_taxiPrevLat != null && _taxiPrevLng != null) {
+        final distM = Geolocator.distanceBetween(
+          _taxiPrevLat!, _taxiPrevLng!, lat, lng,
+        );
+        if (distM > 3) {  // 3 metrdan kichik harakat hisoblanmaydi (GPS shimirilishi)
+          final addedKm = distM / 1000.0;
+          setState(() {
+            _taxiKm   += addedKm;
+            _taxiFare  = _baseFare + (_taxiKm * _farePerKm);
+          });
+        }
+      }
+
+      setState(() {
+        _taxiPrevLat = lat;
+        _taxiPrevLng = lng;
+      });
+
+      // Joylashuvni backend ga ham yuborib qo'yamiz
+      try { await ApiService.updateLocation(lat, lng); } catch (_) {}
+    } catch (_) {}
+  }
+
+  void _callClient(String phone) async {
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (await canLaunchUrl(uri)) await launchUrl(uri);
   }
 
   Future<bool> _checkLocationPermission() async {
@@ -257,6 +328,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       await ApiService.orderAction(ep);
       _snack(_actionLabel(action), icon: _actionIcon(action));
+
+      // ── Qabul qilinganda: ovozni to'xtat + mijozga avtomatik qo'ng'iroq ──
+      if (action == 'accept') {
+        await NotificationService.stopOrderSound();
+        if (order.clientPhone.isNotEmpty &&
+            !order.clientPhone.contains('*')) {
+          await Future.delayed(const Duration(milliseconds: 600));
+          _callClient(order.clientPhone);
+        }
+      }
+
+      // ── Yo'lga chiqdim: taximeterni ishga tush ──────────────────────────
+      if (action == 'on_way') {
+        _startTaximeter();
+      }
+
+      // ── Yetib keldim yoki yakunlash: taximeterni to'xtat ───────────────
+      if (action == 'arrived' || action == 'complete' || action == 'cancel') {
+        _stopTaximeter();
+      }
+
       await Future.wait([_loadOrders(silent: true), _loadProfile()]);
     } catch (e) {
       _snack(e.toString(), error: true);
@@ -636,6 +728,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             order: _orders[i],
                             onAction: (a) => _orderAction(_orders[i], a),
                             onTap: () => _showOrderDetail(_orders[i]),
+                            liveKm:   _orders[i].isOnWay && _taxiRunning ? _taxiKm   : null,
+                            liveFare: _orders[i].isOnWay && _taxiRunning ? _taxiFare : null,
                           ),
                           childCount: _orders.length,
                         )),
@@ -1011,6 +1105,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       builder: (_) => _OrderDetailSheet(
         order: order,
         onAction: (a) { Navigator.pop(context); _orderAction(order, a); },
+        liveKm:   order.isOnWay && _taxiRunning ? _taxiKm   : null,
+        liveFare: order.isOnWay && _taxiRunning ? _taxiFare : null,
       ),
     );
   }
@@ -1019,7 +1115,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 class _OrderDetailSheet extends StatelessWidget {
   final OrderModel order;
   final void Function(String) onAction;
-  const _OrderDetailSheet({required this.order, required this.onAction});
+  final double? liveKm;
+  final double? liveFare;
+  const _OrderDetailSheet({
+    required this.order,
+    required this.onAction,
+    this.liveKm,
+    this.liveFare,
+  });
 
   Color get _statusColor {
     return switch (order.status) {
@@ -1242,6 +1345,72 @@ class _OrderDetailSheet extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 12),
+
+          // 🚖 Taximetr banner (yo'lda ketayotganda)
+          if (order.isOnWay && liveKm != null) ...[         
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1DB954), Color(0xFF0d7c3b)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF1DB954).withValues(alpha: 0.3),
+                      blurRadius: 12, offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.speed_rounded, color: Colors.white, size: 28),
+                    const SizedBox(width: 14),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('TAXIMETR', style: TextStyle(
+                          color: Colors.white70, fontSize: 10,
+                          fontWeight: FontWeight.w900, letterSpacing: 1.5,
+                        )),
+                        Text(
+                          '${liveKm!.toStringAsFixed(2)} km',
+                          style: const TextStyle(
+                            color: Colors.white, fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text('NARX', style: TextStyle(
+                          color: Colors.white70, fontSize: 10,
+                          fontWeight: FontWeight.w900, letterSpacing: 1.5,
+                        )),
+                        Text(
+                          '${liveFare!.toStringAsFixed(0)} so\'m',
+                          style: const TextStyle(
+                            color: Colors.white, fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
           const SizedBox(height: 24),
 
           // Action buttons

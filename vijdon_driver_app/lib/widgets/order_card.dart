@@ -8,8 +8,17 @@ class OrderCard extends StatelessWidget {
   final OrderModel order;
   final void Function(String action) onAction;
   final VoidCallback? onTap;
+  final double? liveKm;    // taximetr bosib o'tilgan km (on_way paytida)
+  final double? liveFare;  // taximetr hisoblangan narx
 
-  const OrderCard({super.key, required this.order, required this.onAction, this.onTap});
+  const OrderCard({
+    super.key,
+    required this.order,
+    required this.onAction,
+    this.onTap,
+    this.liveKm,
+    this.liveFare,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -218,16 +227,67 @@ class OrderCard extends StatelessWidget {
                 order.paymentType == 'card' ? AppColors.info : AppColors.success,
                 isDark,
               ),
-              if (order.distanceKm != null) ...[
+              if (order.distanceKm != null && !order.isOnWay) ...[ 
                 const SizedBox(width: 8),
                 _infoChip(Icons.map_rounded, '${order.distanceKm!.toStringAsFixed(1)} km', AppColors.purple, isDark),
               ],
-              if (order.price != null) ...[
+              if (order.price != null && !order.isOnWay) ...[
                 const SizedBox(width: 8),
                 _infoChip(Icons.monetization_on_rounded, '${order.price} so\'m', AppColors.success, isDark),
               ],
             ],
           ),
+
+          // 🚖 Taximetr qatori (faqat yo'lda ketayotganda)
+          if (order.isOnWay && liveKm != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primary.withValues(alpha: 0.12),
+                    AppColors.success.withValues(alpha: 0.08),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.speed_rounded, color: AppColors.primary, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'TAXIMETR',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.primary,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(Icons.straighten_rounded, size: 14, color: Colors.grey.shade500),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${liveKm!.toStringAsFixed(2)} km',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(width: 16),
+                  const Icon(Icons.monetization_on_rounded, size: 14, color: AppColors.success),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${liveFare!.toStringAsFixed(0)} so\'m',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.success,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
 
           if (order.note.isNotEmpty)
             Padding(
