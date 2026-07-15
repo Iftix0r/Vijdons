@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../core/theme.dart';
 import '../models/order_model.dart';
 
@@ -179,7 +180,10 @@ class OrderCard extends StatelessWidget {
           // Chips Info Row
           Row(
             children: [
-              _infoChip(Icons.phone_iphone_rounded, order.clientPhone, AppColors.info, isDark),
+              _infoChip(Icons.phone_iphone_rounded, order.clientPhone, AppColors.info, isDark,
+                  onTap: order.isAccepted || order.isOnWay || order.isArrived
+                      ? () => _call(order.clientPhone)
+                      : null),
               const Spacer(),
               _infoChip(
                 order.paymentType == 'card' ? Icons.credit_card_rounded : Icons.payments_rounded,
@@ -252,30 +256,36 @@ class OrderCard extends StatelessWidget {
     );
   }
 
-  Widget _infoChip(IconData icon, String label, Color chipColor, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: chipColor.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: chipColor.withValues(alpha: 0.15)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: chipColor),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: chipColor,
-              fontWeight: FontWeight.w800,
+  Widget _infoChip(IconData icon, String label, Color chipColor, bool isDark, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: chipColor.withValues(alpha: onTap != null ? 0.15 : 0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: chipColor.withValues(alpha: onTap != null ? 0.4 : 0.15)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(onTap != null ? Icons.call_rounded : icon, size: 13, color: chipColor),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(fontSize: 12, color: chipColor, fontWeight: FontWeight.w800),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  void _call(String phone) async {
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
   }
 
   Widget _routeRow(IconData icon, Color markerColor, String label, String text) {

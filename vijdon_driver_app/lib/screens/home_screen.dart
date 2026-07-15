@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../core/api_service.dart';
 import '../core/constants.dart';
 import '../core/notification_service.dart';
@@ -10,11 +11,10 @@ import '../models/driver_model.dart';
 import '../models/order_model.dart';
 import '../widgets/order_card.dart';
 import '../widgets/skeleton_card.dart';
-import 'login_screen.dart';
 import 'history_screen.dart';
+import 'login_screen.dart';
 import 'profile_screen.dart';
 import 'chat_screen.dart';
-import '../core/constants.dart' show AppConstants;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -1125,9 +1125,24 @@ class _OrderDetailSheet extends StatelessWidget {
                               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
                             ),
                             const SizedBox(height: 2),
-                            Text(
-                              order.clientPhone,
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontFamily: 'monospace', fontWeight: FontWeight.w600),
+                            GestureDetector(
+                              onTap: () async {
+                                final uri = Uri(scheme: 'tel', path: order.clientPhone);
+                                if (await canLaunchUrl(uri)) launchUrl(uri);
+                              },
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.call_rounded, size: 13, color: AppColors.info),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    order.clientPhone,
+                                    style: const TextStyle(
+                                      fontSize: 12, color: AppColors.info,
+                                      fontFamily: 'monospace', fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
