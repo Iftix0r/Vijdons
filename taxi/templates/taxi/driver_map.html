@@ -66,10 +66,15 @@
         setInterval(updateLocations, 10000);
     }
 
-    // ymaps allaqachon base.html da ready bo'lgan, shuning uchun to'g'ridan chaqiramiz
-    if (typeof ymaps !== 'undefined') {
-        ymaps.ready(initTrackingMap);
+    // ymaps tayyor bo'lgach xaritani ishga tushirish
+    function waitYmaps() {
+        if (typeof ymaps !== 'undefined' && ymaps.Map) {
+            initTrackingMap();
+        } else {
+            setTimeout(waitYmaps, 100);
+        }
     }
+    waitYmaps();
 
     function updateLocations() {
         if (!map) return;
