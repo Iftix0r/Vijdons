@@ -52,25 +52,27 @@
 {% block extra_js %}
 <script>
     let map = null;
-    let driverPlacemarks = {}; // {driverId: placemarkInstance}
+    let driverPlacemarks = {};
     let selectedDriverId = null;
+    let mapCenteredOnDrivers = false;
 
-    // Initialize Yandex Map
-    ymaps.ready(function () {
+    function initTrackingMap() {
         map = new ymaps.Map("tracking-map", {
-            center: [41.311081, 69.240562], // Tashkent center
+            center: [41.311081, 69.240562],
             zoom: 12,
             controls: ['zoomControl', 'fullscreenControl', 'typeSelector']
         });
-
-        // Start pulling location updates
         updateLocations();
-        setInterval(updateLocations, 10000); // every 10 seconds
-    });
+        setInterval(updateLocations, 10000);
+    }
 
-    let mapCenteredOnDrivers = false;
+    // ymaps allaqachon base.html da ready bo'lgan, shuning uchun to'g'ridan chaqiramiz
+    if (typeof ymaps !== 'undefined') {
+        ymaps.ready(initTrackingMap);
+    }
 
     function updateLocations() {
+        if (!map) return;
         const indicator = document.getElementById('live-indicator');
         indicator.classList.remove('opacity-50');
         
