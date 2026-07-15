@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q
+from django.http import JsonResponse
 from .models import Order, Driver, Client, TariffSettings
 from .utils import haversine, find_nearest_driver
 
@@ -255,3 +256,53 @@ def client_list(request):
             Q(phone_number__icontains=q)
         )
     return render(request, 'taxi/client_list.html', {'clients': qs, 'q': q})
+
+
+# ── Tariff Settings ────────────────────────────────────────────────────────────
+
+def tariff_settings(request):
+    tariff = TariffSettings.get()
+    if request.method == 'POST':
+        from decimal import Decimal, InvalidOperation
+        try:
+            tariff.base_price   = Decimal(request.POST.get('base_price', tariff.base_price))
+            tariff.price_per_km = Decimal(request.POST.get('price_per_km', tariff.price_per_km))
+            tariff.commission   = Decimal(request.POST.get('commission', tariff.commission))
+            tariff.auto_dispatch = request.POST.get('auto_dispatch') == 'on'
+            tariff.save()
+        except (InvalidOperation, ValueError):
+            pass
+        return redirect('taxi:tariff_settings')
+    return render(request, 'taxi/tariff_settings.html', {'tariff': tariff})
+
+
+def driver_map(request):
+    drivers = Driver.objects.filter(
+        is_active=True,
+        is_on_duty=True,
+        approval_status=Driver.APPROVAL_APPROVED
+    )
+    return render(request, 'taxi/driver_map.html', {'drivers': drivers})
+
+
+def active_drivers_locations(request):
+    drivers = Driver.objects.filter(
+        is_active=True,
+        is_on_duty=True,
+        approval_status=Driver.APPROVAL_APPROVED,
+        latitude__isnull=False,
+        longitude__isnull=False
+    )
+    data = []
+    for d in drivers:
+        data.append({
+            'id': d.id,
+            'full_name': d.full_name,
+            'phone_number': d.phone_number,
+            'car_model': d.car_model,
+            'car_number': d.car_number,
+            'latitude': d.latitude,
+            'longitude': d.longitude,
+            'balance': str(d.balance),
+        })
+    return JsonResponse({'drivers': data})

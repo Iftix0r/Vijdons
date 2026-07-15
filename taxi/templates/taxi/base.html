@@ -89,6 +89,11 @@
             {% endif %}
             {% endwith %}
         </a>
+        <a href="{% url 'taxi:driver_map' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'driver_map' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-map-location-dot w-5 text-center"></i>
+            <span class="flex-1">Live Xarita</span>
+        </a>
         <a href="{% url 'taxi:client_list' %}"
            class="nav-link {% if request.resolver_match.url_name == 'client_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-users w-5 text-center"></i> Mijozlar

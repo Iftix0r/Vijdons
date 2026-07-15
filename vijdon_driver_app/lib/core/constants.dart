@@ -8,6 +8,7 @@ class AppConstants {
   static const String profile  = '/driver/profile/';
   static const String duty     = '/driver/duty/';
   static const String fcm      = '/driver/fcm/';
+  static const String location = '/driver/location/';
 
   // Orders
   static const String availableOrders = '/orders/available/';

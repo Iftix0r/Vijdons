@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import '../core/api_service.dart';
 import '../core/constants.dart';
 import '../core/theme.dart';
@@ -37,6 +38,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (!mounted) return;
       setState(() => _nextRefreshIn = 30 - (t.tick % 30));
       if (t.tick % 30 == 0) _loadOrders(silent: true);
+      if (_driver?.isOnDuty == true && t.tick % 15 == 0) {
+        _updateDriverLocation();
+      }
     });
   }
 
@@ -50,6 +54,35 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _refreshTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  Future<bool> _checkLocationPermission() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return false;
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return false;
+    }
+    if (permission == LocationPermission.deniedForever) return false;
+    return true;
+  }
+
+  Future<void> _updateDriverLocation() async {
+    try {
+      final hasPermission = await _checkLocationPermission();
+      if (!hasPermission) return;
+
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 5),
+      );
+      await ApiService.updateLocation(pos.latitude, pos.longitude);
+    } catch (_) {}
   }
 
   Future<void> _init() async {
@@ -106,6 +139,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         nowOnDuty ? 'Ish navbati boshlandi 🟢' : 'Ish navbati tugatildi',
         icon: nowOnDuty ? Icons.wifi_rounded : Icons.wifi_off_rounded,
       );
+      if (nowOnDuty) {
+        _updateDriverLocation();
+      }
     } catch (e) {
       _snack(e.toString(), error: true);
     } finally {

@@ -18,6 +18,8 @@ urlpatterns = [
     path('drivers/<int:pk>/toggle/', views.driver_toggle_active, name='driver_toggle_active'),
     path('drivers/<int:pk>/approve/', views.driver_approve, name='driver_approve'),
     path('drivers/<int:pk>/recharge/', views.driver_recharge, name='driver_recharge'),
+    path('drivers/map/', views.driver_map, name='driver_map'),
+    path('drivers/api/locations/', views.active_drivers_locations, name='active_drivers_locations'),
 
     path('clients/', views.client_list, name='client_list'),
     path('clients/add/', views.client_create, name='client_create'),
@@ -29,6 +31,7 @@ urlpatterns = [
     path('api/driver/profile/',   api_views.driver_profile,     name='api_driver_profile'),
     path('api/driver/duty/',      api_views.driver_duty_toggle, name='api_driver_duty'),
     path('api/driver/fcm/',       api_views.driver_fcm_update,  name='api_driver_fcm'),
+    path('api/driver/location/',  api_views.driver_location_update, name='api_driver_location'),
 
     path('api/orders/available/', api_views.available_orders, name='api_orders_available'),
     path('api/orders/my/',        api_views.my_orders,        name='api_orders_my'),

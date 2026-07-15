@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../core/api_service.dart';
 import '../core/theme.dart';
 import 'home_screen.dart';
@@ -37,6 +38,13 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigate() async {
+    try {
+      await [
+        Permission.location,
+        Permission.notification,
+      ].request();
+    } catch (_) {}
+
     final token = await ApiService.getToken();
     if (!mounted) return;
     Widget dest;

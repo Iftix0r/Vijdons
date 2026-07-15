@@ -116,6 +116,10 @@ class ApiService {
     await _post(AppConstants.fcm, body: {'fcm_token': token});
   }
 
+  static Future<void> updateLocation(double lat, double lng) async {
+    await _post(AppConstants.location, body: {'latitude': lat, 'longitude': lng});
+  }
+
   // ── Orders ─────────────────────────────────────────────────────────────────
 
   static Future<List<dynamic>> getAvailableOrders() async {

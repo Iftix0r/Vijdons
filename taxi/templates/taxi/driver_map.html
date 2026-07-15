@@ -1,0 +1,204 @@
+{% extends 'taxi/base.html' %}
+{% block title %}Live Xarita — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<!-- Page header -->
+<div class="flex flex-wrap justify-between items-end gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+            Haydovchilar Harakati 📍
+        </h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Xaritada haydovchilarning real-vaqtdagi joylashuvini kuzatish.</p>
+    </div>
+    <div id="live-indicator" class="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 py-1.5 px-3 rounded-lg text-xs font-bold border border-emerald-100 dark:border-emerald-800/40">
+        <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        </span>
+        LIVE ULANISH
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-180px)] min-h-[500px]">
+    <!-- Driver list sidebar -->
+    <div class="lg:col-span-1 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col overflow-hidden">
+        <div class="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+            <h3 class="font-bold text-gray-900 dark:text-white text-sm">Ishdagi haydovchilar (<span id="driver-count">0</span>)</h3>
+        </div>
+        <div id="driver-list-container" class="flex-1 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-800/50 p-2 space-y-1">
+            <!-- Dynamic list of drivers will go here -->
+            <div id="no-drivers-msg" class="text-center py-10 text-gray-400 text-xs">
+                <i class="fas fa-car-side text-2xl mb-2 block"></i>
+                Hozircha ishdagi faol haydovchilar yo'q.
+            </div>
+        </div>
+    </div>
+
+    <!-- Map container -->
+    <div class="lg:col-span-3 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden relative">
+        <div id="tracking-map" style="width: 100%; height: 100%; min-height: 450px;"></div>
+        
+        <!-- Legend overlays or controls -->
+        <div class="absolute bottom-4 left-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md py-2 px-3 rounded-xl border border-gray-200 dark:border-gray-800 shadow-lg text-xs font-semibold space-y-1 z-10">
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block border border-white dark:border-gray-900"></span>
+                <span class="text-gray-700 dark:text-gray-300">Haydovchi faol/ishda</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let map = null;
+    let driverPlacemarks = {}; // {driverId: placemarkInstance}
+    let selectedDriverId = null;
+
+    // Initialize Yandex Map
+    ymaps.ready(function () {
+        map = new ymaps.Map("tracking-map", {
+            center: [41.311081, 69.240562], // Tashkent center
+            zoom: 12,
+            controls: ['zoomControl', 'fullscreenControl', 'typeSelector']
+        });
+
+        // Start pulling location updates
+        updateLocations();
+        setInterval(updateLocations, 10000); // every 10 seconds
+    });
+
+    function updateLocations() {
+        const indicator = document.getElementById('live-indicator');
+        indicator.classList.remove('opacity-50');
+        
+        fetch("{% url 'taxi:active_drivers_locations' %}")
+            .then(res => res.json())
+            .then(data => {
+                const drivers = data.drivers;
+                document.getElementById('driver-count').innerText = drivers.length;
+                
+                const container = document.getElementById('driver-list-container');
+                const noDriversMsg = document.getElementById('no-drivers-msg');
+                
+                if (drivers.length === 0) {
+                    noDriversMsg.style.display = 'block';
+                    // clear all placemarks
+                    for (let id in driverPlacemarks) {
+                        map.geoObjects.remove(driverPlacemarks[id]);
+                    }
+                    driverPlacemarks = {};
+                    
+                    // remove all except noDriversMsg
+                    Array.from(container.children).forEach(child => {
+                        if (child.id !== 'no-drivers-msg') child.remove();
+                    });
+                    return;
+                }
+                
+                noDriversMsg.style.display = 'none';
+                
+                // Track list of current IDs to remove stale markers
+                const currentIds = new Set();
+                
+                // Add or update markers and driver cards
+                drivers.forEach(driver => {
+                    const id = driver.id;
+                    currentIds.add(id);
+                    const coords = [driver.latitude, driver.longitude];
+                    
+                    const balloonContent = `
+                        <div style="font-family: 'Outfit', sans-serif; padding: 5px;">
+                            <strong style="font-size: 14px; color: #1e293b;">${driver.full_name}</strong><br>
+                            <span style="font-size: 12px; color: #64748b;">Moshina: ${driver.car_model} (${driver.car_number})</span><br>
+                            <span style="font-size: 12px; color: #64748b;">Telefon: ${driver.phone_number}</span><br>
+                            <span style="font-size: 12px; color: #10b981; font-weight: bold;">Balans: ${parseInt(driver.balance).toLocaleString()} UZS</span>
+                        </div>
+                    `;
+                    
+                    if (driverPlacemarks[id]) {
+                        // update existing placemark position
+                        driverPlacemarks[id].geometry.setCoordinates(coords);
+                        driverPlacemarks[id].properties.set('balloonContentBody', balloonContent);
+                    } else {
+                        // create new placemark
+                        const placemark = new ymaps.Placemark(coords, {
+                            balloonContentBody: balloonContent,
+                            hintContent: driver.full_name
+                        }, {
+                            preset: 'islands#emeraldAutoIcon',
+                            iconColor: '#10b981'
+                        });
+                        
+                        map.geoObjects.add(placemark);
+                        driverPlacemarks[id] = placemark;
+                    }
+                    
+                    // Render/update driver item in list
+                    let card = document.getElementById(`driver-card-${id}`);
+                    if (!card) {
+                        card = document.createElement('button');
+                        card.id = `driver-card-${id}`;
+                        card.className = "w-full text-left p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-all flex items-center gap-3 border border-transparent";
+                        card.onclick = () => focusDriver(id, coords);
+                        container.appendChild(card);
+                    }
+                    
+                    card.innerHTML = `
+                        <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                            <i class="fas fa-car"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-bold text-gray-900 dark:text-white text-xs truncate">${driver.full_name}</div>
+                            <div class="text-[10px] text-gray-500 dark:text-gray-400 truncate">${driver.car_model} · ${driver.car_number}</div>
+                            <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">${parseInt(driver.balance).toLocaleString()} UZS</div>
+                        </div>
+                    `;
+                    
+                    if (selectedDriverId === id) {
+                        card.classList.add('border-emerald-500', 'bg-emerald-50/50', 'dark:bg-emerald-950/20');
+                    } else {
+                        card.classList.remove('border-emerald-500', 'bg-emerald-50/50', 'dark:bg-emerald-950/20');
+                    }
+                });
+                
+                // Remove stale markers and cards
+                for (let id in driverPlacemarks) {
+                    const numericId = parseInt(id);
+                    if (!currentIds.has(numericId)) {
+                        map.geoObjects.remove(driverPlacemarks[id]);
+                        delete driverPlacemarks[id];
+                        const card = document.getElementById(`driver-card-${id}`);
+                        if (card) card.remove();
+                    }
+                }
+            })
+            .catch(err => {
+                console.error("Error fetching locations: ", err);
+            });
+    }
+
+    function focusDriver(id, coords) {
+        selectedDriverId = id;
+        
+        // Remove selection style from other cards
+        document.querySelectorAll('[id^="driver-card-"]').forEach(card => {
+            if (card.id === `driver-card-${id}`) {
+                card.classList.add('border-emerald-500', 'bg-emerald-50/50', 'dark:bg-emerald-950/20');
+            } else {
+                card.classList.remove('border-emerald-500', 'bg-emerald-50/50', 'dark:bg-emerald-950/20');
+            }
+        });
+        
+        if (map && coords) {
+            map.setCenter(coords, 15, {
+                duration: 800,
+                timingFunction: 'ease-in-out'
+            });
+            if (driverPlacemarks[id]) {
+                driverPlacemarks[id].balloon.open();
+            }
+        }
+    }
+</script>
+{% endblock %}
