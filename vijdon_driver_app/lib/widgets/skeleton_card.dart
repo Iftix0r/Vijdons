@@ -15,65 +15,120 @@ class _SkeletonCardState extends State<SkeletonCard>
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
+    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))
       ..repeat(reverse: true);
     _shimmer = CurvedAnimation(parent: _c, curve: Curves.easeInOut);
   }
 
   @override
-  void dispose() { _c.dispose(); super.dispose(); }
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final base = dark ? AppColors.surfaceDark : const Color(0xFFF1F5F9);
-    final shine = dark ? const Color(0xFF252E42) : Colors.white;
+    final base = dark ? AppColors.surfaceDark : const Color(0xFFE2E8F0);
+    final shine = dark ? const Color(0xFF20322C) : Colors.white;
+
     return AnimatedBuilder(
       animation: _shimmer,
       builder: (_, __) => Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: dark ? AppColors.cardDark : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.08)),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: dark ? AppColors.borderDark : AppColors.borderLight),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: dark ? 0.2 : 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            )
+          ],
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(children: [
-              _box(56, 22, 8, base, shine),
-              const SizedBox(width: 10),
-              _box(130, 22, 8, base, shine),
-              const Spacer(),
-              _box(72, 24, 20, base, shine),
-            ]),
-            const SizedBox(height: 14),
+            // Header Shimmer
             Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: base.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(12)),
-              child: Column(children: [
-                Row(children: [
-                  _circle(20, base, shine),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: base.withValues(alpha: 0.3),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(21)),
+              ),
+              child: Row(
+                children: [
+                  _circle(8, base, shine),
+                  const SizedBox(width: 8),
+                  _box(44, 20, 6, base, shine),
                   const SizedBox(width: 10),
-                  Expanded(child: _box(double.infinity, 13, 6, base, shine)),
-                ]),
-                const SizedBox(height: 10),
-                Row(children: [
-                  _circle(20, base, shine),
-                  const SizedBox(width: 10),
-                  Expanded(child: _box(double.infinity, 13, 6, base, shine)),
-                ]),
-              ]),
+                  _box(90, 16, 6, base, shine),
+                  const Spacer(),
+                  _box(64, 20, 12, base, shine),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            _box(160, 12, 6, base, shine),
-            const SizedBox(height: 14),
-            Row(children: [
-              Expanded(child: _box(double.infinity, 42, 12, base, shine)),
-              const SizedBox(width: 8),
-              _box(44, 42, 12, base, shine),
-            ]),
+            // Body Shimmer
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Route Block
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: base.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: dark ? AppColors.borderDark : AppColors.borderLight),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            _circle(16, base, shine),
+                            const SizedBox(width: 12),
+                            Expanded(child: _box(double.infinity, 14, 6, base, shine)),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            _circle(16, base, shine),
+                            const SizedBox(width: 12),
+                            Expanded(child: _box(double.infinity, 14, 6, base, shine)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  // Chips Block
+                  Row(
+                    children: [
+                      _box(90, 26, 8, base, shine),
+                      const Spacer(),
+                      _box(60, 26, 8, base, shine),
+                      const SizedBox(width: 8),
+                      _box(80, 26, 8, base, shine),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            // Actions Shimmer
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Row(
+                children: [
+                  Expanded(child: _box(double.infinity, 44, 12, base, shine)),
+                  const SizedBox(width: 10),
+                  _box(48, 44, 12, base, shine),
+                ],
+              ),
+            ),
           ],
         ),
       ),

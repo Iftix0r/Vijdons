@@ -26,18 +26,24 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void initState() {
     super.initState();
-    _ac    = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
+    _ac    = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
     _fade  = CurvedAnimation(parent: _ac, curve: Curves.easeOut);
-    _slide = Tween<Offset>(begin: const Offset(0, .05), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _ac, curve: Curves.easeOutCubic));
+    _slide = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _ac, curve: const Interval(0.1, 1.0, curve: Curves.easeOutCubic)));
     _ac.forward();
   }
 
   @override
-  void dispose() { _ac.dispose(); _phoneCtr.dispose(); _passCtr.dispose(); super.dispose(); }
+  void dispose() {
+    _ac.dispose();
+    _phoneCtr.dispose();
+    _passCtr.dispose();
+    super.dispose();
+  }
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
+    FocusScope.of(context).unfocus();
     HapticFeedback.lightImpact();
     setState(() => _loading = true);
     try {
@@ -48,7 +54,7 @@ class _LoginScreenState extends State<LoginScreen>
           PageRouteBuilder(
             pageBuilder: (_, __, ___) => const HomeScreen(),
             transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c),
-            transitionDuration: const Duration(milliseconds: 450),
+            transitionDuration: const Duration(milliseconds: 500),
           ));
     } on ApiException catch (e) {
       HapticFeedback.vibrate();
@@ -67,14 +73,15 @@ class _LoginScreenState extends State<LoginScreen>
       ..showSnackBar(SnackBar(
         content: Row(children: [
           Icon(error ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
-              color: Colors.white, size: 18),
-          const SizedBox(width: 10),
-          Expanded(child: Text(msg, style: const TextStyle(fontWeight: FontWeight.w600))),
+              color: Colors.white, size: 20),
+          const SizedBox(width: 12),
+          Expanded(child: Text(msg, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
         ]),
         backgroundColor: error ? AppColors.danger : AppColors.success,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        margin: const EdgeInsets.all(20),
+        elevation: 4,
         duration: const Duration(seconds: 3),
       ));
   }
@@ -82,68 +89,68 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
-      child: Scaffold(
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: dark
-                ? const LinearGradient(
-                    colors: [Color(0xFF071310), Color(0xFF0D1F1A)],
-                    begin: Alignment.topCenter, end: Alignment.bottomCenter)
-                : const LinearGradient(
-                    colors: [Color(0xFFF0FDF4), Color(0xFFF1F5F9)],
-                    begin: Alignment.topLeft, end: Alignment.bottomRight),
-          ),
-          child: SafeArea(
-            child: FadeTransition(
-              opacity: _fade,
-              child: SlideTransition(
-                position: _slide,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 28),
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: dark
+              ? const LinearGradient(
+                  colors: [Color(0xFF030605), Color(0xFF0A110E)],
+                  begin: Alignment.topCenter, end: Alignment.bottomCenter)
+              : const LinearGradient(
+                  colors: [Color(0xFFECFDF5), Color(0xFFF8FAFC)],
+                  begin: Alignment.topLeft, end: Alignment.bottomRight),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              child: FadeTransition(
+                opacity: _fade,
+                child: SlideTransition(
+                  position: _slide,
                   child: Form(
                     key: _formKey,
                     child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const SizedBox(height: 60),
-                        _logo(),
-                        const SizedBox(height: 50),
-                        _sectionTitle('Telefon raqami'),
-                        const SizedBox(height: 8),
-                        _input(
-                          controller: _phoneCtr,
-                          hint: '+998 90 000 00 00',
-                          icon: Icons.phone_rounded,
-                          type: TextInputType.phone,
-                          validator: (v) => (v == null || v.trim().length < 9) ? 'To\'g\'ri raqam kiriting' : null,
-                        ),
-                        const SizedBox(height: 20),
-                        _sectionTitle('Parol'),
-                        const SizedBox(height: 8),
-                        _input(
-                          controller: _passCtr,
-                          hint: '••••••••',
-                          icon: Icons.lock_rounded,
-                          obscure: _obscure,
-                          suffix: IconButton(
-                            icon: Icon(
-                              _obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                              size: 20, color: Colors.grey.shade400,
-                            ),
-                            onPressed: () => setState(() => _obscure = !_obscure),
-                          ),
-                          onSubmit: (_) => _login(),
-                          validator: (v) => (v == null || v.length < 6) ? 'Kamida 6 ta belgi' : null,
-                        ),
-                        const SizedBox(height: 36),
-                        _loginBtn(),
-                        const SizedBox(height: 20),
-                        _divider(),
-                        const SizedBox(height: 20),
-                        _registerBtn(),
+                        _logo(dark),
                         const SizedBox(height: 40),
+                        
+                        // Form Card
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: dark ? AppColors.cardDark : Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: dark ? AppColors.borderDark : AppColors.borderLight),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: dark ? 0.3 : 0.04),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              )
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _sectionTitle('TELEFON RAQAMI', dark),
+                              const SizedBox(height: 8),
+                              _phoneField(dark),
+                              const SizedBox(height: 20),
+                              _sectionTitle('PAROL', dark),
+                              const SizedBox(height: 8),
+                              _passwordField(dark),
+                              const SizedBox(height: 28),
+                              _loginBtn(),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        _divider(dark),
+                        const SizedBox(height: 24),
+                        _registerBtn(),
                       ],
                     ),
                   ),
@@ -156,129 +163,181 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _logo() {
+  Widget _logo(bool dark) {
     return Column(
       children: [
         Container(
-          width: 88, height: 88,
+          width: 90, height: 90,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF4ADE80), Color(0xFF16A34A)],
+              colors: [Color(0xFF34D399), Color(0xFF10B981), Color(0xFF059669)],
               begin: Alignment.topLeft, end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(26),
             boxShadow: [
-              BoxShadow(color: AppColors.amber.withValues(alpha: 0.45), blurRadius: 28, offset: const Offset(0, 12)),
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.35),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
+              ),
             ],
           ),
-          child: const Icon(Icons.local_taxi_rounded, color: Colors.white, size: 46),
+          child: const Center(
+            child: Icon(Icons.local_taxi_rounded, color: Colors.white, size: 48),
+          ),
         ),
-        const SizedBox(height: 20),
-        const Text('VijdonTaxi',
-            style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.0)),
-        const SizedBox(height: 6),
-        Text('Haydovchi ilovasi',
-            style: TextStyle(fontSize: 15, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 18),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Vijdon',
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w900,
+                color: dark ? Colors.white : AppColors.textPrimary,
+                letterSpacing: -1.0,
+              ),
+            ),
+            const Text(
+              'Taxi',
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w900,
+                color: AppColors.primary,
+                letterSpacing: -1.0,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Haydovchi mobil boshqaruvi',
+          style: TextStyle(
+            fontSize: 13,
+            color: dark ? Colors.grey.shade400 : AppColors.textSecondary,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _sectionTitle(String t) => Text(
-    t,
-    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.3),
-  );
-
-  Widget _input({
-    required TextEditingController controller,
-    required String hint,
-    required IconData icon,
-    TextInputType type = TextInputType.text,
-    bool obscure = false,
-    Widget? suffix,
-    void Function(String)? onSubmit,
-    String? Function(String?)? validator,
-  }) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    return TextFormField(
-      controller: controller,
-      keyboardType: type,
-      obscureText: obscure,
-      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-      onFieldSubmitted: onSubmit,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey.shade400, fontWeight: FontWeight.normal, fontSize: 14),
-        prefixIcon: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Icon(icon, size: 20, color: Colors.grey.shade400),
-        ),
-        suffixIcon: suffix,
-        filled: true,
-        fillColor: dark ? AppColors.surfaceDark : Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.18)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.18)),
-        ),
-        focusedBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16)),
-          borderSide: BorderSide(color: AppColors.amber, width: 2),
-        ),
-        errorBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16)),
-          borderSide: BorderSide(color: AppColors.danger),
-        ),
-        focusedErrorBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16)),
-          borderSide: BorderSide(color: AppColors.danger, width: 2),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+  Widget _sectionTitle(String label, bool dark) {
+    return Text(
+      label,
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w800,
+        color: dark ? Colors.grey.shade400 : AppColors.textSecondary,
+        letterSpacing: 1.2,
       ),
-      validator: validator,
     );
   }
 
-  Widget _loginBtn() => SizedBox(
-    height: 56,
-    child: ElevatedButton(
-      onPressed: _loading ? null : _login,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.amber,
-        foregroundColor: Colors.white,
-        disabledBackgroundColor: AppColors.amber.withValues(alpha: 0.6),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 0,
-        shadowColor: AppColors.amber.withValues(alpha: 0.5),
+  Widget _phoneField(bool dark) {
+    return TextFormField(
+      controller: _phoneCtr,
+      keyboardType: TextInputType.phone,
+      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5),
+      decoration: InputDecoration(
+        hintText: '+998 (90) 000-00-00',
+        prefixIcon: Icon(Icons.phone_iphone_rounded, size: 20, color: dark ? Colors.grey.shade500 : Colors.grey.shade400),
       ),
-      child: _loading
-          ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-          : const Text('Kirish', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.3)),
-    ),
-  );
+      validator: (v) {
+        if (v == null || v.trim().isEmpty) return 'Raqam kiriting';
+        if (v.trim().length < 9) return 'Raqam noto\'g\'ri';
+        return null;
+      },
+    );
+  }
 
-  Widget _divider() => Row(children: [
-    Expanded(child: Divider(color: Colors.grey.withValues(alpha: 0.2))),
-    Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      child: Text('yoki', style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
-    ),
-    Expanded(child: Divider(color: Colors.grey.withValues(alpha: 0.2))),
-  ]);
-
-  Widget _registerBtn() => SizedBox(
-    height: 56,
-    child: OutlinedButton.icon(
-      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen())),
-      icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-      label: const Text("Ro'yxatdan o'tish", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-      style: OutlinedButton.styleFrom(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        side: BorderSide(color: AppColors.amber.withValues(alpha: 0.6), width: 1.5),
-        foregroundColor: AppColors.amber,
+  Widget _passwordField(bool dark) {
+    return TextFormField(
+      controller: _passCtr,
+      obscureText: _obscure,
+      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.0),
+      decoration: InputDecoration(
+        hintText: '••••••••',
+        prefixIcon: Icon(Icons.lock_outline_rounded, size: 20, color: dark ? Colors.grey.shade500 : Colors.grey.shade400),
+        suffixIcon: IconButton(
+          icon: Icon(
+            _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+            size: 20,
+            color: dark ? Colors.grey.shade500 : Colors.grey.shade400,
+          ),
+          onPressed: () => setState(() => _obscure = !_obscure),
+        ),
       ),
-    ),
-  );
+      onFieldSubmitted: (_) => _login(),
+      validator: (v) => (v == null || v.length < 6) ? 'Kamida 6 ta belgi' : null,
+    );
+  }
+
+  Widget _loginBtn() {
+    return SizedBox(
+      height: 54,
+      child: ElevatedButton(
+        onPressed: _loading ? null : _login,
+        style: ElevatedButton.styleFrom(
+          shadowColor: AppColors.primary.withValues(alpha: 0.4),
+          elevation: 4,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+        child: _loading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+              )
+            : const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Tizimga kirish', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                  SizedBox(width: 8),
+                  Icon(Icons.arrow_forward_rounded, size: 18),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _divider(bool dark) {
+    final dividerColor = dark ? AppColors.borderDark : AppColors.borderLight;
+    return Row(
+      children: [
+        Expanded(child: Divider(color: dividerColor)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            'Hali hisobingiz yo\'qmi?',
+            style: TextStyle(
+              color: dark ? Colors.grey.shade500 : Colors.grey.shade500,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Expanded(child: Divider(color: dividerColor)),
+      ],
+    );
+  }
+
+  Widget _registerBtn() {
+    return SizedBox(
+      height: 52,
+      child: OutlinedButton.icon(
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const RegisterScreen()),
+        ),
+        icon: const Icon(Icons.person_add_rounded, size: 18),
+        label: const Text("Haydovchi bo'lib ro'yxatdan o'tish", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+        style: OutlinedButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+      ),
+    );
+  }
 }

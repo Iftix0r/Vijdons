@@ -1,0 +1,4 @@
+{
+  "summary": "Resolved git pull conflict on the production server (vijdontaxi.uz). The server had an untracked local file taxi/migrations/0005_tariffsettings.py blocking the merge. Solution: delete the local file with 'rm taxi/migrations/0005_tariffsettings.py' then re-run 'git pull', followed by 'python manage.py migrate' to apply any new migrations.",
+  "current_status": "Production server git pull blocked by untracked migration file. Fix provided — two commands needed on the server to resolve and sync."
+}

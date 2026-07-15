@@ -13,150 +13,200 @@ class OrderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = _statusColor();
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: isDark ? AppColors.cardDark : Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color: _statusColor().withValues(alpha: order.isPending ? 0.5 : 0.2),
+            color: color.withValues(alpha: order.isPending ? 0.4 : 0.15),
             width: order.isPending ? 1.5 : 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: _statusColor().withValues(alpha: order.isPending ? 0.10 : 0.05),
-              blurRadius: 18,
+              color: color.withValues(alpha: order.isPending ? 0.12 : 0.04),
+              blurRadius: 16,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Column(
-          children: [
-            _buildHeader(context, isDark),
-            _buildBody(isDark),
-            if (_showActions()) _buildActions(),
-          ],
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(21),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildHeader(context, isDark, color),
+              _buildBody(context, isDark, color),
+              if (_showActions()) _buildActions(context, color),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, bool isDark) {
+  Widget _buildHeader(BuildContext context, bool isDark, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: _statusColor().withValues(alpha: isDark ? 0.12 : 0.07),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
+        color: color.withValues(alpha: isDark ? 0.08 : 0.05),
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? AppColors.borderDark : AppColors.borderLight,
+            width: 0.8,
+          ),
+        ),
       ),
       child: Row(
         children: [
-          // Pulsating dot for pending
           if (order.isPending)
-            _PulsingDot(color: _statusColor()),
-          // Order ID chip
+            _PulsingDot(color: color),
+          
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: _statusColor(),
+              color: color,
               borderRadius: BorderRadius.circular(8),
-              boxShadow: [BoxShadow(color: _statusColor().withValues(alpha: 0.4), blurRadius: 6, offset: const Offset(0, 2))],
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.3),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                )
+              ],
             ),
-            child: Text('#${order.id}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+            child: Text(
+              '#${order.id}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 12,
+                letterSpacing: 0.5,
+              ),
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               order.clientName.isNotEmpty ? order.clientName : 'Nomsiz mijoz',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
               overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 8),
-          // Time ago
+          
           if (order.createdAt.isNotEmpty)
             Text(
               _timeAgo(order.createdAt),
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark ? Colors.grey.shade400 : AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           const SizedBox(width: 8),
-          // Status badge
+
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
             decoration: BoxDecoration(
-              color: _statusColor().withValues(alpha: 0.15),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: _statusColor().withValues(alpha: 0.3)),
+              border: Border.all(color: color.withValues(alpha: 0.25)),
             ),
-            child: Text(order.statusLabel, style: TextStyle(color: _statusColor(), fontSize: 11, fontWeight: FontWeight.bold)),
+            child: Text(
+              order.statusLabel,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBody(bool isDark) {
+  Widget _buildBody(BuildContext context, bool isDark, Color color) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      padding: const EdgeInsets.all(16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Route
+          // Route Details
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceDark : Colors.grey.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.withValues(alpha: isDark ? 0.1 : 0.08)),
+              color: isDark ? AppColors.surfaceDark : const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: isDark ? AppColors.borderDark : AppColors.borderLight),
             ),
             child: Column(
               children: [
-                _routeRow(Icons.my_location_rounded, AppTheme.success, 'Qayerdan', order.fromAddress),
+                _routeRow(Icons.radio_button_checked_rounded, AppColors.success, 'Qayerdan (Boshlanish)', order.fromAddress),
                 Padding(
                   padding: const EdgeInsets.only(left: 9),
-                  child: Row(children: [
-                    Container(width: 1.5, height: 16, color: Colors.grey.withValues(alpha: 0.25), margin: const EdgeInsets.symmetric(vertical: 2)),
-                  ]),
+                  child: Row(
+                    children: [
+                      Column(
+                        children: List.generate(
+                          3,
+                          (_) => Container(
+                            margin: const EdgeInsets.symmetric(vertical: 2.5),
+                            width: 2, height: 4,
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(1),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                _routeRow(Icons.location_on_rounded, AppTheme.danger, 'Qayerga', order.toAddress),
+                _routeRow(Icons.location_on_rounded, AppColors.danger, 'Qayerga (Yakuniy)', order.toAddress),
               ],
             ),
           ),
-          const SizedBox(height: 10),
-          // Info chips row
+          const SizedBox(height: 14),
+
+          // Chips Info Row
           Row(
             children: [
-              // Phone chip
-              _infoChip(Icons.phone_rounded, order.clientPhone, AppTheme.info),
+              _infoChip(Icons.phone_iphone_rounded, order.clientPhone, AppColors.info, isDark),
               const Spacer(),
-              // Distance chip
               if (order.distanceKm != null)
-                _infoChip(Icons.straighten_rounded, '${order.distanceKm!.toStringAsFixed(1)} km', AppColors.purple),
-              if (order.distanceKm != null) const SizedBox(width: 6),
-              // Price chip
+                _infoChip(Icons.map_rounded, '${order.distanceKm!.toStringAsFixed(1)} km', AppColors.purple, isDark),
+              if (order.distanceKm != null) const SizedBox(width: 8),
               if (order.price != null)
-                _infoChip(Icons.payments_rounded, '${order.price} so\'m', AppTheme.success),
+                _infoChip(Icons.payments_rounded, '${order.price} so\'m', AppColors.success, isDark),
             ],
           ),
-          // Commission row
+
+          // Commission info
           if (order.commission != null)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: 10),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppColors.danger.withValues(alpha: 0.07),
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppColors.danger.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: AppColors.danger.withValues(alpha: 0.15)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.remove_circle_outline_rounded, size: 13, color: AppColors.danger),
-                    const SizedBox(width: 5),
-                    Text('Komissiya: ${order.commission} so\'m',
-                        style: const TextStyle(fontSize: 12, color: AppColors.danger, fontWeight: FontWeight.w600)),
+                    const Icon(Icons.remove_circle_outline_rounded, size: 14, color: AppColors.danger),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Tizim komissiyasi: ${order.commission} so\'m',
+                      style: const TextStyle(fontSize: 12, color: AppColors.danger, fontWeight: FontWeight.w700),
+                    ),
                   ],
                 ),
               ),
@@ -166,51 +216,76 @@ class OrderCard extends StatelessWidget {
     );
   }
 
-  Widget _infoChip(IconData icon, String label, Color color) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 12, color: color),
-      const SizedBox(width: 4),
-      Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
-    ]),
-  );
-
-  Widget _routeRow(IconData icon, Color color, String label, String text) => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Container(
-        width: 20, height: 20,
-        decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
-        child: Icon(icon, size: 12, color: color),
+  Widget _infoChip(IconData icon, String label, Color chipColor, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: chipColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: chipColor.withValues(alpha: 0.15)),
       ),
-      const SizedBox(width: 10),
-      Expanded(child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
-          Text(text, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis),
+          Icon(icon, size: 13, color: chipColor),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: chipColor,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ],
-      )),
-    ],
-  );
+      ),
+    );
+  }
 
-  Widget _buildActions() {
+  Widget _routeRow(IconData icon, Color markerColor, String label, String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(icon, size: 20, color: markerColor),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.w700, letterSpacing: 0.2),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                text,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActions(BuildContext context, Color color) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Row(
         children: [
           if (order.isPending)
-            Expanded(child: _actionBtn('Qabul qilish', Icons.check_circle_rounded, AppTheme.success, 'accept')),
+            Expanded(child: _actionBtn('Qabul qilish', Icons.check_circle_rounded, AppColors.primary, 'accept')),
           if (order.isAccepted)
-            Expanded(child: _actionBtn("Yo'lda", Icons.directions_car_rounded, const Color(0xFF8B5CF6), 'on_way')),
+            Expanded(child: _actionBtn("Yo'lga chiqdim", Icons.directions_car_rounded, AppColors.purple, 'on_way')),
           if (order.isOnWay)
-            Expanded(child: _actionBtn('Yakunlash', Icons.flag_rounded, AppTheme.success, 'complete')),
+            Expanded(child: _actionBtn('Yakunlash', Icons.flag_rounded, AppColors.success, 'complete')),
           if (order.isAccepted || order.isOnWay) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             _cancelBtn(),
           ],
         ],
@@ -218,51 +293,52 @@ class OrderCard extends StatelessWidget {
     );
   }
 
-  Widget _actionBtn(String label, IconData icon, Color color, String action) {
+  Widget _actionBtn(String label, IconData icon, Color actionColor, String action) {
     return ElevatedButton.icon(
       onPressed: () {
         HapticFeedback.lightImpact();
         onAction(action);
       },
       icon: Icon(icon, size: 16),
-      label: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+      label: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900)),
       style: ElevatedButton.styleFrom(
-        backgroundColor: color,
+        backgroundColor: actionColor,
         foregroundColor: Colors.white,
-        elevation: 0,
-        shadowColor: color.withValues(alpha: 0.4),
+        elevation: 2,
+        shadowColor: actionColor.withValues(alpha: 0.3),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 14),
       ),
     );
   }
 
   Widget _cancelBtn() {
     return SizedBox(
-      width: 44, height: 44,
+      width: 48,
+      height: 48,
       child: OutlinedButton(
         onPressed: () {
           HapticFeedback.lightImpact();
           onAction('cancel');
         },
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppTheme.danger,
-          side: BorderSide(color: AppTheme.danger.withValues(alpha: 0.5)),
+          foregroundColor: AppColors.danger,
+          side: const BorderSide(color: AppColors.danger, width: 1.5),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           padding: EdgeInsets.zero,
         ),
-        child: const Icon(Icons.close_rounded, size: 18),
+        child: const Icon(Icons.close_rounded, size: 20),
       ),
     );
   }
 
   Color _statusColor() {
     switch (order.status) {
-      case 'pending':   return AppTheme.warning;
-      case 'accepted':  return AppTheme.info;
-      case 'on_way':    return const Color(0xFF8B5CF6);
-      case 'completed': return AppTheme.success;
-      case 'cancelled': return AppTheme.danger;
+      case 'pending':   return AppColors.warning;
+      case 'accepted':  return AppColors.info;
+      case 'on_way':    return AppColors.purple;
+      case 'completed': return AppColors.success;
+      case 'cancelled': return AppColors.danger;
       default:          return Colors.grey;
     }
   }
@@ -277,11 +353,11 @@ class OrderCard extends StatelessWidget {
       if (diff.inMinutes < 60) return '${diff.inMinutes} daq';
       if (diff.inHours < 24) return '${diff.inHours} soat';
       return '${diff.inDays} kun';
-    } catch (_) { return ''; }
+    } catch (_) {
+      return '';
+    }
   }
 }
-
-// ── Pulsating dot for new orders ─────────────────────────────────────────────
 
 class _PulsingDot extends StatefulWidget {
   final Color color;
@@ -298,24 +374,33 @@ class _PulsingDotState extends State<_PulsingDot> with SingleTickerProviderState
   void initState() {
     super.initState();
     _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
-    _a = Tween<double>(begin: 0.4, end: 1.0).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
+    _a = Tween<double>(begin: 0.3, end: 1.0).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
   }
 
   @override
-  void dispose() { _c.dispose(); super.dispose(); }
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.only(right: 10),
       child: AnimatedBuilder(
         animation: _a,
         builder: (_, __) => Container(
-          width: 8, height: 8,
+          width: 9, height: 9,
           decoration: BoxDecoration(
             color: widget.color.withValues(alpha: _a.value),
             shape: BoxShape.circle,
-            boxShadow: [BoxShadow(color: widget.color.withValues(alpha: _a.value * 0.5), blurRadius: 4)],
+            boxShadow: [
+              BoxShadow(
+                color: widget.color.withValues(alpha: _a.value * 0.6),
+                blurRadius: 6,
+                spreadRadius: 1,
+              )
+            ],
           ),
         ),
       ),

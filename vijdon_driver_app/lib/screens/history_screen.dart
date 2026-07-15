@@ -20,7 +20,10 @@ class _HistoryScreenState extends State<HistoryScreen>
   String _filter  = 'all';
 
   @override
-  void initState() { super.initState(); _load(); }
+  void initState() {
+    super.initState();
+    _load();
+  }
 
   Future<void> _load() async {
     setState(() => _loading = true);
@@ -28,7 +31,10 @@ class _HistoryScreenState extends State<HistoryScreen>
       final list = await ApiService.getMyOrders();
       if (!mounted) return;
       final orders = list.map((e) => OrderModel.fromJson(e)).toList();
-      setState(() { _all = orders; _applyFilter(_filter); });
+      setState(() {
+        _all = orders;
+        _applyFilter(_filter);
+      });
     } catch (e) {
       if (mounted) _snack(e.toString());
     } finally {
@@ -55,11 +61,11 @@ class _HistoryScreenState extends State<HistoryScreen>
 
   void _snack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
+      content: Text(msg, style: const TextStyle(fontWeight: FontWeight.bold)),
       backgroundColor: AppColors.danger,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.all(20),
     ));
   }
 
@@ -84,110 +90,148 @@ class _HistoryScreenState extends State<HistoryScreen>
     final dark = Theme.of(context).brightness == Brightness.dark;
     return SafeArea(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ── Header ────────────────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
             child: Row(
               children: [
-                const Text('Tarix',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+                const Text(
+                  'Tarix',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                ),
                 const Spacer(),
                 if (!_loading)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.amber.withValues(alpha: 0.12),
+                      color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text('${_all.length} ta',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.amber)),
+                    child: Text(
+                      '${_all.length} ta',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.primary),
+                    ),
                   ),
               ],
             ),
           ),
-          const SizedBox(height: 14),
 
           // ── Earnings summary card ─────────────────────────────────────────
           if (!_loading && _all.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF059669), Color(0xFF10B981)],
+                    colors: [Color(0xFF10B981), Color(0xFF059669)],
                     begin: Alignment.topLeft, end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: AppColors.success.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))],
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.success.withValues(alpha: 0.3),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    )
+                  ],
                 ),
-                child: Row(children: [
-                  Container(
-                    width: 44, height: 44,
-                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-                    child: const Icon(Icons.payments_rounded, color: Colors.white, size: 22),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Jami daromad', style: TextStyle(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.w500)),
-                      Text(
-                        '${_totalEarnings.toStringAsFixed(0)} so\'m',
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48, height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                    ],
-                  )),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text('${_all.where((o) => o.isCompleted).length}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white)),
-                      const Text('yakunlandi', style: TextStyle(fontSize: 11, color: Colors.white70)),
-                    ],
-                  ),
-                ]),
+                      child: const Center(
+                        child: Icon(Icons.payments_rounded, color: Colors.white, size: 24),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Jami daromad',
+                            style: TextStyle(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.w700, letterSpacing: 0.2),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '${_totalEarnings.toStringAsFixed(0)} UZS',
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            '${_all.where((o) => o.isCompleted).length}',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
+                          ),
+                          const Text(
+                            'yakunlandi',
+                            style: TextStyle(fontSize: 9, color: Colors.white70, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // ── Stats row ─────────────────────────────────────────────────────
+          if (!_loading && _all.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Row(
+                children: [
+                  _statPill(_all.where((o) => o.isCompleted).length.toString(), 'Yakunlandi', AppColors.success),
+                  const SizedBox(width: 10),
+                  _statPill(_all.where((o) => o.isCancelled).length.toString(), 'Bekor bo\'ldi', AppColors.danger),
+                  const SizedBox(width: 10),
+                  _statPill(_all.where((o) => o.isActive).length.toString(), 'Faol', AppColors.info),
+                ],
               ),
             ),
 
           // ── Filter chips ──────────────────────────────────────────────────
           SizedBox(
-            height: 36,
+            height: 38,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
-                _chip('all',       'Barchasi',       Icons.list_rounded),
-                _chip('completed', 'Yakunlangan',    Icons.check_circle_rounded),
-                _chip('active',    'Faol',           Icons.directions_car_rounded),
-                _chip('cancelled', 'Bekor qilingan', Icons.cancel_rounded),
+                _chip('all',       'Barchasi',       Icons.list_rounded, dark),
+                _chip('completed', 'Yakunlangan',    Icons.check_circle_outline_rounded, dark),
+                _chip('active',    'Faol',           Icons.directions_car_filled_outlined, dark),
+                _chip('cancelled', 'Bekor qilingan', Icons.cancel_outlined, dark),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-
-          // ── Stats row ─────────────────────────────────────────────────────
-          if (!_loading && _all.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: Row(children: [
-                _statPill(_all.where((o) => o.isCompleted).length.toString(), 'Yakunlandi', AppColors.success),
-                const SizedBox(width: 8),
-                _statPill(_all.where((o) => o.isCancelled).length.toString(), 'Bekor', AppColors.danger),
-                const SizedBox(width: 8),
-                _statPill(_all.where((o) => o.isActive).length.toString(), 'Faol', AppColors.info),
-              ]),
-            ),
+          const SizedBox(height: 14),
 
           // ── List ──────────────────────────────────────────────────────────
           Expanded(
             child: RefreshIndicator(
               onRefresh: _load,
-              color: AppColors.amber,
+              color: AppColors.primary,
               child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: AppColors.amber))
+                  ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
                   : _shown.isEmpty
-                      ? _emptyState()
+                      ? _emptyState(dark)
                       : ListView.builder(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                           itemCount: _shown.length,
@@ -200,138 +244,191 @@ class _HistoryScreenState extends State<HistoryScreen>
     );
   }
 
-  Widget _chip(String f, String label, IconData icon) {
+  Widget _chip(String f, String label, IconData icon, bool dark) {
     final active = _filter == f;
     return GestureDetector(
       onTap: () => setState(() => _applyFilter(f)),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          color: active ? AppColors.amber : Colors.grey.withValues(alpha: 0.1),
+          color: active ? AppColors.primary : (dark ? AppColors.surfaceDark : Colors.grey.shade100),
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: active ? Colors.transparent : (dark ? AppColors.borderDark : AppColors.borderLight),
+          ),
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 13, color: active ? Colors.white : Colors.grey.shade500),
-          const SizedBox(width: 5),
-          Text(label, style: TextStyle(
-            fontSize: 12, fontWeight: FontWeight.w700,
-            color: active ? Colors.white : Colors.grey.shade500,
-          )),
-        ]),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: active ? Colors.white : Colors.grey.shade500),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: active ? Colors.white : Colors.grey.shade500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _statPill(String count, String label, Color color) => Expanded(
     child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
-      child: Column(children: [
-        Text(count, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: color)),
-        Text(label, style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.8), fontWeight: FontWeight.w600)),
-      ]),
+      child: Column(
+        children: [
+          Text(count, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: color)),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w800, letterSpacing: 0.2),
+          ),
+        ],
+      ),
     ),
   );
 
   Widget _orderTile(OrderModel o, bool dark) {
     final c = _color(o.status);
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: dark ? AppColors.cardDark : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: c.withValues(alpha: 0.15)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: dark ? AppColors.borderDark : AppColors.borderLight),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: dark ? 0.2 : 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          )
+        ],
       ),
       child: IntrinsicHeight(
-        child: Row(children: [
-          Container(
-            width: 4,
-            decoration: BoxDecoration(
-              color: c,
-              borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
+        child: Row(
+          children: [
+            Container(
+              width: 5,
+              decoration: BoxDecoration(
+                color: c,
+                borderRadius: const BorderRadius.horizontal(left: Radius.circular(18)),
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Container(
-              width: 42, height: 42,
-              decoration: BoxDecoration(color: c.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-              child: Icon(_icon(o), color: c, size: 20),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(0, 12, 12, 12),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Text('#${o.id}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey.shade500)),
-                  const SizedBox(width: 6),
-                  Text(_timeAgo(o.createdAt), style: TextStyle(fontSize: 11, color: Colors.grey.shade400)),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: c.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: c.withValues(alpha: 0.25)),
-                    ),
-                    child: Text(o.statusLabel, style: TextStyle(color: c, fontSize: 10, fontWeight: FontWeight.bold)),
-                  ),
-                ]),
-                const SizedBox(height: 5),
-                Text(
-                  '${o.fromAddress} → ${o.toAddress}',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  color: c.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 4),
-                Row(children: [
-                  Icon(Icons.phone_rounded, size: 11, color: Colors.grey.shade400),
-                  const SizedBox(width: 4),
-                  Text(o.clientPhone, style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
-                  if (o.distanceKm != null) ...[
-                    const SizedBox(width: 8),
-                    Icon(Icons.straighten_rounded, size: 11, color: AppColors.purple.withValues(alpha: 0.7)),
-                    const SizedBox(width: 3),
-                    Text('${o.distanceKm!.toStringAsFixed(1)} km',
-                        style: TextStyle(fontSize: 11, color: AppColors.purple.withValues(alpha: 0.9), fontWeight: FontWeight.w600)),
-                  ],
-                  if (o.price != null) ...[
-                    const Spacer(),
-                    Icon(Icons.payments_rounded, size: 11, color: AppColors.success.withValues(alpha: 0.7)),
-                    const SizedBox(width: 4),
-                    Text('${o.price} so\'m',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.success)),
-                  ],
-                ]),
-              ]),
+                child: Icon(_icon(o), color: c, size: 22),
+              ),
             ),
-          ),
-        ]),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(0, 14, 14, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      children: [
+                        Text('#${o.id}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.grey.shade500)),
+                        const SizedBox(width: 8),
+                        Text(_timeAgo(o.createdAt), style: TextStyle(fontSize: 11, color: Colors.grey.shade400, fontWeight: FontWeight.w600)),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: c.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: c.withValues(alpha: 0.25)),
+                          ),
+                          child: Text(
+                            o.statusLabel,
+                            style: TextStyle(color: c, fontSize: 10, fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${o.fromAddress} → ${o.toAddress}',
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.phone_iphone_rounded, size: 12, color: Colors.grey.shade400),
+                        const SizedBox(width: 4),
+                        Text(o.clientPhone, style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+                        if (o.distanceKm != null) ...[
+                          const SizedBox(width: 10),
+                          Icon(Icons.straighten_rounded, size: 12, color: AppColors.purple.withValues(alpha: 0.7)),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${o.distanceKm!.toStringAsFixed(1)} km',
+                            style: TextStyle(fontSize: 11, color: AppColors.purple, fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                        if (o.price != null) ...[
+                          const Spacer(),
+                          Text(
+                            '${o.price} so\'m',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppColors.success),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _emptyState() => Center(
-    child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Container(
-        width: 72, height: 72,
-        decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(22)),
-        child: Icon(Icons.history_rounded, size: 36, color: Colors.grey.shade300),
+  Widget _emptyState(bool dark) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 80, height: 80,
+            decoration: BoxDecoration(
+              color: dark ? AppColors.surfaceDark : Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: dark ? AppColors.borderDark : Colors.grey.shade200),
+            ),
+            child: Icon(Icons.history_rounded, size: 36, color: Colors.grey.shade400),
+          ),
+          const SizedBox(height: 18),
+          const Text('Tarix bo\'sh', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          const SizedBox(height: 6),
+          Text(
+            'Hozircha birorta ham buyurtma yakunlanmagan.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+          ),
+        ],
       ),
-      const SizedBox(height: 14),
-      const Text('Tarix bo\'sh', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-      const SizedBox(height: 6),
-      Text('Birorta ham buyurtma topilmadi',
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
-    ]),
+    ),
   );
 
   String _timeAgo(String iso) {
@@ -342,6 +439,8 @@ class _HistoryScreenState extends State<HistoryScreen>
       if (diff.inMinutes < 60) return '${diff.inMinutes} daq oldin';
       if (diff.inHours < 24) return '${diff.inHours} soat oldin';
       return '${diff.inDays} kun oldin';
-    } catch (_) { return ''; }
+    } catch (_) {
+      return '';
+    }
   }
 }

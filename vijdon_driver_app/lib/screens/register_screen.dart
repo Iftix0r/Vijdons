@@ -23,12 +23,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
-    for (final c in [_nameCtr, _phoneCtr, _carMCtr, _carNCtr, _passCtr, _pass2Ctr]) c.dispose();
+    for (final c in [_nameCtr, _phoneCtr, _carMCtr, _carNCtr, _passCtr, _pass2Ctr]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
+    FocusScope.of(context).unfocus();
     HapticFeedback.lightImpact();
     setState(() => _loading = true);
     try {
@@ -57,96 +60,138 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ..clearSnackBars()
       ..showSnackBar(SnackBar(
         content: Row(children: [
-          const Icon(Icons.error_outline_rounded, color: Colors.white, size: 18),
-          const SizedBox(width: 10),
-          Expanded(child: Text(msg, style: const TextStyle(fontWeight: FontWeight.w600))),
+          const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
+          const SizedBox(width: 12),
+          Expanded(child: Text(msg, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
         ]),
         backgroundColor: AppColors.danger,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        margin: const EdgeInsets.all(20),
+        elevation: 4,
       ));
   }
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(_step == 0 ? "Ro'yxatdan o'tish" : '',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
         leading: _step == 0
-            ? const BackButton()
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+                onPressed: () => Navigator.pop(context),
+              )
             : const SizedBox.shrink(),
       ),
-      body: SafeArea(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 400),
-          child: _step == 1 ? _successPage() : _formPage(),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: dark
+              ? const LinearGradient(
+                  colors: [Color(0xFF030605), Color(0xFF0A110E)],
+                  begin: Alignment.topCenter, end: Alignment.bottomCenter)
+              : const LinearGradient(
+                  colors: [Color(0xFFECFDF5), Color(0xFFF8FAFC)],
+                  begin: Alignment.topLeft, end: Alignment.bottomRight),
+        ),
+        child: SafeArea(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 400),
+            child: _step == 1 ? _successPage(dark) : _formPage(dark),
+          ),
         ),
       ),
     );
   }
 
-  // ── Success ──────────────────────────────────────────────────────────────────
+  // ── Success Page ─────────────────────────────────────────────────────────────
 
-  Widget _successPage() => Center(
+  Widget _successPage(bool dark) => Center(
     key: const ValueKey('success'),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 36),
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 28),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 96, height: 96,
+            width: 100, height: 100,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF34D399), Color(0xFF10B981)]),
+              gradient: const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF059669)]),
               borderRadius: BorderRadius.circular(30),
-              boxShadow: [BoxShadow(color: AppColors.success.withValues(alpha: 0.4), blurRadius: 24, offset: const Offset(0, 10))],
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.success.withValues(alpha: 0.35),
+                  blurRadius: 28,
+                  offset: const Offset(0, 10),
+                )
+              ],
             ),
-            child: const Icon(Icons.check_rounded, color: Colors.white, size: 52),
+            child: const Center(
+              child: Icon(Icons.check_rounded, color: Colors.white, size: 52),
+            ),
           ),
-          const SizedBox(height: 28),
-          const Text("Ariza yuborildi!",
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: -0.5),
-              textAlign: TextAlign.center),
-          const SizedBox(height: 12),
+          const SizedBox(height: 32),
           Text(
-            "Arizangiz admin tomonidan ko'rib chiqiladi.\nTasdiqlangandan so'ng tizimga kirishingiz mumkin.",
+            "Ariza yuborildi!",
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: dark ? Colors.white : AppColors.textPrimary,
+              letterSpacing: -0.5,
+            ),
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade500, height: 1.6),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+          Text(
+            "Arizangiz administrator tomonidan ko'rib chiqiladi. Tasdiqlanganingizdan so'ng mobil ilovadan foydalanishingiz mumkin.",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: dark ? Colors.grey.shade400 : AppColors.textSecondary,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 24),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             decoration: BoxDecoration(
-              color: AppColors.warning.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+              color: AppColors.warning.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.warning.withValues(alpha: 0.25)),
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.access_time_rounded, color: AppColors.warning, size: 16),
-                const SizedBox(width: 8),
-                Text('Odatda 1-24 soat ichida tasdiqlanadi',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+                const Icon(Icons.access_time_filled_rounded, color: AppColors.warning, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Tasdiqlash odatda 1-2 soat ichida bajariladi.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: dark ? Colors.grey.shade300 : Color(0xFFB45309),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 36),
+          const SizedBox(height: 40),
           SizedBox(
             width: double.infinity, height: 56,
             child: ElevatedButton(
               onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.amber,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                elevation: 0,
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.arrow_back_rounded, size: 18),
+                  SizedBox(width: 8),
+                  Text('Kirish sahifasiga qaytish', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                ],
               ),
-              child: const Text('Kirish sahifasiga qaytish',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             ),
           ),
         ],
@@ -154,45 +199,55 @@ class _RegisterScreenState extends State<RegisterScreen> {
     ),
   );
 
-  // ── Form ─────────────────────────────────────────────────────────────────────
+  // ── Form Page ────────────────────────────────────────────────────────────────
 
-  Widget _formPage() => SingleChildScrollView(
+  Widget _formPage(bool dark) => SingleChildScrollView(
     key: const ValueKey('form'),
-    padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+    padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
     child: Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header card
+          // Header guide
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppColors.amber.withValues(alpha: 0.12), AppColors.amber.withValues(alpha: 0.04)],
+                colors: [
+                  AppColors.primary.withValues(alpha: dark ? 0.08 : 0.06),
+                  AppColors.primary.withValues(alpha: dark ? 0.02 : 0.01)
+                ],
               ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.amber.withValues(alpha: 0.2)),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
             ),
             child: Row(
               children: [
                 Container(
-                  width: 42, height: 42,
+                  width: 44, height: 44,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [Color(0xFF4ADE80), Color(0xFF16A34A)]),
-                    borderRadius: BorderRadius.circular(12),
+                    gradient: const LinearGradient(colors: [Color(0xFF34D399), Color(0xFF10B981)]),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Icon(Icons.local_taxi_rounded, color: Colors.white, size: 22),
+                  child: const Center(
+                    child: Icon(Icons.taxi_alert_rounded, color: Colors.white, size: 22),
+                  ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("Haydovchi sifatida qo'shiling",
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      Text("Barcha maydonlarni to'ldiring",
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                      const Text(
+                        "Haydovchilik arizasi",
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        "Ma'lumotlarni to'ldirib ariza qoldiring",
+                        style: TextStyle(fontSize: 12, color: dark ? Colors.grey.shade400 : AppColors.textSecondary),
+                      ),
                     ],
                   ),
                 ),
@@ -201,109 +256,121 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           const SizedBox(height: 24),
 
-          _sectionLabel('Shaxsiy ma\'lumotlar'),
+          // Shaxsiy ma'lumotlar
+          _sectionHeader('SHAXSIY MA\'LUMOTLAR', dark),
           const SizedBox(height: 12),
-          _field(_nameCtr,  'To\'liq ism familya', 'Ism Familya', Icons.person_rounded,
-              validator: (v) => v!.trim().isEmpty ? 'Ism kiriting' : null),
+          _field(_nameCtr, 'Ism Familya', 'To\'liq ism familya', Icons.person_outline_rounded, dark,
+              validator: (v) => v!.trim().isEmpty ? 'Ism familyangizni kiriting' : null),
           const SizedBox(height: 12),
-          _field(_phoneCtr, 'Telefon raqami', '+998 90 000 00 00', Icons.phone_rounded,
+          _field(_phoneCtr, 'Telefon raqami', '+998 (90) 000-00-00', Icons.phone_iphone_rounded, dark,
               type: TextInputType.phone,
-              validator: (v) => v!.trim().length < 9 ? 'To\'g\'ri raqam kiriting' : null),
+              validator: (v) => v!.trim().length < 9 ? 'Raqam noto\'g\'ri' : null),
+          const SizedBox(height: 24),
 
-          const SizedBox(height: 20),
-          _sectionLabel('Mashina ma\'lumotlari'),
+          // Mashina ma'lumotlari
+          _sectionHeader('MASHINA TAFSILOTLARI', dark),
           const SizedBox(height: 12),
-          Row(children: [
-            Expanded(child: _field(_carMCtr, 'Mashina modeli', 'Cobalt', Icons.directions_car_rounded,
-                validator: (v) => v!.trim().isEmpty ? 'Kiriting' : null)),
-            const SizedBox(width: 12),
-            Expanded(child: _field(_carNCtr, 'Davlat raqami', '01A123AA', Icons.tag_rounded,
-                validator: (v) => v!.trim().isEmpty ? 'Kiriting' : null)),
-          ]),
+          Row(
+            children: [
+              Expanded(
+                child: _field(_carMCtr, 'Mashina modeli', 'Model (Cobalt...)', Icons.directions_car_filled_outlined, dark,
+                    validator: (v) => v!.trim().isEmpty ? 'Kiritish shart' : null),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _field(_carNCtr, 'Davlat raqami', '01A123AA', Icons.tag_rounded, dark,
+                    validator: (v) => v!.trim().isEmpty ? 'Kiritish shart' : null),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
 
-          const SizedBox(height: 20),
-          _sectionLabel('Parol'),
+          // Parol
+          _sectionHeader('XAVFSIZLIK PAROLI', dark),
           const SizedBox(height: 12),
-          _field(_passCtr, 'Parol', '••••••••', Icons.lock_rounded,
+          _field(_passCtr, 'Parol', 'Kamida 6 ta belgi', Icons.lock_outline_rounded, dark,
               obscure: _obscure,
               suffix: IconButton(
-                icon: Icon(_obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                    size: 20, color: Colors.grey.shade400),
+                icon: Icon(_obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    size: 18, color: Colors.grey.shade400),
                 onPressed: () => setState(() => _obscure = !_obscure),
               ),
-              validator: (v) => v!.length < 6 ? 'Kamida 6 ta belgi' : null),
+              validator: (v) => v!.length < 6 ? 'Kamida 6 ta belgi bo\'lishi kerak' : null),
           const SizedBox(height: 12),
-          _field(_pass2Ctr, 'Parolni tasdiqlang', '••••••••', Icons.lock_rounded,
+          _field(_pass2Ctr, 'Parolni tasdiqlang', 'Parolni qayta yozing', Icons.lock_outline_rounded, dark,
               obscure: true,
-              validator: (v) => v != _passCtr.text ? 'Parollar mos emas' : null),
-
-          const SizedBox(height: 32),
+              validator: (v) => v != _passCtr.text ? 'Parollar mos kelmadi' : null),
+          
+          const SizedBox(height: 40),
           SizedBox(
             height: 56,
             child: ElevatedButton(
               onPressed: _loading ? null : _register,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.amber,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                elevation: 0,
-              ),
               child: _loading
                   ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                  : const Text("Ariza yuborish",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.3)),
+                  : const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text("Ariza yuborish", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                        SizedBox(width: 8),
+                        Icon(Icons.send_rounded, size: 16),
+                      ],
+                    ),
             ),
           ),
+          const SizedBox(height: 16),
         ],
       ),
     ),
   );
 
-  Widget _sectionLabel(String t) => Row(children: [
-    Container(width: 3, height: 16, decoration: BoxDecoration(color: AppColors.amber, borderRadius: BorderRadius.circular(2))),
-    const SizedBox(width: 8),
-    Text(t, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.2)),
-  ]);
+  Widget _sectionHeader(String title, bool dark) => Row(
+    children: [
+      Container(
+        width: 3.5, height: 16,
+        decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(2)),
+      ),
+      const SizedBox(width: 8),
+      Text(
+        title,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: dark ? Colors.grey.shade400 : AppColors.textSecondary,
+          letterSpacing: 1.2,
+        ),
+      ),
+    ],
+  );
 
   Widget _field(
-    TextEditingController ctrl, String label, String hint, IconData icon, {
+    TextEditingController ctrl, String label, String hint, IconData icon, bool dark, {
     TextInputType type = TextInputType.text,
     bool obscure = false,
     Widget? suffix,
     String? Function(String?)? validator,
   }) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade500)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: dark ? Colors.grey.shade300 : AppColors.textPrimary.withValues(alpha: 0.8),
+          ),
+        ),
         const SizedBox(height: 6),
         TextFormField(
           controller: ctrl,
           keyboardType: type,
           obscureText: obscure,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: Colors.grey.shade400, fontWeight: FontWeight.normal, fontSize: 13),
-            prefixIcon: Icon(icon, size: 18, color: Colors.grey.shade400),
+            prefixIcon: Icon(icon, size: 18, color: dark ? Colors.grey.shade500 : Colors.grey.shade400),
             suffixIcon: suffix,
-            filled: true,
-            fillColor: dark ? AppColors.surfaceDark : Colors.white,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.18))),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.18))),
-            focusedBorder: const OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(14)),
-                borderSide: BorderSide(color: AppColors.amber, width: 2)),
-            errorBorder: const OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(14)),
-                borderSide: BorderSide(color: AppColors.danger)),
-            focusedErrorBorder: const OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(14)),
-                borderSide: BorderSide(color: AppColors.danger, width: 2)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           ),
           validator: validator,
         ),
