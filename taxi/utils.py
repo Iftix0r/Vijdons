@@ -90,18 +90,59 @@ def send_fcm(fcm_token, title, body, data=None):
         return False
 
 
+def auto_reject_timeout(order_id, driver_id, timeout_seconds):
+    """
+    Haydovchi belgilangan vaqt ichida javob bermasa, buyurtmani avtomatik rad etadi
+    va keyingi haydovchiga o'tkazadi.
+    """
+    import time
+    time.sleep(timeout_seconds)
+
+    from taxi.models import Order
+    try:
+        order = Order.objects.get(pk=order_id)
+        if order.status == 'pending' and order.dispatched_to_id == driver_id:
+            order.rejected_by.add(driver_id)
+            order.dispatched_to = None
+            order.save(update_fields=['dispatched_to'])
+
+            # Keyingi haydovchiga yuborish
+            dispatch_order(order)
+    except Exception:
+        pass
+
+
 def dispatch_order(order):
     """
-    Buyurtmani eng yaqin, rad etmagan haydovchiga yuborish.
-    Qaytaradi: haydovchi yoki None.
+    Buyurtmani navbatma-navbat eng yaqin haydovchilarga yuborish.
+    TariffSettings dagi max_dispatch_attempts sonigacha urinadi.
+    Aks holda, buyurtmani umumiy tabloda qoldiradi (dispatched_to = None).
     """
+    from django.utils import timezone
+    from taxi.models import TariffSettings, Driver
+
+    # Order yangi holatda bo'lishi kerak
+    if order.status != 'pending':
+        return None
+
     if not order.from_lat or not order.from_lng:
+        return None
+
+    tariff = TariffSettings.get()
+    
+    # Rad etgan haydovchilar sonini tekshirish
+    attempts_count = order.rejected_by.count()
+    if attempts_count >= tariff.max_dispatch_attempts:
+        # Urinishlar tugadi, umumiy tabloda qoladi
+        if order.dispatched_to is not None:
+            order.dispatched_to = None
+            order.save(update_fields=['dispatched_to'])
         return None
 
     rejected_ids = list(order.rejected_by.values_list('id', flat=True))
 
     candidates = list(
-        __import__('taxi.models', fromlist=['Driver']).Driver.objects.filter(
+        Driver.objects.filter(
             is_active=True,
             is_on_duty=True,
             approval_status='approved',
@@ -111,14 +152,21 @@ def dispatch_order(order):
     )
 
     if not candidates:
+        if order.dispatched_to is not None:
+            order.dispatched_to = None
+            order.save(update_fields=['dispatched_to'])
         return None
 
     nearest, _ = find_nearest_driver(candidates, order.from_lat, order.from_lng)
     if not nearest:
+        if order.dispatched_to is not None:
+            order.dispatched_to = None
+            order.save(update_fields=['dispatched_to'])
         return None
 
     order.dispatched_to = nearest
-    order.save(update_fields=['dispatched_to'])
+    order.dispatched_at = timezone.now()
+    order.save(update_fields=['dispatched_to', 'dispatched_at'])
 
     send_fcm(
         nearest.fcm_token,
@@ -133,4 +181,14 @@ def dispatch_order(order):
             'client_phone': order.client.phone_number,
         },
     )
+
+    # 10 sekundlik (yoki sozlangan) kutish taymeri
+    import threading
+    threading.Thread(
+        target=auto_reject_timeout,
+        args=(order.id, nearest.id, tariff.dispatch_timeout),
+        daemon=True
+    ).start()
+
     return nearest
+

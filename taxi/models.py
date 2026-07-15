@@ -79,6 +79,7 @@ class Order(models.Model):
     note          = models.TextField(blank=True, default='', verbose_name="Izoh")
     status        = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="Holati")
     dispatched_to = models.ForeignKey(Driver, on_delete=models.SET_NULL, null=True, blank=True, related_name='dispatched_orders', verbose_name="Yuborilgan haydovchi")
+    dispatched_at = models.DateTimeField(null=True, blank=True, verbose_name="Yuborilgan vaqti")
     rejected_by   = models.ManyToManyField(Driver, blank=True, related_name='rejected_orders', verbose_name="Rad etgan haydovchilar")
     created_at    = models.DateTimeField(auto_now_add=True, verbose_name="Yaratilgan vaqti")
     updated_at    = models.DateTimeField(auto_now=True, verbose_name="Yangilangan vaqti")
@@ -120,6 +121,8 @@ class TariffSettings(models.Model):
     price_per_km  = models.DecimalField(max_digits=10, decimal_places=2, default=2000, verbose_name="1 km narxi (UZS)")
     commission    = models.DecimalField(max_digits=10, decimal_places=2, default=1000, verbose_name="Haydovchi komissiyasi (UZS)", help_text="Har bir qabul qilingan buyurtma uchun haydovchi balansidan yechiladi")
     auto_dispatch = models.BooleanField(default=True, verbose_name="Avtomatik taqsimlash", help_text="Yoqilgan bo'lsa eng yaqin haydovchiga avtomatik beriladi")
+    max_dispatch_attempts = models.IntegerField(default=4, verbose_name="Maksimal urinishlar soni", help_text="Buyurtma eng ko'pi bilan nechta haydovchiga navbatma-navbat ko'rsatiladi")
+    dispatch_timeout      = models.IntegerField(default=10, verbose_name="Kutish vaqti (sekund)", help_text="Har bir haydovchi qabul qilishi uchun beriladigan vaqt")
     updated_at    = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
