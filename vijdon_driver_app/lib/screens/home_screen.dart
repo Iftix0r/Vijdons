@@ -14,6 +14,7 @@ import 'login_screen.dart';
 import 'history_screen.dart';
 import 'profile_screen.dart';
 import 'chat_screen.dart';
+import '../core/constants.dart' show AppConstants;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -274,6 +275,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
+      drawer: _drawer(dark),
       body: IndexedStack(
         index: _tab,
         children: [
@@ -287,57 +289,270 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  Widget _drawer(bool dark) {
+    final balance = double.tryParse(_driver?.balance ?? '') ?? 0;
+    return Drawer(
+      backgroundColor: dark ? AppColors.cardDark : Colors.white,
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                  begin: Alignment.topLeft, end: Alignment.bottomRight,
+                ),
+                border: Border(bottom: BorderSide(
+                  color: dark ? AppColors.borderDark : AppColors.borderLight)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 60, height: 60,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF00E676), Color(0xFF00C853)],
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(color: AppColors.primary.withValues(alpha: 0.4),
+                            blurRadius: 12, offset: const Offset(0, 4)),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        _driver?.fullName.isNotEmpty == true
+                            ? _driver!.fullName[0].toUpperCase() : '?',
+                        style: const TextStyle(color: Colors.black,
+                            fontSize: 24, fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _driver?.fullName ?? '...',
+                    style: const TextStyle(color: Colors.white,
+                        fontSize: 17, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    _driver?.phoneNumber ?? '',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.55),
+                        fontSize: 13, fontFamily: 'monospace'),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.account_balance_wallet_rounded,
+                            color: AppColors.primary, size: 16),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${balance.toStringAsFixed(0)} UZS',
+                          style: const TextStyle(color: AppColors.primary,
+                              fontWeight: FontWeight.w900, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // Menu items
+            _drawerItem(dark, Icons.radar_rounded, 'Bosh sahifa', 0),
+            _drawerItem(dark, Icons.history_rounded, 'Buyurtmalar tarixi', 1),
+            _drawerItem(dark, Icons.chat_bubble_rounded, 'Operator Chat',
+                2, badge: _chatUnread > 0 ? _chatUnread : null),
+            _drawerItem(dark, Icons.person_rounded, 'Profil', 3),
+
+            const Spacer(),
+
+            Divider(color: dark ? AppColors.borderDark : AppColors.borderLight),
+            _drawerItem(dark, Icons.logout_rounded, 'Tizimdan chiqish', -1,
+                color: AppColors.danger),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _drawerItem(bool dark, IconData icon, String label, int index,
+      {int? badge, Color? color}) {
+    final active = _tab == index;
+    final c = color ?? (active ? AppColors.primary : (dark ? Colors.grey.shade300 : const Color(0xFF374151)));
+    return ListTile(
+      onTap: () {
+        Navigator.pop(context);
+        if (index == -1) {
+          _logout();
+        } else {
+          setState(() => _tab = index);
+        }
+      },
+      leading: Container(
+        width: 38, height: 38,
+        decoration: BoxDecoration(
+          color: c.withValues(alpha: active ? 0.15 : 0.07),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, size: 20, color: c),
+      ),
+      title: Text(
+        label,
+        style: TextStyle(
+          fontWeight: active ? FontWeight.w900 : FontWeight.w600,
+          fontSize: 14, color: c,
+        ),
+      ),
+      trailing: badge != null
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.danger,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text('$badge',
+                  style: const TextStyle(color: Colors.white,
+                      fontSize: 11, fontWeight: FontWeight.w900)),
+            )
+          : active
+              ? Container(
+                  width: 6, height: 6,
+                  decoration: const BoxDecoration(
+                      color: AppColors.primary, shape: BoxShape.circle),
+                )
+              : null,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+    );
+  }
+
   Widget _navBar(bool dark) {
     return Container(
       decoration: BoxDecoration(
+        color: dark ? AppColors.cardDark : Colors.white,
+        border: Border(top: BorderSide(
+            color: dark ? AppColors.borderDark : AppColors.borderLight, width: 0.8)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: dark ? 0.4 : 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
+            color: Colors.black.withValues(alpha: dark ? 0.3 : 0.06),
+            blurRadius: 24, offset: const Offset(0, -4),
           ),
         ],
       ),
-      child: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) {
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(
+            children: [
+              _navItem(0, Icons.radar_rounded, Icons.radar, 'Asosiy', dark),
+              _navItem(1, Icons.history_outlined, Icons.history, 'Tarix', dark),
+              _navItem(2, Icons.chat_bubble_outline_rounded,
+                  Icons.chat_bubble_rounded, 'Chat', dark, badge: _chatUnread > 0 ? _chatUnread : null),
+              _navItem(3, Icons.person_outline_rounded,
+                  Icons.person_rounded, 'Profil', dark,
+                  dot: _driver?.isOnDuty == true),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _navItem(int index, IconData icon, IconData activeIcon,
+      String label, bool dark, {int? badge, bool dot = false}) {
+    final active = _tab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
           HapticFeedback.selectionClick();
-          setState(() => _tab = i);
+          setState(() => _tab = index);
         },
-        destinations: [
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: _orders.isNotEmpty && _tab != 0,
-              label: Text('${_orders.length}'),
-              child: const Icon(Icons.radar_rounded),
-            ),
-            selectedIcon: const Icon(Icons.radar),
-            label: 'Bosh sahifa',
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: active
+                ? AppColors.primary.withValues(alpha: dark ? 0.15 : 0.1)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.history_outlined),
-            selectedIcon: Icon(Icons.history),
-            label: 'Tarix',
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(
+                    active ? activeIcon : icon,
+                    size: 24,
+                    color: active
+                        ? AppColors.primary
+                        : (dark ? Colors.grey.shade500 : Colors.grey.shade400),
+                  ),
+                  if (badge != null)
+                    Positioned(
+                      top: -4, right: -6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: AppColors.danger,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                              color: dark ? AppColors.cardDark : Colors.white, width: 1.5),
+                        ),
+                        child: Text('$badge',
+                            style: const TextStyle(color: Colors.white,
+                                fontSize: 9, fontWeight: FontWeight.w900)),
+                      ),
+                    )
+                  else if (dot)
+                    Positioned(
+                      top: -2, right: -2,
+                      child: Container(
+                        width: 8, height: 8,
+                        decoration: BoxDecoration(
+                          color: AppColors.success,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: dark ? AppColors.cardDark : Colors.white, width: 1.5),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: active ? FontWeight.w900 : FontWeight.w600,
+                  color: active
+                      ? AppColors.primary
+                      : (dark ? Colors.grey.shade500 : Colors.grey.shade400),
+                ),
+                child: Text(label),
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: _chatUnread > 0 && _tab != 2,
-              label: Text('$_chatUnread'),
-              child: const Icon(Icons.chat_bubble_outline_rounded),
-            ),
-            selectedIcon: const Icon(Icons.chat_bubble_rounded),
-            label: 'Chat',
-          ),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: _driver?.isOnDuty == true && _tab != 3,
-              backgroundColor: AppColors.success,
-              child: const Icon(Icons.person_outline_rounded),
-            ),
-            selectedIcon: const Icon(Icons.person_rounded),
-            label: 'Profil',
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -409,85 +624,113 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final onDuty = _driver?.isOnDuty ?? false;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: dark ? AppColors.cardDark : Colors.white,
-        border: Border(bottom: BorderSide(color: dark ? AppColors.borderDark : AppColors.borderLight, width: 0.8)),
+        border: Border(bottom: BorderSide(
+            color: dark ? AppColors.borderDark : AppColors.borderLight, width: 0.8)),
       ),
       child: Row(
         children: [
-          // Avatar/Rating Circle
-          GestureDetector(
-            onTap: () => setState(() => _tab = 2),
-            child: Stack(
-              alignment: Alignment.bottomRight,
-              children: [
-                Container(
-                  width: 46, height: 46,
-                  decoration: BoxDecoration(
-                    color: dark ? AppColors.surfaceDark : Colors.grey.shade100,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: onDuty ? AppColors.primary : Colors.grey.shade400, width: 2),
-                  ),
-                  child: Center(
-                    child: Text(
-                      _driver?.fullName.isNotEmpty == true ? _driver!.fullName[0].toUpperCase() : '?',
-                      style: TextStyle(fontWeight: FontWeight.w900, color: dark ? Colors.white : AppColors.textPrimary, fontSize: 16),
+          // Hamburger menu
+          Builder(
+            builder: (ctx) => GestureDetector(
+              onTap: () => Scaffold.of(ctx).openDrawer(),
+              child: Container(
+                width: 42, height: 42,
+                decoration: BoxDecoration(
+                  color: dark ? AppColors.surfaceDark : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: dark ? AppColors.borderDark : AppColors.borderLight),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _menuLine(dark),
+                        const SizedBox(height: 4),
+                        _menuLine(dark, width: 14),
+                        const SizedBox(height: 4),
+                        _menuLine(dark),
+                      ],
                     ),
-                  ),
+                    if (_chatUnread > 0)
+                      Positioned(
+                        top: 8, right: 8,
+                        child: Container(
+                          width: 8, height: 8,
+                          decoration: const BoxDecoration(
+                              color: AppColors.danger, shape: BoxShape.circle),
+                        ),
+                      ),
+                  ],
                 ),
-                Container(
-                  width: 14, height: 14,
-                  decoration: BoxDecoration(
-                    color: onDuty ? AppColors.success : Colors.grey.shade500,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: dark ? AppColors.cardDark : Colors.white, width: 2),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
           const SizedBox(width: 12),
-          
+
+          // Name + status
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _driver?.fullName ?? 'Kutmoqda...',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, letterSpacing: -0.2),
+                  _driver?.fullName ?? 'Yuklanmoqda...',
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w900, letterSpacing: -0.2),
                   maxLines: 1, overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 3),
-                const Row(
+                const SizedBox(height: 2),
+                Row(
                   children: [
-                    Icon(Icons.star_rounded, size: 13, color: AppColors.accent),
-                    SizedBox(width: 2),
-                    Text('4.9 Rating', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    Container(
+                      width: 6, height: 6,
+                      decoration: BoxDecoration(
+                        color: onDuty ? AppColors.success : Colors.grey.shade400,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      onDuty ? 'Ish navbatida' : 'Oflayn',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: onDuty ? AppColors.success : Colors.grey.shade400,
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
           ),
 
-          // Balance Display
+          // Balance
           GestureDetector(
-            onTap: () => setState(() => _tab = 2),
+            onTap: () => setState(() => _tab = 3),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: dark ? AppColors.surfaceDark : const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: dark ? AppColors.borderDark : Colors.grey.shade200),
+                border: Border.all(
+                    color: balColor.withValues(alpha: 0.25)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text('BALANS', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: Colors.grey, letterSpacing: 0.5)),
+                  const Text('BALANS',
+                      style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800,
+                          color: Colors.grey, letterSpacing: 0.5)),
                   const SizedBox(height: 1),
                   Text(
                     '${balance.toStringAsFixed(0)} UZS',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: balColor),
+                    style: TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w900, color: balColor),
                   ),
                 ],
               ),
@@ -497,6 +740,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ),
     );
   }
+
+  Widget _menuLine(bool dark, {double width = 18}) => Container(
+    width: width, height: 2,
+    decoration: BoxDecoration(
+      color: dark ? Colors.grey.shade400 : const Color(0xFF374151),
+      borderRadius: BorderRadius.circular(1),
+    ),
+  );
 
   Widget _onlineStatusHeader(bool dark) {
     return Padding(
