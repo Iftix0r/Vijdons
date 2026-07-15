@@ -68,6 +68,8 @@
         setInterval(updateLocations, 10000); // every 10 seconds
     });
 
+    let mapCenteredOnDrivers = false;
+
     function updateLocations() {
         const indicator = document.getElementById('live-indicator');
         indicator.classList.remove('opacity-50');
@@ -97,6 +99,13 @@
                 }
                 
                 noDriversMsg.style.display = 'none';
+                
+                // Birinchi yuklanishda xaritani haydovchilar joylashuviga moslash
+                if (!mapCenteredOnDrivers && drivers.length > 0) {
+                    mapCenteredOnDrivers = true;
+                    const firstDriver = drivers[0];
+                    map.setCenter([firstDriver.latitude, firstDriver.longitude], 13);
+                }
                 
                 // Track list of current IDs to remove stale markers
                 const currentIds = new Set();

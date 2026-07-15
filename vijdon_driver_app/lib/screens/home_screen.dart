@@ -40,11 +40,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _init();
+    // Manzilni darhol olish (timer kutmasdan)
+    Future.delayed(const Duration(seconds: 2), _updateDriverLocation);
     _refreshTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) return;
       setState(() => _nextRefreshIn = 30 - (t.tick % 30));
       if (t.tick % 30 == 0) _loadOrders(silent: true);
-      if (_driver?.isOnDuty == true && t.tick % 15 == 0) {
+      if (t.tick % 15 == 0) {
         _updateDriverLocation();
       }
     });
@@ -90,13 +92,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final lat = pos.latitude;
       final lng = pos.longitude;
       if (mounted) setState(() { _lat = lat; });
-      // Backend ga yuborish
-      await ApiService.updateLocation(lat, lng);
-      // Yandex Geocoder orqali haqiqiy manzilni olish
+
+      // Backend ga yuborish (alohida try/catch - manzil olishni bloklamasin)
+      try { await ApiService.updateLocation(lat, lng); } catch (_) {}
+
+      // Manzilni har doim yangilash (flag tiqilib qolmasin)
       if (!_fetchingAddress) {
         _fetchingAddress = true;
-        final addr = await ApiService.reverseGeocode(lat, lng);
-        if (mounted) setState(() { _address = addr; });
+        try {
+          final addr = await ApiService.reverseGeocode(lat, lng);
+          if (mounted) setState(() { _address = addr ?? _address; });
+        } catch (_) {}
         _fetchingAddress = false;
       }
     } catch (_) {
@@ -432,11 +438,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   maxLines: 1, overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 3),
-                Row(
+                const Row(
                   children: [
                     Icon(Icons.star_rounded, size: 13, color: AppColors.accent),
-                    const SizedBox(width: 2),
-                    const Text('4.9 Rating', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    SizedBox(width: 2),
+                    Text('4.9 Rating', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
                   ],
                 ),
               ],
@@ -545,14 +551,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _offlineState(bool dark) {
-    return Expanded(
+    return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(28, 32, 28, 28),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const Spacer(),
-            // Glowing Offline Hexagon/Circle
+            // Offline icon
             Container(
               width: 130, height: 130,
               decoration: BoxDecoration(
@@ -585,7 +590,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, color: Colors.grey.shade500, height: 1.6),
             ),
-            const Spacer(),
+            const SizedBox(height: 40),
             SizedBox(
               width: double.infinity, height: 56,
               child: ElevatedButton(
@@ -609,7 +614,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
               ),
             ),
-            const SizedBox(height: 12),
           ],
         ),
       ),
@@ -617,33 +621,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _searchingState(bool dark) {
-    return Expanded(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(height: 24),
-              // Radar Wave Animation
-              const SizedBox(
-                width: 160, height: 160,
-                child: _RadarScanner(),
-              ),
-              const SizedBox(height: 32),
-              const Text(
-                'Buyurtmalar qidirilmoqda...',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Yaqin atrofdagi faol arizalar qidirilmoqda.\nKutish tugashini taymerda ko\'rishingiz mumkin: ${_nextRefreshIn}s',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500, height: 1.5),
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Radar Wave Animation
+            const SizedBox(
+              width: 160, height: 160,
+              child: _RadarScanner(),
+            ),
+            const SizedBox(height: 32),
+            const Text(
+              'Buyurtmalar qidirilmoqda...',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Yaqin atrofdagi faol arizalar qidirilmoqda.\nKutish: ${_nextRefreshIn}s',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade500, height: 1.5),
+            ),
+            const SizedBox(height: 24),
+          ],
         ),
       ),
     );

@@ -381,7 +381,7 @@ class _HistoryScreenState extends State<HistoryScreen>
                           const SizedBox(width: 4),
                           Text(
                             '${o.distanceKm!.toStringAsFixed(1)} km',
-                            style: TextStyle(fontSize: 11, color: AppColors.purple, fontWeight: FontWeight.w800),
+                            style: const TextStyle(fontSize: 11, color: AppColors.purple, fontWeight: FontWeight.w800),
                           ),
                         ],
                         if (o.price != null) ...[

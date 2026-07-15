@@ -171,7 +171,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     'Tasdiqlash odatda 1-2 soat ichida bajariladi.',
                     style: TextStyle(
                       fontSize: 12,
-                      color: dark ? Colors.grey.shade300 : Color(0xFFB45309),
+                      color: dark ? Colors.grey.shade300 : const Color(0xFFB45309),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
