@@ -55,9 +55,17 @@ class Order(models.Model):
     STATUS_CHOICES = (
         ('pending',   'Kutilmoqda'),
         ('accepted',  'Qabul qilindi'),
-        ('on_way',    'Yo\'lda'),
+        ('on_way',    "Yo'lda"),
+        ('arrived',   'Yetib keldim'),
         ('completed', 'Yakunlandi'),
         ('cancelled', 'Bekor qilindi'),
+    )
+
+    PAYMENT_CASH = 'cash'
+    PAYMENT_CARD = 'card'
+    PAYMENT_CHOICES = (
+        (PAYMENT_CASH, 'Naqd'),
+        (PAYMENT_CARD, 'Karta'),
     )
 
     client       = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='orders', verbose_name="Mijoz")
@@ -71,6 +79,8 @@ class Order(models.Model):
     distance_km  = models.FloatField(null=True, blank=True, verbose_name="Masofa (km)")
     price        = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Narxi")
     commission   = models.DecimalField(max_digits=10, decimal_places=2, default=1000, verbose_name="Komissiya (har bir zakaz uchun)")
+    payment_type = models.CharField(max_length=10, choices=PAYMENT_CHOICES, default=PAYMENT_CASH, verbose_name="To'lov turi")
+    note         = models.TextField(blank=True, default='', verbose_name="Izoh")
     status       = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="Holati")
     created_at   = models.DateTimeField(auto_now_add=True, verbose_name="Yaratilgan vaqti")
     updated_at   = models.DateTimeField(auto_now=True, verbose_name="Yangilangan vaqti")

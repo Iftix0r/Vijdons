@@ -1,4 +1,7 @@
 import math
+import urllib.request
+import urllib.parse
+import json
 
 def haversine(lat1, lon1, lat2, lon2):
     """
@@ -31,3 +34,25 @@ def find_nearest_driver(drivers, lat, lng):
                 nearest_driver = driver
                 
     return nearest_driver, min_dist
+
+
+def send_telegram(text):
+    """Telegram guruhiga xabar yuborish."""
+    from django.conf import settings
+    token = getattr(settings, 'TELEGRAM_BOT_TOKEN', '')
+    chat_id = getattr(settings, 'TELEGRAM_GROUP_ID', '')
+    if not token or not chat_id:
+        return
+    try:
+        data = urllib.parse.urlencode({
+            'chat_id': chat_id,
+            'text': text,
+            'parse_mode': 'HTML',
+        }).encode()
+        req = urllib.request.Request(
+            f'https://api.telegram.org/bot{token}/sendMessage',
+            data=data,
+        )
+        urllib.request.urlopen(req, timeout=5)
+    except Exception:
+        pass

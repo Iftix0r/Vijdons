@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q
 from django.http import JsonResponse
 from .models import Order, Driver, Client, TariffSettings
-from .utils import haversine, find_nearest_driver
+from .utils import haversine, find_nearest_driver, send_telegram
 
 
 # ── Order ──────────────────────────────────────────────────────────────────────
@@ -46,7 +46,10 @@ def order_create(request):
                 if nearest_driver:
                     driver = nearest_driver
 
-            Order.objects.create(
+            payment_type = request.POST.get('payment_type', 'cash')
+            note         = request.POST.get('note', '').strip()
+
+            order = Order.objects.create(
                 client=client,
                 from_address=from_address,
                 from_lat=f_lat, from_lng=f_lng,
@@ -56,7 +59,21 @@ def order_create(request):
                 price=price,
                 commission=tariff.commission,
                 driver=driver,
+                payment_type=payment_type,
+                note=note,
                 status='pending',
+            )
+
+            # Telegram xabar
+            driver_txt = driver.full_name if driver else 'Biriktirilmagan'
+            send_telegram(
+                f"🚨 <b>Yangi buyurtma #{order.id}</b>\n"
+                f"👤 Mijoz: {client.full_name or phone_number} ({phone_number})\n"
+                f"📍 {from_address} → {to_address}\n"
+                f"💰 Narx: {price or '—'} UZS | {distance_km and f'{distance_km:.1f} km' or '—'}\n"
+                f"🚗 Haydovchi: {driver_txt}\n"
+                f"💳 To'lov: {'Naqd' if payment_type == 'cash' else 'Karta'}"
+                + (f"\n📝 Izoh: {note}" if note else "")
             )
     return redirect(request.META.get('HTTP_REFERER', 'taxi:panel_dashboard'))
 

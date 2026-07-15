@@ -11,6 +11,8 @@ class OrderModel {
   final String status;
   final String statusLabel;
   final String createdAt;
+  final String paymentType;
+  final String note;
 
   OrderModel({
     required this.id,
@@ -25,6 +27,8 @@ class OrderModel {
     required this.status,
     required this.statusLabel,
     required this.createdAt,
+    this.paymentType = 'cash',
+    this.note = '',
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> j) => OrderModel(
@@ -40,12 +44,15 @@ class OrderModel {
     status:      j['status'] ?? 'pending',
     statusLabel: j['status_label'] ?? '',
     createdAt:   j['created_at'] ?? '',
+    paymentType: j['payment_type'] ?? 'cash',
+    note:        j['note'] ?? '',
   );
 
   bool get isPending   => status == 'pending';
   bool get isAccepted  => status == 'accepted';
   bool get isOnWay     => status == 'on_way';
+  bool get isArrived   => status == 'arrived';
   bool get isCompleted => status == 'completed';
   bool get isCancelled => status == 'cancelled';
-  bool get isActive    => isAccepted || isOnWay;
+  bool get isActive    => isAccepted || isOnWay || isArrived;
 }

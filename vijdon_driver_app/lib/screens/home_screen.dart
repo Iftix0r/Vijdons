@@ -200,6 +200,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final ep = {
       'accept':   AppConstants.acceptOrder(order.id),
       'on_way':   AppConstants.onWayOrder(order.id),
+      'arrived':  AppConstants.arrivedOrder(order.id),
       'complete': AppConstants.completeOrder(order.id),
       'cancel':   AppConstants.cancelOrder(order.id),
     }[action]!;
@@ -215,6 +216,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String _actionLabel(String a) => const {
     'accept':   'Buyurtma qabul qilindi ✓',
     'on_way':   "Yo'lda ketmoqdasiz 🚗",
+    'arrived':  'Yetib keldingiz 📍',
     'complete': 'Buyurtma yakunlandi 🏁',
     'cancel':   'Buyurtma bekor qilindi',
   }[a] ?? '';
@@ -222,6 +224,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   IconData _actionIcon(String a) => const {
     'accept':   Icons.check_circle_rounded,
     'on_way':   Icons.directions_car_rounded,
+    'arrived':  Icons.location_on_rounded,
     'complete': Icons.flag_rounded,
     'cancel':   Icons.cancel_rounded,
   }[a] ?? Icons.info_rounded;
@@ -935,10 +938,14 @@ class _OrderDetailSheet extends StatelessWidget {
                     const SizedBox(height: 10),
                   ],
                   if (order.isOnWay) ...[
+                    _actionBtn(context, 'Yetib keldim', Icons.location_on_rounded, AppColors.info, 'arrived'),
+                    const SizedBox(height: 10),
+                  ],
+                  if (order.isArrived) ...[
                     _actionBtn(context, 'Yakunlash', Icons.flag_rounded, AppColors.success, 'complete'),
                     const SizedBox(height: 10),
                   ],
-                  if (order.isAccepted || order.isOnWay)
+                  if (order.isAccepted || order.isOnWay || order.isArrived)
                     _actionBtn(context, 'Bekor qilish', Icons.cancel_rounded, AppColors.danger, 'cancel', outlined: true),
                 ],
               ),

@@ -16,6 +16,7 @@ class AppConstants {
 
   static String acceptOrder(int id)   => '/orders/$id/accept/';
   static String onWayOrder(int id)    => '/orders/$id/on_way/';
+  static String arrivedOrder(int id)  => '/orders/$id/arrived/';
   static String completeOrder(int id) => '/orders/$id/complete/';
   static String cancelOrder(int id)   => '/orders/$id/cancel/';
 }

@@ -34,6 +34,7 @@ from .serializers import (
     DriverProfileSerializer,
     OrderSerializer,
 )
+from .utils import send_telegram
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -232,6 +233,10 @@ def _order_action(request, driver, pk, allowed_statuses, new_status):
 
     order.status = new_status
     order.save(update_fields=update_fields)
+
+    # Telegram xabarlari
+    _notify_telegram(order, new_status, driver)
+
     return Response(OrderSerializer(order, context={'request': request}).data)
 
 
@@ -252,12 +257,54 @@ def order_on_way(request, driver, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @driver_required
+def order_arrived(request, driver, pk):
+    return _order_action(request, driver, pk, ['on_way'], 'arrived')
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@driver_required
 def order_complete(request, driver, pk):
-    return _order_action(request, driver, pk, ['on_way', 'accepted'], 'completed')
+    return _order_action(request, driver, pk, ['arrived', 'on_way', 'accepted'], 'completed')
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @driver_required
 def order_cancel(request, driver, pk):
-    return _order_action(request, driver, pk, ['accepted', 'on_way'], 'cancelled')
+    return _order_action(request, driver, pk, ['accepted', 'on_way', 'arrived'], 'cancelled')
+
+
+def _notify_telegram(order, new_status, driver):
+    msgs = {
+        'accepted': (
+            f"🚖 <b>Buyurtma #{order.id} qabul qilindi</b>\n"
+            f"👤 Mijoz: {order.client.full_name or order.client.phone_number}\n"
+            f"📍 {order.from_address} → {order.to_address}\n"
+            f"🚗 Haydovchi: {driver.full_name} ({driver.car_number})\n"
+            f"💰 Narx: {order.price or '—'} UZS"
+        ),
+        'on_way': (
+            f"🚗 <b>Haydovchi yo'lda #{order.id}</b>\n"
+            f"👤 {order.client.full_name or order.client.phone_number} ({order.client.phone_number})\n"
+            f"🚗 {driver.full_name} — {driver.car_model} ({driver.car_number})"
+        ),
+        'arrived': (
+            f"📍 <b>Haydovchi yetib keldi #{order.id}</b>\n"
+            f"👤 {order.client.full_name or order.client.phone_number} ({order.client.phone_number})\n"
+            f"🚗 {driver.full_name} — {driver.car_number} kutmoqda"
+        ),
+        'completed': (
+            f"✅ <b>Buyurtma yakunlandi #{order.id}</b>\n"
+            f"👤 {order.client.full_name or order.client.phone_number}\n"
+            f"📍 {order.from_address} → {order.to_address}\n"
+            f"💰 {order.price or '—'} UZS | 🚗 {driver.full_name}"
+        ),
+        'cancelled': (
+            f"❌ <b>Buyurtma bekor qilindi #{order.id}</b>\n"
+            f"🚗 Haydovchi: {driver.full_name}"
+        ),
+    }
+    msg = msgs.get(new_status)
+    if msg:
+        send_telegram(msg)

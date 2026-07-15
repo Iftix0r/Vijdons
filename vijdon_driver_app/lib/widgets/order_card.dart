@@ -179,13 +179,47 @@ class OrderCard extends StatelessWidget {
             children: [
               _infoChip(Icons.phone_iphone_rounded, order.clientPhone, AppColors.info, isDark),
               const Spacer(),
-              if (order.distanceKm != null)
+              _infoChip(
+                order.paymentType == 'card' ? Icons.credit_card_rounded : Icons.payments_rounded,
+                order.paymentType == 'card' ? 'Karta' : 'Naqd',
+                order.paymentType == 'card' ? AppColors.info : AppColors.success,
+                isDark,
+              ),
+              if (order.distanceKm != null) ...[
+                const SizedBox(width: 8),
                 _infoChip(Icons.map_rounded, '${order.distanceKm!.toStringAsFixed(1)} km', AppColors.purple, isDark),
-              if (order.distanceKm != null) const SizedBox(width: 8),
-              if (order.price != null)
-                _infoChip(Icons.payments_rounded, '${order.price} so\'m', AppColors.success, isDark),
+              ],
+              if (order.price != null) ...[
+                const SizedBox(width: 8),
+                _infoChip(Icons.monetization_on_rounded, '${order.price} so\'m', AppColors.success, isDark),
+              ],
             ],
           ),
+
+          if (order.note.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.warning.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.notes_rounded, size: 14, color: AppColors.warning),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        order.note,
+                        style: const TextStyle(fontSize: 12, color: AppColors.warning, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
           // Commission info
           if (order.commission != null)
@@ -283,8 +317,10 @@ class OrderCard extends StatelessWidget {
           if (order.isAccepted)
             Expanded(child: _actionBtn("Yo'lga chiqdim", Icons.directions_car_rounded, AppColors.purple, 'on_way')),
           if (order.isOnWay)
+            Expanded(child: _actionBtn('Yetib keldim', Icons.location_on_rounded, AppColors.info, 'arrived')),
+          if (order.isArrived)
             Expanded(child: _actionBtn('Yakunlash', Icons.flag_rounded, AppColors.success, 'complete')),
-          if (order.isAccepted || order.isOnWay) ...[
+          if (order.isAccepted || order.isOnWay || order.isArrived) ...[
             const SizedBox(width: 10),
             _cancelBtn(),
           ],
@@ -337,13 +373,14 @@ class OrderCard extends StatelessWidget {
       case 'pending':   return AppColors.warning;
       case 'accepted':  return AppColors.info;
       case 'on_way':    return AppColors.purple;
+      case 'arrived':   return AppColors.primary;
       case 'completed': return AppColors.success;
       case 'cancelled': return AppColors.danger;
       default:          return Colors.grey;
     }
   }
 
-  bool _showActions() => order.isPending || order.isAccepted || order.isOnWay;
+  bool _showActions() => order.isPending || order.isAccepted || order.isOnWay || order.isArrived;
 
   String _timeAgo(String iso) {
     try {

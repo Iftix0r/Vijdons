@@ -128,6 +128,10 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# Telegram Bot
+TELEGRAM_BOT_TOKEN = ''   # @BotFather dan olingan token
+TELEGRAM_GROUP_ID  = ''   # Operatorlar guruhi chat_id (masalan: -1001234567890)
+
 # DRF
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
