@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'core/theme.dart';
+import 'core/notification_service.dart';
 import 'screens/splash_screen.dart';
 
 void main() async {
@@ -12,6 +13,9 @@ void main() async {
     systemNavigationBarColor: Colors.transparent,
   ));
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
+  // Bildirishnoma va ovoz servisini ishga tushirish
+  await NotificationService.init();
 
   runApp(const VijdonDriverApp());
 }

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import '../core/api_service.dart';
 import '../core/constants.dart';
+import '../core/notification_service.dart';
 import '../core/theme.dart';
 import '../models/driver_model.dart';
 import '../models/order_model.dart';
@@ -28,6 +29,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Timer? _refreshTimer;
   int _activeOrderCount = 0;
   int _nextRefreshIn = 30;
+  // Yangi buyurtmalarni aniqlash uchun avvalgi ID'lar ro'yxati
+  final Set<int> _knownOrderIds = {};
+  bool _firstLoad = true;
 
   @override
   void initState() {
@@ -104,6 +108,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final list = await ApiService.getAvailableOrders();
       if (mounted) {
         final orders = list.map((e) => OrderModel.fromJson(e)).toList();
+
+        // Faqat ish navbatida bo'lganda yangi buyurtmalarni aniqlash
+        if (!_firstLoad && _driver?.isOnDuty == true) {
+          final pendingOrders = orders.where((o) => o.isPending).toList();
+          final newOrders = pendingOrders
+              .where((o) => !_knownOrderIds.contains(o.id))
+              .toList();
+
+          if (newOrders.isNotEmpty) {
+            // Ovoz va bildirishnoma chiqar
+            await NotificationService.notifyNewOrder(newOrders.length);
+            // Haptic feedback qo'shimcha
+            HapticFeedback.vibrate();
+          }
+        }
+
+        // Barcha ko'rinayotgan buyurtma ID'larini yangilash
+        _knownOrderIds.clear();
+        _knownOrderIds.addAll(orders.map((o) => o.id));
+        _firstLoad = false;
+
         setState(() {
           _orders = orders;
           _activeOrderCount = orders.where((o) => o.isAccepted || o.isOnWay).length;
