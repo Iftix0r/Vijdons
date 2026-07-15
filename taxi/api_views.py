@@ -34,7 +34,7 @@ from .serializers import (
     DriverProfileSerializer,
     OrderSerializer,
 )
-from .utils import send_telegram
+from .utils import send_telegram, dispatch_order
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -182,11 +182,11 @@ def get_tariff(request):
 @driver_required
 def available_orders(request, driver):
     """
-    Pending (driver yo'q) + bu haydovchiga assigned faol buyurtmalar.
+    Faqat bu haydovchiga dispatch qilingan pending buyurtma + o'z faol buyurtmalari.
     """
     qs = Order.objects.select_related('client', 'driver').filter(
-        Q(status='pending', driver__isnull=True) |
-        Q(driver=driver, status__in=['accepted', 'on_way'])
+        Q(status='pending', dispatched_to=driver) |
+        Q(driver=driver, status__in=['accepted', 'on_way', 'arrived'])
     ).order_by('-created_at')
     return Response(OrderSerializer(qs, many=True, context={'request': request}).data)
 
@@ -238,6 +238,27 @@ def _order_action(request, driver, pk, allowed_statuses, new_status):
     _notify_telegram(order, new_status, driver)
 
     return Response(OrderSerializer(order, context={'request': request}).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@driver_required
+def order_reject(request, driver, pk):
+    """Haydovchi rad etadi — keyingi yaqin haydovchiga yuboriladi."""
+    try:
+        order = Order.objects.get(pk=pk, status='pending', dispatched_to=driver)
+    except Order.DoesNotExist:
+        return Response({'detail': 'Buyurtma topilmadi.'}, status=404)
+
+    order.rejected_by.add(driver)
+    order.dispatched_to = None
+    order.save(update_fields=['dispatched_to'])
+
+    # Keyingi haydovchiga yuborish
+    import threading
+    threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
+
+    return Response({'detail': 'Rad etildi.'})
 
 
 @api_view(['POST'])

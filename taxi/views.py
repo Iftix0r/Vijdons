@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q
 from django.http import JsonResponse
 from .models import Order, Driver, Client, TariffSettings, ChatMessage
-from .utils import haversine, find_nearest_driver, send_telegram
+from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order
 
 
 # ── Order ──────────────────────────────────────────────────────────────────────
@@ -76,6 +76,10 @@ def order_create(request):
                 f"💳 To'lov: {'Naqd' if payment_type == 'cash' else 'Karta'}"
                 + (f"\n📝 Izoh: {note}" if note else "")
             )
+
+            # Dispatch — eng yaqin haydovchiga yuborish
+            import threading
+            threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
     return redirect(request.META.get('HTTP_REFERER', 'taxi:panel_dashboard'))
 
 

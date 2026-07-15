@@ -38,6 +38,7 @@ urlpatterns = [
 
     path('api/orders/available/', api_views.available_orders, name='api_orders_available'),
     path('api/orders/my/',        api_views.my_orders,        name='api_orders_my'),
+    path('api/orders/<int:pk>/reject/',   api_views.order_reject,   name='api_order_reject'),
     path('api/orders/<int:pk>/accept/',   api_views.order_accept,   name='api_order_accept'),
     path('api/orders/<int:pk>/on_way/',   api_views.order_on_way,   name='api_order_on_way'),
     path('api/orders/<int:pk>/arrived/',  api_views.order_arrived,  name='api_order_arrived'),

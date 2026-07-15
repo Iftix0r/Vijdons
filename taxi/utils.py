@@ -56,3 +56,81 @@ def send_telegram(text):
         urllib.request.urlopen(req, timeout=5)
     except Exception:
         pass
+
+
+def send_fcm(fcm_token, title, body, data=None):
+    """FCM push notification yuborish."""
+    from django.conf import settings
+    fcm_key = getattr(settings, 'FCM_SERVER_KEY', '')
+    if not fcm_key or not fcm_token:
+        return False
+    try:
+        payload = json.dumps({
+            'to': fcm_token,
+            'priority': 'high',
+            'notification': {
+                'title': title,
+                'body': body,
+                'sound': 'default',
+                'android_channel_id': 'new_orders_channel',
+            },
+            'data': data or {},
+        }).encode()
+        req = urllib.request.Request(
+            'https://fcm.googleapis.com/fcm/send',
+            data=payload,
+            headers={
+                'Authorization': f'key={fcm_key}',
+                'Content-Type': 'application/json',
+            },
+        )
+        urllib.request.urlopen(req, timeout=5)
+        return True
+    except Exception:
+        return False
+
+
+def dispatch_order(order):
+    """
+    Buyurtmani eng yaqin, rad etmagan haydovchiga yuborish.
+    Qaytaradi: haydovchi yoki None.
+    """
+    if not order.from_lat or not order.from_lng:
+        return None
+
+    rejected_ids = list(order.rejected_by.values_list('id', flat=True))
+
+    candidates = list(
+        __import__('taxi.models', fromlist=['Driver']).Driver.objects.filter(
+            is_active=True,
+            is_on_duty=True,
+            approval_status='approved',
+            latitude__isnull=False,
+            longitude__isnull=False,
+        ).exclude(id__in=rejected_ids)
+    )
+
+    if not candidates:
+        return None
+
+    nearest, _ = find_nearest_driver(candidates, order.from_lat, order.from_lng)
+    if not nearest:
+        return None
+
+    order.dispatched_to = nearest
+    order.save(update_fields=['dispatched_to'])
+
+    send_fcm(
+        nearest.fcm_token,
+        title='🚖 Yangi buyurtma!',
+        body=f"📍 {order.from_address}" + (f" → {order.to_address}" if order.to_address else ""),
+        data={
+            'type':       'new_order',
+            'order_id':   str(order.id),
+            'from_addr':  order.from_address,
+            'to_addr':    order.to_address or '',
+            'price':      str(order.price or ''),
+            'client_phone': order.client.phone_number,
+        },
+    )
+    return nearest

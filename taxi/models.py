@@ -75,11 +75,13 @@ class Order(models.Model):
     distance_km  = models.FloatField(null=True, blank=True, verbose_name="Masofa (km)")
     price        = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Narxi")
     commission   = models.DecimalField(max_digits=10, decimal_places=2, default=1000, verbose_name="Komissiya")
-    payment_type = models.CharField(max_length=10, choices=PAYMENT_CHOICES, default=PAYMENT_CASH, verbose_name="To'lov turi")
-    note         = models.TextField(blank=True, default='', verbose_name="Izoh")
-    status       = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="Holati")
-    created_at   = models.DateTimeField(auto_now_add=True, verbose_name="Yaratilgan vaqti")
-    updated_at   = models.DateTimeField(auto_now=True, verbose_name="Yangilangan vaqti")
+    payment_type  = models.CharField(max_length=10, choices=PAYMENT_CHOICES, default=PAYMENT_CASH, verbose_name="To'lov turi")
+    note          = models.TextField(blank=True, default='', verbose_name="Izoh")
+    status        = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="Holati")
+    dispatched_to = models.ForeignKey(Driver, on_delete=models.SET_NULL, null=True, blank=True, related_name='dispatched_orders', verbose_name="Yuborilgan haydovchi")
+    rejected_by   = models.ManyToManyField(Driver, blank=True, related_name='rejected_orders', verbose_name="Rad etgan haydovchilar")
+    created_at    = models.DateTimeField(auto_now_add=True, verbose_name="Yaratilgan vaqti")
+    updated_at    = models.DateTimeField(auto_now=True, verbose_name="Yangilangan vaqti")
 
     def __str__(self):
         return f"Buyurtma #{self.id} - {self.client}"
