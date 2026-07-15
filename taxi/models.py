@@ -13,23 +13,19 @@ class Driver(models.Model):
         (APPROVAL_REJECTED, 'Rad etilgan'),
     )
 
-    user         = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True, related_name='driver_profile')
-    full_name    = models.CharField(max_length=255, verbose_name="Haydovchi ismi")
-    phone_number = models.CharField(max_length=20, unique=True, verbose_name="Telefon raqami")
-    car_model    = models.CharField(max_length=100, verbose_name="Mashina modeli")
-    car_number   = models.CharField(max_length=20, verbose_name="Mashina raqami")
-    is_active    = models.BooleanField(default=True, verbose_name="Faol")
-    # Registration / approval
-    approval_status = models.CharField(
-        max_length=20, choices=APPROVAL_CHOICES, default=APPROVAL_PENDING,
-        verbose_name="Tasdiqlash holati"
-    )
-    fcm_token    = models.TextField(blank=True, null=True, verbose_name="FCM Token")
-    is_on_duty   = models.BooleanField(default=False, verbose_name="Ish navbatida")
-    latitude     = models.FloatField(null=True, blank=True, verbose_name="Kenglik (Latitude)")
-    longitude    = models.FloatField(null=True, blank=True, verbose_name="Uzunlik (Longitude)")
-    balance      = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Balans")
-    registered_at = models.DateTimeField(auto_now_add=True, verbose_name="Ro'yxatdan o'tgan vaqt")
+    user            = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True, related_name='driver_profile')
+    full_name       = models.CharField(max_length=255, verbose_name="Haydovchi ismi")
+    phone_number    = models.CharField(max_length=20, unique=True, verbose_name="Telefon raqami")
+    car_model       = models.CharField(max_length=100, verbose_name="Mashina modeli")
+    car_number      = models.CharField(max_length=20, verbose_name="Mashina raqami")
+    is_active       = models.BooleanField(default=True, verbose_name="Faol")
+    approval_status = models.CharField(max_length=20, choices=APPROVAL_CHOICES, default=APPROVAL_PENDING, verbose_name="Tasdiqlash holati")
+    fcm_token       = models.TextField(blank=True, null=True, verbose_name="FCM Token")
+    is_on_duty      = models.BooleanField(default=False, verbose_name="Ish navbatida")
+    latitude        = models.FloatField(null=True, blank=True, verbose_name="Kenglik (Latitude)")
+    longitude       = models.FloatField(null=True, blank=True, verbose_name="Uzunlik (Longitude)")
+    balance         = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Balans")
+    registered_at   = models.DateTimeField(auto_now_add=True, verbose_name="Ro'yxatdan o'tgan vaqt")
 
     def __str__(self):
         return f"{self.full_name} ({self.car_number})"
@@ -78,7 +74,7 @@ class Order(models.Model):
     to_lng       = models.FloatField(null=True, blank=True, verbose_name="Qayerga Uzunlik (Lng)")
     distance_km  = models.FloatField(null=True, blank=True, verbose_name="Masofa (km)")
     price        = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Narxi")
-    commission   = models.DecimalField(max_digits=10, decimal_places=2, default=1000, verbose_name="Komissiya (har bir zakaz uchun)")
+    commission   = models.DecimalField(max_digits=10, decimal_places=2, default=1000, verbose_name="Komissiya")
     payment_type = models.CharField(max_length=10, choices=PAYMENT_CHOICES, default=PAYMENT_CASH, verbose_name="To'lov turi")
     note         = models.TextField(blank=True, default='', verbose_name="Izoh")
     status       = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="Holati")
@@ -93,31 +89,38 @@ class Order(models.Model):
         verbose_name_plural = "Buyurtmalar"
 
 
+class ChatMessage(models.Model):
+    SENDER_DRIVER   = 'driver'
+    SENDER_OPERATOR = 'operator'
+    SENDER_CHOICES  = (
+        (SENDER_DRIVER,   'Haydovchi'),
+        (SENDER_OPERATOR, 'Operator'),
+    )
+
+    driver     = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='messages', verbose_name='Haydovchi')
+    sender     = models.CharField(max_length=10, choices=SENDER_CHOICES, verbose_name='Kimdan')
+    text       = models.TextField(verbose_name='Xabar')
+    is_read    = models.BooleanField(default=False, verbose_name="O'qildi")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Vaqt')
+
+    def __str__(self):
+        return f"{self.sender} → {self.driver.full_name}: {self.text[:40]}"
+
+    class Meta:
+        verbose_name = 'Chat xabari'
+        verbose_name_plural = 'Chat xabarlari'
+        ordering = ['created_at']
+
+
 class TariffSettings(models.Model):
     """Singleton: admin paneldan narx sozlamalari."""
-    base_price      = models.DecimalField(
-        max_digits=10, decimal_places=2, default=5000,
-        verbose_name="Boshlang'ich narx (UZS)",
-        help_text="Har bir buyurtma uchun minimal narx"
-    )
-    price_per_km    = models.DecimalField(
-        max_digits=10, decimal_places=2, default=2000,
-        verbose_name="1 km narxi (UZS)"
-    )
-    commission      = models.DecimalField(
-        max_digits=10, decimal_places=2, default=1000,
-        verbose_name="Haydovchi komissiyasi (UZS)",
-        help_text="Har bir qabul qilingan buyurtma uchun haydovchi balansidan yechiladi"
-    )
-    auto_dispatch   = models.BooleanField(
-        default=True,
-        verbose_name="Avtomatik taqsimlash",
-        help_text="Yoqilgan bo'lsa eng yaqin haydovchiga avtomatik beriladi"
-    )
-    updated_at = models.DateTimeField(auto_now=True)
+    base_price    = models.DecimalField(max_digits=10, decimal_places=2, default=5000, verbose_name="Boshlang'ich narx (UZS)", help_text="Har bir buyurtma uchun minimal narx")
+    price_per_km  = models.DecimalField(max_digits=10, decimal_places=2, default=2000, verbose_name="1 km narxi (UZS)")
+    commission    = models.DecimalField(max_digits=10, decimal_places=2, default=1000, verbose_name="Haydovchi komissiyasi (UZS)", help_text="Har bir qabul qilingan buyurtma uchun haydovchi balansidan yechiladi")
+    auto_dispatch = models.BooleanField(default=True, verbose_name="Avtomatik taqsimlash", help_text="Yoqilgan bo'lsa eng yaqin haydovchiga avtomatik beriladi")
+    updated_at    = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
-        # Singleton — always pk=1
         self.pk = 1
         super().save(*args, **kwargs)
 

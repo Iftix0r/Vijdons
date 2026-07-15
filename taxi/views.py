@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q
 from django.http import JsonResponse
-from .models import Order, Driver, Client, TariffSettings
+from .models import Order, Driver, Client, TariffSettings, ChatMessage
 from .utils import haversine, find_nearest_driver, send_telegram
 
 
@@ -323,3 +323,69 @@ def active_drivers_locations(request):
             'balance': str(d.balance),
         })
     return JsonResponse({'drivers': data})
+
+
+# ── Operator Chat ──────────────────────────────────────────────────────────────────
+
+def operator_chat(request):
+    drivers = Driver.objects.filter(approval_status=Driver.APPROVAL_APPROVED).order_by('full_name')
+    driver_data = []
+    for d in drivers:
+        last_msg = ChatMessage.objects.filter(driver=d).order_by('-created_at').first()
+        unread   = ChatMessage.objects.filter(driver=d, sender=ChatMessage.SENDER_DRIVER, is_read=False).count()
+        driver_data.append({'driver': d, 'last_msg': last_msg, 'unread': unread})
+
+    selected_id     = request.GET.get('driver_id')
+    selected_driver = None
+    messages        = []
+    if selected_id:
+        selected_driver = Driver.objects.filter(pk=selected_id).first()
+        if selected_driver:
+            ChatMessage.objects.filter(
+                driver=selected_driver, sender=ChatMessage.SENDER_DRIVER, is_read=False
+            ).update(is_read=True)
+            messages = ChatMessage.objects.filter(driver=selected_driver).order_by('created_at')
+
+    if request.method == 'POST' and selected_driver:
+        text = request.POST.get('text', '').strip()
+        if text:
+            ChatMessage.objects.create(
+                driver=selected_driver, sender=ChatMessage.SENDER_OPERATOR, text=text
+            )
+            _send_fcm_to_driver(selected_driver, '💬 Operator', text)
+        return redirect(f"{request.path}?driver_id={selected_id}")
+
+    return render(request, 'taxi/operator_chat.html', {
+        'driver_data':     driver_data,
+        'selected_driver': selected_driver,
+        'messages':        messages,
+        'selected_id':     selected_id,
+    })
+
+
+def operator_chat_unread(request):
+    """AJAX: jami o'qilmagan xabarlar soni."""
+    count = ChatMessage.objects.filter(sender=ChatMessage.SENDER_DRIVER, is_read=False).count()
+    return JsonResponse({'unread': count})
+
+
+def _send_fcm_to_driver(driver, title, body):
+    import urllib.request, json
+    from django.conf import settings
+    fcm_key = getattr(settings, 'FCM_SERVER_KEY', '')
+    if not fcm_key or not driver.fcm_token:
+        return
+    try:
+        data = json.dumps({
+            'to': driver.fcm_token,
+            'notification': {'title': title, 'body': body, 'sound': 'default'},
+            'data': {'type': 'chat'},
+        }).encode()
+        req = urllib.request.Request(
+            'https://fcm.googleapis.com/fcm/send',
+            data=data,
+            headers={'Authorization': f'key={fcm_key}', 'Content-Type': 'application/json'},
+        )
+        urllib.request.urlopen(req, timeout=5)
+    except Exception:
+        pass

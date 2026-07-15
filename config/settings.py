@@ -130,7 +130,10 @@ STATIC_URL = 'static/'
 
 # Telegram Bot
 TELEGRAM_BOT_TOKEN = ''   # @BotFather dan olingan token
-TELEGRAM_GROUP_ID  = ''   # Operatorlar guruhi chat_id (masalan: -1001234567890)
+TELEGRAM_GROUP_ID  = ''   # Operatorlar guruhi chat_id
+
+# FCM (Firebase Cloud Messaging) — haydovchi ilovasiga push notification
+FCM_SERVER_KEY = ''       # Firebase Console > Project Settings > Cloud Messaging > Server key
 
 # DRF
 REST_FRAMEWORK = {

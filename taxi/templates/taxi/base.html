@@ -94,6 +94,12 @@
             <i class="fas fa-map-location-dot w-5 text-center"></i>
             <span class="flex-1">Live Xarita</span>
         </a>
+        <a href="{% url 'taxi:operator_chat' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'operator_chat' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-comments w-5 text-center"></i>
+            <span class="flex-1">Chat</span>
+            <span id="chat-unread-badge" class="hidden bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center"></span>
+        </a>
         <a href="{% url 'taxi:client_list' %}"
            class="nav-link {% if request.resolver_match.url_name == 'client_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-users w-5 text-center"></i> Mijozlar
@@ -436,6 +442,23 @@
 
     // ── active_drivers in order modal ──
     // populated from server via template — nothing extra needed
+    // ── Chat unread badge ──
+    function updateChatBadge() {
+        fetch('/panel/chat/unread/')
+            .then(r => r.json())
+            .then(d => {
+                const badge = document.getElementById('chat-unread-badge');
+                if (!badge) return;
+                if (d.unread > 0) {
+                    badge.textContent = d.unread;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }).catch(() => {});
+    }
+    updateChatBadge();
+    setInterval(updateChatBadge, 15000);
 </script>
 {% block extra_js %}{% endblock %}
 </body>

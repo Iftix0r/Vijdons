@@ -18,6 +18,8 @@ urlpatterns = [
     path('drivers/<int:pk>/toggle/', views.driver_toggle_active, name='driver_toggle_active'),
     path('drivers/<int:pk>/approve/', views.driver_approve, name='driver_approve'),
     path('drivers/<int:pk>/recharge/', views.driver_recharge, name='driver_recharge'),
+    path('chat/', views.operator_chat, name='operator_chat'),
+    path('chat/unread/', views.operator_chat_unread, name='operator_chat_unread'),
     path('tariff/', views.tariff_settings, name='tariff_settings'),
     path('drivers/map/', views.driver_map, name='driver_map'),
     path('drivers/api/locations/', views.active_drivers_locations, name='active_drivers_locations'),
@@ -41,4 +43,7 @@ urlpatterns = [
     path('api/orders/<int:pk>/arrived/',  api_views.order_arrived,  name='api_order_arrived'),
     path('api/orders/<int:pk>/complete/', api_views.order_complete, name='api_order_complete'),
     path('api/orders/<int:pk>/cancel/',   api_views.order_cancel,   name='api_order_cancel'),
+    path('api/chat/messages/', api_views.chat_messages,    name='api_chat_messages'),
+    path('api/chat/send/',     api_views.chat_send,         name='api_chat_send'),
+    path('api/chat/unread/',   api_views.chat_unread_count, name='api_chat_unread'),
 ]

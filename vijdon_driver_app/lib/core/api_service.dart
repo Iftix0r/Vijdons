@@ -184,6 +184,25 @@ class ApiService {
     final r = await _post(endpoint);
     return _decode(r) as Map<String, dynamic>;
   }
+
+  // ── Chat ──────────────────────────────────────────────────────────────────────
+
+  static Future<List<dynamic>> getChatMessages() async {
+    final r = await _get(AppConstants.chatMessages);
+    final raw = _decode(r) as Map<String, dynamic>;
+    return raw['messages'] as List? ?? [];
+  }
+
+  static Future<Map<String, dynamic>> sendChatMessage(String text) async {
+    final r = await _post(AppConstants.chatSend, body: {'text': text});
+    return _decode(r) as Map<String, dynamic>;
+  }
+
+  static Future<int> getChatUnreadCount() async {
+    final r = await _get(AppConstants.chatUnread);
+    final raw = _decode(r) as Map<String, dynamic>;
+    return raw['unread'] as int? ?? 0;
+  }
 }
 
 class ApiException implements Exception {

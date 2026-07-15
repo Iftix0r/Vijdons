@@ -27,7 +27,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 
-from .models import Driver, Order, TariffSettings
+from .models import Driver, Order, TariffSettings, ChatMessage
 from .serializers import (
     DriverRegisterSerializer,
     DriverLoginSerializer,
@@ -308,3 +308,49 @@ def _notify_telegram(order, new_status, driver):
     msg = msgs.get(new_status)
     if msg:
         send_telegram(msg)
+
+
+# ── Chat ──────────────────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@driver_required
+def chat_messages(request, driver):
+    """Haydovchining barcha xabarlari + o'qilmagan operatordan xabarlarni o'qildi deb belgilash."""
+    ChatMessage.objects.filter(driver=driver, sender=ChatMessage.SENDER_OPERATOR, is_read=False).update(is_read=True)
+    msgs = ChatMessage.objects.filter(driver=driver).order_by('created_at')[:100]
+    data = [{
+        'id':         m.id,
+        'sender':     m.sender,
+        'text':       m.text,
+        'is_read':    m.is_read,
+        'created_at': m.created_at.isoformat(),
+    } for m in msgs]
+    return Response({'messages': data})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@driver_required
+def chat_send(request, driver):
+    """Haydovchidan operator ga xabar."""
+    text = request.data.get('text', '').strip()
+    if not text:
+        return Response({'detail': 'text maydoni talab qilinadi.'}, status=400)
+    msg = ChatMessage.objects.create(
+        driver=driver,
+        sender=ChatMessage.SENDER_DRIVER,
+        text=text,
+    )
+    # Telegram ga ham yuborish
+    send_telegram(f"💬 <b>{driver.full_name}</b> ({driver.car_number}):\n{text}")
+    return Response({'id': msg.id, 'sender': msg.sender, 'text': msg.text, 'created_at': msg.created_at.isoformat()})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@driver_required
+def chat_unread_count(request, driver):
+    """O'qilmagan operatordan xabarlar soni."""
+    count = ChatMessage.objects.filter(driver=driver, sender=ChatMessage.SENDER_OPERATOR, is_read=False).count()
+    return Response({'unread': count})
