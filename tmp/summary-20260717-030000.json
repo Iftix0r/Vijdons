@@ -1,0 +1,4 @@
+{
+  "summary": "Instagram Lite uslubidagi 6 ta xususiyat Flutter ilovaga qo'shildi: 1) Orqaga tugma — PopScope + canGoBack()/goBack(), ilova faqat history tugaganda yopiladi. 2) File upload — AndroidWebViewController.setOnShowFileSelector + image_picker, kamera/galereya/ko'p rasm tanlash uchun chiroyli bottom sheet. FileProvider AndroidManifest va file_paths.xml qo'shildi. 3) Offline sahifa — onWebResourceError + _OfflinePage widget, sariq 'Qayta urinish' tugmasi. 4) Splash screen — ScaleTransition + FadeTransition animatsiyasi, oq chaqnash yo'q (setBackgroundColor(transparent)). 5) Custom UserAgent — 'VijdonDriver/1.1 (Android; WebView) vijdontaxi.uz'. 6) pubspec.yaml 1.1.0+2 ga bump, image_picker + webview_flutter_android qo'shildi. Build: flutter pub get && flutter build apk --release.",
+  "current_status": "Flutter app to'liq yangilandi. flutter pub get && flutter build apk --release kerak."
+}

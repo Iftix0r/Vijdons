@@ -60,7 +60,8 @@
             </thead>
             <tbody class="divide-y divide-gray-50 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
                 {% for order in orders %}
-                <tr class="hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-colors group">
+                <tr onclick="window.location='{% url 'taxi:order_detail' order.pk %}'"
+                    class="hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-colors group cursor-pointer">
                     <td class="px-5 py-3.5">
                         <span class="font-bold text-gray-900 dark:text-white">#{{ order.id }}</span>
                     </td>
@@ -103,7 +104,7 @@
                         <form action="{% url 'taxi:order_update_status' order.pk %}" method="POST" class="inline">
                             {% csrf_token %}
                             <input type="hidden" name="status" value="{{ order.status }}">
-                            <select name="driver_id" onchange="this.form.submit()"
+                            <select name="driver_id" onchange="this.form.submit()" onclick="event.stopPropagation()"
                                     class="bg-transparent border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 text-xs text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-yellow-400 cursor-pointer hover:border-yellow-300 transition-all">
                                 <option value="">— Biriktirish —</option>
                                 {% for driver in drivers %}
@@ -119,7 +120,7 @@
                         <form action="{% url 'taxi:order_update_status' order.pk %}" method="POST" class="inline">
                             {% csrf_token %}
                             {% if order.driver_id %}<input type="hidden" name="driver_id" value="{{ order.driver_id }}">{% endif %}
-                            <select name="status" onchange="this.form.submit()"
+                            <select name="status" onchange="this.form.submit()" onclick="event.stopPropagation()"
                                     class="border rounded-lg px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-yellow-400 cursor-pointer transition-all
                                     {% if order.status == 'pending' %}bg-amber-50 text-amber-700 border-amber-200
                                     {% elif order.status == 'accepted' %}bg-blue-50 text-blue-700 border-blue-200
@@ -144,7 +145,7 @@
                         <form id="del-order-{{ order.pk }}" action="{% url 'taxi:order_delete' order.pk %}" method="POST" class="inline">
                             {% csrf_token %}
                         </form>
-                        <button type="button" onclick="confirmDelete('del-order-{{ order.pk }}')"
+                        <button type="button" onclick="event.stopPropagation(); confirmDelete('del-order-{{ order.pk }}')"
                                 class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/40 dark:hover:text-red-400 transition-colors">
                             <i class="fas fa-trash-can text-xs"></i>
                         </button>

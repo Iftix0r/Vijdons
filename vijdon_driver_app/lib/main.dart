@@ -1,12 +1,18 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'core/notification_service.dart';
 
-const String kBaseUrl = 'https://vijdontaxi.uz/driver/';
+const String kBaseUrl      = 'https://vijdontaxi.uz/driver/';
+const String kUserAgent    =
+    'VijdonDriver/1.1 (Android; WebView) vijdontaxi.uz';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,11 +28,23 @@ class VijdonDriverApp extends StatelessWidget {
     return MaterialApp(
       title: 'Vijdon Driver',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(colorSchemeSeed: const Color(0xFFFFD600)),
+      // Ilova mavzusi — dark mode tizimga ergashadi
+      themeMode: ThemeMode.system,
+      theme: ThemeData(
+        colorSchemeSeed: const Color(0xFFFFD600),
+        brightness: Brightness.light,
+      ),
+      darkTheme: ThemeData(
+        colorSchemeSeed: const Color(0xFFFFD600),
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF000000),
+      ),
       home: const DriverWebView(),
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class DriverWebView extends StatefulWidget {
   const DriverWebView({super.key});
@@ -34,91 +52,98 @@ class DriverWebView extends StatefulWidget {
   State<DriverWebView> createState() => _DriverWebViewState();
 }
 
-class _DriverWebViewState extends State<DriverWebView> {
+class _DriverWebViewState extends State<DriverWebView>
+    with WidgetsBindingObserver {
   WebViewController? _ctrl;
-  bool _loading = true;
-  bool _firstLoad = true;
+  bool   _loading     = true;
+  bool   _firstLoad   = true;
+  bool   _offline     = false;
+  bool   _splashDone  = false;
   Timer? _locationTimer;
+  final  _picker      = ImagePicker();
 
+  // ── Lifecycle ───────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _requestPermissionsAndInit();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _locationTimer?.cancel();
     super.dispose();
   }
 
-  Future<void> _requestPermissionsAndInit() async {
-    // Ketma-ket so'raymiz — Android bir vaqtda hammani ko'rsatmaydi
+  // Internet holatini kuzatish
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _offline) {
+      _tryReload();
+    }
+  }
 
-    // 1. Joylashuv — eng muhim
+  // ── Ruxsatlar ───────────────────────────────────────────────────────────────
+  Future<void> _requestPermissionsAndInit() async {
     await Permission.locationWhenInUse.request();
     final locStatus = await Permission.location.request();
-
-    // locationAlways faqat locationWhenInUse granted bo'lsa so'rash mumkin
-    if (locStatus.isGranted) {
-      await Permission.locationAlways.request();
-    }
-
-    // 2. Bildirishnoma
+    if (locStatus.isGranted) await Permission.locationAlways.request();
     await Permission.notification.request();
-
-    // 3. Kamera
     await Permission.camera.request();
-
-    // 4. Galereya / media
-    // Android 13+ READ_MEDIA_IMAGES, pastroq READ_EXTERNAL_STORAGE
     await Permission.photos.request();
     await Permission.videos.request();
     await Permission.mediaLibrary.request();
-
-    // 5. Mikrofon (WebView audio/video uchun)
     await Permission.microphone.request();
 
     _initWebView();
     _startLocationUpdates();
   }
 
+  // ── WebView init ─────────────────────────────────────────────────────────────
   void _initWebView() {
     final ctrl = WebViewController(
-      onPermissionRequest: (request) => request.grant(),
+      onPermissionRequest: (req) => req.grant(),
     )
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..addJavaScriptChannel(
-        'FlutterNotify',
-        onMessageReceived: (msg) {
-          final count = int.tryParse(msg.message) ?? 1;
-          if (count == 0) {
-            NotificationService.clearBadge();
-          } else {
-            NotificationService.notifyNewOrder(count);
-          }
-        },
-      )
+      ..setUserAgent(kUserAgent)
+      ..setBackgroundColor(Colors.transparent)
+      ..addJavaScriptChannel('FlutterNotify',
+          onMessageReceived: (msg) {
+            final count = int.tryParse(msg.message) ?? 1;
+            if (count == 0) {
+              NotificationService.clearBadge();
+            } else {
+              NotificationService.notifyNewOrder(count);
+            }
+          })
       ..setNavigationDelegate(NavigationDelegate(
         onPageStarted: (_) {
-          if (_firstLoad) setState(() => _loading = true);
+          if (mounted) setState(() { if (_firstLoad) _loading = true; });
         },
         onPageFinished: (_) async {
-          if (_firstLoad) {
-            setState(() { _loading = false; _firstLoad = false; });
-          }
+          if (!mounted) return;
+          setState(() { _loading = false; _offline = false; _firstLoad = false; });
+          await Future.delayed(const Duration(milliseconds: 300));
+          if (mounted) setState(() => _splashDone = true);
           await _injectLocation();
           await _injectNotificationBridge();
         },
-        onNavigationRequest: (request) {
-          final url = request.url;
-          // tel:, sms:, tg:, https://t.me/ — tashqi ilova orqali ochish
-          if (url.startsWith('tel:') ||
-              url.startsWith('sms:') ||
-              url.startsWith('tg:') ||
+        onWebResourceError: (err) {
+          // Faqat asosiy sahifa yuklanmasa offline ko'rsatamiz
+          if (err.isForMainFrame == true) {
+            if (mounted) setState(() { _offline = true; _loading = false; });
+          }
+        },
+        onNavigationRequest: (req) {
+          final url = req.url;
+          if (url.startsWith('tel:')  ||
+              url.startsWith('sms:')  ||
+              url.startsWith('tg:')   ||
               url.startsWith('https://t.me/') ||
-              url.startsWith('http://t.me/') ||
-              url.startsWith('whatsapp:') ||
+              url.startsWith('http://t.me/')  ||
+              url.startsWith('whatsapp:')     ||
               url.startsWith('mailto:')) {
             launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
             return NavigationDecision.prevent;
@@ -127,9 +152,55 @@ class _DriverWebViewState extends State<DriverWebView> {
         },
       ))
       ..loadRequest(Uri.parse(kBaseUrl));
+
+    // ── File upload (Android only) ───────────────────────────────────────────
+    if (Platform.isAndroid) {
+      final androidCtrl = ctrl.platform as AndroidWebViewController;
+      androidCtrl.setOnShowFileSelector(_handleFileChooser);
+    }
+
     setState(() => _ctrl = ctrl);
   }
 
+  // ── File chooser: kamera yoki galereya ──────────────────────────────────────
+  Future<List<String>> _handleFileChooser(
+      FileSelectorParams params) async {
+    final acceptsImage = params.acceptTypes.any(
+        (t) => t.contains('image') || t.contains('*/*') || t == '');
+    final acceptsVideo = params.acceptTypes.any(
+        (t) => t.contains('video'));
+
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _FileChooserSheet(
+          acceptsImage: acceptsImage, acceptsVideo: acceptsVideo),
+    );
+    if (action == null) return [];
+
+    try {
+      if (action == 'camera_photo') {
+        final f = await _picker.pickImage(
+            source: ImageSource.camera, imageQuality: 85);
+        return f != null ? [f.path] : [];
+      } else if (action == 'camera_video') {
+        final f = await _picker.pickVideo(source: ImageSource.camera);
+        return f != null ? [f.path] : [];
+      } else if (action == 'gallery_image') {
+        final f = await _picker.pickImage(source: ImageSource.gallery);
+        return f != null ? [f.path] : [];
+      } else if (action == 'gallery_video') {
+        final f = await _picker.pickVideo(source: ImageSource.gallery);
+        return f != null ? [f.path] : [];
+      } else if (action == 'gallery_multi') {
+        final files = await _picker.pickMultiImage();
+        return files.map((f) => f.path).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  // ── GPS ──────────────────────────────────────────────────────────────────────
   void _startLocationUpdates() {
     _locationTimer = Timer.periodic(const Duration(seconds: 15), (_) async {
       try {
@@ -156,7 +227,6 @@ class _DriverWebViewState extends State<DriverWebView> {
     } catch (_) {}
   }
 
-
   void _sendLocation(double lat, double lng) {
     _ctrl?.runJavaScript(
       "window.dispatchEvent(new CustomEvent('vijdon_location',"
@@ -164,51 +234,323 @@ class _DriverWebViewState extends State<DriverWebView> {
     );
   }
 
+  // ── JS bridge ────────────────────────────────────────────────────────────────
   Future<void> _injectNotificationBridge() async {
     await _ctrl?.runJavaScript("""
-      (function() {
-        if (window._vijdonNotifyInjected) return;
+      (function(){
+        if(window._vijdonNotifyInjected) return;
         window._vijdonNotifyInjected = true;
-        const _orig = window.__vijdonOrderCount || 0;
-        window.__vijdonOrderCount = _orig;
-        window.vijdonNotifyNewOrder = function(count) {
-          FlutterNotify.postMessage(String(count || 1));
+        window.vijdonNotifyNewOrder = function(count){
+          FlutterNotify.postMessage(String(count||1));
         };
       })();
     """);
   }
 
+  // ── Orqaga tugma ─────────────────────────────────────────────────────────────
+  Future<bool> _onBackPressed() async {
+    if (_ctrl == null) return true;
+    final canGoBack = await _ctrl!.canGoBack();
+    if (canGoBack) {
+      await _ctrl!.goBack();
+      return false; // ilovani yopma
+    }
+    return true; // ilova yopilsin
+  }
+
+  // ── Offline reload ────────────────────────────────────────────────────────────
+  void _tryReload() {
+    setState(() { _offline = false; _loading = true; _firstLoad = true; _splashDone = false; });
+    _ctrl?.loadRequest(Uri.parse(kBaseUrl));
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1C1C1E),
-      body: SafeArea(
-        child: Stack(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7);
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final shouldPop = await _onBackPressed();
+        if (shouldPop && context.mounted) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: bgColor,
+        body: Stack(
           children: [
-            if (_ctrl != null) WebViewWidget(controller: _ctrl!),
-            if (_loading || _ctrl == null)
-              const Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('V',
-                      style: TextStyle(
-                        fontSize: 64,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFFFFD600),
-                      ),
-                    ),
-                    SizedBox(height: 24),
-                    CircularProgressIndicator(
-                      color: Color(0xFFFFD600),
-                      strokeWidth: 2,
-                    ),
-                  ],
-                ),
+            // ── WebView ──────────────────────────────────────────────────────
+            if (_ctrl != null && !_offline)
+              WebViewWidget(controller: _ctrl!),
+
+            // ── Offline sahifa ───────────────────────────────────────────────
+            if (_offline)
+              _OfflinePage(onRetry: _tryReload, isDark: isDark),
+
+            // ── Splash / Loading ─────────────────────────────────────────────
+            if (!_splashDone)
+              AnimatedOpacity(
+                opacity: _loading ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 400),
+                child: _SplashScreen(bgColor: bgColor, isDark: isDark),
               ),
           ],
         ),
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Splash screen widget
+// ─────────────────────────────────────────────────────────────────────────────
+class _SplashScreen extends StatefulWidget {
+  final Color bgColor;
+  final bool  isDark;
+  const _SplashScreen({required this.bgColor, required this.isDark});
+  @override
+  State<_SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<_SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ac;
+  late final Animation<double>   _scale;
+  late final Animation<double>   _fade;
+
+  @override
+  void initState() {
+    super.initState();
+    _ac = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 700));
+    _scale = CurvedAnimation(parent: _ac, curve: Curves.elasticOut);
+    _fade  = CurvedAnimation(parent: _ac, curve: Curves.easeIn);
+    _ac.forward();
+  }
+
+  @override
+  void dispose() { _ac.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: widget.bgColor,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ScaleTransition(
+              scale: _scale,
+              child: FadeTransition(
+                opacity: _fade,
+                child: Container(
+                  width: 96, height: 96,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFD600),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFFD600).withValues(alpha: .4),
+                        blurRadius: 32, spreadRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Text('V',
+                      style: TextStyle(
+                        fontSize: 56,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.black,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: 28, height: 28,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: const Color(0xFFFFD600).withValues(alpha: .7),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Offline page widget
+// ─────────────────────────────────────────────────────────────────────────────
+class _OfflinePage extends StatelessWidget {
+  final VoidCallback onRetry;
+  final bool isDark;
+  const _OfflinePage({required this.onRetry, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final bg   = isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7);
+    final card = isDark ? const Color(0xFF1C1C1E) : Colors.white;
+    final lbl  = isDark ? Colors.white : Colors.black;
+    final lbl3 = isDark
+        ? Colors.white.withValues(alpha: .4)
+        : Colors.black.withValues(alpha: .4);
+
+    return Container(
+      color: bg,
+      child: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Ikonka
+                Container(
+                  width: 88, height: 88,
+                  decoration: BoxDecoration(
+                    color: card,
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                  child: Icon(Icons.wifi_off_rounded,
+                      size: 44,
+                      color: lbl3),
+                ),
+                const SizedBox(height: 24),
+                Text('Internet aloqasi yo\'q',
+                    style: TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.w700,
+                        color: lbl)),
+                const SizedBox(height: 8),
+                Text('Tarmoq ulanishini tekshiring\nva qayta urinib ko\'ring',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 15, color: lbl3, height: 1.5)),
+                const SizedBox(height: 32),
+                GestureDetector(
+                  onTap: onRetry,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFD600),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFFD600).withValues(alpha: .35),
+                          blurRadius: 16,
+                        ),
+                      ],
+                    ),
+                    child: const Text('Qayta urinish',
+                        style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// File chooser bottom sheet
+// ─────────────────────────────────────────────────────────────────────────────
+class _FileChooserSheet extends StatelessWidget {
+  final bool acceptsImage;
+  final bool acceptsVideo;
+  const _FileChooserSheet(
+      {required this.acceptsImage, required this.acceptsVideo});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF1C1C1E) : Colors.white;
+    final lbl = isDark ? Colors.white : Colors.black;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          Container(
+            width: 36, height: 5,
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: lbl.withValues(alpha: .2),
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            child: Text('Fayl tanlash',
+                style: TextStyle(
+                    fontSize: 17, fontWeight: FontWeight.w600, color: lbl)),
+          ),
+          const SizedBox(height: 8),
+          if (acceptsImage) ...[
+            _tile(context, Icons.camera_alt_rounded,
+                'Kamera (rasm)', 'camera_photo', Colors.orange),
+            _tile(context, Icons.photo_library_rounded,
+                'Galereya (rasm)', 'gallery_image', Colors.blue),
+            _tile(context, Icons.photo_library_outlined,
+                'Bir nechta rasm', 'gallery_multi', Colors.purple),
+          ],
+          if (acceptsVideo) ...[
+            _tile(context, Icons.videocam_rounded,
+                'Kamera (video)', 'camera_video', Colors.red),
+            _tile(context, Icons.video_library_rounded,
+                'Galereya (video)', 'gallery_video', Colors.teal),
+          ],
+          if (!acceptsImage && !acceptsVideo) ...[
+            _tile(context, Icons.camera_alt_rounded,
+                'Kamera', 'camera_photo', Colors.orange),
+            _tile(context, Icons.photo_library_rounded,
+                'Galereya', 'gallery_image', Colors.blue),
+          ],
+          const SizedBox(height: 8),
+          _tile(context, Icons.close_rounded, 'Bekor qilish', null,
+              Colors.grey),
+        ],
+      ),
+    );
+  }
+
+  Widget _tile(BuildContext ctx, IconData icon, String label,
+      String? value, Color color) {
+    final isDark = Theme.of(ctx).brightness == Brightness.dark;
+    return ListTile(
+      leading: Container(
+        width: 40, height: 40,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .12),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: color, size: 22),
+      ),
+      title: Text(label,
+          style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: isDark ? Colors.white : Colors.black)),
+      onTap: () => Navigator.of(ctx).pop(value),
     );
   }
 }

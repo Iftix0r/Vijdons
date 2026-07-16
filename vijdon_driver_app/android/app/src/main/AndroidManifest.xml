@@ -50,6 +50,17 @@
         <meta-data
             android:name="com.yandex.android.maps.MAPKIT_API_KEY"
             android:value="469e8d29-be0b-42da-9bd4-ed515dbdb741" />
+
+        <!-- image_picker FileProvider -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"/>
+        </provider>
     </application>
 
     <queries>

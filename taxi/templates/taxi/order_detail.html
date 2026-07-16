@@ -1,0 +1,302 @@
+{% extends 'taxi/base.html' %}
+{% block title %}Buyurtma #{{ order.id }} — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<div class="flex items-center gap-2 text-sm text-gray-400 mb-5">
+    <a href="{% url 'taxi:order_list' %}" class="hover:text-green-500 transition-colors">
+        <i class="fas fa-route mr-1"></i>Buyurtmalar
+    </a>
+    <i class="fas fa-chevron-right text-xs"></i>
+    <span class="text-gray-700 dark:text-gray-200 font-semibold">#{{ order.id }}</span>
+</div>
+
+<!-- Header -->
+<div class="flex flex-wrap items-center justify-between gap-4 mb-5">
+    <div class="flex items-center gap-3">
+        <a href="{% url 'taxi:order_list' %}"
+           class="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+            <i class="fas fa-arrow-left text-sm"></i>
+        </a>
+        <div>
+            <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white">Buyurtma #{{ order.id }}</h1>
+            <p class="text-xs text-gray-400 mt-0.5">{{ order.created_at|date:"d-MMMM Y, H:i" }}</p>
+        </div>
+    </div>
+    <!-- Status badge -->
+    <span class="px-4 py-1.5 rounded-full text-sm font-bold
+        {% if order.status == 'pending' %}bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400
+        {% elif order.status == 'accepted' %}bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400
+        {% elif order.status == 'on_way' %}bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400
+        {% elif order.status == 'arrived' %}bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400
+        {% elif order.status == 'completed' %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400
+        {% else %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400{% endif %}">
+        {% if order.status == 'pending' %}⏳ Kutilmoqda
+        {% elif order.status == 'accepted' %}✅ Qabul qilindi
+        {% elif order.status == 'on_way' %}🚗 Yo'lda
+        {% elif order.status == 'arrived' %}📍 Yetib keldi
+        {% elif order.status == 'completed' %}🏁 Yakunlandi
+        {% else %}❌ Bekor qilindi{% endif %}
+    </span>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+    <!-- LEFT: asosiy ma'lumotlar -->
+    <div class="lg:col-span-2 space-y-5">
+
+        <!-- Marshrut -->
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">
+                <i class="fas fa-route mr-1.5"></i>Marshrut
+            </h2>
+            <div class="flex flex-col gap-3">
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <i class="fas fa-circle text-green-500 text-xs"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Qayerdan</p>
+                        <p class="font-semibold text-gray-800 dark:text-white text-sm mt-0.5">{{ order.from_address }}</p>
+                        {% if order.from_lat and order.from_lng %}
+                        <p class="text-[11px] text-gray-400 font-mono mt-0.5">{{ order.from_lat|floatformat:5 }}, {{ order.from_lng|floatformat:5 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="ml-4 border-l-2 border-dashed border-gray-200 dark:border-gray-700 h-4"></div>
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <i class="fas fa-map-marker-alt text-red-500 text-xs"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Qayerga</p>
+                        <p class="font-semibold text-gray-800 dark:text-white text-sm mt-0.5">
+                            {{ order.to_address|default:"Haydovchi hal qiladi" }}
+                        </p>
+                        {% if order.to_lat and order.to_lng %}
+                        <p class="text-[11px] text-gray-400 font-mono mt-0.5">{{ order.to_lat|floatformat:5 }}, {{ order.to_lng|floatformat:5 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Xarita -->
+            {% if order.from_lat and order.from_lng %}
+            <div id="detail_map" class="mt-4 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800" style="height:220px;"></div>
+            {% endif %}
+        </div>
+
+        <!-- Narx va to'lov -->
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">
+                <i class="fas fa-money-bill-wave mr-1.5"></i>Narx va to'lov
+            </h2>
+            <div class="grid grid-cols-3 gap-4">
+                <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 text-center">
+                    <p class="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Narx</p>
+                    <p class="text-lg font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">
+                        {{ order.price|default:"—" }}{% if order.price %} UZS{% endif %}
+                    </p>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 text-center">
+                    <p class="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Komissiya</p>
+                    <p class="text-lg font-extrabold text-red-500 mt-1">
+                        {{ order.commission|default:"—" }}{% if order.commission %} UZS{% endif %}
+                    </p>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 text-center">
+                    <p class="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Masofa</p>
+                    <p class="text-lg font-extrabold text-blue-500 mt-1">
+                        {% if order.distance_km %}{{ order.distance_km|floatformat:1 }} km{% else %}—{% endif %}
+                    </p>
+                </div>
+            </div>
+            <div class="mt-3 flex items-center gap-2">
+                <span class="text-xs font-semibold text-gray-500">To'lov turi:</span>
+                {% if order.payment_type == 'card' %}
+                <span class="px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold rounded-lg">💳 Karta</span>
+                {% else %}
+                <span class="px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-bold rounded-lg">💵 Naqd</span>
+                {% endif %}
+            </div>
+            {% if order.note %}
+            <div class="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800/40">
+                <p class="text-xs font-bold text-amber-700 dark:text-amber-400"><i class="fas fa-note-sticky mr-1"></i>Izoh</p>
+                <p class="text-sm text-amber-800 dark:text-amber-300 mt-1">{{ order.note }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Rad etgan haydovchilar -->
+        {% if order.rejected_by.exists %}
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+                <i class="fas fa-ban text-red-400 mr-1.5"></i>Rad etgan haydovchilar
+            </h2>
+            <div class="flex flex-wrap gap-2">
+                {% for d in order.rejected_by.all %}
+                <span class="px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-semibold rounded-lg border border-red-100 dark:border-red-800/30">
+                    {{ d.full_name }}
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Mijozning boshqa buyurtmalari -->
+        {% if client_orders %}
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+                <i class="fas fa-history mr-1.5"></i>Mijozning so'nggi buyurtmalari
+            </h2>
+            <div class="space-y-2">
+                {% for o in client_orders %}
+                <a href="{% url 'taxi:order_detail' o.pk %}"
+                   class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors {% if o.pk == order.pk %}bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800/30{% endif %}">
+                    <span class="text-xs font-bold text-gray-400 w-8">#{{ o.id }}</span>
+                    <span class="flex-1 text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">{{ o.from_address }}</span>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full font-bold
+                        {% if o.status == 'completed' %}bg-emerald-100 text-emerald-700
+                        {% elif o.status == 'cancelled' %}bg-red-100 text-red-600
+                        {% else %}bg-gray-100 text-gray-500{% endif %}">
+                        {{ o.get_status_display }}
+                    </span>
+                    <span class="text-[10px] text-gray-400">{{ o.created_at|date:"d/m" }}</span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- RIGHT: mijoz, haydovchi, amallar -->
+    <div class="space-y-5">
+
+        <!-- Mijoz -->
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">
+                <i class="fas fa-user mr-1.5"></i>Mijoz
+            </h2>
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 font-bold text-sm">
+                    {{ order.client.full_name|default:"?"|first|upper }}
+                </div>
+                <div>
+                    <p class="font-bold text-gray-800 dark:text-white text-sm">{{ order.client.full_name|default:"Nomsiz" }}</p>
+                    <a href="tel:{{ order.client.phone_number }}"
+                       class="text-xs text-blue-500 hover:text-blue-700 font-mono font-semibold flex items-center gap-1 mt-0.5">
+                        <i class="fas fa-phone text-[9px]"></i>{{ order.client.phone_number }}
+                    </a>
+                </div>
+            </div>
+            <a href="{% url 'taxi:client_detail' order.client.pk %}"
+               class="block w-full text-center py-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
+                <i class="fas fa-external-link-alt mr-1"></i>Mijoz profili
+            </a>
+        </div>
+
+        <!-- Haydovchi -->
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">
+                <i class="fas fa-car mr-1.5"></i>Haydovchi
+            </h2>
+            {% if order.driver %}
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 font-bold text-sm">
+                    {{ order.driver.full_name|first|upper }}
+                </div>
+                <div>
+                    <p class="font-bold text-gray-800 dark:text-white text-sm">{{ order.driver.full_name }}</p>
+                    <p class="text-xs text-gray-400 font-mono">{{ order.driver.car_model }} · {{ order.driver.car_number }}</p>
+                </div>
+            </div>
+            <a href="{% url 'taxi:driver_detail' order.driver.pk %}"
+               class="block w-full text-center py-2 rounded-xl bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 text-xs font-bold hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors">
+                <i class="fas fa-external-link-alt mr-1"></i>Haydovchi profili
+            </a>
+            {% else %}
+            <p class="text-sm text-gray-400 italic text-center py-2">Haydovchi biriktirilmagan</p>
+            {% endif %}
+
+            <!-- Haydovchi o'zgartirish -->
+            <form action="{% url 'taxi:order_update_status' order.pk %}" method="POST" class="mt-3">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="{{ order.status }}">
+                <select name="driver_id" onchange="this.form.submit()"
+                        class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-yellow-400 cursor-pointer">
+                    <option value="">— Haydovchi biriktirish —</option>
+                    {% for driver in drivers %}
+                    <option value="{{ driver.pk }}" {% if order.driver_id == driver.pk %}selected{% endif %}>
+                        {{ driver.full_name }} ({{ driver.car_number }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+
+        <!-- Holat o'zgartirish -->
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">
+                <i class="fas fa-sliders mr-1.5"></i>Holat o'zgartirish
+            </h2>
+            <form action="{% url 'taxi:order_update_status' order.pk %}" method="POST">
+                {% csrf_token %}
+                {% if order.driver_id %}<input type="hidden" name="driver_id" value="{{ order.driver_id }}">{% endif %}
+                <select name="status" onchange="this.form.submit()"
+                        class="w-full px-3 py-2.5 border rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-yellow-400 cursor-pointer transition-all
+                        {% if order.status == 'pending' %}bg-amber-50 text-amber-700 border-amber-200
+                        {% elif order.status == 'accepted' %}bg-blue-50 text-blue-700 border-blue-200
+                        {% elif order.status == 'on_way' %}bg-purple-50 text-purple-700 border-purple-200
+                        {% elif order.status == 'arrived' %}bg-indigo-50 text-indigo-700 border-indigo-200
+                        {% elif order.status == 'completed' %}bg-emerald-50 text-emerald-700 border-emerald-200
+                        {% else %}bg-red-50 text-red-700 border-red-200{% endif %}">
+                    <option value="pending"   {% if order.status == 'pending' %}selected{% endif %}>⏳ Kutilmoqda</option>
+                    <option value="accepted"  {% if order.status == 'accepted' %}selected{% endif %}>✅ Qabul qilindi</option>
+                    <option value="on_way"    {% if order.status == 'on_way' %}selected{% endif %}>🚗 Yo'lda</option>
+                    <option value="arrived"   {% if order.status == 'arrived' %}selected{% endif %}>📍 Yetib keldi</option>
+                    <option value="completed" {% if order.status == 'completed' %}selected{% endif %}>🏁 Yakunlandi</option>
+                    <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>❌ Bekor qilindi</option>
+                </select>
+            </form>
+        </div>
+
+        <!-- O'chirish -->
+        <form id="del-order-{{ order.pk }}" action="{% url 'taxi:order_delete' order.pk %}" method="POST">
+            {% csrf_token %}
+        </form>
+        <button type="button" onclick="confirmDelete('del-order-{{ order.pk }}')"
+                class="w-full py-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-500 text-sm font-bold hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors border border-red-100 dark:border-red-800/30">
+            <i class="fas fa-trash-can mr-2"></i>Buyurtmani o'chirish
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if order.from_lat and order.from_lng %}
+<script>
+ymaps.ready(function() {
+    var map = new ymaps.Map('detail_map', {
+        center: [{{ order.from_lat }}, {{ order.from_lng }}],
+        zoom: 13,
+        controls: ['zoomControl']
+    });
+
+    map.geoObjects.add(new ymaps.Placemark(
+        [{{ order.from_lat }}, {{ order.from_lng }}],
+        { balloonContent: '{{ order.from_address|escapejs }}' },
+        { preset: 'islands#greenDotIcon' }
+    ));
+
+    {% if order.to_lat and order.to_lng %}
+    map.geoObjects.add(new ymaps.Placemark(
+        [{{ order.to_lat }}, {{ order.to_lng }}],
+        { balloonContent: '{{ order.to_address|escapejs }}' },
+        { preset: 'islands#redDotIcon' }
+    ));
+    map.setBounds(map.geoObjects.getBounds(), { checkZoomRange: true, zoomMargin: 40 });
+    {% endif %}
+});
+</script>
+{% endif %}
+{% endblock %}
