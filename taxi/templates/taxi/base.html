@@ -170,9 +170,18 @@
             </button>
 
             <!-- mobile menu toggle -->
-            <button id="mobile-menu-btn" class="md:hidden w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 mr-1">
-                <i class="fas fa-bars text-sm"></i>
+            <button id="mobile-menu-btn" class="md:hidden w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mr-1 transition-all active:scale-90" aria-label="Menu">
+                <div id="hbg" class="flex flex-col justify-center items-center gap-[5px] w-5 h-5">
+                    <span class="hbg-line block h-[2px] w-5 bg-gray-600 dark:bg-gray-300 rounded-full transition-all duration-300 origin-center"></span>
+                    <span class="hbg-line block h-[2px] w-3.5 bg-gray-600 dark:bg-gray-300 rounded-full transition-all duration-300 ml-auto"></span>
+                    <span class="hbg-line block h-[2px] w-5 bg-gray-600 dark:bg-gray-300 rounded-full transition-all duration-300 origin-center"></span>
+                </div>
             </button>
+            <style>
+              #mobile-menu-btn.is-open .hbg-line:nth-child(1){transform:translateY(7px) rotate(45deg);width:20px}
+              #mobile-menu-btn.is-open .hbg-line:nth-child(2){opacity:0;transform:scaleX(0)}
+              #mobile-menu-btn.is-open .hbg-line:nth-child(3){transform:translateY(-7px) rotate(-45deg);width:20px}
+            </style>
 
             <!-- new order button -->
             <button onclick="openModal('orderModal')"
@@ -411,10 +420,12 @@
         menuBtn.addEventListener('click', () => {
             sidebar.classList.toggle('open');
             overlay.classList.toggle('open');
+            menuBtn.classList.toggle('is-open');
         });
         overlay.addEventListener('click', () => {
             sidebar.classList.remove('open');
             overlay.classList.remove('open');
+            menuBtn.classList.remove('is-open');
         });
     }
 
