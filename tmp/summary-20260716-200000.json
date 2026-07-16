@@ -1,0 +1,4 @@
+{
+  "summary": "Foydalanuvchi screenshot yubordi: /admin sahifasida CSS umuman yuklanmayapti (dizaynsiz, oddiy HTML ko'rinishida). STATIC_ROOT allaqachon qo'shilgan edi, lekin hosting (Beget/cPanel) nginx staticfiles papkasini serve qilmaydi. Yechim: whitenoise==6.8.2 qo'shildi requirements.txt ga, WhiteNoiseMiddleware MIDDLEWARE ga SecurityMiddleware dan keyin qo'shildi, STATICFILES_STORAGE = CompressedManifestStaticFilesStorage qo'shildi. Git commit + push bajarildi. Serverda: git pull, pip install whitenoise==6.8.2, python3 manage.py collectstatic --noinput, keyin app restart.",
+  "current_status": "whitenoise qo'shildi va push qilindi (commit: e5c57d6). Server tomonida pip install + collectstatic + restart kutilmoqda."
+}

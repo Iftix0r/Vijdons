@@ -1,0 +1,4 @@
+{
+  "summary": "Order Management to'liq implement qilindi. Backend: Client.rating + trips_count, Driver.destination_mode/lat/lng/address modellari, migration 0015, OrderSerializer ga driver_distance_km + driver_eta_minutes + client_rating + client_trips_count qo'shildi, available_orders destination mode 3km radius filter, order_complete da trips_count++ auto increment, yangi destination_mode_set/get endpointlar. Flutter: constants, order_model (yangi maydonlar + copyWithSecondsLeft), api_service (rejectOrder, getTariff, setDestinationMode), order_card pending banner (km, ETA, reyting, to'lov turi, reject tugmasi), home_screen (destination mode UI, tariff load, reject action). flutter analyze 0 error. Git commit 0b8500c push qilindi.",
+  "current_status": "Barcha 11 ta task yakunlandi (11/11). Serverda: git pull + python3 manage.py migrate bajarish kerak."
+}
