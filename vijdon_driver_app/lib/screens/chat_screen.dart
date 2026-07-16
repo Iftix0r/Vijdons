@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../core/api_service.dart';
 import '../core/theme.dart';
+import '../models/driver_model.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -22,13 +23,22 @@ class _ChatScreenState extends State<ChatScreen>
   bool  _loading = true;
   bool  _sending = false;
   Timer? _timer;
+  DriverModel? _driver;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadDriver();
     _timer = Timer.periodic(
         const Duration(seconds: 5), (_) => _load(silent: true));
+  }
+
+  Future<void> _loadDriver() async {
+    try {
+      final data = await ApiService.getProfile();
+      if (mounted) setState(() => _driver = DriverModel.fromJson(data));
+    } catch (_) {}
   }
 
   @override
@@ -96,29 +106,27 @@ class _ChatScreenState extends State<ChatScreen>
     super.build(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
 
-    return SafeArea(
-      child: Column(
-        children: [
-          _header(dark),
-          Expanded(
-            child: _loading
-                ? const Center(
-                    child:
-                        CircularProgressIndicator(color: AppColors.primary))
-                : _messages.isEmpty
-                    ? _emptyState(dark)
-                    : ListView.builder(
-                        controller: _scrollCtrl,
-                        padding:
-                            const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                        itemCount: _messages.length,
-                        itemBuilder: (_, i) =>
-                            _bubble(_messages[i], dark),
-                      ),
-          ),
-          _inputBar(dark),
-        ],
-      ),
+    return Column(
+      children: [
+        _header(dark),
+        Expanded(
+          child: _loading
+              ? const Center(
+                  child:
+                      CircularProgressIndicator(color: AppColors.primary))
+              : _messages.isEmpty
+                  ? _emptyState(dark)
+                  : ListView.builder(
+                      controller: _scrollCtrl,
+                      padding:
+                          const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      itemCount: _messages.length,
+                      itemBuilder: (_, i) =>
+                          _bubble(_messages[i], dark),
+                    ),
+        ),
+        _inputBar(dark),
+      ],
     );
   }
 
@@ -196,15 +204,57 @@ class _ChatScreenState extends State<ChatScreen>
           GestureDetector(
             onTap: _load,
             child: Container(
-              width: 40, height: 40,
+              width: 36, height: 36,
               decoration: BoxDecoration(
                 color: dark ? AppColors.surfaceDark : const Color(0xFFF2F2F2),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(11),
               ),
-              child: Icon(Icons.refresh_rounded, size: 18, color: Colors.grey.shade500),
+              child: Icon(Icons.refresh_rounded, size: 17, color: Colors.grey.shade500),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
+          // SMS tugmasi
+          GestureDetector(
+            onTap: () async {
+              HapticFeedback.mediumImpact();
+              final phone = _driver?.phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '') ?? '';
+              await launchUrl(
+                Uri(scheme: 'sms', path: phone),
+                mode: LaunchMode.externalApplication,
+              );
+            },
+            child: Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+              ),
+              child: const Icon(Icons.sms_rounded, size: 17, color: Colors.blue),
+            ),
+          ),
+          const SizedBox(width: 6),
+          // Telegram tugmasi
+          GestureDetector(
+            onTap: () async {
+              HapticFeedback.mediumImpact();
+              final phone = _driver?.phoneNumber.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
+              await launchUrl(
+                Uri.parse('https://t.me/+$phone'),
+                mode: LaunchMode.externalApplication,
+              );
+            },
+            child: Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFF2AABEE).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(color: const Color(0xFF2AABEE).withValues(alpha: 0.3)),
+              ),
+              child: const Icon(Icons.telegram_rounded, size: 17, color: Color(0xFF2AABEE)),
+            ),
+          ),
+          const SizedBox(width: 6),
           // Qo'ng'iroq tugmasi — 1351
           GestureDetector(
             onTap: () async {
@@ -215,13 +265,13 @@ class _ChatScreenState extends State<ChatScreen>
               );
             },
             child: Container(
-              width: 40, height: 40,
+              width: 36, height: 36,
               decoration: BoxDecoration(
                 color: AppColors.success.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(11),
                 border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
               ),
-              child: const Icon(Icons.call_rounded, size: 18, color: AppColors.success),
+              child: const Icon(Icons.call_rounded, size: 17, color: AppColors.success),
             ),
           ),
         ],
@@ -324,8 +374,7 @@ class _ChatScreenState extends State<ChatScreen>
 
   Widget _inputBar(bool dark) {
     return Container(
-      padding: EdgeInsets.fromLTRB(
-          14, 10, 14, MediaQuery.of(context).padding.bottom + 12),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
       decoration: BoxDecoration(
         color: dark ? AppColors.bgDark : Colors.white,
         border: Border(
