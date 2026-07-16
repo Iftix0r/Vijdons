@@ -546,50 +546,80 @@ class OrderCard extends StatelessWidget {
   // ── Actions ────────────────────────────────────────────────────────────────
 
   Widget _buildActions(BuildContext context, Color color) {
+    final showCall = (order.isAccepted || order.isOnWay || order.isArrived) &&
+        order.clientPhone.isNotEmpty &&
+        !order.clientPhone.contains('*');
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: Row(
+      child: Column(
         children: [
-          // Asosiy harakat tugmasi
-          if (order.isPending)
-            Expanded(
-              child: _actionBtn(context, 'Qabul qilish',
-                  Icons.check_circle_rounded, AppColors.primary, 'accept'),
+          // Qo'ng'iroq tugmasi (accepted/on_way/arrived)
+          if (showCall) ...[
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton.icon(
+                onPressed: () => _call(order.clientPhone),
+                icon: const Icon(Icons.call_rounded, size: 17),
+                label: Text(
+                  'Qo\'ng\'iroq  ${order.clientPhone}',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.success,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
             ),
-          if (order.isAccepted)
-            Expanded(
-              child: _actionBtn(context, "Yo'lga chiqdim",
-                  Icons.directions_car_rounded, AppColors.purple, 'on_way'),
-            ),
-          if (order.isOnWay)
-            Expanded(
-              child: _actionBtn(context, 'Yetib keldim',
-                  Icons.location_on_rounded, AppColors.info, 'arrived'),
-            ),
-          if (order.isArrived)
-            Expanded(
-              child: _actionBtn(context, 'Yakunlash',
-                  Icons.flag_rounded, AppColors.success, 'complete'),
-            ),
+            const SizedBox(height: 8),
+          ],
+          Row(
+            children: [
+              // Asosiy harakat tugmasi
+              if (order.isPending)
+                Expanded(
+                  child: _actionBtn(context, 'Qabul qilish',
+                      Icons.check_circle_rounded, AppColors.primary, 'accept'),
+                ),
+              if (order.isAccepted)
+                Expanded(
+                  child: _actionBtn(context, "Yo'lga chiqdim",
+                      Icons.directions_car_rounded, AppColors.purple, 'on_way'),
+                ),
+              if (order.isOnWay)
+                Expanded(
+                  child: _actionBtn(context, 'Yetib keldim',
+                      Icons.location_on_rounded, AppColors.info, 'arrived'),
+                ),
+              if (order.isArrived)
+                Expanded(
+                  child: _actionBtn(context, 'Yakunlash',
+                      Icons.flag_rounded, AppColors.success, 'complete'),
+                ),
 
-          const SizedBox(width: 10),
+              const SizedBox(width: 10),
 
-          // Pending → Rad etish (reject)
-          if (order.isPending) _iconBtn(
-            context,
-            icon: Icons.close_rounded,
-            color: AppColors.danger,
-            action: 'reject',
-            tooltip: "Rad etish",
-          ),
+              // Pending → Rad etish (reject)
+              if (order.isPending) _iconBtn(
+                context,
+                icon: Icons.close_rounded,
+                color: AppColors.danger,
+                action: 'reject',
+                tooltip: "Rad etish",
+              ),
 
-          // Accepted/on_way/arrived → Bekor qilish (cancel)
-          if (order.isAccepted || order.isOnWay || order.isArrived) _iconBtn(
-            context,
-            icon: Icons.cancel_outlined,
-            color: AppColors.danger,
-            action: 'cancel',
-            tooltip: "Bekor qilish",
+              // Accepted/on_way/arrived → Bekor qilish (cancel)
+              if (order.isAccepted || order.isOnWay || order.isArrived) _iconBtn(
+                context,
+                icon: Icons.cancel_outlined,
+                color: AppColors.danger,
+                action: 'cancel',
+                tooltip: "Bekor qilish",
+              ),
+            ],
           ),
         ],
       ),

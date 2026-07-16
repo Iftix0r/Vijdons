@@ -531,6 +531,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (mounted) {
         final orders = list.map((e) => OrderModel.fromJson(e)).toList();
 
+        // ── Faol buyurtmalar (isActive) doim tepada, pending lar keyin ──
+        orders.sort((a, b) {
+          int priority(OrderModel o) {
+            if (o.isActive) return 0;  // accepted/on_way/arrived → tepa
+            if (o.isPending) return 1; // pending → o'rta
+            return 2;                  // boshqalar → past
+          }
+          final pd = priority(a) - priority(b);
+          if (pd != 0) return pd;
+          // Bir xil prioritet bo'lsa — yangirog'i tepada
+          return b.createdAt.compareTo(a.createdAt);
+        });
+
         final pendingOrders = orders.where((o) => o.isPending).toList();
         if (pendingOrders.isEmpty) {
           NotificationService.stopOrderSound();
@@ -1060,24 +1073,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       child: _searchingState(dark),
                     )
                   else
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                      sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                        (ctx, i) => OrderCard(
-                          order: _orders[i],
-                          onAction: (a) => _orderAction(_orders[i], a),
-                          onTap: () => _showOrderDetail(_orders[i]),
-                          liveKm: _orders[i].isOnWay && _taxiRunning
-                              ? _taxiKm
-                              : null,
-                          liveFare: _orders[i].isOnWay && _taxiRunning
-                              ? _taxiFare
-                              : null,
-                        ),
-                        childCount: _orders.length,
-                      )),
-                    ),
+                    _buildOrdersSliver(),
                 ]
               ],
             ),
@@ -1799,6 +1795,36 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     ),
   );
 
+  Widget _buildOrderCard(OrderModel order) => OrderCard(
+    order: order,
+    onAction: (a) => _orderAction(order, a),
+    onTap: () => _showOrderDetail(order),
+    liveKm:   order.isOnWay && _taxiRunning ? _taxiKm   : null,
+    liveFare: order.isOnWay && _taxiRunning ? _taxiFare : null,
+  );
+
+  // Faol buyurtmalar (accepted/on_way/arrived) doim tepada "pinned" ko'rinadi
+  // Yangi pending buyurtmalar kelganda faol karta pastga tushib ketmaydi
+  Widget _buildOrdersSliver() {
+    final active  = _orders.where((o) => o.isActive).toList();
+    final pending = _orders.where((o) => o.isPending).toList();
+    final others  = _orders.where((o) => !o.isActive && !o.isPending).toList();
+
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      sliver: SliverList(
+        delegate: SliverChildListDelegate([
+          // Faol buyurtmalar — har doim tepada
+          ...active.map(_buildOrderCard),
+          // Pending buyurtmalar
+          ...pending.map(_buildOrderCard),
+          // Boshqalar
+          ...others.map(_buildOrderCard),
+        ]),
+      ),
+    );
+  }
+
   void _showOrderDetail(OrderModel order) {
     HapticFeedback.selectionClick();
     showModalBottomSheet(
@@ -2158,8 +2184,38 @@ class _OrderDetailSheet extends StatelessWidget {
 
           const SizedBox(height: 24),
 
+          // ── Qo'ng'iroq tugmasi (accepted/on_way/arrived da) ──────────────
+          if ((order.isAccepted || order.isOnWay || order.isArrived) &&
+              order.clientPhone.isNotEmpty &&
+              !order.clientPhone.contains('*'))
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: SizedBox(
+                height: 54,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    final uri = Uri(scheme: 'tel', path: order.clientPhone);
+                    if (await canLaunchUrl(uri)) launchUrl(uri);
+                  },
+                  icon: const Icon(Icons.call_rounded, size: 20),
+                  label: Text(
+                    'Qo\'ng\'iroq qilish  ${order.clientPhone}',
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w900),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+            ),
+
           // Action buttons
-          if (order.isPending || order.isAccepted || order.isOnWay)
+          if (order.isPending || order.isAccepted || order.isOnWay || order.isArrived)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Column(

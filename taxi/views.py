@@ -43,15 +43,11 @@ def order_create(request):
                 if distance_km:
                     price = tariff.calc_price(distance_km)
 
-            # Avtomatik taqsimlash
-            if driver is None and tariff.auto_dispatch and f_lat and f_lng:
-                active_drivers = Driver.objects.filter(
-                    is_active=True, is_on_duty=True,
-                    approval_status=Driver.APPROVAL_APPROVED
-                )
-                nearest_driver, _ = find_nearest_driver(active_drivers, f_lat, f_lng)
-                if nearest_driver:
-                    driver = nearest_driver
+            # Avtomatik taqsimlash — FAQAT haritadan koordinata belgilangan bo'lsa
+            # Manzil qo'lda yozilsa (from_lat yo'q) → umumiy tabloga tushadi, hammaga ko'rinadi
+            has_coords = bool(f_lat and f_lng)
+            if driver is None and tariff.auto_dispatch and has_coords:
+                pass  # dispatch_order() thread ichida eng yaqinga yuboradi
 
             payment_type = request.POST.get('payment_type', 'cash')
             note         = request.POST.get('note', '').strip()
@@ -74,9 +70,11 @@ def order_create(request):
             # Telegram xabar
             tg_new_order(order)
 
-            # Dispatch — eng yaqin haydovchiga yuborish
-            import threading
-            threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
+            # Dispatch — faqat koordinata belgilangan bo'lsa eng yaqin haydovchiga yuboriladi
+            # Koordinata yo'q (qo'lda yozilgan manzil) → umumiy tabloda qoladi, hammaga ko'rinadi
+            if has_coords and driver is None:
+                import threading
+                threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
     return redirect(request.META.get('HTTP_REFERER', 'taxi:panel_dashboard'))
 
 
