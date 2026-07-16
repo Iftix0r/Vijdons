@@ -196,11 +196,36 @@ def client_delete(request, pk):
 # ── Pages ──────────────────────────────────────────────────────────────────────
 
 def panel_dashboard(request):
+    from django.utils import timezone
+    from django.db.models import Sum, Avg, Count
+    from decimal import Decimal
+
+    today = timezone.now().date()
     orders = Order.objects.select_related('client', 'driver').order_by('-created_at')[:10]
     pending_drivers = Driver.objects.filter(approval_status=Driver.APPROVAL_PENDING).order_by('-registered_at')
     on_duty_drivers = Driver.objects.filter(
         is_active=True, is_on_duty=True, approval_status=Driver.APPROVAL_APPROVED
     ).count()
+
+    completed_qs = Order.objects.filter(status='completed')
+    today_qs     = Order.objects.filter(created_at__date=today)
+
+    total_revenue   = completed_qs.aggregate(s=Sum('price'))['s'] or Decimal('0')
+    today_revenue   = today_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or Decimal('0')
+    today_orders    = today_qs.count()
+    avg_price       = completed_qs.aggregate(a=Avg('price'))['a'] or Decimal('0')
+    cancelled_orders = Order.objects.filter(status='cancelled').count()
+
+    # So'nggi 7 kunlik statistika (grafik uchun)
+    from datetime import timedelta
+    weekly_labels, weekly_revenue, weekly_counts = [], [], []
+    for i in range(6, -1, -1):
+        day = today - timedelta(days=i)
+        day_qs = Order.objects.filter(created_at__date=day)
+        weekly_labels.append(day.strftime('%d/%m'))
+        weekly_revenue.append(float(day_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or 0))
+        weekly_counts.append(day_qs.count())
+
     context = {
         'orders':               orders,
         'total_orders':         Order.objects.count(),
@@ -208,11 +233,19 @@ def panel_dashboard(request):
         'on_duty_drivers':      on_duty_drivers,
         'total_clients':        Client.objects.count(),
         'pending_orders':       Order.objects.filter(status='pending').count(),
-        'completed_orders':     Order.objects.filter(status='completed').count(),
+        'completed_orders':     completed_qs.count(),
+        'cancelled_orders':     cancelled_orders,
         'active_drivers':       Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED),
         'pending_drivers':      pending_drivers,
         'pending_driver_count': pending_drivers.count(),
         'tariff':               TariffSettings.get(),
+        'total_revenue':        total_revenue,
+        'today_revenue':        today_revenue,
+        'today_orders':         today_orders,
+        'avg_price':            avg_price,
+        'weekly_labels':        weekly_labels,
+        'weekly_revenue':       weekly_revenue,
+        'weekly_counts':        weekly_counts,
     }
     return render(request, 'taxi/panel.html', context)
 

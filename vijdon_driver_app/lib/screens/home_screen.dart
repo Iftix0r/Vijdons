@@ -15,6 +15,7 @@ import 'history_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
 import 'chat_screen.dart';
+import 'map_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -1390,6 +1391,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       builder: (_) => _OrderDetailSheet(
         order: order,
         onAction: (a) { Navigator.pop(context); _orderAction(order, a); },
+        onOpenMap: () {
+          Navigator.pop(context);
+          Navigator.push(context, MaterialPageRoute(
+            builder: (_) => MapScreen(activeOrder: order),
+          ));
+        },
         liveKm:   order.isOnWay && _taxiRunning ? _taxiKm   : null,
         liveFare: order.isOnWay && _taxiRunning ? _taxiFare : null,
       ),
@@ -1400,11 +1407,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 class _OrderDetailSheet extends StatelessWidget {
   final OrderModel order;
   final void Function(String) onAction;
+  final VoidCallback? onOpenMap;
   final double? liveKm;
   final double? liveFare;
   const _OrderDetailSheet({
     required this.order,
     required this.onAction,
+    this.onOpenMap,
     this.liveKm,
     this.liveFare,
   });
@@ -1474,7 +1483,26 @@ class _OrderDetailSheet extends StatelessWidget {
                       letterSpacing: -0.4),
                 ),
                 const Spacer(),
-                Container(
+                if (onOpenMap != null)
+                  GestureDetector(
+                    onTap: onOpenMap,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                      ),
+                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.map_rounded, size: 14, color: AppColors.success),
+                        SizedBox(width: 4),
+                        Text('Xarita', style: TextStyle(fontSize: 11,
+                            fontWeight: FontWeight.w800, color: AppColors.success)),
+                      ]),
+                    ),
+                  )
+                else
+                  Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(

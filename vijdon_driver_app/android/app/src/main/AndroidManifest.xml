@@ -36,6 +36,9 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <meta-data
+            android:name="com.yandex.android.maps.MAPKIT_API_KEY"
+            android:value="469e8d29-be0b-42da-9bd4-ed515dbdb741" />
     </application>
 
     <queries>

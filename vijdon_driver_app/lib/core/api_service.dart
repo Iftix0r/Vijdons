@@ -194,6 +194,16 @@ class ApiService {
     final raw = _decode(r) as Map<String, dynamic>;
     return raw['unread'] as int? ?? 0;
   }
+
+  static Future<List<dynamic>> getActiveDriversLocations() async {
+    try {
+      final r = await _get(AppConstants.activeDrivers);
+      final raw = _decode(r) as Map<String, dynamic>;
+      return raw['drivers'] as List? ?? [];
+    } catch (_) {
+      return [];
+    }
+  }
 }
 
 class ApiException implements Exception {

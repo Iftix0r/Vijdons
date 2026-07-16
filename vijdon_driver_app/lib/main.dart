@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:yandex_mapkit/yandex_mapkit.dart';
 import 'core/theme.dart';
 import 'core/notification_service.dart';
 import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  AndroidYandexMap.useAndroidViewSurface = false;
+  await YandexMapkit.initialize(apiKey: '469e8d29-be0b-42da-9bd4-ed515dbdb741');
 
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -14,7 +18,6 @@ void main() async {
   ));
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
-  // Bildirishnoma va ovoz servisini ishga tushirish
   await NotificationService.init();
 
   runApp(const VijdonDriverApp());

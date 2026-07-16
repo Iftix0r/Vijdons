@@ -15,6 +15,62 @@
     </div>
 </div>
 
+<!-- Revenue stats row -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+    <!-- Total revenue -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
+        <div class="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-green-50 dark:bg-green-900/20 group-hover:scale-150 transition-transform duration-500"></div>
+        <div class="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 flex items-center justify-center mb-3 relative z-10">
+            <i class="fas fa-coins"></i>
+        </div>
+        <p class="text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1">Jami daromad</p>
+        <h3 class="text-2xl font-extrabold text-gray-900 dark:text-white relative z-10">{{ total_revenue|floatformat:0 }}</h3>
+        <p class="text-[11px] text-gray-400 mt-0.5">UZS</p>
+    </div>
+
+    <!-- Today revenue -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
+        <div class="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-teal-50 dark:bg-teal-900/20 group-hover:scale-150 transition-transform duration-500"></div>
+        <div class="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-900/50 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-3 relative z-10">
+            <i class="fas fa-calendar-day"></i>
+        </div>
+        <p class="text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1">Bugungi daromad</p>
+        <h3 class="text-2xl font-extrabold text-gray-900 dark:text-white relative z-10">{{ today_revenue|floatformat:0 }}</h3>
+        <p class="text-[11px] text-gray-400 mt-0.5">{{ today_orders }} ta buyurtma</p>
+    </div>
+
+    <!-- Average price -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
+        <div class="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-indigo-50 dark:bg-indigo-900/20 group-hover:scale-150 transition-transform duration-500"></div>
+        <div class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3 relative z-10">
+            <i class="fas fa-chart-line"></i>
+        </div>
+        <p class="text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1">O'rtacha narx</p>
+        <h3 class="text-2xl font-extrabold text-gray-900 dark:text-white relative z-10">{{ avg_price|floatformat:0 }}</h3>
+        <p class="text-[11px] text-gray-400 mt-0.5">UZS / buyurtma</p>
+    </div>
+
+    <!-- Completed vs cancelled -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
+        <div class="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-rose-50 dark:bg-rose-900/20 group-hover:scale-150 transition-transform duration-500"></div>
+        <div class="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-3 relative z-10">
+            <i class="fas fa-check-double"></i>
+        </div>
+        <p class="text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1">Yakunlangan</p>
+        <h3 class="text-2xl font-extrabold text-gray-900 dark:text-white relative z-10">{{ completed_orders }}</h3>
+        <p class="text-[11px] text-rose-400 mt-0.5"><i class="fas fa-times-circle mr-1"></i>{{ cancelled_orders }} bekor qilindi</p>
+    </div>
+</div>
+
+<!-- Weekly chart -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 mb-6">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-gray-900 dark:text-white text-sm">So'nggi 7 kunlik daromad</h3>
+        <span class="text-xs text-gray-400">UZS</span>
+    </div>
+    <canvas id="weeklyChart" height="80"></canvas>
+</div>
+
 <!-- Stats row -->
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
     <!-- All orders -->
@@ -191,4 +247,52 @@
         </table>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+    const labels  = {{ weekly_labels|safe }};
+    const revenue = {{ weekly_revenue|safe }};
+    const counts  = {{ weekly_counts|safe }};
+    const isDark  = document.documentElement.classList.contains('dark');
+    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+    const textColor = isDark ? '#9ca3af' : '#6b7280';
+
+    new Chart(document.getElementById('weeklyChart'), {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Daromad (UZS)',
+                data: revenue,
+                backgroundColor: 'rgba(34,197,94,0.7)',
+                borderRadius: 6,
+                yAxisID: 'y',
+            }, {
+                label: 'Buyurtmalar',
+                data: counts,
+                type: 'line',
+                borderColor: '#f59e0b',
+                backgroundColor: 'rgba(245,158,11,0.15)',
+                pointBackgroundColor: '#f59e0b',
+                tension: 0.4,
+                fill: true,
+                yAxisID: 'y1',
+            }]
+        },
+        options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { labels: { color: textColor, font: { size: 11 } } } },
+            scales: {
+                x:  { ticks: { color: textColor }, grid: { color: gridColor } },
+                y:  { ticks: { color: textColor }, grid: { color: gridColor }, position: 'left' },
+                y1: { ticks: { color: textColor }, grid: { display: false }, position: 'right' },
+            }
+        }
+    });
+})();
+</script>
 {% endblock %}
