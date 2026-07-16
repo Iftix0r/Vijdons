@@ -27,6 +27,12 @@
             {% if driver.is_on_duty %}Ish navbatida{% else %}Oflayn{% endif %}
           </span>
         </div>
+        {% if driver.is_on_duty %}
+        <div class="flex items-center gap-1 mt-0.5" id="nav-location-wrap">
+          <i class="fas fa-location-dot" style="font-size:9px;color:var(--ios-label3)"></i>
+          <span id="nav-location" class="ios-caption2" style="color:var(--ios-label3)">aniqlanmoqda…</span>
+        </div>
+        {% endif %}
       </div>
     </div>
     <div class="flex items-center gap-2.5">
@@ -606,6 +612,89 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') Audio.stopNewOrder();
 });
 {% if driver.is_on_duty %}requestWakeLock();{% endif %}
+
+// ── Haydovchi manzilini navbar'da ko'rsatish ─────────────────────────────────
+{% if driver.is_on_duty %}
+(function initNavLocation() {
+  const el = document.getElementById('nav-location');
+  if (!el) return;
+
+  let _lastLat = null, _lastLng = null, _fetching = false;
+
+  async function reverseGeocode(lat, lng) {
+    try {
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=uz,ru`,
+        { headers: { 'Accept-Language': 'uz,ru' } }
+      );
+      const d = await r.json();
+      if (!d || d.error) return null;
+      const a = d.address || {};
+      // Eng qisqa, inson o'qiy oladigan: ko'cha + shahar
+      const parts = [
+        a.road || a.pedestrian || a.path || '',
+        a.house_number || '',
+        a.suburb || a.neighbourhood || a.quarter || '',
+        a.city || a.town || a.village || a.county || '',
+      ].filter(Boolean);
+      // Ko'cha + raqam, yoki ko'cha + tuman — eng ko'pi 2 qism
+      if (parts.length >= 2) return parts[0] + (parts[1] ? ', ' + parts[1] : '');
+      return parts[0] || d.display_name?.split(',')[0] || null;
+    } catch (_) { return null; }
+  }
+
+  async function updateLocation() {
+    if (_fetching) return;
+    _fetching = true;
+    try {
+      const pos = await new Promise((res, rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej,
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 })
+      );
+      const { latitude: lat, longitude: lng } = pos.coords;
+
+      // Agar 50m dan kam ko'chsa geocode qayta so'ramaymiz
+      let moved = true;
+      if (_lastLat !== null) {
+        const dlat = (lat - _lastLat) * 111320;
+        const dlng = (lng - _lastLng) * 111320 * Math.cos(lat * Math.PI / 180);
+        moved = Math.sqrt(dlat * dlat + dlng * dlng) > 50;
+      }
+
+      if (moved) {
+        _lastLat = lat; _lastLng = lng;
+        el.textContent = 'aniqlanmoqda…';
+        const addr = await reverseGeocode(lat, lng);
+        if (addr && el) {
+          el.textContent = addr;
+          el.title = addr; // full text on long-press
+        } else if (el) {
+          el.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        }
+      }
+
+      // Servergayam yubor (location sync)
+      fetch('{% url "driver:location_sync" %}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ lat, lng })
+      }).catch(() => {});
+
+    } catch (e) {
+      if (el) el.textContent = 'GPS ruxsati yo'q';
+    } finally { _fetching = false; }
+  }
+
+  // Dastlabki yuklash va har 45 soniyada yangilash
+  updateLocation();
+  setInterval(updateLocation, 45000);
+
+  // Sahifa focus'ga qaytganda ham yangilansin
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') updateLocation();
+  });
+})();
+{% endif %}
 
 function openTelegram(phone) {
   // +998901234567 → https://t.me/+998901234567
