@@ -18,6 +18,7 @@ urlpatterns = [
     path('drivers/<int:pk>/toggle/', views.driver_toggle_active, name='driver_toggle_active'),
     path('drivers/<int:pk>/approve/', views.driver_approve, name='driver_approve'),
     path('drivers/<int:pk>/recharge/', views.driver_recharge, name='driver_recharge'),
+    path('drivers/<int:pk>/detail/', views.driver_detail, name='driver_detail'),
     path('chat/', views.operator_chat, name='operator_chat'),
     path('chat/unread/', views.operator_chat_unread, name='operator_chat_unread'),
     path('maps/', views.maps_settings, name='maps_settings'),
@@ -37,6 +38,7 @@ urlpatterns = [
     path('api/driver/fcm/',       api_views.driver_fcm_update,  name='api_driver_fcm'),
     path('api/driver/location/',  api_views.driver_location_update, name='api_driver_location'),
     path('api/geocode/reverse/',   api_views.reverse_geocode,        name='api_reverse_geocode'),
+    path('api/maps/config/',       api_views.maps_config,            name='api_maps_config'),
 
     path('api/orders/available/', api_views.available_orders, name='api_orders_available'),
     path('api/orders/my/',        api_views.my_orders,        name='api_orders_my'),

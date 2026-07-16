@@ -27,7 +27,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 
-from .models import Driver, Order, TariffSettings, ChatMessage, MapsSettings
+from .models import Driver, Order, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog
 from .serializers import (
     DriverRegisterSerializer,
     DriverLoginSerializer,
@@ -37,7 +37,20 @@ from .serializers import (
 from .utils import send_telegram, dispatch_order
 
 
-# ── helpers ───────────────────────────────────────────────────────────────────
+def _get_ip(request):
+    x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded:
+        return x_forwarded.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR')
+
+
+def _log(driver, action, detail='', request=None):
+    ip = _get_ip(request) if request else None
+    ua = request.META.get('HTTP_USER_AGENT', '') if request else ''
+    DriverActivityLog.objects.create(driver=driver, action=action, detail=detail, ip_address=ip, user_agent=ua)
+
+
+# ── helpers ──────────────────────────────────────────────────────────────────────────────────────
 
 def get_driver(request):
     try:
@@ -110,6 +123,7 @@ def driver_login(request):
         return Response({'detail': 'Hisobingiz hali tasdiqlanmagan. Admin tasdiqlashini kuting.'}, status=403)
 
     token, _ = Token.objects.get_or_create(user=user)
+    _log(driver, DriverActivityLog.ACTION_LOGIN, request=request)
     return Response({'token': token.key, 'driver': DriverProfileSerializer(driver).data})
 
 
@@ -128,6 +142,8 @@ def driver_profile(request, driver):
 def driver_duty_toggle(request, driver):
     driver.is_on_duty = not driver.is_on_duty
     driver.save(update_fields=['is_on_duty'])
+    action = DriverActivityLog.ACTION_DUTY_ON if driver.is_on_duty else DriverActivityLog.ACTION_DUTY_OFF
+    _log(driver, action, request=request)
     return Response({'is_on_duty': driver.is_on_duty})
 
 
@@ -348,7 +364,17 @@ def _notify_telegram(order, new_status, driver):
         send_telegram(msg)
 
 
-# ── Geocoding ────────────────────────────────────────────────────────────────
+# ── Maps config ──────────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def maps_config(request):
+    """Mobil ilova uchun Maps API kalitlarini qaytaradi."""
+    maps = MapsSettings.get()
+    return Response({'yandex_api_key': maps.yandex_mapkit_key})
+
+
+# ── Geocoding ─────────────────────────────────────────────────────────────────
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

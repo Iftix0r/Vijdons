@@ -1,0 +1,224 @@
+{% extends 'taxi/base.html' %}
+{% block title %}{{ driver.full_name }} — Haydovchi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-center gap-3 mb-6">
+    <a href="{% url 'taxi:driver_list' %}" class="w-9 h-9 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-500 hover:text-blue-600 transition-colors shadow-sm">
+        <i class="fas fa-arrow-left text-sm"></i>
+    </a>
+    <div class="flex-1">
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white">{{ driver.full_name }}</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ driver.car_model }} · {{ driver.car_number }}</p>
+    </div>
+    <!-- Block / Unblock -->
+    <form action="{% url 'taxi:driver_toggle_active' driver.pk %}" method="POST">
+        {% csrf_token %}
+        {% if driver.is_active %}
+        <button type="submit" class="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl shadow-sm transition-all hover:-translate-y-0.5">
+            <i class="fas fa-ban"></i> Bloklash
+        </button>
+        {% else %}
+        <button type="submit" class="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold rounded-xl shadow-sm transition-all hover:-translate-y-0.5">
+            <i class="fas fa-circle-check"></i> Blokni ochish
+        </button>
+        {% endif %}
+    </form>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+    <!-- LEFT: Info + Balance -->
+    <div class="space-y-4">
+
+        <!-- Profile card -->
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+            <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-5 flex items-center gap-4">
+                <div class="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center text-white text-2xl font-black">
+                    {{ driver.full_name|slice:":1"|upper }}
+                </div>
+                <div>
+                    <p class="text-white font-bold text-lg leading-tight">{{ driver.full_name }}</p>
+                    {% if driver.is_active %}
+                    <span class="inline-flex items-center gap-1 text-xs font-bold text-emerald-200 mt-0.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-300 pulse-dot"></span>Faol
+                    </span>
+                    {% else %}
+                    <span class="inline-flex items-center gap-1 text-xs font-bold text-red-200 mt-0.5">
+                        <i class="fas fa-ban text-[9px]"></i> Bloklangan
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="divide-y divide-gray-50 dark:divide-gray-800">
+                <div class="flex items-center gap-3 px-5 py-3">
+                    <i class="fas fa-phone text-blue-400 w-4 text-center text-sm"></i>
+                    <div><p class="text-[10px] text-gray-400 uppercase font-bold">Telefon</p>
+                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 font-mono">{{ driver.phone_number }}</p></div>
+                </div>
+                <div class="flex items-center gap-3 px-5 py-3">
+                    <i class="fas fa-car text-blue-400 w-4 text-center text-sm"></i>
+                    <div><p class="text-[10px] text-gray-400 uppercase font-bold">Mashina</p>
+                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ driver.car_model }} · <span class="font-mono">{{ driver.car_number }}</span></p></div>
+                </div>
+                <div class="flex items-center gap-3 px-5 py-3">
+                    <i class="fas fa-calendar text-blue-400 w-4 text-center text-sm"></i>
+                    <div><p class="text-[10px] text-gray-400 uppercase font-bold">Ro'yxat sanasi</p>
+                    <p class="text-sm text-gray-700 dark:text-gray-200">{{ driver.registered_at|date:"d.m.Y H:i" }}</p></div>
+                </div>
+                <div class="flex items-center gap-3 px-5 py-3">
+                    <i class="fas fa-circle-dot text-blue-400 w-4 text-center text-sm"></i>
+                    <div><p class="text-[10px] text-gray-400 uppercase font-bold">Holati</p>
+                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                        {% if driver.approval_status == 'approved' %}<span class="text-emerald-600">Tasdiqlangan</span>
+                        {% elif driver.approval_status == 'pending' %}<span class="text-amber-600">Kutilmoqda</span>
+                        {% else %}<span class="text-red-500">Rad etilgan</span>{% endif %}
+                        · {% if driver.is_on_duty %}<span class="text-emerald-600">Navbatda</span>{% else %}<span class="text-gray-400">Navbatda emas</span>{% endif %}
+                    </p></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Balance card -->
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3"><i class="fas fa-wallet text-emerald-500 mr-1"></i>Balans</p>
+            <p class="text-3xl font-black {% if driver.balance < 0 %}text-red-500{% else %}text-emerald-500{% endif %} mb-4">
+                {{ driver.balance }} <span class="text-base font-bold text-gray-400">UZS</span>
+            </p>
+            <div class="grid grid-cols-2 gap-2">
+                <!-- Add -->
+                <form action="{% url 'taxi:driver_recharge' driver.pk %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add">
+                    <input type="number" name="amount" required min="1" placeholder="Summa"
+                           class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-emerald-400 dark:text-white">
+                    <button type="submit" class="w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition">
+                        <i class="fas fa-plus mr-1"></i>Qo'shish
+                    </button>
+                </form>
+                <!-- Deduct -->
+                <form action="{% url 'taxi:driver_recharge' driver.pk %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="deduct">
+                    <input type="number" name="amount" required min="1" placeholder="Summa"
+                           class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-red-400 dark:text-white">
+                    <button type="submit" class="w-full py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-xl transition">
+                        <i class="fas fa-minus mr-1"></i>Ayirish
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Last orders -->
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-50 dark:border-gray-800">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wide"><i class="fas fa-route text-blue-400 mr-1"></i>So'nggi buyurtmalar</p>
+            </div>
+            {% if orders %}
+            <div class="divide-y divide-gray-50 dark:divide-gray-800">
+                {% for order in orders %}
+                <div class="px-5 py-3">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate">{{ order.from_address }}</p>
+                            {% if order.to_address %}<p class="text-[11px] text-gray-400 truncate">→ {{ order.to_address }}</p>{% endif %}
+                            <p class="text-[10px] text-gray-400 mt-0.5">{{ order.created_at|date:"d.m.Y H:i" }}</p>
+                        </div>
+                        <div class="flex-shrink-0 text-right">
+                            {% if order.price %}<p class="text-xs font-bold text-emerald-600">{{ order.price }} UZS</p>{% endif %}
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full
+                                {% if order.status == 'completed' %}bg-emerald-100 text-emerald-700
+                                {% elif order.status == 'cancelled' %}bg-red-100 text-red-600
+                                {% elif order.status == 'pending' %}bg-amber-100 text-amber-700
+                                {% else %}bg-blue-100 text-blue-700{% endif %}">
+                                {{ order.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-sm text-gray-400 text-center py-8">Buyurtmalar yo'q</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- RIGHT: Activity logs -->
+    <div class="lg:col-span-2">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-50 dark:border-gray-800 flex items-center justify-between">
+                <p class="text-sm font-bold text-gray-700 dark:text-white"><i class="fas fa-clock-rotate-left text-purple-500 mr-2"></i>Faollik loglari</p>
+                <span class="text-xs text-gray-400">So'nggi 100 ta</span>
+            </div>
+            {% if logs %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-[11px] uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
+                            <th class="px-5 py-3">Vaqt</th>
+                            <th class="px-5 py-3">Amal</th>
+                            <th class="px-5 py-3">Tafsilot</th>
+                            <th class="px-5 py-3">IP manzil</th>
+                            <th class="px-5 py-3">Qurilma</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-50 dark:divide-gray-800">
+                        {% for log in logs %}
+                        <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-800/40 transition-colors">
+                            <td class="px-5 py-3 text-xs text-gray-400 whitespace-nowrap font-mono">
+                                {{ log.created_at|date:"d.m.Y H:i:s" }}
+                            </td>
+                            <td class="px-5 py-3">
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold
+                                    {% if log.action == 'login' %}bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400
+                                    {% elif log.action == 'block' %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400
+                                    {% elif log.action == 'unblock' %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400
+                                    {% elif log.action == 'balance' %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400
+                                    {% elif log.action == 'duty_on' %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400
+                                    {% elif log.action == 'duty_off' %}bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400
+                                    {% else %}bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400{% endif %}">
+                                    {% if log.action == 'login' %}<i class="fas fa-right-to-bracket text-[9px]"></i>
+                                    {% elif log.action == 'block' %}<i class="fas fa-ban text-[9px]"></i>
+                                    {% elif log.action == 'unblock' %}<i class="fas fa-circle-check text-[9px]"></i>
+                                    {% elif log.action == 'balance' %}<i class="fas fa-wallet text-[9px]"></i>
+                                    {% elif log.action == 'duty_on' %}<i class="fas fa-circle-dot text-[9px]"></i>
+                                    {% elif log.action == 'duty_off' %}<i class="fas fa-circle text-[9px]"></i>
+                                    {% endif %}
+                                    {{ log.get_action_display }}
+                                </span>
+                            </td>
+                            <td class="px-5 py-3 text-xs text-gray-600 dark:text-gray-300">
+                                {{ log.detail|default:"—" }}
+                            </td>
+                            <td class="px-5 py-3 text-xs font-mono text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                {{ log.ip_address|default:"—" }}
+                            </td>
+                            <td class="px-5 py-3 text-xs text-gray-400 max-w-xs truncate" title="{{ log.user_agent }}">
+                                {% if log.user_agent %}
+                                    {% if 'Android' in log.user_agent %}<i class="fab fa-android text-green-500 mr-1"></i>Android
+                                    {% elif 'iPhone' in log.user_agent or 'iOS' in log.user_agent %}<i class="fab fa-apple mr-1"></i>iOS
+                                    {% elif 'Windows' in log.user_agent %}<i class="fab fa-windows text-blue-400 mr-1"></i>Windows
+                                    {% elif 'Linux' in log.user_agent %}<i class="fab fa-linux mr-1"></i>Linux
+                                    {% elif 'Mac' in log.user_agent %}<i class="fab fa-apple mr-1"></i>Mac
+                                    {% else %}<i class="fas fa-globe text-gray-400 mr-1"></i>{% endif %}
+                                    <span class="truncate">{{ log.user_agent|truncatechars:40 }}</span>
+                                {% else %}—{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="py-16 text-center">
+                <div class="w-14 h-14 rounded-2xl bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-300 text-2xl mx-auto mb-3">
+                    <i class="fas fa-clock-rotate-left"></i>
+                </div>
+                <p class="font-bold text-gray-600 dark:text-gray-300">Hali hech qanday faollik yo'q</p>
+                <p class="text-sm text-gray-400 mt-1">Haydovchi ilovaga kirganida bu yerda ko'rinadi.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -128,8 +128,9 @@ class MapsSettings(models.Model):
         (PROVIDER_GOOGLE,    'Google Maps'),
     )
 
-    provider   = models.CharField(max_length=20, choices=PROVIDER_CHOICES, default=PROVIDER_NOMINATIM, verbose_name='Geocoding API')
-    api_key    = models.CharField(max_length=255, blank=True, default='', verbose_name='API kalit', help_text='Nominatim uchun shart emas')
+    provider          = models.CharField(max_length=20, choices=PROVIDER_CHOICES, default=PROVIDER_NOMINATIM, verbose_name='Geocoding API')
+    api_key           = models.CharField(max_length=255, blank=True, default='', verbose_name='Geocoding API kalit', help_text='Nominatim uchun shart emas')
+    yandex_mapkit_key = models.CharField(max_length=255, blank=True, default='', verbose_name='Yandex MapKit API kalit', help_text='Mobil ilova xaritasi uchun (haydovchi va mijoz ilovasi)')
     is_active  = models.BooleanField(default=True, verbose_name='Faol')
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -150,7 +151,43 @@ class MapsSettings(models.Model):
         verbose_name_plural = 'Maps sozlamalari'
 
 
-class TariffSettings(models.Model):
+class DriverActivityLog(models.Model):
+    ACTION_LOGIN    = 'login'
+    ACTION_LOGOUT   = 'logout'
+    ACTION_BLOCK    = 'block'
+    ACTION_UNBLOCK  = 'unblock'
+    ACTION_BALANCE  = 'balance'
+    ACTION_DUTY_ON  = 'duty_on'
+    ACTION_DUTY_OFF = 'duty_off'
+    ACTION_ORDER    = 'order'
+    ACTION_CHOICES  = (
+        (ACTION_LOGIN,    'Kirish'),
+        (ACTION_LOGOUT,   'Chiqish'),
+        (ACTION_BLOCK,    'Bloklandi'),
+        (ACTION_UNBLOCK,  'Blok ochildi'),
+        (ACTION_BALANCE,  'Balans o\'zgardi'),
+        (ACTION_DUTY_ON,  'Navbatga kirdi'),
+        (ACTION_DUTY_OFF, 'Navbatdan chiqdi'),
+        (ACTION_ORDER,    'Buyurtma'),
+    )
+
+    driver     = models.ForeignKey('Driver', on_delete=models.CASCADE, related_name='activity_logs', verbose_name='Haydovchi')
+    action     = models.CharField(max_length=20, choices=ACTION_CHOICES, verbose_name='Amal')
+    detail     = models.CharField(max_length=500, blank=True, default='', verbose_name='Tafsilot')
+    ip_address = models.GenericIPAddressField(null=True, blank=True, verbose_name='IP manzil')
+    user_agent = models.TextField(blank=True, default='', verbose_name='Qurilma / Brauzer')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Vaqt')
+
+    def __str__(self):
+        return f"{self.driver.full_name} — {self.get_action_display()} ({self.created_at:%d.%m.%Y %H:%M})"
+
+    class Meta:
+        verbose_name = 'Faollik logi'
+        verbose_name_plural = 'Faollik loglari'
+        ordering = ['-created_at']
+
+
+
     """Singleton: admin paneldan narx sozlamalari."""
     base_price    = models.DecimalField(max_digits=10, decimal_places=2, default=5000, verbose_name="Boshlang'ich narx (UZS)", help_text="Har bir buyurtma uchun minimal narx")
     price_per_km  = models.DecimalField(max_digits=10, decimal_places=2, default=2000, verbose_name="1 km narxi (UZS)")

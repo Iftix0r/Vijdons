@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Driver, Client, Order
+from .models import Driver, Client, Order, DriverActivityLog
 
 
 @admin.register(Driver)
@@ -41,4 +41,12 @@ class OrderAdmin(admin.ModelAdmin):
     search_fields   = ('client__phone_number', 'driver__full_name', 'from_address', 'to_address')
     list_editable   = ('status', 'driver')
     autocomplete_fields = ['client', 'driver']
+
+
+@admin.register(DriverActivityLog)
+class DriverActivityLogAdmin(admin.ModelAdmin):
+    list_display  = ('driver', 'action', 'detail', 'ip_address', 'created_at')
+    list_filter   = ('action', 'created_at')
+    search_fields = ('driver__full_name', 'ip_address', 'detail')
+    readonly_fields = ('driver', 'action', 'detail', 'ip_address', 'user_agent', 'created_at')
 

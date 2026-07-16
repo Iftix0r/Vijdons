@@ -260,11 +260,11 @@
                             </button>
 
                             <!-- Detail button -->
-                            <button onclick="openDriverDetail({{ driver.pk }}, '{{ driver.full_name|escapejs }}', '{{ driver.phone_number }}', '{{ driver.car_model|escapejs }}', '{{ driver.car_number }}', {{ driver.is_active|lower }}, '{% if driver.registered_at %}{{ driver.registered_at|date:"d.m.Y H:i" }}{% endif %}')"
+                            <a href="{% url 'taxi:driver_detail' driver.pk %}"
                                     title="Batafsil"
                                     class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-yellow-100 hover:text-yellow-600 dark:hover:bg-yellow-900/30 dark:hover:text-yellow-400 transition-colors">
                                 <i class="fas fa-eye text-xs"></i>
-                            </button>
+                            </a>
 
                             <!-- Delete -->
                             <form id="del-driver-{{ driver.pk }}" action="{% url 'taxi:driver_delete' driver.pk %}" method="POST" class="inline">
