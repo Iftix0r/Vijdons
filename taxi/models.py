@@ -188,6 +188,7 @@ class DriverActivityLog(models.Model):
 
 
 
+class TariffSettings(models.Model):
     """Singleton: admin paneldan narx sozlamalari."""
     base_price    = models.DecimalField(max_digits=10, decimal_places=2, default=5000, verbose_name="Boshlang'ich narx (UZS)", help_text="Har bir buyurtma uchun minimal narx")
     price_per_km  = models.DecimalField(max_digits=10, decimal_places=2, default=2000, verbose_name="1 km narxi (UZS)")
