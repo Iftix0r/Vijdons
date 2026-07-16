@@ -1,0 +1,4 @@
+{
+  "summary": "Geocoding Yandex (rus til muammosi) o'rniga 2GIS API ga o'zgartirildi. 2GIS O'zbekiston uchun o'zbek tilida aniq manzil qaytaradi. reverseGeocode() endi: 1) _2gisGeocode() — 2GIS catalog API, lang=uz, street_name+name formatida; 2) _nominatimGeocode() — fallback, accept-language=uz (faqat). Yandex olib tashlandi. 2GIS public key 'ruuswa' ishlatildi — production uchun developer.2gis.com dan shaxsiy key tavsiya etiladi.",
+  "current_status": "GPS navbar: 2GIS (o'zbek) + Nominatim (fallback). Barcha oldingi o'zgarishlar saqlanib qoldi."
+}

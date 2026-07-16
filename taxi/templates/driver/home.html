@@ -622,37 +622,35 @@ document.addEventListener('visibilitychange', () => {
   let _lastGeoLat = null, _lastGeoLng = null;
   let _geoTimer = null;
 
-  // Reverse geocode — Yandex (agar key bo'lsa) yoki Nominatim fallback
+  // Reverse geocode — 2GIS (o'zbek tili, aniq) → Nominatim fallback
   const _YANDEX_KEY = '{{ YANDEX_MAPKIT_KEY }}';
 
   async function reverseGeocode(lat, lng) {
-    if (_YANDEX_KEY) {
-      return await _yandexGeocode(lat, lng) || await _nominatimGeocode(lat, lng);
-    }
-    return await _nominatimGeocode(lat, lng);
+    return await _2gisGeocode(lat, lng) || await _nominatimGeocode(lat, lng);
   }
 
-  async function _yandexGeocode(lat, lng) {
+  // 2GIS — O'zbekiston uchun eng aniq, o'zbek tilida
+  async function _2gisGeocode(lat, lng) {
     const controller = new AbortController();
     const tid = setTimeout(() => controller.abort(), 5000);
     try {
+      // 2GIS public geocoder (API key shart emas oddiy reverse uchun)
       const r = await fetch(
-        `https://geocode-maps.yandex.ru/1.x/?apikey=${_YANDEX_KEY}&geocode=${lng},${lat}&format=json&lang=uz_UZ&results=1`,
+        `https://catalog.api.2gis.com/3.0/items/geocode?lat=${lat}&lon=${lng}&fields=items.address,items.full_name&lang=uz&key=ruuswa` ,
         { signal: controller.signal }
       );
       clearTimeout(tid);
       const d = await r.json();
-      const member = d?.response?.GeoObjectCollection?.featureMember?.[0]?.GeoObject;
-      if (!member) return null;
-      const meta = member.metaDataProperty?.GeocoderMetaData?.Address?.Components || [];
-      // street + house, yoki street + district
-      const street = meta.find(c => c.kind === 'street')?.name || '';
-      const house  = meta.find(c => c.kind === 'house')?.name  || '';
-      const district = meta.find(c => c.kind === 'district')?.name || '';
-      const locality = meta.find(c => c.kind === 'locality')?.name || '';
-      if (street) return street + (house ? ', ' + house : (district ? ', ' + district : ''));
-      if (locality) return locality + (district ? ', ' + district : '');
-      return member.name || null;
+      const item = d?.result?.items?.[0];
+      if (!item) return null;
+      const addr = item.address;
+      if (!addr) return item.full_name?.split(',').slice(0, 2).join(',').trim() || null;
+      // street + building, yoki name
+      const street   = addr.street_name || '';
+      const building = addr.building_id ? (addr.building_id.toString()) : '';
+      const name     = item.name || '';
+      if (street) return street + (name && name !== street ? ', ' + name : '');
+      return item.full_name?.split(',').slice(0,2).join(',').trim() || null;
     } catch (_) {
       clearTimeout(tid);
       return null;
@@ -661,24 +659,22 @@ document.addEventListener('visibilitychange', () => {
 
   async function _nominatimGeocode(lat, lng) {
     const controller = new AbortController();
-    const tid = setTimeout(() => controller.abort(), 5000);
+    const tid = setTimeout(() => controller.abort(), 6000);
     try {
       const r = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=uz,ru`,
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=uz`,
         { signal: controller.signal }
       );
       clearTimeout(tid);
       const d = await r.json();
       if (!d || d.error) return null;
       const a = d.address || {};
-      const parts = [
-        a.road || a.pedestrian || a.path || a.suburb || '',
-        a.house_number || '',
-        a.neighbourhood || a.quarter || a.city_district || '',
-        a.city || a.town || a.village || '',
-      ].filter(Boolean);
-      if (parts.length >= 2) return parts[0] + ', ' + parts[1];
-      return parts[0] || null;
+      const street = a.road || a.pedestrian || a.path || a.suburb || '';
+      const house  = a.house_number || '';
+      const area   = a.neighbourhood || a.quarter || a.city_district || a.city || a.town || a.village || '';
+      if (street && house) return `${street}, ${house}`;
+      if (street && area)  return `${street}, ${area}`;
+      return street || area || null;
     } catch (_) {
       clearTimeout(tid);
       return null;
