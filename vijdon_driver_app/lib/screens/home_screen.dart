@@ -1920,7 +1920,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       isScrollControlled: true,
       builder: (_) => ActiveOrderSheet(
         order: order,
-        onAction: (a) { Navigator.pop(context); _orderAction(order, a); },
+        onAction: (a) => _orderAction(order, a),
         onOpenMap: () {
           Navigator.pop(context);
           Navigator.push(context, MaterialPageRoute(
@@ -1937,7 +1937,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 }
 
-class ActiveOrderSheet extends StatelessWidget {
+class ActiveOrderSheet extends StatefulWidget {
   final OrderModel order;
   final void Function(String) onAction;
   final VoidCallback? onOpenMap;
@@ -1956,6 +1956,39 @@ class ActiveOrderSheet extends StatelessWidget {
     this.taxiDuration,
     this.onTaxiPause,
   });
+  @override
+  State<ActiveOrderSheet> createState() => _ActiveOrderSheetState();
+}
+
+class _ActiveOrderSheetState extends State<ActiveOrderSheet> {
+  late OrderModel order;
+  void Function(String) get onAction => widget.onAction;
+  VoidCallback? get onOpenMap => widget.onOpenMap;
+  double? get liveKm => widget.liveKm;
+  double? get liveFare => widget.liveFare;
+  bool get taxiPaused => widget.taxiPaused;
+  String? get taxiDuration => widget.taxiDuration;
+  VoidCallback? get onTaxiPause => widget.onTaxiPause;
+
+  @override
+  void initState() {
+    super.initState();
+    order = widget.order;
+  }
+
+  @override
+  void didUpdateWidget(ActiveOrderSheet old) {
+    super.didUpdateWidget(old);
+    order = widget.order;
+  }
+
+  void _handleAction(BuildContext context, String action) {
+    // complete/cancel/accept → sheet yopiladi; on_way/arrived → yopilmaydi
+    if (action == 'complete' || action == 'cancel' || action == 'accept') {
+      Navigator.pop(context);
+    }
+    onAction(action);
+  }
 
   Color get _statusColor {
     return switch (order.status) {
@@ -1969,6 +2002,7 @@ class ActiveOrderSheet extends StatelessWidget {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
@@ -1977,10 +2011,11 @@ class ActiveOrderSheet extends StatelessWidget {
         color: dark ? AppColors.cardDark : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
           // Drag handle
           Center(
             child: Container(
@@ -2136,26 +2171,46 @@ class ActiveOrderSheet extends StatelessWidget {
                               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
                             ),
                             const SizedBox(height: 2),
-                            GestureDetector(
-                              onTap: () async {
-                                await launchUrl(
-                                  Uri(scheme: 'tel', path: order.clientPhone),
-                                  mode: LaunchMode.externalApplication,
-                                );
-                              },
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.call_rounded, size: 13, color: AppColors.info),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    order.clientPhone,
-                                    style: const TextStyle(
-                                      fontSize: 12, color: AppColors.info,
-                                      fontFamily: 'monospace', fontWeight: FontWeight.w700,
-                                    ),
+                            Row(
+                              children: [
+                                GestureDetector(
+                                  onTap: () async {
+                                    await launchUrl(
+                                      Uri(scheme: 'tel', path: order.clientPhone),
+                                      mode: LaunchMode.externalApplication,
+                                    );
+                                  },
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.call_rounded, size: 13, color: AppColors.info),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        order.clientPhone,
+                                        style: const TextStyle(
+                                          fontSize: 12, color: AppColors.info,
+                                          fontFamily: 'monospace', fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
+                                ),
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: () async {
+                                    final p = order.clientPhone.replaceAll(RegExp(r'[^0-9]'), '');
+                                    await launchUrl(Uri.parse('https://t.me/+$p'), mode: LaunchMode.externalApplication);
+                                  },
+                                  child: const Icon(Icons.telegram_rounded, size: 15, color: Color(0xFF2AABEE)),
+                                ),
+                                const SizedBox(width: 6),
+                                GestureDetector(
+                                  onTap: () async {
+                                    final p = order.clientPhone.replaceAll(RegExp(r'[^0-9+]'), '');
+                                    await launchUrl(Uri(scheme: 'sms', path: p), mode: LaunchMode.externalApplication);
+                                  },
+                                  child: const Icon(Icons.sms_rounded, size: 15, color: Colors.blue),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -2385,29 +2440,69 @@ class ActiveOrderSheet extends StatelessWidget {
               !order.clientPhone.contains('*'))
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: SizedBox(
-                height: 54,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    await launchUrl(
-                      Uri(scheme: 'tel', path: order.clientPhone),
-                      mode: LaunchMode.externalApplication,
-                    );
-                  },
-                  icon: const Icon(Icons.call_rounded, size: 20),
-                  label: Text(
-                    'Qo\'ng\'iroq qilish  ${order.clientPhone}',
-                    style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w900),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 54,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          await launchUrl(
+                            Uri(scheme: 'tel', path: order.clientPhone),
+                            mode: LaunchMode.externalApplication,
+                          );
+                        },
+                        icon: const Icon(Icons.call_rounded, size: 20),
+                        label: Text(
+                          order.clientPhone,
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.success,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                    elevation: 0,
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 54, width: 54,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final p = order.clientPhone.replaceAll(RegExp(r'[^0-9]'), '');
+                        await launchUrl(Uri.parse('https://t.me/+$p'), mode: LaunchMode.externalApplication);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2AABEE),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 0,
+                        padding: EdgeInsets.zero,
+                      ),
+                      child: const Icon(Icons.telegram_rounded, size: 24),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 54, width: 54,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final p = order.clientPhone.replaceAll(RegExp(r'[^0-9+]'), '');
+                        await launchUrl(Uri(scheme: 'sms', path: p), mode: LaunchMode.externalApplication);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 0,
+                        padding: EdgeInsets.zero,
+                      ),
+                      child: const Icon(Icons.sms_rounded, size: 24),
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -2439,6 +2534,7 @@ class ActiveOrderSheet extends StatelessWidget {
 
           SizedBox(height: MediaQuery.of(context).padding.bottom + 12),
         ],
+        ),
       ),
     );
   }
@@ -2470,7 +2566,7 @@ class ActiveOrderSheet extends StatelessWidget {
       return SizedBox(
         width: double.infinity, height: 52,
         child: OutlinedButton.icon(
-          onPressed: () => onAction(action),
+          onPressed: () => _handleAction(ctx, action),
           icon: Icon(icon, size: 18),
           label: Text(label, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
           style: OutlinedButton.styleFrom(
@@ -2484,7 +2580,7 @@ class ActiveOrderSheet extends StatelessWidget {
     return SizedBox(
       width: double.infinity, height: 52,
       child: ElevatedButton.icon(
-        onPressed: () => onAction(action),
+        onPressed: () => _handleAction(ctx, action),
         icon: Icon(icon, size: 18),
         label: Text(label, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
         style: ElevatedButton.styleFrom(
