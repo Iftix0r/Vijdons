@@ -136,7 +136,7 @@ class _SplashScreenState extends State<SplashScreen>
                                 ),
                               ),
                               TextSpan(
-                                text: 'Taxi',
+                                text: ' Driver',
                                 style: TextStyle(
                                   fontSize: 38, fontWeight: FontWeight.w900,
                                   color: AppColors.primary, letterSpacing: -1.5,
@@ -185,7 +185,7 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                     child: const Center(
                       child: Text(
-                        'v1.0.0  ·  © 2026 VijdonTaxi',
+                        'v1.0.0  ·  © 2026 Vijdon Driver',
                         style: TextStyle(
                           fontSize: 11, color: AppColors.textSecondaryDark,
                           fontWeight: FontWeight.w500,

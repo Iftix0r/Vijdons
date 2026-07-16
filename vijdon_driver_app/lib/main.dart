@@ -29,7 +29,7 @@ class VijdonDriverApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'VijdonTaxi',
+      title: 'Vijdon Driver',
       debugShowCheckedModeBanner: false,
       theme:     AppTheme.light,
       themeMode: ThemeMode.light,

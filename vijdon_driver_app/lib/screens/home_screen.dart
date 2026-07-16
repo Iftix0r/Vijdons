@@ -796,7 +796,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         index: _tab,
         children: [
           _ordersTab(dark),
-          HistoryScreen(onOrderAction: _orderAction),
+          HistoryScreen(
+            onOrderAction: _orderAction,
+            liveKm:        _taxiRunning ? _taxiKm        : null,
+            liveFare:      _taxiRunning ? _taxiFare      : null,
+            taxiPaused:    _taxiRunning && _taxiPaused,
+            taxiDuration:  _taxiRunning ? _taxiDurationLabel : null,
+            onTaxiPause:   _taxiRunning ? (_taxiPaused ? _resumeTaximeter : _pauseTaximeter) : null,
+            activeOrderId: _taxiRunning
+                ? _orders.where((o) => o.isOnWay).firstOrNull?.id
+                : null,
+          ),
           const ChatScreen(),
           ProfileScreen(driver: _driver, onLogout: _logout),
         ],
@@ -1908,7 +1918,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => _OrderDetailSheet(
+      builder: (_) => ActiveOrderSheet(
         order: order,
         onAction: (a) { Navigator.pop(context); _orderAction(order, a); },
         onOpenMap: () {
@@ -1927,7 +1937,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 }
 
-class _OrderDetailSheet extends StatelessWidget {
+class ActiveOrderSheet extends StatelessWidget {
   final OrderModel order;
   final void Function(String) onAction;
   final VoidCallback? onOpenMap;
@@ -1936,7 +1946,7 @@ class _OrderDetailSheet extends StatelessWidget {
   final bool taxiPaused;
   final String? taxiDuration;
   final VoidCallback? onTaxiPause;
-  const _OrderDetailSheet({
+  const ActiveOrderSheet({
     required this.order,
     required this.onAction,
     this.onOpenMap,
