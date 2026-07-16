@@ -829,18 +829,15 @@ async function doAction(id,action){
   else if(action==='complete') Audio.complete();
   if(typeof FlutterNotify !== 'undefined') FlutterNotify.postMessage('0');
 
-  // Taximeter ma'lumotlarini arrived/complete da yuboramiz
-  const tmxPayload = {
-    tmx_dist_km: _tmxDistKm || 0,
-    tmx_price:   parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,'')) || 0,
-    tmx_time:    _tmxTimeStr || '0:00',
-  };
-
   try{
+    const fd = new FormData();
+    fd.append('tmx_dist_km', _tmxDistKm || 0);
+    fd.append('tmx_price', parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,'')) || 0);
+    fd.append('tmx_time', _tmxTimeStr || '0:00');
     const r=await fetch(`/driver/orders/${id}/${action}/`,{
       method:'POST',
-      headers:{'X-CSRFToken':getCookie('csrftoken'),'Content-Type':'application/json'},
-      body: JSON.stringify(tmxPayload),
+      headers:{'X-CSRFToken':getCookie('csrftoken')},
+      body: fd,
     });
     const d=await r.json();
     if(d.ok){

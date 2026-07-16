@@ -253,9 +253,8 @@ def driver_order_action(request, driver, pk, action):
 
     # Taximeter ma'lumotlarini saqlash (arrived, complete)
     try:
-        body = json.loads(request.body)
-        tmx_dist = body.get('tmx_dist_km')
-        tmx_price = body.get('tmx_price')
+        tmx_dist = request.POST.get('tmx_dist_km')
+        tmx_price = request.POST.get('tmx_price')
         if tmx_dist and float(tmx_dist) > 0:
             order.distance_km = round(float(tmx_dist), 2)
             update_fields.append('distance_km')
