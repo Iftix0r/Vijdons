@@ -533,6 +533,9 @@ let _tmxDistKm    = 0;
 let _tmxPrevLat   = null;
 let _tmxPrevLng   = null;
 let _tmxWatchId   = null;
+let _tmxPriceStr  = '0';
+let _tmxTimeStr   = '0:00';
+let _tmxSpeedKmh  = 0;
 
 // Haversine masofa (km)
 function _haversine(lat1, lng1, lat2, lng2) {
@@ -554,6 +557,11 @@ function tmxStart(orderId, order) {
   _tmxDistKm  = 0;
   _tmxPrevLat = null;
   _tmxPrevLng = null;
+  _tmxPriceStr = TMX_BASE_PRICE.toLocaleString('uz-UZ');
+  _tmxTimeStr  = '0:00';
+  _tmxSpeedKmh = 0;
+  if (order?.price && parseFloat(order.price) > 0)
+    _tmxPriceStr = parseInt(order.price).toLocaleString('uz-UZ');
 
   _tmxInterval = setInterval(_tmxTick, 1000);
   window.addEventListener('vijdon_location', _tmxOnLocation);
@@ -569,22 +577,15 @@ function tmxStart(orderId, order) {
 function _tmxOnLocation(e) {
   const lat = e.detail?.lat;
   const lng = e.detail?.lng;
-  const spd = e.detail?.speed; // m/s yoki null
+  const spd = e.detail?.speed;
   if (!lat || !lng || !_tmxActive) return;
 
-  // Tezlik
-  let kmh = 0;
-  if (spd != null && spd >= 0) {
-    kmh = Math.round(spd * 3.6);
-  }
-  document.getElementById('tmx-speed').textContent = kmh;
+  if (spd != null && spd >= 0) _tmxSpeedKmh = Math.round(spd * 3.6);
 
-  // Masofa
   if (_tmxPrevLat !== null) {
     const d = _haversine(_tmxPrevLat, _tmxPrevLng, lat, lng);
-    if (d > 0.005 && d < 1.0) { // 5m dan katta, 1km dan kichik (shovqin filtri)
+    if (d > 0.005 && d < 1.0) {
       _tmxDistKm += d;
-      document.getElementById('tmx-dist').textContent = _tmxDistKm.toFixed(2);
       _tmxUpdatePrice();
       _syncSheetTmx();
     }
@@ -598,10 +599,10 @@ function _syncSheetTmx() {
   const t = document.getElementById('sheet-tmx-time');
   const d = document.getElementById('sheet-tmx-dist');
   const s = document.getElementById('sheet-tmx-speed');
-  if(p) p.textContent = document.getElementById('tmx-price').textContent;
-  if(t) t.textContent = document.getElementById('tmx-time').textContent;
-  if(d) d.textContent = document.getElementById('tmx-dist').textContent;
-  if(s) s.textContent = document.getElementById('tmx-speed').textContent;
+  if(p) p.textContent = _tmxPriceStr;
+  if(t) t.textContent = _tmxTimeStr;
+  if(d) d.textContent = _tmxDistKm.toFixed(2);
+  if(s) s.textContent = _tmxSpeedKmh;
 }
 
 function _tmxTick() {
@@ -609,25 +610,20 @@ function _tmxTick() {
   const elapsed = Math.floor((Date.now() - _tmxStartTime) / 1000);
   const min = Math.floor(elapsed / 60);
   const sec = elapsed % 60;
-  document.getElementById('tmx-time').textContent =
-    min + ':' + String(sec).padStart(2, '0');
+  _tmxTimeStr = min + ':' + String(sec).padStart(2, '0');
   _tmxUpdatePrice();
   _syncSheetTmx();
+}
 }
 
 function _tmxUpdatePrice() {
   if (!_tmxActive) return;
-  // Agar belgilangan narx bo'lsa — o'zgartirmaymiz
-  if (_tmxOrder?.price && parseFloat(_tmxOrder.price) > 0) return;
-  const price = Math.round(TMX_BASE_PRICE + _tmxDistKm * TMX_PER_KM);
-  const el = document.getElementById('tmx-price');
-  const prev = parseInt(el.textContent.replace(/\D/g, '')) || 0;
-  el.textContent = price.toLocaleString('uz-UZ');
-  if (price > prev) {
-    el.classList.remove('price-updated');
-    void el.offsetWidth; // reflow
-    el.classList.add('price-updated');
+  if (_tmxOrder?.price && parseFloat(_tmxOrder.price) > 0) {
+    _tmxPriceStr = parseInt(_tmxOrder.price).toLocaleString('uz-UZ');
+    return;
   }
+  const price = Math.round(TMX_BASE_PRICE + _tmxDistKm * TMX_PER_KM);
+  _tmxPriceStr = price.toLocaleString('uz-UZ');
 }
 
 function tmxStop() {
