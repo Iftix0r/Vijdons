@@ -98,12 +98,6 @@ class Order(models.Model):
     created_at    = models.DateTimeField(auto_now_add=True, verbose_name="Yaratilgan vaqti")
     updated_at    = models.DateTimeField(auto_now=True, verbose_name="Yangilangan vaqti")
 
-    # ── Taximetr holati ────────────────────────────────────────────────────────
-    tmx_start_time = models.DateTimeField(null=True, blank=True, verbose_name="Taximetr boshlangan vaqt")
-    tmx_dist_km    = models.FloatField(default=0, verbose_name="Taximetr masofa (km)")
-    tmx_paused     = models.BooleanField(default=False, verbose_name="Taximetr pauza")
-    tmx_paused_ms  = models.BigIntegerField(default=0, verbose_name="Jami pauza vaqti (ms)")
-
     def __str__(self):
         return f"Buyurtma #{self.id} - {self.client}"
 

@@ -31,8 +31,4 @@ urlpatterns = [
     path('orders/<int:pk>/rate/',   driver_views.driver_order_rate,   name='order_rate'),
     path('surge/',                  driver_views.driver_surge_info,   name='surge_info'),
     path('sos/',                     driver_views.driver_sos_send,     name='sos_send'),
-
-    # Taximeter state
-    path('tmx/load/',                driver_views.driver_tmx_load,     name='tmx_load'),
-    path('tmx/<int:pk>/save/',       driver_views.driver_tmx_save,     name='tmx_save'),
 ]

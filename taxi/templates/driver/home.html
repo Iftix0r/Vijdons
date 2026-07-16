@@ -564,12 +564,11 @@ const TMX_PER_KM      = {{ tariff_per_km }};
 let _tmxActive    = false;
 let _tmxPaused    = false;
 let _tmxPauseStart= null;
-let _tmxTotalPaused = 0;
+let _tmxTotalPaused = 0; // ms
 let _tmxOrderId   = null;
 let _tmxOrder     = null;
 let _tmxStartTime = null;
 let _tmxInterval  = null;
-let _tmxSaveInterval = null;
 let _tmxDistKm    = 0;
 let _tmxPrevLat   = null;
 let _tmxPrevLng   = null;
@@ -589,16 +588,16 @@ function _haversine(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-function tmxStart(orderId, order, restore) {
+function tmxStart(orderId, order) {
   if (_tmxActive) return;
   _tmxActive    = true;
-  _tmxPaused    = restore?.paused    || false;
+  _tmxPaused    = false;
   _tmxPauseStart= null;
-  _tmxTotalPaused = restore?.paused_ms || 0;
+  _tmxTotalPaused = 0;
   _tmxOrderId   = orderId;
   _tmxOrder     = order;
-  _tmxStartTime = restore?.start_ms  || Date.now();
-  _tmxDistKm    = restore?.dist_km   || 0;
+  _tmxStartTime = Date.now();
+  _tmxDistKm    = 0;
   _tmxPrevLat   = null;
   _tmxPrevLng   = null;
   _tmxPriceStr  = TMX_BASE_PRICE.toLocaleString('uz-UZ');
@@ -616,8 +615,6 @@ function tmxStart(orderId, order, restore) {
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 3000 }
     );
   }
-  // Har 5 soniyada serverga saqlaymiz
-  _tmxSaveInterval = setInterval(_tmxSave, 5000);
 }
 
 function tmxPause() {
@@ -706,33 +703,12 @@ function tmxStop() {
   _tmxPaused    = false;
   _tmxPauseStart= null;
   clearInterval(_tmxInterval);
-  clearInterval(_tmxSaveInterval);
-  _tmxInterval     = null;
-  _tmxSaveInterval = null;
+  _tmxInterval  = null;
   if (_tmxWatchId !== null) {
     navigator.geolocation?.clearWatch(_tmxWatchId);
     _tmxWatchId = null;
   }
   window.removeEventListener('vijdon_location', _tmxOnLocation);
-}
-
-async function _tmxSave() {
-  if (!_tmxActive || !_tmxOrderId) return;
-  const paused_ms = _tmxPaused && _tmxPauseStart
-    ? _tmxTotalPaused + (Date.now() - _tmxPauseStart)
-    : _tmxTotalPaused;
-  try {
-    await fetch(`/driver/tmx/${_tmxOrderId}/save/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-      body: JSON.stringify({
-        start_ms:  _tmxStartTime,
-        dist_km:   _tmxDistKm,
-        paused:    _tmxPaused,
-        paused_ms: paused_ms,
-      }),
-    });
-  } catch(_) {}
 }
 
 function tmxArrived() {
