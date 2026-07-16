@@ -534,6 +534,17 @@ window.addEventListener('vijdon_location', e=>{
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+let _hbgBusy = false;
+async function hbgToggleDuty() {
+  if (_hbgBusy) return; _hbgBusy = true; Native.vibrate();
+  try {
+    const r = await fetch('{% url "driver:duty_toggle" %}', { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+    const d = await r.json();
+    if (d.ok) location.reload();
+    else showToast('Xatolik', d.error || "Qayta urinib ko'ring", 'error', 4000);
+  } catch(_) { showToast('Xatolik', "Qayta urinib ko'ring", 'error'); }
+  finally { _hbgBusy = false; }
+}
 function getCookie(n) {
   const v = document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)');
   return v?v[2]:'';
