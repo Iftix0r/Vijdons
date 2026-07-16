@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../core/api_service.dart';
 import '../core/theme.dart';
 
@@ -197,14 +198,30 @@ class _ChatScreenState extends State<ChatScreen>
             child: Container(
               width: 40, height: 40,
               decoration: BoxDecoration(
-                color: dark
-                    ? AppColors.surfaceDark
-                    : const Color(0xFFF2F2F2),
+                color: dark ? AppColors.surfaceDark : const Color(0xFFF2F2F2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(Icons.refresh_rounded,
-                  size: 18,
-                  color: Colors.grey.shade500),
+              child: Icon(Icons.refresh_rounded, size: 18, color: Colors.grey.shade500),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Qo'ng'iroq tugmasi — 1351
+          GestureDetector(
+            onTap: () async {
+              HapticFeedback.mediumImpact();
+              await launchUrl(
+                Uri(scheme: 'tel', path: '1351'),
+                mode: LaunchMode.externalApplication,
+              );
+            },
+            child: Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+              ),
+              child: const Icon(Icons.call_rounded, size: 18, color: AppColors.success),
             ),
           ),
         ],

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/api_service.dart';
@@ -39,15 +40,28 @@ class _HistoryScreenState extends State<HistoryScreen>
   List<OrderModel> _shown = [];
   bool   _loading = true;
   String _filter  = 'all';
+  Timer? _timer;
+  int    _tick    = 0;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _tick++;
+      final hasActive = _all.any((o) => o.isActive);
+      if (hasActive || _tick % 4 == 0) _load(silent: true);
+    });
   }
 
-  Future<void> _load() async {
-    setState(() => _loading = true);
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load({bool silent = false}) async {
+    if (!silent && mounted) setState(() => _loading = true);
     try {
       // Tarix + faol buyurtmalarni birgalikda yuklaymiz
       final results = await Future.wait([
