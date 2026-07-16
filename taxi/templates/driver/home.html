@@ -92,8 +92,7 @@
 }
 .price-updated { animation: price-pop .25s ease-out; }
 </style>
-<div id="new-order-modal" class="fixed inset-0 z-[200] hidden flex items-center justify-center"
-     style="background:rgba(0,0,0,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)">
+<div id="new-order-modal" class="fixed inset-0 z-[200] hidden" style="display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)">
   <div class="ios-card mx-4 w-full max-w-sm anim-scale" style="border-radius:20px;overflow:hidden">
     <!-- Header -->
     <div class="flex flex-col items-center pt-6 pb-4 px-5" style="background:var(--ios-yellow)">
@@ -168,6 +167,23 @@ renderOrdersDOM();
   if (onWay) tmxStart(onWay.id, onWay);
 })();
 
+// ── Audio unlock (Flutter WebView / iOS Safari) ─────────────────────────────
+let _audioUnlocked = false;
+function _unlockAudio() {
+  if (_audioUnlocked) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const buf = ctx.createBuffer(1, 1, 22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start(0);
+    ctx.resume().then(() => { _audioUnlocked = true; });
+  } catch(_) {}
+}
+document.addEventListener('touchstart', _unlockAudio, { once: true, passive: true });
+document.addEventListener('click',      _unlockAudio, { once: true, passive: true });
+
 // ── Auto-refresh: har 2 soniyada ──────────────────────────────────────────
 if(IS_ON_DUTY) setInterval(loadOrders, 2000);
 
@@ -196,7 +212,9 @@ async function loadOrders() {
       renderOrdersDOM();
       Native.vibrate([60,30,60,30,120]);
       if(typeof FlutterNotify !== 'undefined') FlutterNotify.postMessage(String(added.length));
-      if(!_suppressModal) showNewOrderModal(added[0], ORDERS.find(o => o.id === added[0]) || null);
+      if(!_suppressModal) {
+        showNewOrderModal(added[0], ORDERS.find(o => o.id === added[0]) || null);
+      }
       return;
     }
 
@@ -395,7 +413,7 @@ function showNewOrderModal(orderId, order) {
 
   // Show modal
   const modal = document.getElementById('new-order-modal');
-  modal.classList.remove('hidden');
+  modal.style.display = 'flex';
   // Modal body ga bosish — sheet ochilsin
   document.getElementById('nom-body').onclick = () => {
     closeNewOrderModal(false);
@@ -424,7 +442,7 @@ function showNewOrderModal(orderId, order) {
 function closeNewOrderModal(autoClose = false) {
   clearInterval(_nomTimer);
   Audio.stopNewOrder();
-  document.getElementById('new-order-modal').classList.add('hidden');
+  document.getElementById('new-order-modal').style.display = 'none';
   sessionStorage.removeItem('vijdon_new_order');
   if (autoClose) {
     _known = new Set();
