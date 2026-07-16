@@ -138,6 +138,16 @@ def driver_home(request, driver):
         })
 
     _tariff = TariffSettings.get()
+    # Bugungi statistika
+    from django.utils import timezone
+    from django.db.models import Sum, Count, Q as DQ
+    today = timezone.now().date()
+    today_stats = Order.objects.filter(
+        driver=driver, created_at__date=today
+    ).aggregate(
+        earned=Sum('price', filter=DQ(status='completed')),
+        trips=Count('id', filter=DQ(status='completed')),
+    )
     return render(request, 'driver/home.html', {
         'driver':      driver,
         'orders':      orders,
@@ -148,6 +158,8 @@ def driver_home(request, driver):
         'tariff_base_price': int(_tariff.base_price),
         'tariff_per_km': int(_tariff.price_per_km),
         'driver_balance_int': int(driver.balance),
+        'today_earned': int(today_stats['earned'] or 0),
+        'today_trips': today_stats['trips'] or 0,
     })
 
 
@@ -243,7 +255,7 @@ def driver_order_action(request, driver, pk, action):
             locked.dispatched_to = None
             locked.save(update_fields=['status', 'driver', 'dispatched_to', 'updated_at'])
         tg_order_accepted(locked, driver)
-        return JsonResponse({'ok': True})
+        return JsonResponse({'ok': True, 'new_balance': float(driver.balance)})
 
     if order.driver_id and order.driver_id != driver.id:
         return JsonResponse({'ok': False, 'error': 'Bu buyurtma sizga tegishli emas'}, status=403)
@@ -270,6 +282,12 @@ def driver_order_action(request, driver, pk, action):
         try:
             order.client.trips_count += 1
             order.client.save(update_fields=['trips_count'])
+        except Exception:
+            pass
+        # Haydovchi trips_count ni ham yangilaymiz
+        try:
+            driver.trips_count = (driver.trips_count or 0) + 1
+            driver.save(update_fields=['trips_count'])
         except Exception:
             pass
 

@@ -133,11 +133,13 @@
 <script>
 const IS_ON_DUTY = {{ driver.is_on_duty|yesno:'true,false' }};
 const DRIVER_NAME = "{{ driver.full_name|first|upper }}";
-const DRIVER_BALANCE = {{ driver_balance_int }};
+let DRIVER_BALANCE = {{ driver_balance_int }};
 const DRIVER_CAR = "{{ driver.car_model }}";
 const DRIVER_CAR_NUM = "{{ driver.car_number }}";
-const DRIVER_TRIPS = {{ driver.trips_count|default:0 }};
+let DRIVER_TRIPS = {{ driver.trips_count|default:0 }};
 const DRIVER_RATING = "{% if driver.rating %}{{ driver.rating|floatformat:1 }}{% endif %}";
+let TODAY_EARNED = {{ today_earned }};
+let TODAY_TRIPS = {{ today_trips }};
 
 let ORDERS = {{ orders_json|safe }};
 let _known = new Set(ORDERS.map(o => o.id));
@@ -155,6 +157,13 @@ renderOrdersDOM();
 if(IS_ON_DUTY) setInterval(loadOrders, 2000);
 
 let _suppressModal = false;
+
+function _updateNavBalance(newBal) {
+  if(newBal === undefined) return;
+  DRIVER_BALANCE = Math.round(newBal);
+  const el = document.querySelector('.ios-footnote.font-bold');
+  if(el) el.textContent = DRIVER_BALANCE.toLocaleString();
+}
 
 async function loadOrders() {
   if(!navigator.onLine) return;
@@ -202,11 +211,19 @@ function renderOrdersDOM() {
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div class="ios-card rounded-[14px] p-4">
-            <div class="ios-caption2 font-semibold mb-2" style="color:var(--ios-label3)">JAMI SAFARLAR</div>
-            <div class="ios-title font-bold text-[#FFD600]">${DRIVER_TRIPS}</div>
+            <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">BUGUN SAFARLAR</div>
+            <div class="ios-title font-bold text-[#FFD600]">${TODAY_TRIPS}</div>
           </div>
           <div class="ios-card rounded-[14px] p-4">
-            <div class="ios-caption2 font-semibold mb-2" style="color:var(--ios-label3)">REYTING</div>
+            <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">BUGUN DAROMAD</div>
+            <div class="ios-footnote font-bold text-[#34C759]">${TODAY_EARNED > 0 ? TODAY_EARNED.toLocaleString() + " so'm" : '—'}</div>
+          </div>
+          <div class="ios-card rounded-[14px] p-4">
+            <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">JAMI SAFARLAR</div>
+            <div class="ios-title font-bold" style="color:var(--ios-label3)">${DRIVER_TRIPS}</div>
+          </div>
+          <div class="ios-card rounded-[14px] p-4">
+            <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">REYTING</div>
             <div class="ios-title font-bold text-[#FF9500]">${DRIVER_RATING ? DRIVER_RATING + ' ★' : '—'}</div>
           </div>
         </div>
@@ -267,6 +284,7 @@ function renderOrdersDOM() {
         <div class="flex items-center justify-between mb-3">
           <span class="ios-caption2 font-semibold px-2.5 py-1 rounded-[8px] ${pill[o.status]||''}">${lbl[o.status]||o.status}</span>
           <div class="flex items-center gap-2">
+            ${o.status==='pending'&&o.timer_sec>0?`<span id="timer-${o.id}" class="ios-caption2 font-bold text-[#FF9500]">${o.timer_sec}s</span>`:''}
             <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">${o.payment_type==='cash'?'💵 Naqd':'💳 Karta'}</span>
             <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">#${o.id}</span>
           </div>
@@ -287,9 +305,26 @@ function renderOrdersDOM() {
         </div>
       </div>
     </div>`).join('');
+  _startTimers();
 }
 
-// ── Pull-to-refresh ───────────────────────────────────────────────────────────
+// ── Pull-to-refresh ──────────────────────────────────────────────────────────
+// ── Pending timer countdown ───────────────────────────────────────────────────
+let _timerIntervals = {};
+function _startTimers() {
+  Object.values(_timerIntervals).forEach(clearInterval);
+  _timerIntervals = {};
+  ORDERS.forEach(o => {
+    if(o.status !== 'pending' || !o.timer_sec || o.timer_sec <= 0) return;
+    let sec = o.timer_sec;
+    _timerIntervals[o.id] = setInterval(() => {
+      sec--;
+      const el = document.getElementById('timer-' + o.id);
+      if(el) el.textContent = sec + 's';
+      if(sec <= 0) { clearInterval(_timerIntervals[o.id]); loadOrders(); }
+    }, 1000);
+  });
+}─
 let _py=0;
 const _mc=document.getElementById('main-content');
 _mc.addEventListener('touchstart',e=>{ if(_mc.scrollTop===0) _py=e.touches[0].clientY; },{passive:true});
@@ -860,7 +895,16 @@ async function doAction(id,action){
         const updated=ORDERS.find(x=>x.id===id||x.id===Number(id));
         if(updated) _renderSheet(id, updated);
       } else if(action==='arrived'||action==='complete'){
-        if(action==='complete') tmxStop();
+        if(action==='complete') {
+          tmxStop();
+          // Statistikani JS da yangilaymiz
+          TODAY_TRIPS++;
+          DRIVER_TRIPS++;
+          const earnedPrice = parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,'')) || 0;
+          TODAY_EARNED += earnedPrice;
+          // Navbar balance ni yangilaymiz
+          _updateNavBalance(d.new_balance);
+        }
         _suppressModal = true;
         _known = new Set();
         await loadOrders();
@@ -886,6 +930,7 @@ async function doAction(id,action){
           showToast('Qabul qilindi',updated.client_phone,'success');
           setTimeout(()=>Native.callPhone(updated.client_phone),900);
         }
+        _updateNavBalance(d.new_balance);
         if(updated) _renderSheet(id, updated);
       } else {
         _suppressModal = true;
