@@ -89,7 +89,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'host7905_vijdon1515',
         'USER': 'host7905_vijdon_user',
-        'PASSWORD': 'hkT+sFnBLp.e&Rxi',
+        'PASSWORD': 'Vijdon2024db',
         'HOST': 'localhost',
         'PORT': '5432',
     }
