@@ -627,6 +627,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
         setState(() {
           _orders = orders;
+          // Faqat pending buyurtmalar asosiy ekranda ko'rsatiladi
+          // isActive buyurtmalar Tarix ekraniga o'tadi
           _activeOrderCount = orders.where((o) => o.isActive).length;
           _loadingOrders = false;
         });
@@ -1741,31 +1743,38 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _activeBadgeBanner(bool dark) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.info.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 8, height: 8,
-            decoration: const BoxDecoration(
-                color: AppColors.info, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 10),
-          Text(
-            '$_activeOrderCount ta faol buyurtma davom etmoqda',
-            style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: AppColors.info),
-          ),
-        ],
+  Widget _activeBadgeBanner(bool dark) => GestureDetector(
+    onTap: () => setState(() => _tab = 1), // Tarix ekraniga o'tish
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.info.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 8, height: 8,
+              decoration: const BoxDecoration(
+                  color: AppColors.info, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '$_activeOrderCount ta faol buyurtma davom etmoqda',
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.info),
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded,
+                size: 13, color: AppColors.info),
+          ],
+        ),
       ),
     ),
   );

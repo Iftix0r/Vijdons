@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../core/api_service.dart';
+import '../core/constants.dart';
 import '../core/theme.dart';
 import '../models/order_model.dart';
 
@@ -64,6 +67,177 @@ class _HistoryScreenState extends State<HistoryScreen>
       'active'    => _all.where((o) => o.isActive).toList(),
       _           => List.from(_all),
     };
+  }
+
+  Future<void> _orderAction(OrderModel order, String action) async {
+    HapticFeedback.mediumImpact();
+    try {
+      final ep = {
+        'on_way':   AppConstants.onWayOrder(order.id),
+        'arrived':  AppConstants.arrivedOrder(order.id),
+        'complete': AppConstants.completeOrder(order.id),
+        'cancel':   AppConstants.cancelOrder(order.id),
+      }[action];
+      if (ep == null) return;
+      await ApiService.orderAction(ep);
+      await _load();
+    } catch (e) {
+      if (mounted) _snack(e.toString());
+    }
+  }
+
+  void _showActiveOrderSheet(OrderModel order) {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) {
+        final dark = Theme.of(context).brightness == Brightness.dark;
+        return Container(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom +
+                MediaQuery.of(context).padding.bottom + 16,
+          ),
+          decoration: BoxDecoration(
+            color: dark ? AppColors.cardDark : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  width: 36, height: 4,
+                  decoration: BoxDecoration(
+                    color: dark ? Colors.grey.shade700 : Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: _statusColor(order.status),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text('#${order.id}',
+                          style: const TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 12)),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        order.fromAddress,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 14),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Qo'ng'iroq
+              if (order.clientPhone.isNotEmpty && !order.clientPhone.contains('*'))
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                  child: SizedBox(
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final uri = Uri(scheme: 'tel', path: order.clientPhone);
+                        if (await canLaunchUrl(uri)) launchUrl(uri);
+                      },
+                      icon: const Icon(Icons.call_rounded, size: 18),
+                      label: Text(order.clientPhone,
+                          style: const TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w900)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.success,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                        elevation: 0,
+                      ),
+                    ),
+                  ),
+                ),
+              // Action tugmalar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                child: Column(
+                  children: [
+                    if (order.isAccepted)
+                      _actionBtn('on_way', "Yo'lga chiqdim",
+                          Icons.directions_car_rounded, AppColors.purple, order),
+                    if (order.isOnWay) ...[
+                      _actionBtn('arrived', 'Yetib keldim',
+                          Icons.location_on_rounded, AppColors.info, order),
+                      const SizedBox(height: 8),
+                    ],
+                    if (order.isArrived) ...[
+                      _actionBtn('complete', 'Yakunlash',
+                          Icons.flag_rounded, AppColors.success, order),
+                      const SizedBox(height: 8),
+                    ],
+                    const SizedBox(height: 8),
+                    _actionBtn('cancel', 'Bekor qilish',
+                        Icons.cancel_rounded, AppColors.danger, order,
+                        outlined: true),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _actionBtn(String action, String label, IconData icon, Color color,
+      OrderModel order, {bool outlined = false}) {
+    if (outlined) {
+      return SizedBox(
+        width: double.infinity, height: 50,
+        child: OutlinedButton.icon(
+          onPressed: () { Navigator.pop(context); _orderAction(order, action); },
+          icon: Icon(icon, size: 17),
+          label: Text(label,
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: color,
+            side: BorderSide(color: color.withValues(alpha: 0.6), width: 1.5),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
+          ),
+        ),
+      );
+    }
+    return SizedBox(
+      width: double.infinity, height: 50,
+      child: ElevatedButton.icon(
+        onPressed: () { Navigator.pop(context); _orderAction(order, action); },
+        icon: Icon(icon, size: 17),
+        label: Text(label,
+            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.black,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14)),
+        ),
+      ),
+    );
   }
 
   double get _totalEarnings => _all
@@ -384,16 +558,21 @@ class _HistoryScreenState extends State<HistoryScreen>
 
   Widget _orderTile(OrderModel o, bool dark) {
     final c = _statusColor(o.status);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: dark ? AppColors.cardDark : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: dark ? AppColors.borderDark : AppColors.borderLight,
+    return GestureDetector(
+      onTap: o.isActive ? () => _showActiveOrderSheet(o) : null,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: dark ? AppColors.cardDark : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: o.isActive
+                ? c.withValues(alpha: 0.4)
+                : (dark ? AppColors.borderDark : AppColors.borderLight),
+            width: o.isActive ? 1.5 : 1,
+          ),
         ),
-      ),
-      child: IntrinsicHeight(
+        child: IntrinsicHeight(
         child: Row(
           children: [
             // Colored left accent bar
@@ -532,8 +711,6 @@ class _HistoryScreenState extends State<HistoryScreen>
       ),
     );
   }
-
-  // ── Empty state ───────────────────────────────────────────────────────────
 
   Widget _emptyState(bool dark) {
     return Center(
