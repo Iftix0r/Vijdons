@@ -579,7 +579,7 @@ class _HistoryScreenState extends State<HistoryScreen>
           ),
         ),
         child: IntrinsicHeight(
-        child: Row(
+          child: Row(
           children: [
             // Colored left accent bar
             Container(
@@ -713,6 +713,7 @@ class _HistoryScreenState extends State<HistoryScreen>
               ),
             ),
           ],
+          ),
         ),
       ),
     );

@@ -693,7 +693,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       'arrived':  AppConstants.arrivedOrder(order.id),
       'complete': AppConstants.completeOrder(order.id),
       'cancel':   AppConstants.cancelOrder(order.id),
-    }[action]!;
+    }[action];
+    if (ep == null) return;
     try {
       await ApiService.orderAction(ep);
       _snack(_actionLabel(action), icon: _actionIcon(action));
@@ -730,6 +731,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       } else {
         _snack(e.toString(), error: true);
       }
+    } catch (e) {
+      _snack(e.toString(), error: true);
     }
   }
 

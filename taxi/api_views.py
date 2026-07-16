@@ -270,7 +270,7 @@ def _order_action(request, driver, pk, allowed_statuses, new_status):
             locked = Order.objects.select_for_update().get(pk=order.pk)
             if locked.status != 'pending':
                 return Response({'detail': 'Bu buyurtmani allaqachon boshqa haydovchi qabul qildi.'}, status=409)
-            if locked.dispatched_to and locked.dispatched_to_id != driver.id:
+            if locked.dispatched_to_id and locked.dispatched_to_id != driver.id:
                 return Response({'detail': 'Bu buyurtma sizga yuborilmagan.'}, status=403)
 
             tariff = TariffSettings.get()
@@ -297,7 +297,7 @@ def _order_action(request, driver, pk, allowed_statuses, new_status):
             order.client.trips_count += 1
             order.client.save(update_fields=['trips_count'])
         except Exception:
-            pass
+            pass  # trips_count optional, buyurtma yakunlanishi bloklanmasin
 
     # Telegram xabarlari
     if new_status == 'accepted':    tg_order_accepted(order, driver)
@@ -322,7 +322,7 @@ def order_reject(request, driver, pk):
     except Order.DoesNotExist:
         return Response({'detail': 'Buyurtma topilmadi.'}, status=404)
 
-    was_dispatched = (order.dispatched_to == driver)
+    was_dispatched = (order.dispatched_to_id == driver.id)
 
     order.rejected_by.add(driver)
     
