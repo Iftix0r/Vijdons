@@ -622,47 +622,13 @@ document.addEventListener('visibilitychange', () => {
   let _lastGeoLat = null, _lastGeoLng = null;
   let _geoTimer = null;
 
-  // Reverse geocode — 2GIS (o'zbek tili, aniq) → Nominatim fallback
-  const _YANDEX_KEY = '{{ YANDEX_MAPKIT_KEY }}';
-
+  // Reverse geocode — Nominatim (OpenStreetMap), o'zbek tili
   async function reverseGeocode(lat, lng) {
-    return await _2gisGeocode(lat, lng) || await _nominatimGeocode(lat, lng);
-  }
-
-  // 2GIS — O'zbekiston uchun eng aniq, o'zbek tilida
-  async function _2gisGeocode(lat, lng) {
-    const controller = new AbortController();
-    const tid = setTimeout(() => controller.abort(), 5000);
-    try {
-      // 2GIS public geocoder (API key shart emas oddiy reverse uchun)
-      const r = await fetch(
-        `https://catalog.api.2gis.com/3.0/items/geocode?lat=${lat}&lon=${lng}&fields=items.address,items.full_name&lang=uz&key=ruuswa` ,
-        { signal: controller.signal }
-      );
-      clearTimeout(tid);
-      const d = await r.json();
-      const item = d?.result?.items?.[0];
-      if (!item) return null;
-      const addr = item.address;
-      if (!addr) return item.full_name?.split(',').slice(0, 2).join(',').trim() || null;
-      // street + building, yoki name
-      const street   = addr.street_name || '';
-      const building = addr.building_id ? (addr.building_id.toString()) : '';
-      const name     = item.name || '';
-      if (street) return street + (name && name !== street ? ', ' + name : '');
-      return item.full_name?.split(',').slice(0,2).join(',').trim() || null;
-    } catch (_) {
-      clearTimeout(tid);
-      return null;
-    }
-  }
-
-  async function _nominatimGeocode(lat, lng) {
     const controller = new AbortController();
     const tid = setTimeout(() => controller.abort(), 6000);
     try {
       const r = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=uz`,
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=uz&zoom=16`,
         { signal: controller.signal }
       );
       clearTimeout(tid);
@@ -674,7 +640,7 @@ document.addEventListener('visibilitychange', () => {
       const area   = a.neighbourhood || a.quarter || a.city_district || a.city || a.town || a.village || '';
       if (street && house) return `${street}, ${house}`;
       if (street && area)  return `${street}, ${area}`;
-      return street || area || null;
+      return street || area || d.display_name?.split(',')[0] || null;
     } catch (_) {
       clearTimeout(tid);
       return null;

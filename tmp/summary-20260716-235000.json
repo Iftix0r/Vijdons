@@ -1,0 +1,4 @@
+{
+  "summary": "Geocoding soddalashtirildi — faqat Nominatim qoldirildi, 2GIS va Yandex olib tashlandi. accept-language=uz, zoom=16 (ko'cha darajasi) parametrlari bilan. street+house, street+area, yoki display_name[0] fallback. 6s timeout.",
+  "current_status": "GPS navbar faqat Nominatim ishlatadi. Barcha oldingi o'zgarishlar saqlanib qoldi."
+}
