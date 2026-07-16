@@ -339,7 +339,7 @@ function _startTimers() {
       if(sec <= 0) { clearInterval(_timerIntervals[o.id]); loadOrders(); }
     }, 1000);
   });
-}─
+}
 let _py=0;
 const _mc=document.getElementById('main-content');
 _mc.addEventListener('touchstart',e=>{ if(_mc.scrollTop===0) _py=e.touches[0].clientY; },{passive:true});
