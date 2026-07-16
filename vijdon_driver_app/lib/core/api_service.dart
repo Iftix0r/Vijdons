@@ -124,12 +124,35 @@ class ApiService {
   static Future<String?> reverseGeocode(double lat, double lng) async {
     try {
       final r = await _get('${AppConstants.geocodeReverse}?lat=$lat&lng=$lng');
-      final data = _decode(r) as Map<String, dynamic>;
-      final addr = data['address'] as String?;
-      return (addr != null && addr.isNotEmpty) ? addr : null;
-    } catch (_) {
-      return null;
-    }
+      if (r.statusCode == 200) {
+        final data = json.decode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+        final addr = data['address'] as String?;
+        if (addr != null && addr.isNotEmpty) return addr;
+      }
+    } catch (_) {}
+    // Backend ishlamasa to'g'ridan-to'g'ri Nominatim ga murojaat
+    try {
+      final url = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse'
+        '?lat=$lat&lon=$lng&format=json&accept-language=uz,ru&zoom=16',
+      );
+      final r = await http.get(url, headers: {'User-Agent': 'VijdonTaxiDriverApp/1.0'})
+          .timeout(const Duration(seconds: 8));
+      if (r.statusCode == 200) {
+        final data = json.decode(utf8.decode(r.bodyBytes));
+        final addr = data['address'] as Map<String, dynamic>?;
+        if (addr == null) return data['display_name'] as String?;
+        final parts = <String>[];
+        final road = addr['road'] ?? addr['street'] ?? addr['pedestrian'] ?? addr['residential'];
+        if (road != null) parts.add(road.toString());
+        final sub = addr['suburb'] ?? addr['neighbourhood'] ?? addr['village'];
+        if (sub != null) parts.add(sub.toString());
+        final city = addr['city'] ?? addr['town'] ?? addr['county'];
+        if (city != null) parts.add(city.toString());
+        return parts.isNotEmpty ? parts.join(', ') : data['display_name'] as String?;
+      }
+    } catch (_) {}
+    return null;
   }
 
   // ── Orders ─────────────────────────────────────────────────────────────────
