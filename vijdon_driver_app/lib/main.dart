@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
+import 'core/api_service.dart';
 import 'core/theme.dart';
 import 'core/notification_service.dart';
 import 'screens/splash_screen.dart';
@@ -9,7 +10,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   AndroidYandexMap.useAndroidViewSurface = false;
-  await YandexMapkit.initialize(apiKey: '469e8d29-be0b-42da-9bd4-ed515dbdb741');
+  final apiKey = await ApiService.getMapsApiKey() ?? '';
+  await YandexMap.initialize(apiKey: apiKey);
 
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(

@@ -204,6 +204,16 @@ class ApiService {
       return [];
     }
   }
+
+  static Future<String?> getMapsApiKey() async {
+    try {
+      final r = await _get(AppConstants.mapsConfig);
+      final data = _decode(r) as Map<String, dynamic>;
+      return data['yandex_api_key'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 class ApiException implements Exception {

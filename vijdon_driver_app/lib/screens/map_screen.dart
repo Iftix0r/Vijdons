@@ -121,7 +121,7 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _buildRoute(Point from, Point to) async {
     try {
-      final result = await YandexDriving.requestRoutes(
+      final result = YandexDriving.requestRoutes(
         points: [
           RequestPoint(point: from, requestPointType: RequestPointType.wayPoint),
           RequestPoint(point: to,   requestPointType: RequestPointType.wayPoint),
@@ -132,7 +132,7 @@ class _MapScreenState extends State<MapScreen> {
           avoidTolls: false,
         ),
       );
-      final session = await result.session.result;
+      final session = await result.result;
       if (session.routes.isNotEmpty) {
         final route = session.routes.first;
         setState(() {

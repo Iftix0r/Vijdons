@@ -20,6 +20,7 @@ class AppConstants {
   static const String chatSend = '/chat/send/';
   static const String chatUnread = '/chat/unread/';
   static const String activeDrivers = '/drivers/locations/';
+  static const String mapsConfig = '/maps/config/';
   static String onWayOrder(int id) => '/orders/$id/on_way/';
   static String acceptOrder(int id) => '/orders/$id/accept/';
   static String arrivedOrder(int id) => '/orders/$id/arrived/';
