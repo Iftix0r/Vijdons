@@ -28,11 +28,25 @@ class _HistoryScreenState extends State<HistoryScreen>
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final list = await ApiService.getMyOrders();
+      // Tarix + faol buyurtmalarni birgalikda yuklaymiz
+      final results = await Future.wait([
+        ApiService.getMyOrders(),
+        ApiService.getAvailableOrders(),
+      ]);
       if (!mounted) return;
-      final orders = list.map((e) => OrderModel.fromJson(e)).toList();
+      final history = results[0].map((e) => OrderModel.fromJson(e)).toList();
+      final active  = results[1]
+          .map((e) => OrderModel.fromJson(e))
+          .where((o) => o.isActive)
+          .toList();
+      // Faol buyurtmalar tepada, tarix pastda; takrorlanmasin
+      final historyIds = history.map((o) => o.id).toSet();
+      final merged = [
+        ...active.where((o) => !historyIds.contains(o.id)),
+        ...history,
+      ];
       setState(() {
-        _all = orders;
+        _all = merged;
         _applyFilter(_filter);
       });
     } catch (e) {

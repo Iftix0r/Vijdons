@@ -1128,7 +1128,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               (_, __) => const SkeletonCard(),
                               childCount: 2)),
                     )
-                  else if (_orders.isEmpty)
+                  else if (_orders.where((o) => o.isPending).isEmpty)
                     SliverFillRemaining(
                       hasScrollBody: false,
                       child: _searchingState(dark),
@@ -1782,7 +1782,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         ),
         const Spacer(),
-        if (!_loadingOrders && _orders.isNotEmpty)
+        if (!_loadingOrders && _orders.where((o) => o.isPending).isNotEmpty)
           Container(
             margin: const EdgeInsets.only(right: 8),
             padding: const EdgeInsets.symmetric(
@@ -1792,7 +1792,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              '${_orders.length} ta',
+              '${_orders.where((o) => o.isPending).length} ta',
               style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
@@ -1867,24 +1867,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     onTaxiPause:  order.isOnWay && _taxiRunning ? (_taxiPaused ? _resumeTaximeter : _pauseTaximeter) : null,
   );
 
-  // Faol buyurtmalar (accepted/on_way/arrived) doim tepada "pinned" ko'rinadi
-  // Yangi pending buyurtmalar kelganda faol karta pastga tushib ketmaydi
+  // Faqat pending buyurtmalar ko'rsatiladi — faol buyurtmalar Tarix ekranida
   Widget _buildOrdersSliver() {
-    final active  = _orders.where((o) => o.isActive).toList();
     final pending = _orders.where((o) => o.isPending).toList();
-    final others  = _orders.where((o) => !o.isActive && !o.isPending).toList();
 
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
       sliver: SliverList(
-        delegate: SliverChildListDelegate([
-          // Faol buyurtmalar — har doim tepada
-          ...active.map(_buildOrderCard),
-          // Pending buyurtmalar
-          ...pending.map(_buildOrderCard),
-          // Boshqalar
-          ...others.map(_buildOrderCard),
-        ]),
+        delegate: SliverChildListDelegate(
+          pending.map(_buildOrderCard).toList(),
+        ),
       ),
     );
   }

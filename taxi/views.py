@@ -45,7 +45,7 @@ def client_detail(request, pk):
     })
 
 
-
+def order_create(request):
     if request.method == 'POST':
         phone_number = request.POST.get('phone_number', '').strip()
         from_address = request.POST.get('from_address', '').strip()
