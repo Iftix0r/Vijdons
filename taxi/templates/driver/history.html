@@ -48,6 +48,7 @@
        data-note="{{ order.note|default:''|escapejs }}"
        data-date="{{ order.created_at|date:'d.m.Y H:i' }}"
        data-commission="{% if order.commission %}{{ order.commission }}{% else %}0{% endif %}"
+       data-duration="{% if order.status == 'completed' %}{{ order.updated_at|date:'H:i' }}{% endif %}"
        onclick="openDetail(this)"
        style="animation-delay:{{ forloop.counter0 }}0ms;box-shadow:0 1px 3px rgba(0,0,0,.07)">
     <div class="p-4">
@@ -182,10 +183,10 @@ function openDetail(el) {
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div class="ios-card2 rounded-[12px] p-3 text-center">
         <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">NARX</div>
-        <div class="ios-footnote font-bold ${d.status==='completed'?'text-[#34C759]':''}" style="${d.status!=='completed'?'color:var(--ios-label3)':''};text-decoration:${d.status==='cancelled'?'line-through':'none'}">${price>0?Math.round(price).toLocaleString()+" so'm":'—'}</div>
+        <div class="ios-footnote font-bold" style="color:${d.status==='completed'?'#34C759':d.status==='cancelled'?'var(--ios-label3)':'var(--ios-label)'}">${price>0?Math.round(price).toLocaleString()+" so'm":'—'}</div>
       </div>
       <div class="ios-card2 rounded-[12px] p-3 text-center">
         <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">MASOFA</div>
@@ -194,6 +195,10 @@ function openDetail(el) {
       <div class="ios-card2 rounded-[12px] p-3 text-center">
         <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">KOMISSIYA</div>
         <div class="ios-footnote font-bold text-[#FF9500]">${commission>0?Math.round(commission).toLocaleString()+" so'm":'—'}</div>
+      </div>
+      <div class="ios-card2 rounded-[12px] p-3 text-center">
+        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">YAKUNLANDI</div>
+        <div class="ios-footnote font-bold">${d.duration||'—'}</div>
       </div>
     </div>
 

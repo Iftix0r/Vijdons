@@ -827,8 +827,20 @@ async function doAction(id,action){
   else if(action==='reject'||action==='cancel') Audio.reject();
   else if(action==='complete') Audio.complete();
   if(typeof FlutterNotify !== 'undefined') FlutterNotify.postMessage('0');
+
+  // Taximeter ma'lumotlarini arrived/complete da yuboramiz
+  const tmxPayload = (_tmxActive || action==='complete') ? {
+    tmx_dist_km: _tmxDistKm,
+    tmx_price:   parseFloat(_tmxPriceStr.replace(/[^\d.]/g,'')) || 0,
+    tmx_time:    _tmxTimeStr,
+  } : {};
+
   try{
-    const r=await fetch(`/driver/orders/${id}/${action}/`,{method:'POST',headers:{'X-CSRFToken':getCookie('csrftoken')}});
+    const r=await fetch(`/driver/orders/${id}/${action}/`,{
+      method:'POST',
+      headers:{'X-CSRFToken':getCookie('csrftoken'),'Content-Type':'application/json'},
+      body: JSON.stringify(tmxPayload),
+    });
     const d=await r.json();
     if(d.ok){
       if(action==='on_way'){

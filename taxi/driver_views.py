@@ -249,7 +249,23 @@ def driver_order_action(request, driver, pk, action):
         return JsonResponse({'ok': False, 'error': 'Bu buyurtma sizga tegishli emas'}, status=403)
 
     order.status = new_status
-    order.save(update_fields=['status', 'updated_at'])
+    update_fields = ['status', 'updated_at']
+
+    # Taximeter ma'lumotlarini saqlash (arrived, complete)
+    try:
+        body = json.loads(request.body)
+        tmx_dist = body.get('tmx_dist_km')
+        tmx_price = body.get('tmx_price')
+        if tmx_dist and float(tmx_dist) > 0:
+            order.distance_km = round(float(tmx_dist), 2)
+            update_fields.append('distance_km')
+        if tmx_price and float(tmx_price) > 0 and not order.price:
+            order.price = round(float(tmx_price), 2)
+            update_fields.append('price')
+    except Exception:
+        pass
+
+    order.save(update_fields=update_fields)
 
     if new_status == 'completed':
         try:
