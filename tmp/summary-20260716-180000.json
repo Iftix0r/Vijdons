@@ -1,0 +1,4 @@
+{
+  "summary": "Production serverda `python3 manage.py migrate` ishlatganda `ImportError: cannot import name 'MapsSettings' from 'taxi.models'` xatosi yuzaga keldi. Sababi: models.py da BotSettings klassi tugagandan keyin `class MapsSettings(models.Model):` deklaratsiyasi yo'q edi — faqat docstring va maydonlar qoldirilgan edi. Python uni alohida model sifatida ko'rmadi. Bir qator qo'shib tuzatildi, git commit + push bajarildi.",
+  "current_status": "taxi/models.py tuzatildi va main branchga push qilindi (commit: 587091d). Server tomonida `git pull && python3 manage.py migrate` bajarish kerak."
+}
