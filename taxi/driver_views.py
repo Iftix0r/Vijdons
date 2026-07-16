@@ -280,10 +280,13 @@ def driver_history(request, driver):
 @driver_login_required
 def driver_chat(request, driver):
     ChatMessage.objects.filter(driver=driver, sender=ChatMessage.SENDER_OPERATOR, is_read=False).update(is_read=True)
-    messages = ChatMessage.objects.filter(driver=driver).order_by('created_at')[:100]
+    # Evaluate the queryset to a list so template's .last won't call .reverse() on a sliced queryset
+    messages = list(ChatMessage.objects.filter(driver=driver).order_by('created_at')[:100])
+    last_msg_id = messages[-1].id if messages else 0
     return render(request, 'driver/chat.html', {
         'driver':      driver,
         'messages':    messages,
+        'last_msg_id': last_msg_id,
         'active_tab':  'chat',
         'chat_unread': 0,
     })

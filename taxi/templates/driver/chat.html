@@ -58,7 +58,7 @@
 {% endblock %}
 {% block extra_js %}
 <script>
-let lastId={{ messages.last.id|default:0 }};
+let lastId={{ last_msg_id|default:0 }};
 
 function scrollBottom(s=true){
   const el=document.getElementById('messages');
