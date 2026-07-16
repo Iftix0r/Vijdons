@@ -1,0 +1,4 @@
+{
+  "summary": "Chat sahifasida klaviatura ochilganda input bar ustida qolish muammosi hal qilindi. Asosiy o'zgarish: input bar `position:fixed` dan `flexbox` ga o'tkazildi — `chat-wrap` div `display:flex; flex-direction:column; height:calc(100dvh-120px)` sifatida sozlandi, xabarlar maydoni `flex:1; overflow-y:auto` va input bar `flex-shrink:0`. Klaviatura ochilganda `visualViewport` API ning `resize` hodisasi `adjustLayout()` funksiyasini chaqiradi: u `vv.height - navbarH` ni hisoblab `chat-wrap` balandligini qayta belgilaydi, shunda input bar doimo klaviatura ustida ko'rinadi. Focus/blur hodisalari ham ulandi. Qo'shimcha: XSS himoyasi uchun `escHtml()` qo'shildi, dark mode uchun `background:var(--ios-card)` ishlatildi.",
+  "current_status": "Chat TypeError tuzatildi (avvalgi sessiya). Klaviatura-ustida-input muammosi hal qilindi. Yangi buyurtma modal + musiqa home.html da to'liq ishlaydi. Loyiha asosiy funksionalligi barqaror."
+}
