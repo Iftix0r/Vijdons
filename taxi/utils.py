@@ -36,32 +36,38 @@ def find_nearest_driver(drivers, lat, lng):
     return nearest_driver, min_dist
 
 
-def send_telegram(text):
-    """Telegram guruhiga xabar yuborish."""
+def send_telegram(text, token=None, chat_ids=None):
+    """Telegram guruh(lar)iga xabar yuborish. Bot qo'shilgan barcha guruhlarga."""
     try:
         from taxi.models import BotSettings
         cfg = BotSettings.get()
-        token   = cfg.bot_token.strip()
-        chat_id = cfg.group_id.strip()
+        _token = token or cfg.bot_token.strip()
+        _ids   = chat_ids or cfg.get_all_group_ids()
     except Exception:
         from django.conf import settings
-        token   = getattr(settings, 'TELEGRAM_BOT_TOKEN', '')
-        chat_id = getattr(settings, 'TELEGRAM_GROUP_ID', '')
-    if not token or not chat_id:
+        _token = token or getattr(settings, 'TELEGRAM_BOT_TOKEN', '')
+        _ids   = chat_ids or [getattr(settings, 'TELEGRAM_GROUP_ID', '')]
+
+    if not _token or not _ids:
         return
-    try:
-        data = urllib.parse.urlencode({
-            'chat_id': chat_id,
-            'text': text,
-            'parse_mode': 'HTML',
-        }).encode()
-        req = urllib.request.Request(
-            f'https://api.telegram.org/bot{token}/sendMessage',
-            data=data,
-        )
-        urllib.request.urlopen(req, timeout=5)
-    except Exception:
-        pass
+
+    for chat_id in _ids:
+        if not chat_id:
+            continue
+        try:
+            data = urllib.parse.urlencode({
+                'chat_id':    chat_id,
+                'text':       text,
+                'parse_mode': 'HTML',
+                'disable_web_page_preview': 'true',
+            }).encode()
+            req = urllib.request.Request(
+                f'https://api.telegram.org/bot{_token}/sendMessage',
+                data=data,
+            )
+            urllib.request.urlopen(req, timeout=5)
+        except Exception:
+            pass
 
 
 def _cfg():

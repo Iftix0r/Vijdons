@@ -378,6 +378,7 @@ def bot_settings(request):
     if request.method == 'POST':
         bot.bot_token = request.POST.get('bot_token', '').strip()
         bot.group_id  = request.POST.get('group_id', '').strip()
+        bot.extra_group_ids = request.POST.get('extra_group_ids', '').strip()
         bot.client_bot_token = request.POST.get('client_bot_token', '').strip()
         bot.notify_new_order       = 'notify_new_order'       in request.POST
         bot.notify_dispatched      = 'notify_dispatched'      in request.POST

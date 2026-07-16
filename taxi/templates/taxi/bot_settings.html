@@ -56,7 +56,7 @@
             </div>
             <div>
                 <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
-                    <i class="fas fa-hashtag text-blue-500 mr-1"></i>Guruh Chat ID
+                    <i class="fas fa-hashtag text-blue-500 mr-1"></i>Asosiy Guruh Chat ID
                 </label>
                 <input type="text" name="group_id" value="{{ bot.group_id }}"
                        placeholder="-1001234567890"
@@ -65,6 +65,15 @@
                     Guruhga <a href="https://t.me/userinfobot" target="_blank" class="text-blue-500 hover:underline">@userinfobot</a> qo'shing → chat ID oling
                     <span class="ml-1 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded font-mono text-[11px]">-100...</span>
                 </p>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                    <i class="fas fa-layer-group text-purple-500 mr-1"></i>Qo'shimcha guruhlar
+                    <span class="text-gray-400 font-normal normal-case ml-1">(ixtiyoriy — har biri yangi qatorda)</span>
+                </label>
+                <textarea name="extra_group_ids" rows="3" placeholder="-1009876543210&#10;-1001122334455"
+                          class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition resize-none">{{ bot.extra_group_ids }}</textarea>
+                <p class="text-xs text-gray-400 mt-1">Bot qo'shilgan barcha guruhlarga xabar yuboriladi</p>
             </div>
             <!-- Mijoz boti -->
             <div class="pt-2 border-t border-gray-100 dark:border-gray-800">

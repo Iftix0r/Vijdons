@@ -127,10 +127,23 @@ class BotSettings(models.Model):
     """Singleton: Telegram bot sozlamalari."""
     bot_token  = models.CharField(max_length=200, blank=True, default='', verbose_name='Bot Token',
                                   help_text='@BotFather dan olingan token')
-    group_id   = models.CharField(max_length=50, blank=True, default='', verbose_name='Guruh Chat ID',
-                                  help_text='Operatorlar Telegram guruhi chat_id')
+    group_id   = models.CharField(max_length=50, blank=True, default='', verbose_name='Asosiy Guruh Chat ID',
+                                  help_text='Birinchi operatorlar guruhi chat_id')
+    extra_group_ids = models.TextField(blank=True, default='', verbose_name='Qo\'shimcha guruh IDlar',
+                                       help_text='Har bir ID yangi qatorda. Bot qo\'shilgan barcha guruhlarga yuboradi.')
     client_bot_token = models.CharField(max_length=200, blank=True, default='', verbose_name='Mijoz Bot Token',
                                         help_text='Mijozlar buyurtma beruvchi bot tokeni')
+
+    def get_all_group_ids(self):
+        """Barcha guruh IDlarini list sifatida qaytaradi."""
+        ids = []
+        if self.group_id.strip():
+            ids.append(self.group_id.strip())
+        for line in self.extra_group_ids.splitlines():
+            gid = line.strip()
+            if gid and gid not in ids:
+                ids.append(gid)
+        return ids
 
     # Bildirishnoma toggle lar
     notify_new_order      = models.BooleanField(default=True,  verbose_name='Yangi buyurtma')
