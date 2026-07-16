@@ -1,0 +1,4 @@
+{
+  "summary": "Navbar'da haydovchi 'Ish navbatida' bo'lganda GPS orqali real manzil ko'rsatish qo'shildi. HTML: avatar ostidagi status qatoriga yangi qator — location-dot ikonkasi + 'aniqlanmoqda…' span (id=nav-location). JS: initNavLocation() IIFE — navigator.geolocation.getCurrentPosition bilan koordinat oladi, Nominatim reverse geocoding API ga so'rov yuboradi (uz,ru til), natijadan ko'cha+raqam yoki ko'cha+tuman formatida qisqa manzil chiqaradi. 50m dan kam ko'chsa qayta geocode so'ralmaydi. Har 45 soniyada va visibilitychange'da yangilanadi. Joylashuv bir vaqtda server'ga ham yuboriladi (location_sync). Faqat is_on_duty=True bo'lganda ko'rinadi.",
+  "current_status": "Chat bug tuzatildi. Klaviatura fix. Searching animatsiya. 3 aloqa tugmasi. Taximeter HTML overlay qo'shildi. Navbar manzil ko'rsatish qo'shildi."
+}
