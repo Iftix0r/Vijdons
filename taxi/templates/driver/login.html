@@ -1,103 +1,97 @@
 <!DOCTYPE html>
-<html lang="uz" class="dark">
+<html lang="uz">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#1C1C1E">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
 <title>Vijdon Driver — Kirish</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 <style>
-  * { font-family:-apple-system,'SF Pro Text','Segoe UI',sans-serif; -webkit-tap-highlight-color:transparent; }
-  body { overscroll-behavior:none; }
-  @keyframes fadeUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
-  .fade-up { animation:fadeUp .4s cubic-bezier(.34,1.4,.64,1) both; }
-  input:focus { outline:none; }
+  *{font-family:-apple-system,'SF Pro Display','SF Pro Text','Helvetica Neue',sans-serif;-webkit-tap-highlight-color:transparent;box-sizing:border-box;}
+  body{overscroll-behavior:none;background:#000;color:#fff;}
+  .ios-input{background:rgba(118,118,128,.24);border-radius:10px;padding:13px 16px 13px 44px;font-size:17px;color:#fff;width:100%;border:none;outline:none;transition:background .2s;}
+  .ios-input::placeholder{color:rgba(235,235,245,.3);}
+  .ios-input:focus{background:rgba(118,118,128,.32);}
+  @keyframes fadeUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .fu{animation:fadeUp .4s cubic-bezier(.25,.46,.45,.94) both;}
 </style>
 </head>
-<body class="bg-[#1C1C1E] min-h-screen flex flex-col" style="padding-top:env(safe-area-inset-top,44px); padding-bottom:env(safe-area-inset-bottom,16px)">
+<body style="padding-top:env(safe-area-inset-top,47px);padding-bottom:env(safe-area-inset-bottom,34px);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center">
 
-<div class="flex-1 flex flex-col items-center justify-center px-5 py-8">
+<div class="w-full max-w-sm px-5 space-y-8">
 
   <!-- Logo -->
-  <div class="flex flex-col items-center gap-3 mb-8 fade-up">
-    <div class="w-20 h-20 rounded-[24px] bg-[#FFD600] flex items-center justify-center shadow-2xl shadow-yellow-500/40">
-      <span class="text-4xl font-black text-[#1C1C1E]">V</span>
+  <div class="flex flex-col items-center gap-4 fu">
+    <div class="w-[88px] h-[88px] rounded-[24px] bg-[#FFD600] flex items-center justify-center"
+         style="box-shadow:0 8px 32px rgba(255,214,0,.4)">
+      <span style="font-size:42px;font-weight:800;color:#000">V</span>
     </div>
     <div class="text-center">
-      <h1 class="text-2xl font-black text-white tracking-tight">Vijdon Driver</h1>
-      <p class="text-gray-500 text-sm mt-0.5">Haydovchi paneli</p>
+      <div style="font-size:28px;font-weight:700;letter-spacing:.36px">Vijdon Driver</div>
+      <div style="font-size:15px;color:rgba(235,235,245,.6);margin-top:4px">Haydovchi paneli</div>
     </div>
   </div>
 
-  <!-- Card -->
-  <div class="w-full max-w-sm fade-up" style="animation-delay:.1s">
-    <div class="bg-[#2C2C2E] rounded-3xl p-5 space-y-4">
-
-      {% if error %}
-      <div class="bg-red-500/15 border border-red-500/30 rounded-2xl px-4 py-3 flex items-center gap-2.5">
-        <i class="fas fa-circle-exclamation text-red-400 flex-shrink-0"></i>
-        <span class="text-red-400 text-sm font-semibold">{{ error }}</span>
-      </div>
-      {% endif %}
-
-      <form method="POST" action="{% url 'driver:login' %}" class="space-y-3" id="login-form">
-        {% csrf_token %}
-
-        <div>
-          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Telefon raqami</label>
-          <div class="relative">
-            <i class="fas fa-phone absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
-            <input type="tel" name="phone_number" required autofocus
-                   placeholder="+998 90 000 00 00"
-                   class="w-full bg-[#3A3A3C] text-white placeholder-gray-600 rounded-2xl pl-10 pr-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-[#FFD600] transition">
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Parol</label>
-          <div class="relative">
-            <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
-            <input type="password" name="password" id="pwd-input" required
-                   placeholder="••••••••"
-                   class="w-full bg-[#3A3A3C] text-white placeholder-gray-600 rounded-2xl pl-10 pr-12 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-[#FFD600] transition">
-            <button type="button" onclick="togglePwd()" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 active:text-gray-300">
-              <i class="fas fa-eye text-sm" id="pwd-eye"></i>
-            </button>
-          </div>
-        </div>
-
-        <button type="submit" id="submit-btn"
-                class="w-full bg-[#FFD600] text-[#1C1C1E] font-black text-base rounded-2xl py-4 mt-1 active:scale-95 transition-transform shadow-lg shadow-yellow-500/25 flex items-center justify-center gap-2">
-          <span id="btn-text">Kirish</span>
-          <i class="fas fa-arrow-right text-sm" id="btn-icon"></i>
-        </button>
-      </form>
+  <!-- Form -->
+  <div class="space-y-3 fu" style="animation-delay:.1s">
+    {% if error %}
+    <div style="background:rgba(255,59,48,.15);border:1px solid rgba(255,59,48,.3);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px">
+      <i class="fas fa-circle-exclamation" style="color:#FF3B30;flex-shrink:0"></i>
+      <span style="font-size:15px;color:#FF3B30;font-weight:500">{{ error }}</span>
     </div>
+    {% endif %}
 
+    <form method="POST" action="{% url 'driver:login' %}" id="form" class="space-y-3">
+      {% csrf_token %}
+
+      <div class="relative">
+        <i class="fas fa-phone absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(235,235,245,.4);font-size:15px"></i>
+        <input type="tel" name="phone_number" required autofocus
+               placeholder="+998 90 000 00 00" class="ios-input">
+      </div>
+
+      <div class="relative">
+        <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(235,235,245,.4);font-size:15px"></i>
+        <input type="password" name="password" id="pwd" required
+               placeholder="Parol" class="ios-input" style="padding-right:48px">
+        <button type="button" onclick="togglePwd()" class="absolute right-4 top-1/2 -translate-y-1/2 active:opacity-60"
+                style="color:rgba(235,235,245,.4);font-size:15px">
+          <i class="fas fa-eye" id="eye"></i>
+        </button>
+      </div>
+
+      <button type="submit" id="sbtn"
+              style="width:100%;background:#FFD600;color:#000;font-size:17px;font-weight:600;letter-spacing:-.41px;border-radius:14px;padding:16px;transition:opacity .15s,transform .1s;display:flex;align-items:center;justify-content:center;gap:8px">
+        <span id="btxt">Kirish</span>
+        <i class="fas fa-arrow-right text-sm" id="bico"></i>
+      </button>
+    </form>
+  </div>
+
+  <div class="text-center fu" style="animation-delay:.2s">
     <a href="{% url 'driver:register' %}"
-       class="flex items-center justify-center gap-1.5 mt-5 text-gray-500 text-sm font-semibold active:text-gray-300 transition-colors">
-      Hisob yo'qmi? <span class="text-[#FFD600] font-black">Ro'yxatdan o'tish →</span>
+       style="font-size:15px;color:rgba(235,235,245,.6)">
+      Hisob yo'qmi? <span style="color:#FFD600;font-weight:600">Ro'yxatdan o'tish</span>
     </a>
   </div>
 
 </div>
 
 <script>
-function togglePwd() {
-  const inp = document.getElementById('pwd-input');
-  const eye = document.getElementById('pwd-eye');
-  if (inp.type === 'password') { inp.type='text'; eye.className='fas fa-eye-slash text-sm'; }
-  else { inp.type='password'; eye.className='fas fa-eye text-sm'; }
+function togglePwd(){
+  const p=document.getElementById('pwd'),e=document.getElementById('eye');
+  p.type=p.type==='password'?'text':'password';
+  e.className=p.type==='password'?'fas fa-eye':'fas fa-eye-slash';
 }
-document.getElementById('login-form').addEventListener('submit', () => {
-  const btn = document.getElementById('submit-btn');
-  btn.disabled = true;
-  btn.style.opacity = '0.7';
-  document.getElementById('btn-text').textContent = 'Kirilmoqda...';
-  document.getElementById('btn-icon').className = 'fas fa-spinner fa-spin text-sm';
+document.getElementById('form').addEventListener('submit',()=>{
+  const b=document.getElementById('sbtn');
+  b.style.opacity='.6'; b.disabled=true;
+  document.getElementById('btxt').textContent='Kirilmoqda...';
+  document.getElementById('bico').className='fas fa-spinner fa-spin text-sm';
 });
 </script>
 </body>

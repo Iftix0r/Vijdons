@@ -1,118 +1,115 @@
 {% extends "driver/base.html" %}
-{% block title %}Tarix — Vijdon Driver{% endblock %}
-
+{% block title %}Tarix{% endblock %}
 {% block content %}
-<div class="sticky top-0 z-20 bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-xl border-b border-gray-100 dark:border-white/5 px-4 pt-3 pb-3">
-  <h1 class="text-[17px] font-black">Buyurtmalar tarixi</h1>
-  <div class="flex gap-2 mt-2 overflow-x-auto" style="scrollbar-width:none;-webkit-overflow-scrolling:touch">
-    <button onclick="filter('all')"       id="f-all"       class="ftab active-tab flex-shrink-0 text-xs font-black px-3.5 py-1.5 rounded-xl transition-all">Hammasi</button>
-    <button onclick="filter('completed')" id="f-completed" class="ftab flex-shrink-0 text-xs font-black px-3.5 py-1.5 rounded-xl transition-all bg-gray-100 dark:bg-[#2C2C2E] text-gray-500">✓ Yakunlangan</button>
-    <button onclick="filter('cancelled')" id="f-cancelled" class="ftab flex-shrink-0 text-xs font-black px-3.5 py-1.5 rounded-xl transition-all bg-gray-100 dark:bg-[#2C2C2E] text-gray-500">✕ Bekor qilingan</button>
+
+<div class="ios-navbar sticky top-0 z-20 px-4 pt-3 pb-3">
+  <div class="ios-large-title font-bold mb-2">Tarix</div>
+  <!-- iOS Segmented Control -->
+  <div class="flex gap-1 p-1 rounded-[10px]" style="background:var(--ios-fill)">
+    <button onclick="filter('all')"       id="f-all"       class="seg-btn flex-1 ios-caption2 font-semibold py-1.5 rounded-[8px] transition-all">Hammasi</button>
+    <button onclick="filter('completed')" id="f-completed" class="seg-btn flex-1 ios-caption2 font-semibold py-1.5 rounded-[8px] transition-all" style="color:var(--ios-label3)">Yakunlangan</button>
+    <button onclick="filter('cancelled')" id="f-cancelled" class="seg-btn flex-1 ios-caption2 font-semibold py-1.5 rounded-[8px] transition-all" style="color:var(--ios-label3)">Bekor</button>
   </div>
 </div>
 
 {% if orders %}
 <!-- Stats -->
 <div class="px-4 pt-3 pb-1 grid grid-cols-3 gap-2">
-  <div class="bg-white dark:bg-[#2C2C2E] rounded-2xl p-3 text-center border border-gray-100 dark:border-white/5">
-    <div class="text-xl font-black text-[#FFD600]" id="stat-count">{{ orders|length }}</div>
-    <div class="text-[10px] text-gray-400 font-bold mt-0.5">Jami</div>
+  {% for stat in stats %}{% endfor %}
+  <div class="ios-card rounded-[14px] p-3 text-center">
+    <div class="ios-title font-bold text-[#FFD600]" id="s-count">{{ orders|length }}</div>
+    <div class="ios-caption2 mt-0.5" style="color:var(--ios-label3)">Jami</div>
   </div>
-  <div class="bg-white dark:bg-[#2C2C2E] rounded-2xl p-3 text-center border border-gray-100 dark:border-white/5">
-    <div class="text-base font-black text-green-500 leading-tight" id="stat-earned">—</div>
-    <div class="text-[10px] text-gray-400 font-bold mt-0.5">Daromad</div>
+  <div class="ios-card rounded-[14px] p-3 text-center">
+    <div class="ios-footnote font-bold text-[#34C759] leading-tight" id="s-earned">—</div>
+    <div class="ios-caption2 mt-0.5" style="color:var(--ios-label3)">Daromad</div>
   </div>
-  <div class="bg-white dark:bg-[#2C2C2E] rounded-2xl p-3 text-center border border-gray-100 dark:border-white/5">
-    <div class="text-xl font-black text-blue-500" id="stat-km">—</div>
-    <div class="text-[10px] text-gray-400 font-bold mt-0.5">Km</div>
+  <div class="ios-card rounded-[14px] p-3 text-center">
+    <div class="ios-title font-bold text-[#007AFF]" id="s-km">—</div>
+    <div class="ios-caption2 mt-0.5" style="color:var(--ios-label3)">Km</div>
   </div>
 </div>
 {% endif %}
 
-<div class="px-4 py-3 space-y-3" id="list">
+<div class="px-4 py-3 space-y-2.5" id="list">
   {% for order in orders %}
-  <div class="order-item bg-white dark:bg-[#2C2C2E] rounded-3xl p-4 border border-gray-100 dark:border-white/5 slide-up"
+  <div class="order-item ios-card rounded-[16px] anim-up"
        data-status="{{ order.status }}"
        data-price="{% if order.status == 'completed' and order.price %}{{ order.price }}{% else %}0{% endif %}"
        data-km="{% if order.distance_km %}{{ order.distance_km }}{% else %}0{% endif %}"
-       style="animation-delay:{{ forloop.counter0 }}0ms">
-
-    <div class="flex items-center justify-between mb-2">
-      <span class="text-[11px] font-black px-2.5 py-1 rounded-xl
-        {% if order.status == 'completed' %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400
-        {% elif order.status == 'cancelled' %}bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400
-        {% else %}bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400{% endif %}">
-        {{ order.get_status_display }}
-      </span>
-      <span class="text-[11px] text-gray-400 font-semibold">#{{ order.id }} · {{ order.created_at|date:"d.m H:i" }}</span>
-    </div>
-
-    <div class="space-y-1">
-      <div class="flex items-start gap-2">
-        <i class="fas fa-circle text-green-500 text-[7px] mt-1.5 flex-shrink-0"></i>
-        <span class="text-sm font-semibold leading-snug">{{ order.from_address }}</span>
+       style="animation-delay:{{ forloop.counter0 }}0ms;box-shadow:0 1px 3px rgba(0,0,0,.07)">
+    <div class="p-4">
+      <div class="flex items-center justify-between mb-2">
+        <span class="ios-caption2 font-semibold px-2.5 py-1 rounded-[8px]
+          {% if order.status == 'completed' %}pill-green
+          {% elif order.status == 'cancelled' %}bg-[rgba(255,59,48,.1)] text-[#FF3B30]
+          {% else %}bg-[rgba(142,142,147,.12)] text-[#8E8E93]{% endif %}">
+          {{ order.get_status_display }}
+        </span>
+        <span class="ios-caption2" style="color:var(--ios-label3)">#{{ order.id }} · {{ order.created_at|date:"d.m H:i" }}</span>
       </div>
-      {% if order.to_address %}
-      <div class="flex items-start gap-2">
-        <i class="fas fa-location-dot text-red-500 text-xs mt-0.5 flex-shrink-0"></i>
-        <span class="text-xs text-gray-500 dark:text-gray-400 leading-snug">{{ order.to_address }}</span>
+      <div class="space-y-1.5">
+        <div class="flex items-start gap-2.5">
+          <div class="w-2 h-2 rounded-full bg-[#34C759] mt-1.5 flex-shrink-0"></div>
+          <span class="ios-subhead font-medium leading-snug">{{ order.from_address }}</span>
+        </div>
+        {% if order.to_address %}
+        <div class="flex items-start gap-2.5">
+          <i class="fas fa-location-dot text-[#FF3B30] text-xs mt-1 flex-shrink-0"></i>
+          <span class="ios-subhead leading-snug" style="color:var(--ios-label3)">{{ order.to_address }}</span>
+        </div>
+        {% endif %}
       </div>
-      {% endif %}
-    </div>
-
-    <div class="flex items-center gap-2.5 mt-3 pt-3 border-t border-gray-100 dark:border-white/5">
-      {% if order.price %}
-      <span class="text-sm font-black {% if order.status == 'completed' %}text-green-600 dark:text-green-400{% else %}text-gray-400 line-through{% endif %}">
-        {{ order.price|floatformat:0 }} so'm
-      </span>
-      {% endif %}
-      {% if order.distance_km %}
-      <span class="text-xs text-gray-400 font-semibold">{{ order.distance_km|floatformat:1 }} km</span>
-      {% endif %}
-      <span class="text-xs text-gray-400 ml-auto font-semibold">
-        {% if order.payment_type == 'cash' %}💵{% else %}💳{% endif %} {{ order.client.phone_number }}
-      </span>
+      <div class="flex items-center gap-3 mt-3 pt-3" style="border-top:.5px solid var(--ios-sep)">
+        {% if order.price %}
+        <span class="ios-subhead font-semibold {% if order.status == 'completed' %}text-[#34C759]{% else %}line-through{% endif %}"
+              style="{% if order.status != 'completed' %}color:var(--ios-label3){% endif %}">
+          {{ order.price|floatformat:0 }} so'm
+        </span>
+        {% endif %}
+        {% if order.distance_km %}
+        <span class="ios-caption" style="color:var(--ios-label3)">{{ order.distance_km|floatformat:1 }} km</span>
+        {% endif %}
+        <span class="ios-caption ml-auto" style="color:var(--ios-label3)">
+          {% if order.payment_type == 'cash' %}💵{% else %}💳{% endif %} {{ order.client.phone_number }}
+        </span>
+      </div>
     </div>
   </div>
   {% empty %}
-  <div class="text-center py-20 text-gray-400 fade-in">
-    <i class="fas fa-clock-rotate-left text-4xl mb-4 opacity-30"></i>
-    <p class="font-semibold">Hali buyurtma yo'q</p>
+  <div class="text-center py-20 anim-fade">
+    <i class="fas fa-clock-rotate-left text-[48px] mb-4" style="color:var(--ios-label3)"></i>
+    <p class="ios-title font-semibold">Hali buyurtma yo'q</p>
+    <p class="ios-subhead mt-1" style="color:var(--ios-label3)">Buyurtmalar bu yerda ko'rinadi</p>
   </div>
   {% endfor %}
 </div>
-{% endblock %}
 
+{% endblock %}
 {% block extra_js %}
 <script>
-const items = [...document.querySelectorAll('.order-item')];
+const items=[...document.querySelectorAll('.order-item')];
 
-// Stats
-function calcStats(visible) {
-  let earned = 0, km = 0;
-  visible.forEach(el => {
-    earned += parseFloat(el.dataset.price) || 0;
-    km     += parseFloat(el.dataset.km)    || 0;
-  });
-  document.getElementById('stat-count').textContent = visible.length;
-  document.getElementById('stat-earned').textContent = earned > 0 ? Math.round(earned).toLocaleString() + ' so\'m' : '—';
-  document.getElementById('stat-km').textContent     = km > 0 ? km.toFixed(1) : '—';
+function calcStats(vis){
+  let e=0,k=0;
+  vis.forEach(el=>{ e+=parseFloat(el.dataset.price)||0; k+=parseFloat(el.dataset.km)||0; });
+  const sc=document.getElementById('s-count'); if(sc) sc.textContent=vis.length;
+  const se=document.getElementById('s-earned'); if(se) se.textContent=e>0?Math.round(e).toLocaleString()+' so\'m':'—';
+  const sk=document.getElementById('s-km');    if(sk) sk.textContent=k>0?k.toFixed(1):'—';
 }
 calcStats(items);
 
-function filter(status) {
-  document.querySelectorAll('.ftab').forEach(b => b.className = 'ftab flex-shrink-0 text-xs font-black px-3.5 py-1.5 rounded-xl transition-all bg-gray-100 dark:bg-[#2C2C2E] text-gray-500');
-  const active = document.getElementById('f-' + status);
-  if (active) active.className = 'ftab active-tab flex-shrink-0 text-xs font-black px-3.5 py-1.5 rounded-xl transition-all bg-[#1C1C1E] dark:bg-white text-white dark:text-[#1C1C1E]';
-  const visible = items.filter(el => {
-    const show = status === 'all' || el.dataset.status === status;
-    el.style.display = show ? '' : 'none';
-    return show;
+function filter(s){
+  document.querySelectorAll('.seg-btn').forEach(b=>{
+    b.style.background=''; b.style.color='var(--ios-label3)'; b.style.boxShadow='';
   });
-  calcStats(visible);
+  const a=document.getElementById('f-'+s);
+  if(a){ a.style.background='var(--ios-card)'; a.style.color='var(--ios-label)'; a.style.boxShadow='0 1px 4px rgba(0,0,0,.12)'; }
+  const vis=items.filter(el=>{ const show=s==='all'||el.dataset.status===s; el.style.display=show?'':'none'; return show; });
+  calcStats(vis);
 }
-
-// Init active tab style
-document.getElementById('f-all').className = 'ftab active-tab flex-shrink-0 text-xs font-black px-3.5 py-1.5 rounded-xl transition-all bg-[#1C1C1E] dark:bg-white text-white dark:text-[#1C1C1E]';
+// Init
+const fa=document.getElementById('f-all');
+if(fa){ fa.style.background='var(--ios-card)'; fa.style.color='var(--ios-label)'; fa.style.boxShadow='0 1px 4px rgba(0,0,0,.12)'; }
 </script>
 {% endblock %}

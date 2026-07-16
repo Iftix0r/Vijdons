@@ -1,124 +1,110 @@
 {% extends "driver/base.html" %}
-{% block title %}Chat — Vijdon Driver{% endblock %}
-
+{% block title %}Chat{% endblock %}
 {% block content %}
-<div class="sticky top-0 z-20 bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-xl border-b border-gray-100 dark:border-white/5 px-4 pt-3 pb-3">
-  <div class="flex items-center gap-3">
-    <div class="w-9 h-9 rounded-2xl bg-[#FFD600] flex items-center justify-center flex-shrink-0">
-      <span class="text-sm font-black text-[#1C1C1E]">OP</span>
-    </div>
-    <div>
-      <h1 class="text-[15px] font-black leading-tight">Operator</h1>
-      <p class="text-[11px] text-green-500 font-semibold">● Onlayn</p>
-    </div>
+
+<div class="ios-navbar sticky top-0 z-20 px-4 pt-3 pb-3 flex items-center gap-3">
+  <div class="w-10 h-10 rounded-full bg-[#007AFF] flex items-center justify-center flex-shrink-0">
+    <i class="fas fa-headset text-white text-base"></i>
+  </div>
+  <div>
+    <div class="ios-title font-semibold">Operator</div>
+    <div class="ios-caption2 text-[#34C759]">● Onlayn</div>
   </div>
 </div>
 
-<div id="messages" class="px-4 py-4 space-y-2.5 pb-[80px]">
+<!-- Messages -->
+<div id="messages" class="px-4 py-3 space-y-2" style="padding-bottom:80px">
   {% for msg in messages %}
-  <div class="flex {% if msg.sender == 'driver' %}justify-end{% else %}justify-start{% endif %} fade-in">
-    <div class="max-w-[78%] px-4 py-2.5 rounded-2xl text-sm font-semibold leading-snug
-      {% if msg.sender == 'driver' %}bg-[#FFD600] text-[#1C1C1E] rounded-br-sm
-      {% else %}bg-white dark:bg-[#2C2C2E] text-gray-800 dark:text-white rounded-bl-sm border border-gray-100 dark:border-white/5{% endif %}">
+  <div class="flex {% if msg.sender == 'driver' %}justify-end{% else %}justify-start{% endif %} anim-fade">
+    <div class="max-w-[78%] px-4 py-2.5 ios-subhead leading-snug
+      {% if msg.sender == 'driver' %}rounded-[18px] rounded-br-[4px] text-black
+      {% else %}rounded-[18px] rounded-bl-[4px]{% endif %}"
+      style="{% if msg.sender == 'driver' %}background:#FFD600{% else %}background:var(--ios-card);color:var(--ios-label){% endif %}">
       {{ msg.text }}
-      <div class="text-[10px] mt-1 {% if msg.sender == 'driver' %}text-yellow-800/50{% else %}text-gray-400{% endif %}">
+      <div class="ios-caption2 mt-1 {% if msg.sender == 'driver' %}text-black/40{% else %}{% endif %}"
+           style="{% if msg.sender != 'driver' %}color:var(--ios-label3){% endif %}">
         {{ msg.created_at|date:"H:i" }}
       </div>
     </div>
   </div>
   {% empty %}
-  <div class="text-center py-16 text-gray-400 fade-in">
-    <div class="w-16 h-16 rounded-3xl bg-gray-100 dark:bg-[#2C2C2E] flex items-center justify-center mx-auto mb-4">
-      <i class="fas fa-message text-2xl opacity-40"></i>
+  <div class="text-center py-16 anim-fade">
+    <div class="w-16 h-16 rounded-full bg-[#007AFF]/10 flex items-center justify-center mx-auto mb-4">
+      <i class="fas fa-message text-[#007AFF] text-2xl"></i>
     </div>
-    <p class="font-semibold text-sm">Operator bilan muloqot boshlang</p>
-    <p class="text-xs mt-1 opacity-60">Savollaringizni yuboring</p>
+    <p class="ios-title font-semibold">Operator bilan chat</p>
+    <p class="ios-subhead mt-1" style="color:var(--ios-label3)">Savollaringizni yuboring</p>
   </div>
   {% endfor %}
 </div>
 
 <!-- Input bar -->
-<div class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-xl border-t border-gray-100 dark:border-white/5 px-4 py-3"
-     style="padding-bottom:calc(env(safe-area-inset-bottom,16px) + 12px)">
-  <div class="flex gap-2 items-end">
-    <input type="text" id="msg-in" placeholder="Xabar yozing..."
+<div class="fixed bottom-0 left-0 right-0 z-40 px-4 py-3 ios-tabbar"
+     style="padding-bottom:calc(env(safe-area-inset-bottom,34px) + 12px)">
+  <div class="flex items-center gap-2">
+    <input type="text" id="msg-in" placeholder="Xabar..."
            maxlength="500"
-           class="flex-1 bg-gray-100 dark:bg-[#2C2C2E] rounded-2xl px-4 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-[#FFD600] dark:text-white resize-none transition"
+           class="ios-input flex-1"
+           style="border-radius:22px;padding:10px 16px"
            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg();}">
     <button onclick="sendMsg()"
-            class="w-11 h-11 bg-[#FFD600] rounded-2xl flex items-center justify-center active:scale-90 transition-transform flex-shrink-0">
-      <i class="fas fa-paper-plane text-[#1C1C1E] text-sm"></i>
+            class="w-[36px] h-[36px] rounded-full flex items-center justify-center flex-shrink-0 active:opacity-60 transition-opacity"
+            style="background:#007AFF">
+      <i class="fas fa-arrow-up text-white text-sm"></i>
     </button>
   </div>
 </div>
-{% endblock %}
 
+{% endblock %}
 {% block extra_js %}
 <script>
-let lastId = {{ messages.last.id|default:0 }};
+let lastId={{ messages.last.id|default:0 }};
 
-function scrollBottom(smooth=true) {
-  const el = document.getElementById('messages');
-  el.scrollTo({top: el.scrollHeight, behavior: smooth ? 'smooth' : 'instant'});
+function scrollBottom(s=true){
+  const el=document.getElementById('messages');
+  el.scrollTo({top:el.scrollHeight,behavior:s?'smooth':'instant'});
 }
 scrollBottom(false);
 
-async function sendMsg() {
-  const inp = document.getElementById('msg-in');
-  const text = inp.value.trim();
-  if (!text) return;
-  inp.value = '';
-  Native.vibrate(30);
-  appendMsg({sender:'driver', text, created_at: new Date().toISOString()});
-  try {
-    const r = await fetch('{% url "driver:chat_send" %}', {
+async function sendMsg(){
+  const inp=document.getElementById('msg-in');
+  const text=inp.value.trim(); if(!text) return;
+  inp.value=''; Native.vibrate(10);
+  appendMsg({sender:'driver',text,created_at:new Date().toISOString()});
+  try{
+    const r=await fetch('{% url "driver:chat_send" %}',{
       method:'POST',
       headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
-      body: JSON.stringify({text})
+      body:JSON.stringify({text})
     });
-    const d = await r.json();
-    if (d.ok) lastId = d.id;
-  } catch(_) {}
+    const d=await r.json(); if(d.ok) lastId=d.id;
+  }catch(_){}
 }
 
-function appendMsg(msg) {
-  const wrap = document.getElementById('messages');
-  // Remove empty state
-  const empty = wrap.querySelector('.text-center');
-  if (empty) empty.remove();
-
-  const isDriver = msg.sender === 'driver';
-  const time = new Date(msg.created_at).toLocaleTimeString('uz',{hour:'2-digit',minute:'2-digit'});
-  const div = document.createElement('div');
-  div.className = `flex ${isDriver?'justify-end':'justify-start'} fade-in`;
-  div.innerHTML = `
-    <div class="max-w-[78%] px-4 py-2.5 rounded-2xl text-sm font-semibold leading-snug
-      ${isDriver
-        ? 'bg-[#FFD600] text-[#1C1C1E] rounded-br-sm'
-        : 'bg-white dark:bg-[#2C2C2E] text-gray-800 dark:text-white rounded-bl-sm border border-gray-100 dark:border-white/5'}">
-      ${msg.text}
-      <div class="text-[10px] mt-1 ${isDriver?'text-yellow-800/50':'text-gray-400'}">${time}</div>
-    </div>`;
+function appendMsg(msg){
+  const wrap=document.getElementById('messages');
+  const empty=wrap.querySelector('.text-center'); if(empty) empty.remove();
+  const isD=msg.sender==='driver';
+  const time=new Date(msg.created_at).toLocaleTimeString('uz',{hour:'2-digit',minute:'2-digit'});
+  const div=document.createElement('div');
+  div.className=`flex ${isD?'justify-end':'justify-start'} anim-fade`;
+  div.innerHTML=`<div class="max-w-[78%] px-4 py-2.5 ios-subhead leading-snug ${isD?'rounded-[18px] rounded-br-[4px] text-black':'rounded-[18px] rounded-bl-[4px]'}"
+    style="${isD?'background:#FFD600':'background:var(--ios-card);color:var(--ios-label)'}">
+    ${msg.text}
+    <div class="ios-caption2 mt-1" style="${isD?'color:rgba(0,0,0,.4)':'color:var(--ios-label3)'}">${time}</div>
+  </div>`;
   wrap.appendChild(div);
   scrollBottom();
 }
 
-// Polling
-setInterval(async () => {
-  try {
-    const r = await fetch(`{% url "driver:chat_poll" %}?last_id=${lastId}`);
-    const d = await r.json();
-    d.messages.forEach(m => {
-      if (m.id > lastId) {
-        lastId = m.id;
-        if (m.sender !== 'driver') {
-          appendMsg(m);
-          Native.vibrate([60,30,60]);
-          showToast('💬 Operator', m.text.slice(0,50), 'info', 4000);
-        }
-      }
+setInterval(async()=>{
+  try{
+    const r=await fetch(`{% url "driver:chat_poll" %}?last_id=${lastId}`);
+    const d=await r.json();
+    d.messages.forEach(m=>{
+      if(m.id>lastId){ lastId=m.id; if(m.sender!=='driver'){ appendMsg(m); Native.vibrate([40,20,40]); showToast('Operator',m.text.slice(0,60),'info',4000); } }
     });
-  } catch(_) {}
-}, 3000);
+  }catch(_){}
+},3000);
 </script>
 {% endblock %}
