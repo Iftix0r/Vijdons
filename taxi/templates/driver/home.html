@@ -169,23 +169,145 @@
 
   {% else %}
   <!-- ── SEARCHING STATE ── -->
-  <div class="flex flex-col items-center justify-center py-14 gap-5 anim-fade">
-    <div class="relative w-[100px] h-[100px]">
-      <div class="absolute inset-0 rounded-full bg-[#FFD600] opacity-15 animate-ping"></div>
-      <div class="absolute inset-[10px] rounded-full bg-[#FFD600] opacity-20 animate-ping" style="animation-delay:.4s"></div>
-      <div class="w-[100px] h-[100px] rounded-full bg-[#FFD600] flex items-center justify-center relative z-10"
-           style="box-shadow:0 8px 32px rgba(255,214,0,.35)">
-        <i class="fas fa-location-crosshairs text-black text-[26px]"></i>
+  <style>
+    /* Radar halqalari */
+    @keyframes radar-ring {
+      0%   { transform: scale(.55); opacity: .7; }
+      100% { transform: scale(2.6); opacity: 0; }
+    }
+    .radar-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid #FFD600;
+      animation: radar-ring 2.4s ease-out infinite;
+    }
+    .radar-ring:nth-child(2) { animation-delay: .8s; }
+    .radar-ring:nth-child(3) { animation-delay: 1.6s; }
+
+    /* Aylanuvchi "sweeper" chizig'i */
+    @keyframes radar-sweep {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    .radar-sweep {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      animation: radar-sweep 2s linear infinite;
+      background: conic-gradient(from 0deg, rgba(255,214,0,.45) 0deg, transparent 90deg);
+    }
+
+    /* Dot blink */
+    @keyframes dot-blink {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: .4; transform: scale(.7); }
+    }
+    .dot-blink { animation: dot-blink 1.4s ease-in-out infinite; }
+    .dot-blink:nth-child(2) { animation-delay: .2s; }
+    .dot-blink:nth-child(3) { animation-delay: .4s; }
+
+    /* Shimmer kartalar */
+    @keyframes shimmer-move {
+      0%   { background-position: -600px 0; }
+      100% { background-position:  600px 0; }
+    }
+    .search-card-shimmer {
+      border-radius: 16px;
+      background: linear-gradient(
+        90deg,
+        var(--ios-card) 0%,
+        var(--ios-fill) 40%,
+        rgba(255,214,0,.08) 50%,
+        var(--ios-fill) 60%,
+        var(--ios-card) 100%
+      );
+      background-size: 600px 100%;
+      animation: shimmer-move 1.8s ease-in-out infinite;
+    }
+
+    /* Pastdagi to'lqin soya */
+    @keyframes wave-shadow {
+      0%,100% { box-shadow: 0 8px 32px rgba(255,214,0,.18); }
+      50%      { box-shadow: 0 12px 48px rgba(255,214,0,.42); }
+    }
+    .radar-core { animation: wave-shadow 2s ease-in-out infinite; }
+  </style>
+
+  <div class="flex flex-col items-center pt-10 pb-6 gap-6 anim-fade">
+
+    <!-- Radar animatsiyasi -->
+    <div class="relative flex items-center justify-center" style="width:160px;height:160px">
+      <!-- Halqalar -->
+      <div class="radar-ring"></div>
+      <div class="radar-ring"></div>
+      <div class="radar-ring"></div>
+      <!-- Sweeper -->
+      <div class="absolute inset-0 rounded-full overflow-hidden">
+        <div class="radar-sweep"></div>
+      </div>
+      <!-- Markaziy disk -->
+      <div class="radar-core relative z-10 w-[72px] h-[72px] rounded-full bg-[#FFD600] flex items-center justify-center"
+           style="border: 3px solid rgba(255,214,0,.3)">
+        <i class="fas fa-taxi text-black text-[26px]"></i>
       </div>
     </div>
+
+    <!-- Matn + dot animatsiya -->
     <div class="text-center">
-      <p class="ios-title font-semibold">Buyurtmalar qidirilmoqda</p>
-      <p class="ios-subhead mt-1" style="color:var(--ios-label3)">Yangi buyurtma kelganda xabar beriladi</p>
+      <p class="ios-title font-semibold">Buyurtma qidirilmoqda</p>
+      <div class="flex items-center justify-center gap-1.5 mt-2">
+        <span class="dot-blink w-[6px] h-[6px] rounded-full bg-[#FFD600]"></span>
+        <span class="dot-blink w-[6px] h-[6px] rounded-full bg-[#FFD600]"></span>
+        <span class="dot-blink w-[6px] h-[6px] rounded-full bg-[#FFD600]"></span>
+      </div>
+      <p class="ios-caption mt-2" style="color:var(--ios-label3)">Yangi buyurtma kelganda signal beriladi</p>
     </div>
-    <div class="w-full space-y-2.5 mt-1">
-      <div class="skeleton h-[90px] w-full"></div>
-      <div class="skeleton h-[72px] w-full opacity-60"></div>
+
+    <!-- Shimmer "kutilayotgan buyurtma" kartalar -->
+    <div class="w-full space-y-3">
+      <!-- Karta 1 -->
+      <div class="search-card-shimmer p-4" style="height:96px;position:relative;overflow:hidden">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="width:8px;height:8px;border-radius:50%;background:rgba(52,199,89,.3);margin-top:5px;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div style="height:11px;border-radius:6px;background:var(--ios-fill);width:70%;margin-bottom:10px"></div>
+            <div style="height:9px;border-radius:6px;background:var(--ios-fill);width:45%"></div>
+          </div>
+          <div style="width:52px;height:20px;border-radius:8px;background:rgba(255,214,0,.15)"></div>
+        </div>
+        <div style="height:.5px;background:var(--ios-sep);margin:10px 0 8px"></div>
+        <div style="display:flex;gap:8px">
+          <div style="height:9px;border-radius:5px;background:var(--ios-fill);width:30%"></div>
+          <div style="height:9px;border-radius:5px;background:var(--ios-fill);width:20%"></div>
+        </div>
+      </div>
+      <!-- Karta 2 -->
+      <div class="search-card-shimmer p-4" style="height:78px;opacity:.65;position:relative;overflow:hidden;animation-delay:.3s">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="width:8px;height:8px;border-radius:50%;background:rgba(52,199,89,.3);margin-top:5px;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div style="height:11px;border-radius:6px;background:var(--ios-fill);width:55%;margin-bottom:10px"></div>
+            <div style="height:9px;border-radius:6px;background:var(--ios-fill);width:35%"></div>
+          </div>
+          <div style="width:40px;height:20px;border-radius:8px;background:rgba(0,122,255,.1)"></div>
+        </div>
+        <div style="height:.5px;background:var(--ios-sep);margin:10px 0 8px"></div>
+        <div style="height:9px;border-radius:5px;background:var(--ios-fill);width:25%"></div>
+      </div>
+      <!-- Karta 3 -->
+      <div class="search-card-shimmer p-4" style="height:64px;opacity:.35;position:relative;overflow:hidden;animation-delay:.6s">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="width:8px;height:8px;border-radius:50%;background:rgba(52,199,89,.2);margin-top:5px;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div style="height:11px;border-radius:6px;background:var(--ios-fill);width:40%"></div>
+          </div>
+        </div>
+        <div style="height:.5px;background:var(--ios-sep);margin:10px 0 8px"></div>
+        <div style="height:9px;border-radius:5px;background:var(--ios-fill);width:20%"></div>
+      </div>
     </div>
+
   </div>
   {% endif %}
 

@@ -67,13 +67,15 @@ body { background: var(--ios-bg); color: var(--ios-label); }
 
 /* ── iOS Tab Bar ── */
 .ios-tabbar {
-  background: rgba(255,255,255,.85);
+  background: rgba(255,255,255,.88);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-top: .5px solid var(--ios-sep);
+  box-shadow: 0 -8px 32px rgba(0,0,0,.10), 0 -1px 0 rgba(0,0,0,.06);
 }
 .dark .ios-tabbar {
-  background: rgba(28,28,30,.85);
+  background: rgba(18,18,20,.92);
+  box-shadow: 0 -8px 32px rgba(0,0,0,.40), 0 -1px 0 rgba(255,255,255,.06);
 }
 
 /* ── iOS Navigation Bar ── */

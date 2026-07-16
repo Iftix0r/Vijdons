@@ -1,0 +1,4 @@
+{
+  "summary": "Asosiy sahifadagi 'Buyurtma qidirilmoqda' animatsiyasi to'liq yangilandi. Eski oddiy animate-ping + skeleton o'rniga: 1) Radar/sonar effekti — 3 ta halqa ketma-ket kengayib yo'qoladi, ustida aylanuvchi 'sweep' sektori (conic-gradient), markazda taxi ikonkali sariq disk. 2) Uch nuqtali blink animatsiya matn ostida. 3) Tab bar soyasi ham yangilandi — light modeda yumshoq vertikal gradient soya (box-shadow), dark modeda quyuqroq versiyasi. Shimmer kartalar ham to'liq qayta yozildi: uchta tartibli preview karta, har birida from/to chiziq placeholderlar, narx chip, opacity fade.",
+  "current_status": "Chat TypeError tuzatildi. Klaviatura ustida input fix qilindi. Yangi buyurtma modal ishlaydi. Searching state animatsiyasi va tab bar soyasi yangilandi."
+}
