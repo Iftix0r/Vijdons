@@ -35,10 +35,20 @@
 
 <div class="px-4 py-3 space-y-2.5" id="list">
   {% for order in orders %}
-  <div class="order-item ios-card rounded-[16px] anim-up"
+  <div class="order-item ios-card rounded-[16px] anim-up cursor-pointer active:opacity-70 transition-opacity"
        data-status="{{ order.status }}"
        data-price="{% if order.status == 'completed' and order.price %}{{ order.price }}{% else %}0{% endif %}"
        data-km="{% if order.distance_km %}{{ order.distance_km }}{% else %}0{% endif %}"
+       data-id="{{ order.id }}"
+       data-from="{{ order.from_address|escapejs }}"
+       data-to="{{ order.to_address|escapejs }}"
+       data-client="{{ order.client.full_name|default:'Mijoz'|escapejs }}"
+       data-phone="{{ order.client.phone_number|escapejs }}"
+       data-payment="{{ order.payment_type }}"
+       data-note="{{ order.note|default:''|escapejs }}"
+       data-date="{{ order.created_at|date:'d.m.Y H:i' }}"
+       data-commission="{% if order.commission %}{{ order.commission }}{% else %}0{% endif %}"
+       onclick="openDetail(this)"
        style="animation-delay:{{ forloop.counter0 }}0ms;box-shadow:0 1px 3px rgba(0,0,0,.07)">
     <div class="p-4">
       <div class="flex items-center justify-between mb-2">
@@ -89,6 +99,17 @@
 
 {% endblock %}
 {% block extra_js %}
+
+<!-- Bottom Sheet -->
+<div id="sheet-overlay" class="fixed inset-0 z-[100] hidden">
+  <div class="absolute inset-0" style="background:rgba(0,0,0,.5);backdrop-filter:blur(4px)" onclick="closeDetail()"></div>
+  <div id="sheet" class="ios-sheet absolute bottom-0 left-0 right-0 max-h-[92vh] overflow-y-auto"
+       style="transform:translateY(100%);transition:transform .38s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom,34px)">
+    <div class="ios-sheet-handle"></div>
+    <div id="sheet-body" class="px-4 pt-3 pb-4 space-y-3"></div>
+  </div>
+</div>
+
 <script>
 const items=[...document.querySelectorAll('.order-item')];
 
@@ -110,8 +131,89 @@ function filter(s){
   const vis=items.filter(el=>{ const show=s==='all'||el.dataset.status===s; el.style.display=show?'':'none'; return show; });
   calcStats(vis);
 }
-// Init
 const fa=document.getElementById('f-all');
 if(fa){ fa.style.background='var(--ios-card)'; fa.style.color='var(--ios-label)'; fa.style.boxShadow='0 1px 4px rgba(0,0,0,.12)'; }
+
+const statusLabel = {completed:'Yakunlangan', cancelled:'Bekor qilindi', pending:'Kutilmoqda', accepted:'Qabul qilindi', on_way:"Yo'lda", arrived:'Yetib keldim'};
+const statusColor = {completed:'#34C759', cancelled:'#FF3B30', pending:'#FFD600', accepted:'#007AFF', on_way:'#AF52DE', arrived:'#34C759'};
+
+function openDetail(el) {
+  const d = el.dataset;
+  const price = parseFloat(d.price)||0;
+  const km = parseFloat(d.km)||0;
+  const commission = parseFloat(d.commission)||0;
+  const color = statusColor[d.status]||'#8E8E93';
+
+  document.getElementById('sheet-body').innerHTML = `
+    <div class="flex items-center justify-between">
+      <span style="font-size:12px;font-weight:600;padding:4px 10px;border-radius:8px;background:${color}22;color:${color}">${statusLabel[d.status]||d.status}</span>
+      <span class="ios-caption2" style="color:var(--ios-label3)">#${d.id} · ${d.date}</span>
+    </div>
+
+    <div class="ios-card2 rounded-[14px] p-4 space-y-3">
+      <div class="flex items-start gap-3">
+        <div class="w-2.5 h-2.5 rounded-full bg-[#34C759] mt-1.5 flex-shrink-0"></div>
+        <div>
+          <div class="ios-caption2 font-semibold mb-0.5" style="color:var(--ios-label3)">QAYERDAN</div>
+          <div class="ios-subhead font-medium">${d.from}</div>
+        </div>
+      </div>
+      ${d.to ? `
+      <div style="height:.5px;background:var(--ios-sep);margin-left:20px"></div>
+      <div class="flex items-start gap-3">
+        <i class="fas fa-location-dot text-[#FF3B30] text-sm mt-1 flex-shrink-0"></i>
+        <div>
+          <div class="ios-caption2 font-semibold mb-0.5" style="color:var(--ios-label3)">QAYERGA</div>
+          <div class="ios-subhead font-medium" style="color:var(--ios-label2)">${d.to}</div>
+        </div>
+      </div>` : ''}
+    </div>
+
+    <div class="ios-card2 rounded-[14px] p-4">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-full bg-[#007AFF] flex items-center justify-center flex-shrink-0">
+          <i class="fas fa-user text-white text-base"></i>
+        </div>
+        <div class="flex-1">
+          <div class="ios-subhead font-semibold">${d.client}</div>
+          <div class="ios-caption mt-0.5" style="color:var(--ios-label3)">${d.phone}</div>
+        </div>
+        <span class="ios-caption" style="color:var(--ios-label3)">${d.payment==='cash'?'💵 Naqd':'💳 Karta'}</span>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+      <div class="ios-card2 rounded-[12px] p-3 text-center">
+        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">NARX</div>
+        <div class="ios-footnote font-bold ${d.status==='completed'?'text-[#34C759]':''}" style="${d.status!=='completed'?'color:var(--ios-label3)':''};text-decoration:${d.status==='cancelled'?'line-through':'none'}">${price>0?Math.round(price).toLocaleString()+" so'm":'—'}</div>
+      </div>
+      <div class="ios-card2 rounded-[12px] p-3 text-center">
+        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">MASOFA</div>
+        <div class="ios-footnote font-bold">${km>0?km.toFixed(1)+' km':'—'}</div>
+      </div>
+      <div class="ios-card2 rounded-[12px] p-3 text-center">
+        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">KOMISSIYA</div>
+        <div class="ios-footnote font-bold text-[#FF9500]">${commission>0?Math.round(commission).toLocaleString()+" so'm":'—'}</div>
+      </div>
+    </div>
+
+    ${d.note ? `
+    <div class="ios-card2 rounded-[14px] px-4 py-3 flex items-start gap-2.5">
+      <i class="fas fa-note-sticky text-[#FF9500] mt-0.5 flex-shrink-0"></i>
+      <span class="ios-subhead" style="color:var(--ios-label2)">${d.note}</span>
+    </div>` : ''}
+  `;
+
+  const ov = document.getElementById('sheet-overlay');
+  const sh = document.getElementById('sheet');
+  ov.classList.remove('hidden');
+  requestAnimationFrame(() => { sh.style.transform = 'translateY(0)'; });
+}
+
+function closeDetail() {
+  const sh = document.getElementById('sheet');
+  sh.style.transform = 'translateY(100%)';
+  setTimeout(() => document.getElementById('sheet-overlay').classList.add('hidden'), 380);
+}
 </script>
 {% endblock %}
