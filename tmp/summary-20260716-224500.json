@@ -1,0 +1,4 @@
+{
+  "summary": "Qabul qilingan buyurtma tafsilotlari (bottom sheet) ichidagi mijoz kartasiga 3 ta aloqa tugmasi qo'shildi: 1) Qo'ng'iroq (yashil, fas fa-phone, tel: sxemasi), 2) SMS Xabar (ko'k, fas fa-comment-sms, sms: sxemasi), 3) Telegram (goluboy, fab fa-telegram, https://t.me/+998XXXXXXXX formati). Tugmalar faqat pending bo'lmagan statuslarda (accepted, on_way, arrived) ko'rinadi. openTelegram() funksiyasi telefon raqamini tozalab t.me/+ formatida ochadi. Har bir tugma ontouchstart/ontouchend bilan feedback beradi.",
+  "current_status": "Chat bug tuzatildi. Klaviatura fix. Searching animatsiya yangilandi. Buyurtma sheet'ida 3 aloqa tugmasi (telefon, SMS, Telegram) qo'shildi."
+}

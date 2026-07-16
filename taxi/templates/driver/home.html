@@ -510,6 +510,14 @@ document.addEventListener('visibilitychange', () => {
 });
 {% if driver.is_on_duty %}requestWakeLock();{% endif %}
 
+function openTelegram(phone) {
+  // +998901234567 → https://t.me/+998901234567
+  // raqamdan faqat raqamlar va + belgisini olamiz
+  let p = phone.replace(/[^\d+]/g, '');
+  if (!p.startsWith('+')) p = '+' + p;
+  window.open('https://t.me/' + encodeURIComponent(p), '_blank');
+}
+
 function openOrder(id){
   Native.vibrate();
   const o=ORDERS.find(x=>x.id===id); if(!o) return;
@@ -561,19 +569,57 @@ function openOrder(id){
     </div>
 
     <!-- Client card -->
-    <div class="ios-card2 rounded-[14px] p-4 flex items-center gap-3">
-      <div class="w-11 h-11 rounded-full bg-[#007AFF] flex items-center justify-center flex-shrink-0">
-        <i class="fas fa-user text-white text-base"></i>
+    <div class="ios-card2 rounded-[14px] p-4">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-11 h-11 rounded-full bg-[#007AFF] flex items-center justify-center flex-shrink-0">
+          <i class="fas fa-user text-white text-base"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="ios-subhead font-semibold truncate">${o.client_name||'Mijoz'}</div>
+          ${o.status!=='pending'
+            ?`<div class="ios-caption mt-0.5" style="color:var(--ios-label3)">${o.client_phone}</div>`
+            :`<div class="ios-caption mt-0.5" style="color:var(--ios-label3)">Qabul qilgach ko'rinadi</div>`}
+        </div>
+        ${o.price?`<div class="text-right flex-shrink-0">
+          <div class="ios-subhead font-semibold text-[#34C759]">${parseInt(o.price).toLocaleString()} so'm</div>
+          ${o.distance_km?`<div class="ios-caption" style="color:var(--ios-label3)">${parseFloat(o.distance_km).toFixed(1)} km</div>`:''}
+        </div>`:''}
       </div>
-      <div class="flex-1 min-w-0">
-        <div class="ios-subhead font-semibold truncate">${o.client_name||'Mijoz'}</div>
-        ${o.status!=='pending'
-          ?`<button onclick="Native.callPhone('${o.client_phone}')" class="flex items-center gap-1.5 text-[#007AFF] ios-caption font-medium mt-0.5 active:opacity-60"><i class="fas fa-phone text-[10px]"></i>${o.client_phone}</button>`
-          :`<div class="ios-caption mt-0.5" style="color:var(--ios-label3)">Qabul qilgach ko'rinadi</div>`}
-      </div>
-      ${o.price?`<div class="text-right flex-shrink-0">
-        <div class="ios-subhead font-semibold text-[#34C759]">${parseInt(o.price).toLocaleString()} so'm</div>
-        ${o.distance_km?`<div class="ios-caption" style="color:var(--ios-label3)">${parseFloat(o.distance_km).toFixed(1)} km</div>`:''}
+      ${o.status!=='pending'?`
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <!-- Telefon -->
+        <button onclick="Native.vibrate();Native.callPhone('${o.client_phone}')"
+                style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+                       padding:10px 4px;border-radius:12px;background:rgba(52,199,89,.12);border:none;cursor:pointer;
+                       -webkit-tap-highlight-color:transparent;transition:opacity .15s"
+                ontouchstart="this.style.opacity='.6'" ontouchend="this.style.opacity='1'">
+          <div style="width:34px;height:34px;border-radius:50%;background:#34C759;display:flex;align-items:center;justify-content:center">
+            <i class="fas fa-phone" style="color:#fff;font-size:14px"></i>
+          </div>
+          <span style="font-size:11px;font-weight:600;color:#34C759">Qo'ng'iroq</span>
+        </button>
+        <!-- SMS / Chat -->
+        <button onclick="Native.vibrate();window.location.href='sms:${o.client_phone}'"
+                style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+                       padding:10px 4px;border-radius:12px;background:rgba(0,122,255,.1);border:none;cursor:pointer;
+                       -webkit-tap-highlight-color:transparent;transition:opacity .15s"
+                ontouchstart="this.style.opacity='.6'" ontouchend="this.style.opacity='1'">
+          <div style="width:34px;height:34px;border-radius:50%;background:#007AFF;display:flex;align-items:center;justify-content:center">
+            <i class="fas fa-comment-sms" style="color:#fff;font-size:14px"></i>
+          </div>
+          <span style="font-size:11px;font-weight:600;color:#007AFF">Xabar</span>
+        </button>
+        <!-- Telegram -->
+        <button onclick="Native.vibrate();openTelegram('${o.client_phone}')"
+                style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+                       padding:10px 4px;border-radius:12px;background:rgba(39,174,239,.12);border:none;cursor:pointer;
+                       -webkit-tap-highlight-color:transparent;transition:opacity .15s"
+                ontouchstart="this.style.opacity='.6'" ontouchend="this.style.opacity='1'">
+          <div style="width:34px;height:34px;border-radius:50%;background:#27AEF0;display:flex;align-items:center;justify-content:center">
+            <i class="fab fa-telegram" style="color:#fff;font-size:16px"></i>
+          </div>
+          <span style="font-size:11px;font-weight:600;color:#27AEF0">Telegram</span>
+        </button>
       </div>`:''}
     </div>
 
