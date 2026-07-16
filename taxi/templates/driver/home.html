@@ -219,7 +219,7 @@
 <script>
 const IS_ON_DUTY = {{ driver.is_on_duty|yesno:'true,false' }};
 const DRIVER_NAME = {{ driver.full_name|first|upper|json_script:"" }};
-const DRIVER_BALANCE = {{ driver.balance|floatformat:0 }};
+const DRIVER_BALANCE = {{ driver.balance|stringformat:"g" }};
 const DRIVER_CAR = "{{ driver.car_model }}";
 const DRIVER_CAR_NUM = "{{ driver.car_number }}";
 const DRIVER_TRIPS = {{ driver.trips_count|default:0 }};
@@ -607,8 +607,8 @@ document.addEventListener('visibilitychange', () => {
 {% endif %}
 
 // ── TAXIMETER ─────────────────────────────────────────────────────────────────
-const TMX_BASE_PRICE  = {{ tariff.base_price|default:5000|floatformat:0 }};
-const TMX_PER_KM      = {{ tariff.price_per_km|default:2000|floatformat:0 }};
+const TMX_BASE_PRICE  = {{ tariff.base_price|default:5000|stringformat:"g" }};
+const TMX_PER_KM      = {{ tariff.price_per_km|default:2000|stringformat:"g" }};
 
 let _tmxActive    = false;
 let _tmxOrderId   = null;
