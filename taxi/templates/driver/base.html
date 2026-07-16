@@ -406,15 +406,56 @@ const Audio = {
     } catch(_) {}
   },
   newOrder() {
+    // WAV fayl
     try {
       const a = new window.Audio('/static/driver/sounds/new_order.wav');
-      a.loop = true; a.play().catch(()=>{});
+      a.volume = 1.0;
+      a.loop = true;
+      const p = a.play();
+      if (p && p.catch) p.catch(()=>{});
       window._newOrderAudio = a;
     } catch(_) {}
-    this._play([[0,.28,880],[.15,.22,1046],[.3,.3,1318]]);
+    // Web Audio API — kuchli takroriy signal (WAV eshitilmasa ham chaladi)
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      window._newOrderCtx = ctx;
+      const pattern = [
+        [0,    880, 0.6, 0.3],
+        [0.35, 1046,0.6, 0.3],
+        [0.7,  1318,0.7, 0.4],
+        [1.2,  880, 0.6, 0.3],
+        [1.55, 1046,0.6, 0.3],
+        [1.9,  1318,0.7, 0.4],
+        [2.4,  880, 0.6, 0.3],
+        [2.75, 1046,0.6, 0.3],
+        [3.1,  1318,0.7, 0.5],
+      ];
+      const repeat = 4;
+      for (let r = 0; r < repeat; r++) {
+        pattern.forEach(([t, f, v, d]) => {
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.connect(g); g.connect(ctx.destination);
+          o.type = 'triangle';
+          o.frequency.value = f;
+          const st = ctx.currentTime + t + r * 3.8;
+          g.gain.setValueAtTime(0, st);
+          g.gain.linearRampToValueAtTime(v, st + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.001, st + d);
+          o.start(st); o.stop(st + d + 0.05);
+        });
+      }
+    } catch(_) {}
   },
   stopNewOrder() {
-    if (window._newOrderAudio) { window._newOrderAudio.pause(); window._newOrderAudio = null; }
+    if (window._newOrderAudio) {
+      window._newOrderAudio.pause();
+      window._newOrderAudio.currentTime = 0;
+      window._newOrderAudio = null;
+    }
+    if (window._newOrderCtx) {
+      try { window._newOrderCtx.close(); } catch(_) {}
+      window._newOrderCtx = null;
+    }
   },
   accept()   { this._play([[0,.2,523],[.12,.25,659]]); },
   reject()   { this._play([[0,.3,440],[.15,.3,330]]); },
