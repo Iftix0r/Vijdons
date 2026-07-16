@@ -490,28 +490,35 @@ async function loadOrders(fb=false) {
   try {
     const r=await fetch('{% url "driver:orders_json" %}');
     const d=await r.json();
+
     // Dispatch timer tugagan bo'lsa reload
     if(d.timer_sec !== null && d.timer_sec === 0) { location.reload(); return; }
+
     if(d.new_ids){
       const serverIds = new Set(d.new_ids);
-      const nw = d.new_ids.filter(id=>!_known.has(id));
-      if(nw.length){
+
+      // Yangi buyurtma: serverda bor, bizda yo'q
+      const added = d.new_ids.filter(id => !_known.has(id));
+      if(added.length){
         Native.vibrate([60,30,60,30,120]);
         _known = serverIds;
-        if(typeof FlutterNotify !== 'undefined') FlutterNotify.postMessage(String(nw.length));
-        const newOrder = (d.orders||[]).find(o=>nw.includes(o.id)) || null;
-        showNewOrderModal(nw[0], newOrder);
+        if(typeof FlutterNotify !== 'undefined') FlutterNotify.postMessage(String(added.length));
+        const newOrder = (d.orders||[]).find(o => added.includes(o.id)) || null;
+        showNewOrderModal(added[0], newOrder);
         return;
       }
-      // Buyurtma kamaygan (qabul/bekor) — silent reload
-      if(serverIds.size !== _known.size){
+
+      // Buyurtma o'chirilgan yoki kamaygan — reload
+      const removed = [..._known].filter(id => !serverIds.has(id));
+      if(removed.length){
         _known = serverIds;
         location.reload();
         return;
       }
+
+      // Hech narsa o'zgarmagan — reload kerak emas
+      _known = serverIds;
     }
-    if(d.reload) location.reload();
-    if(fb) {}
   } catch(_){}
 }
 

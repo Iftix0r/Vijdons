@@ -178,7 +178,7 @@ def driver_orders_json(request, driver):
             'payment_type': o.payment_type,
         })
 
-    return JsonResponse({'reload': True, 'new_ids': ids, 'timer_sec': timer_sec, 'orders': orders_data})
+    return JsonResponse({'new_ids': ids, 'timer_sec': timer_sec, 'orders': orders_data})
 
 
 # ── Order actions ─────────────────────────────────────────────────────────────

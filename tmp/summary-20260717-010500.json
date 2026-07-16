@@ -1,0 +1,4 @@
+{
+  "summary": "Asosiy sahifaning tinmay reload bo'lishi va oq/qora rejim almashinishi hal qilindi. Ikkita sabab bor edi: 1) driver_orders_json view 'reload: True' har doim qaytarardi — JS if(d.reload) location.reload() har 4s da ishga tushardi. Bu olib tashlandi. 2) loadOrders() da serverIds.size !== _known.size solishtirish noto'g'ri — size teng bo'lsa ham ID lar farq qilishi mumkin. To'g'ri yondashuv: added = serverIds - _known (yangi), removed = _known - serverIds (o'chirilgan). Faqat o'zgarish bo'lsa reload qilinadi.",
+  "current_status": "Reload loop muammosi hal qilindi. Sahifa faqat zarur holatlarda yangilanadi."
+}
