@@ -10,7 +10,8 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMixin {
+class _ChatScreenState extends State<ChatScreen>
+    with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
@@ -25,7 +26,8 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
   void initState() {
     super.initState();
     _load();
-    _timer = Timer.periodic(const Duration(seconds: 5), (_) => _load(silent: true));
+    _timer = Timer.periodic(
+        const Duration(seconds: 5), (_) => _load(silent: true));
   }
 
   @override
@@ -66,7 +68,8 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
           content: Text(e.toString()),
           backgroundColor: AppColors.danger,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           margin: const EdgeInsets.all(16),
         ));
       }
@@ -91,107 +94,176 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
   Widget build(BuildContext context) {
     super.build(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
+
     return SafeArea(
       child: Column(
         children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
-            decoration: BoxDecoration(
-              color: dark ? AppColors.cardDark : Colors.white,
-              border: Border(bottom: BorderSide(
-                  color: dark ? AppColors.borderDark : AppColors.borderLight, width: 0.8)),
-            ),
-            child: Row(
-              children: [
-                const Text('💬', style: TextStyle(fontSize: 22)),
-                const SizedBox(width: 10),
-                const Text('Vijdon Chat',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.3)),
-                const Spacer(),
-                GestureDetector(
-                  onTap: _load,
-                  child: Container(
-                    width: 36, height: 36,
-                    decoration: BoxDecoration(
-                      color: dark ? AppColors.surfaceDark : const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: dark ? AppColors.borderDark : AppColors.borderLight),
-                    ),
-                    child: const Icon(Icons.refresh_rounded, size: 18, color: Colors.grey),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Messages
+          _header(dark),
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                ? const Center(
+                    child:
+                        CircularProgressIndicator(color: AppColors.primary))
                 : _messages.isEmpty
                     ? _emptyState(dark)
                     : ListView.builder(
                         controller: _scrollCtrl,
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                        padding:
+                            const EdgeInsets.fromLTRB(16, 16, 16, 8),
                         itemCount: _messages.length,
-                        itemBuilder: (_, i) => _bubble(_messages[i], dark),
+                        itemBuilder: (_, i) =>
+                            _bubble(_messages[i], dark),
                       ),
           ),
-
-          // Input
           _inputBar(dark),
         ],
       ),
     );
   }
 
+  // ── Header ────────────────────────────────────────────────────────────────
+
+  Widget _header(bool dark) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 16, 16, 14),
+      decoration: BoxDecoration(
+        color: dark ? AppColors.bgDark : Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: dark ? AppColors.borderDark : AppColors.borderLight,
+            width: 0.8,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Operator avatar
+          Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: const Center(
+              child: Text('O',
+                  style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900)),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Title + online status
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Operator',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.2,
+                    color: dark ? Colors.white : AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Container(
+                      width: 6, height: 6,
+                      decoration: const BoxDecoration(
+                          color: AppColors.success,
+                          shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Onlayn',
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.success.withValues(alpha: 0.8)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Refresh button
+          GestureDetector(
+            onTap: _load,
+            child: Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: dark
+                    ? AppColors.surfaceDark
+                    : const Color(0xFFF2F2F2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.refresh_rounded,
+                  size: 18,
+                  color: Colors.grey.shade500),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Message bubble ────────────────────────────────────────────────────────
+
   Widget _bubble(Map<String, dynamic> msg, bool dark) {
     final isMe = msg['sender'] == 'driver';
     final time = _formatTime(msg['created_at'] ?? '');
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          // Operator avatar
           if (!isMe) ...[
             Container(
-              width: 30, height: 30,
+              width: 28, height: 28,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                    colors: [Color(0xFFF59E0B), Color(0xFFD97706)]),
+                color: AppColors.primary,
                 borderRadius: BorderRadius.circular(9),
               ),
               child: const Center(
                 child: Text('O',
-                    style: TextStyle(color: Colors.white, fontSize: 13,
+                    style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 12,
                         fontWeight: FontWeight.w900)),
               ),
             ),
             const SizedBox(width: 8),
           ],
+
+          // Bubble
           Flexible(
             child: Container(
               constraints: BoxConstraints(
                   maxWidth: MediaQuery.of(context).size.width * 0.72),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 11),
               decoration: BoxDecoration(
+                // Driver = sariq; operator = kulrang
                 color: isMe
                     ? AppColors.primary
-                    : (dark ? AppColors.surfaceDark : const Color(0xFFF1F5F9)),
+                    : (dark
+                        ? AppColors.surfaceDark
+                        : const Color(0xFFF2F2F2)),
                 borderRadius: BorderRadius.only(
                   topLeft:     const Radius.circular(18),
                   topRight:    const Radius.circular(18),
                   bottomLeft:  Radius.circular(isMe ? 18 : 4),
                   bottomRight: Radius.circular(isMe ? 4 : 18),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 6, offset: const Offset(0, 2),
-                  )
-                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -199,93 +271,129 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                   Text(
                     msg['text'] ?? '',
                     style: TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w600, height: 1.4,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      height: 1.4,
                       color: isMe
-                          ? Colors.black
-                          : (dark ? Colors.white : AppColors.textPrimary),
+                          ? AppColors.textPrimary
+                          : (dark
+                              ? Colors.white
+                              : AppColors.textPrimary),
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     time,
                     style: TextStyle(
-                      fontSize: 10, fontWeight: FontWeight.w600,
-                      color: isMe ? Colors.black54 : Colors.grey.shade400,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: isMe
+                          ? Colors.black.withValues(alpha: 0.45)
+                          : Colors.grey.shade400,
                     ),
                   ),
                 ],
               ),
             ),
           ),
+
           if (isMe) const SizedBox(width: 4),
         ],
       ),
     );
   }
 
+  // ── Input bar ─────────────────────────────────────────────────────────────
+
   Widget _inputBar(bool dark) {
     return Container(
       padding: EdgeInsets.fromLTRB(
-          16, 10, 16, MediaQuery.of(context).padding.bottom + 10),
+          14, 10, 14, MediaQuery.of(context).padding.bottom + 12),
       decoration: BoxDecoration(
-        color: dark ? AppColors.cardDark : Colors.white,
-        border: Border(top: BorderSide(
-            color: dark ? AppColors.borderDark : AppColors.borderLight)),
+        color: dark ? AppColors.bgDark : Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: dark ? AppColors.borderDark : AppColors.borderLight,
+            width: 0.8,
+          ),
+        ),
       ),
       child: Row(
         children: [
+          // Text field
           Expanded(
-            child: TextField(
-              controller: _controller,
-              textCapitalization: TextCapitalization.sentences,
-              onSubmitted: (_) => _send(),
-              decoration: InputDecoration(
-                hintText: 'Xabar yozing...',
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide(
-                      color: dark ? AppColors.borderDark : AppColors.borderLight),
+            child: Container(
+              decoration: BoxDecoration(
+                color: dark
+                    ? AppColors.surfaceDark
+                    : const Color(0xFFF2F2F2),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: dark
+                      ? AppColors.borderDark
+                      : AppColors.borderLight,
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide(
-                      color: dark ? AppColors.borderDark : AppColors.borderLight),
+              ),
+              child: TextField(
+                controller: _controller,
+                textCapitalization: TextCapitalization.sentences,
+                onSubmitted: (_) => _send(),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: dark ? Colors.white : AppColors.textPrimary,
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide:
-                      const BorderSide(color: AppColors.primary, width: 2),
+                decoration: InputDecoration(
+                  hintText: 'Xabar yozing...',
+                  hintStyle: TextStyle(
+                    color: Colors.grey.shade500,
+                    fontSize: 14,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 18, vertical: 12),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  filled: false,
                 ),
-                filled: true,
-                fillColor:
-                    dark ? AppColors.surfaceDark : const Color(0xFFF8FAFC),
               ),
             ),
           ),
           const SizedBox(width: 10),
+
+          // Send button
           GestureDetector(
-            onTap: _send,
-            child: Container(
+            onTap: _sending ? null : _send,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
               width: 48, height: 48,
               decoration: BoxDecoration(
-                color: _sending ? Colors.grey.shade300 : AppColors.primary,
+                color: _sending
+                    ? Colors.grey.shade300
+                    : AppColors.primary,
                 shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.35),
-                    blurRadius: 10, offset: const Offset(0, 4),
-                  )
-                ],
+                boxShadow: _sending
+                    ? []
+                    : [
+                        BoxShadow(
+                          color: AppColors.primary
+                              .withValues(alpha: 0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
               ),
               child: _sending
-                  ? const Padding(
-                      padding: EdgeInsets.all(13),
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
+                  ? const Center(
+                      child: SizedBox(
+                        width: 18, height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.textPrimary),
+                      ),
                     )
-                  : const Icon(Icons.send_rounded, color: Colors.black, size: 22),
+                  : const Icon(Icons.send_rounded,
+                      color: AppColors.textPrimary, size: 20),
             ),
           ),
         ],
@@ -293,32 +401,60 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     );
   }
 
-  Widget _emptyState(bool dark) => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 80, height: 80,
-          decoration: BoxDecoration(
-            color: dark ? AppColors.surfaceDark : Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: const Center(child: Text('💬', style: TextStyle(fontSize: 36))),
+  // ── Empty state ───────────────────────────────────────────────────────────
+
+  Widget _emptyState(bool dark) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80, height: 80,
+              decoration: BoxDecoration(
+                color: dark
+                    ? AppColors.surfaceDark
+                    : const Color(0xFFF2F2F2),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Icon(Icons.chat_bubble_outline_rounded,
+                  size: 38,
+                  color: Colors.grey.shade400),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Xabarlar yo\'q',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.3,
+                color: dark ? Colors.white : AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Operator bilan muloqot boshlang.\nSavollaringizni yuboring.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade500,
+                  height: 1.6),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
-        const Text("Hali xabar yo'q",
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-        const SizedBox(height: 6),
-        Text('Operator bilan muloqot boshlang',
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
-      ],
-    ),
-  );
+      ),
+    );
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
   String _formatTime(String iso) {
     try {
       final dt = DateTime.parse(iso).toLocal();
-      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      final h = dt.hour.toString().padLeft(2, '0');
+      final m = dt.minute.toString().padLeft(2, '0');
+      return '$h:$m';
     } catch (_) {
       return '';
     }

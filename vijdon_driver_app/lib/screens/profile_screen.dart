@@ -11,84 +11,142 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (driver == null) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return const Center(
+          child: CircularProgressIndicator(color: AppColors.primary));
     }
     final dark = Theme.of(context).brightness == Brightness.dark;
+
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 20),
-            const Text(
+            const SizedBox(height: 24),
+
+            // ── Page title ───────────────────────────────────────────────
+            Text(
               'Profil',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+              style: TextStyle(
+                fontSize: 28, fontWeight: FontWeight.w900,
+                letterSpacing: -0.8,
+                color: dark ? Colors.white : AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 20),
 
-            // ── Hero Card ──────────────────────────────────────────────────
+            // ── Hero card ────────────────────────────────────────────────
             _heroCard(dark),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
-            // ── Balance Card ───────────────────────────────────────────────
+            // ── Balance card ─────────────────────────────────────────────
             _balanceCard(dark),
             const SizedBox(height: 14),
 
-            // ── Car Card ───────────────────────────────────────────────────
-            _infoCard(context, 'MASHINA MA\'LUMOTLARI', Icons.directions_car_rounded, [
-              _row(context, Icons.directions_car_filled_outlined, AppColors.info, 'Model', driver!.carModel),
-              _divider(dark),
-              _row(context, Icons.credit_card_rounded, AppColors.info, 'Davlat raqami', driver!.carNumber, mono: true),
-            ], dark),
+            // ── Car info ─────────────────────────────────────────────────
+            _infoCard(
+              "MASHINA MA'LUMOTLARI",
+              Icons.directions_car_rounded,
+              [
+                _row(context, Icons.directions_car_filled_outlined,
+                    AppColors.info, 'Model', driver!.carModel, dark),
+                _divider(dark),
+                _row(
+                  context,
+                  Icons.credit_card_rounded,
+                  AppColors.info,
+                  'Davlat raqami',
+                  driver!.carNumber,
+                  dark,
+                  mono: true,
+                ),
+              ],
+              dark,
+            ),
             const SizedBox(height: 14),
 
-            // ── Contact Card ───────────────────────────────────────────────
-            _infoCard(context, 'ALOQA MA\'LUMOTLARI', Icons.phone_iphone_rounded, [
-              _row(context, Icons.phone_iphone_rounded, AppColors.success, 'Telefon raqam', driver!.phoneNumber, mono: true,
+            // ── Contact info ─────────────────────────────────────────────
+            _infoCard(
+              "ALOQA MA'LUMOTLARI",
+              Icons.phone_iphone_rounded,
+              [
+                _row(
+                  context,
+                  Icons.phone_iphone_rounded,
+                  AppColors.success,
+                  'Telefon',
+                  driver!.phoneNumber,
+                  dark,
+                  mono: true,
                   onTap: () {
                     Clipboard.setData(ClipboardData(text: driver!.phoneNumber));
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: const Text('Nusxalandi', style: TextStyle(fontWeight: FontWeight.bold)),
+                      content: const Text('Nusxalandi',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
                       duration: const Duration(seconds: 1),
                       behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                     ));
-                  }),
-            ], dark),
+                  },
+                ),
+              ],
+              dark,
+            ),
             const SizedBox(height: 14),
 
-            // ── Status Card ────────────────────────────────────────────────
-            _infoCard(context, 'TIZIMDAGI HOLAT', Icons.info_outline_rounded, [
-              _row(context,
-                driver!.isOnDuty ? Icons.wifi_rounded : Icons.wifi_off_rounded,
-                driver!.isOnDuty ? AppColors.success : Colors.grey,
-                'Navbat holati',
-                driver!.isOnDuty ? 'Ish navbatida (Faol)' : 'Dam olmoqda (Noaktiv)',
-                valueColor: driver!.isOnDuty ? AppColors.success : Colors.grey,
-              ),
-              _divider(dark),
-              _row(context, Icons.verified_rounded,
-                driver!.approvalStatus == 'approved' ? AppColors.success : AppColors.warning,
-                'Tizim tasdig\'i', _approvalLabel(),
-                valueColor: driver!.approvalStatus == 'approved' ? AppColors.success
-                    : driver!.approvalStatus == 'rejected' ? AppColors.danger : AppColors.warning,
-              ),
-            ], dark),
-            const SizedBox(height: 32),
+            // ── Status info ──────────────────────────────────────────────
+            _infoCard(
+              'TIZIMDAGI HOLAT',
+              Icons.info_outline_rounded,
+              [
+                _row(
+                  context,
+                  driver!.isOnDuty
+                      ? Icons.wifi_rounded
+                      : Icons.wifi_off_rounded,
+                  driver!.isOnDuty ? AppColors.success : Colors.grey,
+                  'Navbat',
+                  driver!.isOnDuty ? 'Faol (Ish navbatida)' : 'Dam olmoqda',
+                  dark,
+                  valueColor: driver!.isOnDuty ? AppColors.success : Colors.grey,
+                ),
+                _divider(dark),
+                _row(
+                  context,
+                  Icons.verified_rounded,
+                  driver!.approvalStatus == 'approved'
+                      ? AppColors.success
+                      : AppColors.warning,
+                  'Tizim tasdig\'i',
+                  _approvalLabel(),
+                  dark,
+                  valueColor: driver!.approvalStatus == 'approved'
+                      ? AppColors.success
+                      : driver!.approvalStatus == 'rejected'
+                          ? AppColors.danger
+                          : AppColors.warning,
+                ),
+              ],
+              dark,
+            ),
+            const SizedBox(height: 28),
 
-            // ── Logout Button ──────────────────────────────────────────────
+            // ── Logout button ────────────────────────────────────────────
             SizedBox(
               height: 54,
               child: OutlinedButton.icon(
-                onPressed: () => _confirmLogout(context),
+                onPressed: () => _confirmLogout(context, dark),
                 icon: const Icon(Icons.logout_rounded, size: 18),
                 label: const Text('Tizimdan chiqish',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w900, fontSize: 14)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.danger,
-                  side: const BorderSide(color: AppColors.danger, width: 1.5),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  side: const BorderSide(
+                      color: AppColors.danger, width: 1.5),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                 ),
               ),
             ),
@@ -99,55 +157,47 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  // ── Hero card ─────────────────────────────────────────────────────────────
+
   Widget _heroCard(bool dark) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: dark
-              ? [const Color(0xFF0F2921), const Color(0xFF0A1412)]
-              : [const Color(0xFF0F172A), const Color(0xFF1E293B)],
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-        ),
+        color: AppColors.bgDark,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: dark ? 0.3 : 0.15),
-            blurRadius: 18,
+            color: Colors.black.withValues(alpha: dark ? 0.4 : 0.12),
+            blurRadius: 20,
             offset: const Offset(0, 6),
-          )
+          ),
         ],
       ),
       child: Row(
         children: [
-          // Avatar with shining pulse border
+          // Avatar
           Container(
-            padding: const EdgeInsets.all(3),
+            width: 72, height: 72,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.4), width: 2),
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.35),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
+                ),
+              ],
             ),
-            child: Container(
-              width: 68, height: 68,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.primaryDark],
-                  begin: Alignment.topLeft, end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.4),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  )
-                ],
-              ),
-              child: Center(
-                child: Text(
-                  driver!.fullName.isNotEmpty ? driver!.fullName[0].toUpperCase() : 'H',
-                  style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900),
-                ),
+            child: Center(
+              child: Text(
+                driver!.fullName.isNotEmpty
+                    ? driver!.fullName[0].toUpperCase()
+                    : 'H',
+                style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 30,
+                    fontWeight: FontWeight.w900),
               ),
             ),
           ),
@@ -158,7 +208,11 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 Text(
                   driver!.fullName,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.2),
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -0.3),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
@@ -166,9 +220,9 @@ class ProfileScreen extends StatelessWidget {
                   driver!.phoneNumber,
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.6),
+                    color: Colors.white.withValues(alpha: 0.5),
                     fontFamily: 'monospace',
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -176,23 +230,7 @@ class ProfileScreen extends StatelessWidget {
                   children: [
                     _approvalBadge(),
                     const SizedBox(width: 8),
-                    if (driver!.isOnDuty)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.success.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppColors.success.withValues(alpha: 0.4)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(width: 6, height: 6, decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle)),
-                            const SizedBox(width: 5),
-                            const Text('Online', style: TextStyle(color: AppColors.success, fontSize: 10, fontWeight: FontWeight.w900)),
-                          ],
-                        ),
-                      ),
+                    if (driver!.isOnDuty) _onlineBadge(),
                   ],
                 ),
               ],
@@ -203,84 +241,25 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _balanceCard(bool dark) {
-    final balance = double.tryParse(driver!.balance) ?? 0;
-    final isNegative = balance < 0;
-    final color = isNegative ? AppColors.danger : AppColors.success;
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: dark ? AppColors.cardDark : Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: dark ? 0.05 : 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 50, height: 50,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isNegative
-                    ? [const Color(0xFFEF4444), const Color(0xFFDC2626)]
-                    : [AppColors.primary, AppColors.primaryDark],
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))
-              ],
-            ),
-            child: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Balans hisobi',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w800, letterSpacing: 0.2),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '${balance.toStringAsFixed(0)} UZS',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color, letterSpacing: -0.5),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              isNegative ? 'Qarzdorlik' : 'Faol',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: color),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _approvalBadge() {
-    Color c; String label; IconData icon;
+    Color c;
+    String label;
+    IconData icon;
     switch (driver!.approvalStatus) {
       case 'approved':
-        c = AppColors.success; label = 'Tasdiqlangan'; icon = Icons.verified_rounded; break;
+        c = AppColors.success;
+        label = 'Tasdiqlangan';
+        icon = Icons.verified_rounded;
+        break;
       case 'rejected':
-        c = AppColors.danger;  label = 'Rad etilgan';  icon = Icons.cancel_rounded;   break;
+        c = AppColors.danger;
+        label = 'Rad etilgan';
+        icon = Icons.cancel_rounded;
+        break;
       default:
-        c = AppColors.warning; label = 'Kutilmoqda';   icon = Icons.access_time_rounded;
+        c = AppColors.warning;
+        label = 'Kutilmoqda';
+        icon = Icons.access_time_rounded;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
@@ -294,42 +273,153 @@ class ProfileScreen extends StatelessWidget {
         children: [
           Icon(icon, size: 12, color: c),
           const SizedBox(width: 5),
-          Text(label, style: TextStyle(color: c, fontSize: 10, fontWeight: FontWeight.w900)),
+          Text(label,
+              style: TextStyle(
+                  color: c, fontSize: 10, fontWeight: FontWeight.w900)),
         ],
       ),
     );
   }
 
-  String _approvalLabel() {
-    return switch (driver!.approvalStatus) {
-      'approved' => 'Tasdiqlangan',
-      'rejected' => 'Rad etilgan',
-      _          => 'Tekshirilmoqda',
-    };
+  Widget _onlineBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.success.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+        border:
+            Border.all(color: AppColors.success.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6, height: 6,
+            decoration: const BoxDecoration(
+                color: AppColors.success, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+          const Text('Online',
+              style: TextStyle(
+                  color: AppColors.success,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900)),
+        ],
+      ),
+    );
   }
 
-  Widget _infoCard(BuildContext ctx, String title, IconData titleIcon, List<Widget> children, bool dark) {
+  // ── Balance card ─────────────────────────────────────────────────────────
+
+  Widget _balanceCard(bool dark) {
+    final balance = double.tryParse(driver!.balance) ?? 0;
+    final isNeg = balance < 0;
+    final color = isNeg ? AppColors.danger : AppColors.success;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: dark ? AppColors.cardDark : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+            color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52, height: 52,
+            decoration: BoxDecoration(
+              color: isNeg
+                  ? AppColors.danger.withValues(alpha: 0.1)
+                  : AppColors.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(
+              Icons.account_balance_wallet_rounded,
+              color: isNeg ? AppColors.danger : AppColors.primary,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Balans hisobi',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade500,
+                      fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '${balance.toStringAsFixed(0)} so\'m',
+                  style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: color,
+                      letterSpacing: -0.5),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: color.withValues(alpha: 0.2)),
+            ),
+            child: Text(
+              isNeg ? 'Qarzdorlik' : 'Faol',
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Info card ─────────────────────────────────────────────────────────────
+
+  Widget _infoCard(String title, IconData titleIcon,
+      List<Widget> children, bool dark) {
     return Container(
       decoration: BoxDecoration(
         color: dark ? AppColors.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: dark ? AppColors.borderDark : AppColors.borderLight),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: dark ? 0.2 : 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          )
-        ],
+        border: Border.all(
+            color: dark ? AppColors.borderDark : AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-            child: Text(
-              title,
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey.shade500, letterSpacing: 0.8),
+            child: Row(
+              children: [
+                Container(
+                  width: 3, height: 12,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.grey.shade500,
+                      letterSpacing: 1),
+                ),
+              ],
             ),
           ),
           ...children,
@@ -341,8 +431,11 @@ class ProfileScreen extends StatelessWidget {
 
   Widget _row(
     BuildContext ctx,
-    IconData icon, Color iconColor,
-    String label, String value, {
+    IconData icon,
+    Color iconColor,
+    String label,
+    String value,
+    bool dark, {
     bool mono = false,
     Color? valueColor,
     VoidCallback? onTap,
@@ -351,7 +444,7 @@ class ProfileScreen extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         child: Row(
           children: [
             Container(
@@ -363,19 +456,28 @@ class ProfileScreen extends StatelessWidget {
               child: Icon(icon, size: 18, color: iconColor),
             ),
             const SizedBox(width: 12),
-            Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey)),
+            Text(
+              label,
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade500),
+            ),
             const Spacer(),
             Text(
               value,
               style: TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w800,
-                color: valueColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: valueColor ??
+                    (dark ? Colors.white : AppColors.textPrimary),
                 fontFamily: mono ? 'monospace' : null,
               ),
             ),
             if (onTap != null) ...[
               const SizedBox(width: 6),
-              Icon(Icons.copy_rounded, size: 14, color: Colors.grey.shade400),
+              Icon(Icons.copy_rounded,
+                  size: 13, color: Colors.grey.shade400),
             ],
           ],
         ),
@@ -383,10 +485,20 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _divider(bool dark) => Divider(height: 1, indent: 62, color: dark ? AppColors.borderDark : AppColors.borderLight);
+  Widget _divider(bool dark) => Divider(
+      height: 1,
+      indent: 62,
+      color: dark ? AppColors.borderDark : AppColors.borderLight);
 
-  void _confirmLogout(BuildContext ctx) {
-    final dark = Theme.of(ctx).brightness == Brightness.dark;
+  String _approvalLabel() => switch (driver!.approvalStatus) {
+    'approved' => 'Tasdiqlangan',
+    'rejected' => 'Rad etilgan',
+    _          => 'Tekshirilmoqda',
+  };
+
+  // ── Logout confirm ────────────────────────────────────────────────────────
+
+  void _confirmLogout(BuildContext ctx, bool dark) {
     showModalBottomSheet(
       context: ctx,
       backgroundColor: Colors.transparent,
@@ -394,8 +506,7 @@ class ProfileScreen extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: dark ? AppColors.cardDark : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
-          border: Border.all(color: dark ? AppColors.borderDark : AppColors.borderLight, width: 0.8),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -403,70 +514,85 @@ class ProfileScreen extends StatelessWidget {
           children: [
             Center(
               child: Container(
-                width: 38, height: 4,
+                width: 36, height: 4,
                 decoration: BoxDecoration(
-                  color: dark ? Colors.grey.shade700 : Colors.grey.shade300,
+                  color:
+                      dark ? Colors.grey.shade700 : Colors.grey.shade300,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-            Container(
-              width: 56, height: 56,
-              decoration: BoxDecoration(
-                color: AppColors.danger.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-              child: const Center(
-                child: Icon(Icons.logout_rounded, color: AppColors.danger, size: 26),
+            const SizedBox(height: 24),
+            Center(
+              child: Container(
+                width: 62, height: 62,
+                decoration: BoxDecoration(
+                  color: AppColors.danger.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.logout_rounded,
+                    color: AppColors.danger, size: 28),
               ),
             ),
             const SizedBox(height: 16),
             const Text(
-              'Tizimdan chiqish',
+              'Tizimdan chiqishni\ntasdiqlaysizmi?',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.4),
             ),
             const SizedBox(height: 8),
             Text(
-              "Haqiqatan ham hisobingizdan chiqmoqchimisiz?",
+              'Qayta kirish uchun parolingiz kerak bo\'ladi.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade500,
+                  height: 1.5),
             ),
             const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      side: BorderSide(color: dark ? AppColors.borderDark : AppColors.borderLight),
-                      foregroundColor: dark ? Colors.grey.shade300 : AppColors.textPrimary,
-                    ),
-                    child: const Text('Bekor qilish', style: TextStyle(fontWeight: FontWeight.w800)),
-                  ),
+            SizedBox(
+              height: 52,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  onLogout();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.danger,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      onLogout();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      backgroundColor: AppColors.danger,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    child: const Text('Chiqish', style: TextStyle(fontWeight: FontWeight.w800)),
-                  ),
-                ),
-              ],
+                child: const Text('Ha, chiqish',
+                    style: TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w900)),
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 48,
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor:
+                      dark ? Colors.white : AppColors.textPrimary,
+                  side: BorderSide(
+                      color: dark
+                          ? AppColors.borderDark
+                          : AppColors.borderLight,
+                      width: 1.5),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+                child: const Text('Bekor qilish',
+                    style: TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w700)),
+              ),
+            ),
+            const SizedBox(height: 8),
           ],
         ),
       ),

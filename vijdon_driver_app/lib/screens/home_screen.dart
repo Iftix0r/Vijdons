@@ -425,174 +425,212 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _drawer(bool dark) {
     final balance = double.tryParse(_driver?.balance ?? '') ?? 0;
+    final balNeg = balance < 0;
     return Drawer(
-      backgroundColor: dark ? AppColors.cardDark : Colors.white,
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-              decoration: const BoxDecoration(
-                color: AppColors.primary,
-                border: Border(bottom: BorderSide(
-                  color: AppColors.primaryDark)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 60, height: 60,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
+      backgroundColor: dark ? AppColors.bgDark : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.horizontal(right: Radius.circular(0)),
+      ),
+      child: Column(
+        children: [
+          // ── Header (qora fon, sariq accent) ─────────────────────────────
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.fromLTRB(
+                20, MediaQuery.of(context).padding.top + 28, 20, 24),
+            color: AppColors.bgDark,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Avatar
+                Container(
+                  width: 64, height: 64,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Center(
+                    child: Text(
+                      _driver?.fullName.isNotEmpty == true
+                          ? _driver!.fullName[0].toUpperCase() : '?',
+                      style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 26, fontWeight: FontWeight.w900),
                     ),
-                    child: Center(
-                      child: Text(
-                        _driver?.fullName.isNotEmpty == true
-                            ? _driver!.fullName[0].toUpperCase() : '?',
-                        style: const TextStyle(color: AppColors.textPrimary,
-                            fontSize: 24, fontWeight: FontWeight.w900),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  _driver?.fullName ?? '...',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18, fontWeight: FontWeight.w900,
+                      letterSpacing: -0.3),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _driver?.phoneNumber ?? '',
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontSize: 13, fontFamily: 'monospace'),
+                ),
+                const SizedBox(height: 14),
+                // Balance pill
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceDark,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: (balNeg ? AppColors.danger : AppColors.primary)
+                            .withValues(alpha: 0.35)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.account_balance_wallet_rounded,
+                          color: balNeg ? AppColors.danger : AppColors.primary,
+                          size: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${balance.toStringAsFixed(0)} UZS',
+                        style: TextStyle(
+                            color: balNeg ? AppColors.danger : AppColors.primary,
+                            fontWeight: FontWeight.w900, fontSize: 14),
                       ),
-                    ),
+                    ],
                   ),
+                ),
+              ],
+            ),
+          ),
+
+          // ── Menu ─────────────────────────────────────────────────────────
+          Expanded(
+            child: Container(
+              color: dark ? AppColors.cardDark : Colors.white,
+              child: Column(
+                children: [
                   const SizedBox(height: 12),
-                  Text(
-                    _driver?.fullName ?? '...',
-                    style: const TextStyle(color: AppColors.textPrimary,
-                        fontSize: 17, fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    _driver?.phoneNumber ?? '',
-                    style: TextStyle(color: AppColors.textPrimary.withValues(alpha: 0.6),
-                        fontSize: 13, fontFamily: 'monospace'),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.black.withValues(alpha: 0.2)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.account_balance_wallet_rounded,
-                            color: AppColors.textPrimary, size: 16),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${balance.toStringAsFixed(0)} UZS',
-                          style: const TextStyle(color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w900, fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  ),
+                  _drawerItem(dark, Icons.radar_rounded, 'Bosh sahifa', 0),
+                  _drawerItem(dark, Icons.history_rounded, 'Tarix', 1),
+                  _drawerItem(dark, Icons.chat_bubble_rounded, 'Operator Chat',
+                      2, badge: _chatUnread > 0 ? _chatUnread : null),
+                  _drawerItem(dark, Icons.person_rounded, 'Profil', 3),
+                  const Spacer(),
+                  Divider(
+                      height: 1,
+                      color: dark ? AppColors.borderDark : AppColors.borderLight),
+                  _drawerItem(dark, Icons.logout_rounded, 'Tizimdan chiqish', -1,
+                      color: AppColors.danger),
+                  const SizedBox(height: 8),
                 ],
               ),
             ),
-
-            const SizedBox(height: 8),
-
-            // Menu items
-            _drawerItem(dark, Icons.radar_rounded, 'Bosh sahifa', 0),
-            _drawerItem(dark, Icons.history_rounded, 'Buyurtmalar tarixi', 1),
-            _drawerItem(dark, Icons.chat_bubble_rounded, 'Operator Chat',
-                2, badge: _chatUnread > 0 ? _chatUnread : null),
-            _drawerItem(dark, Icons.person_rounded, 'Profil', 3),
-
-            const Spacer(),
-
-            Divider(color: dark ? AppColors.borderDark : AppColors.borderLight),
-            _drawerItem(dark, Icons.logout_rounded, 'Tizimdan chiqish', -1,
-                color: AppColors.danger),
-            const SizedBox(height: 12),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _drawerItem(bool dark, IconData icon, String label, int index,
       {int? badge, Color? color}) {
-    final active = _tab == index;
-    final c = color ?? (active ? AppColors.primary : (dark ? Colors.grey.shade300 : const Color(0xFF374151)));
-    return ListTile(
-      onTap: () {
-        Navigator.pop(context);
-        if (index == -1) {
-          _logout();
-        } else {
-          setState(() => _tab = index);
-        }
-      },
-      leading: Container(
-        width: 38, height: 38,
-        decoration: BoxDecoration(
-          color: c.withValues(alpha: active ? 0.15 : 0.07),
-          borderRadius: BorderRadius.circular(10),
+    final active = _tab == index && index != -1;
+    final baseColor = dark ? Colors.grey.shade300 : const Color(0xFF1A1A1A);
+    final c = color ?? (active ? AppColors.primary : baseColor);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      child: ListTile(
+        onTap: () {
+          Navigator.pop(context);
+          if (index == -1) {
+            _logout();
+          } else {
+            setState(() => _tab = index);
+          }
+        },
+        leading: Container(
+          width: 40, height: 40,
+          decoration: BoxDecoration(
+            color: active
+                ? AppColors.primary.withValues(alpha: 0.15)
+                : (dark ? AppColors.surfaceDark : const Color(0xFFF3F4F6)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, size: 20, color: c),
         ),
-        child: Icon(icon, size: 20, color: c),
-      ),
-      title: Text(
-        label,
-        style: TextStyle(
-          fontWeight: active ? FontWeight.w900 : FontWeight.w600,
-          fontSize: 14, color: c,
+        title: Text(
+          label,
+          style: TextStyle(
+            fontWeight: active ? FontWeight.w900 : FontWeight.w600,
+            fontSize: 14, color: c,
+          ),
         ),
+        trailing: badge != null
+            ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.danger,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text('$badge',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900)),
+              )
+            : active
+                ? Container(
+                    width: 6, height: 6,
+                    decoration: const BoxDecoration(
+                        color: AppColors.primary, shape: BoxShape.circle),
+                  )
+                : null,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        minLeadingWidth: 0,
       ),
-      trailing: badge != null
-          ? Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: AppColors.danger,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text('$badge',
-                  style: const TextStyle(color: Colors.white,
-                      fontSize: 11, fontWeight: FontWeight.w900)),
-            )
-          : active
-              ? Container(
-                  width: 6, height: 6,
-                  decoration: const BoxDecoration(
-                      color: AppColors.primary, shape: BoxShape.circle),
-                )
-              : null,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
     );
   }
 
   Widget _navBar(bool dark) {
     return Container(
       decoration: BoxDecoration(
-        color: dark ? AppColors.cardDark : Colors.white,
-        border: Border(top: BorderSide(
-            color: dark ? AppColors.borderDark : AppColors.borderLight, width: 0.8)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: dark ? 0.3 : 0.06),
-            blurRadius: 24, offset: const Offset(0, -4),
+        color: dark ? AppColors.bgDark : Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: dark ? AppColors.borderDark : AppColors.borderLight,
+            width: 0.5,
           ),
-        ],
+        ),
       ),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
           child: Row(
             children: [
               _navItem(0, Icons.radar_rounded, Icons.radar, 'Asosiy', dark),
-              _navItem(1, Icons.history_outlined, Icons.history, 'Tarix', dark),
-              _navItem(2, Icons.chat_bubble_outline_rounded,
-                  Icons.chat_bubble_rounded, 'Chat', dark, badge: _chatUnread > 0 ? _chatUnread : null),
-              _navItem(3, Icons.person_outline_rounded,
-                  Icons.person_rounded, 'Profil', dark,
-                  dot: _driver?.isOnDuty == true),
+              _navItem(1, Icons.history_outlined, Icons.history_rounded,
+                  'Tarix', dark),
+              _navItem(
+                2,
+                Icons.chat_bubble_outline_rounded,
+                Icons.chat_bubble_rounded,
+                'Chat',
+                dark,
+                badge: _chatUnread > 0 ? _chatUnread : null,
+              ),
+              _navItem(
+                3,
+                Icons.person_outline_rounded,
+                Icons.person_rounded,
+                'Profil',
+                dark,
+                dot: _driver?.isOnDuty == true,
+              ),
             ],
           ),
         ),
@@ -603,6 +641,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _navItem(int index, IconData icon, IconData activeIcon,
       String label, bool dark, {int? badge, bool dot = false}) {
     final active = _tab == index;
+    final activeColor = dark ? AppColors.primary : AppColors.textPrimary;
+    final inactiveColor =
+        dark ? Colors.grey.shade600 : Colors.grey.shade400;
+
     return Expanded(
       child: GestureDetector(
         onTap: () {
@@ -610,133 +652,76 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           setState(() => _tab = index);
         },
         behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: active
-                ? AppColors.primary.withValues(alpha: dark ? 0.15 : 0.1)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Stack(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+              decoration: BoxDecoration(
+                color: active
+                    ? (dark
+                        ? AppColors.primary.withValues(alpha: 0.12)
+                        : AppColors.textPrimary.withValues(alpha: 0.08))
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Stack(
                 clipBehavior: Clip.none,
+                alignment: Alignment.center,
                 children: [
                   Icon(
                     active ? activeIcon : icon,
                     size: 24,
-                    color: active
-                        ? AppColors.primary
-                        : (dark ? Colors.grey.shade500 : Colors.grey.shade400),
+                    color: active ? activeColor : inactiveColor,
                   ),
                   if (badge != null)
                     Positioned(
-                      top: -4, right: -6,
+                      top: -5, right: -8,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 1),
                         decoration: BoxDecoration(
                           color: AppColors.danger,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                              color: dark ? AppColors.cardDark : Colors.white, width: 1.5),
+                              color: dark ? AppColors.bgDark : Colors.white,
+                              width: 1.5),
                         ),
                         child: Text('$badge',
-                            style: const TextStyle(color: Colors.white,
-                                fontSize: 9, fontWeight: FontWeight.w900)),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900)),
                       ),
                     )
                   else if (dot)
                     Positioned(
-                      top: -2, right: -2,
+                      top: -3, right: -3,
                       child: Container(
-                        width: 8, height: 8,
+                        width: 7, height: 7,
                         decoration: BoxDecoration(
                           color: AppColors.success,
                           shape: BoxShape.circle,
                           border: Border.all(
-                              color: dark ? AppColors.cardDark : Colors.white, width: 1.5),
+                              color: dark ? AppColors.bgDark : Colors.white,
+                              width: 1.5),
                         ),
                       ),
                     ),
                 ],
               ),
-              const SizedBox(height: 4),
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 200),
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: active ? FontWeight.w900 : FontWeight.w600,
-                  color: active
-                      ? AppColors.primary
-                      : (dark ? Colors.grey.shade500 : Colors.grey.shade400),
-                ),
-                child: Text(label),
+            ),
+            const SizedBox(height: 2),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight:
+                    active ? FontWeight.w800 : FontWeight.w500,
+                color: active ? activeColor : inactiveColor,
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _ordersTab(bool dark) {
-    final onDuty = _driver?.isOnDuty ?? false;
-    return SafeArea(
-      child: RefreshIndicator(
-        onRefresh: _init,
-        color: AppColors.primary,
-        strokeWidth: 2.5,
-        child: Column(
-          children: [
-            _header(dark),
-            Expanded(
-              child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  if (!onDuty)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: _offlineState(dark),
-                    )
-                  else ...[
-                    // Online Stats
-                    SliverToBoxAdapter(child: _onlineStatusHeader(dark)),
-                    if (_activeOrderCount > 0)
-                      SliverToBoxAdapter(child: _activeBadgeBanner(dark)),
-                    
-                    SliverToBoxAdapter(child: _ordersLabel(dark)),
-                    
-                    if (_loadingOrders)
-                      SliverPadding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        sliver: SliverList(delegate: SliverChildBuilderDelegate(
-                          (_, __) => const SkeletonCard(), childCount: 2)),
-                      )
-                    else if (_orders.isEmpty)
-                      SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: _searchingState(dark),
-                      )
-                    else
-                      SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                        sliver: SliverList(delegate: SliverChildBuilderDelegate(
-                          (ctx, i) => OrderCard(
-                            order: _orders[i],
-                            onAction: (a) => _orderAction(_orders[i], a),
-                            onTap: () => _showOrderDetail(_orders[i]),
-                            liveKm:   _orders[i].isOnWay && _taxiRunning ? _taxiKm   : null,
-                            liveFare: _orders[i].isOnWay && _taxiRunning ? _taxiFare : null,
-                          ),
-                          childCount: _orders.length,
-                        )),
-                      ),
-                  ]
-                ],
-              ),
+              child: Text(label),
             ),
           ],
         ),
@@ -744,32 +729,91 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  Widget _ordersTab(bool dark) {
+    final onDuty = _driver?.isOnDuty ?? false;
+    return RefreshIndicator(
+      onRefresh: _init,
+      color: AppColors.primary,
+      strokeWidth: 2.5,
+      child: Column(
+        children: [
+          _header(dark),
+          Expanded(
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                if (!onDuty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _offlineState(dark),
+                  )
+                else ...[
+                  SliverToBoxAdapter(child: _onlineStatusHeader(dark)),
+                  if (_activeOrderCount > 0)
+                    SliverToBoxAdapter(child: _activeBadgeBanner(dark)),
+                  SliverToBoxAdapter(child: _ordersLabel(dark)),
+                  if (_loadingOrders)
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                              (_, __) => const SkeletonCard(),
+                              childCount: 2)),
+                    )
+                  else if (_orders.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _searchingState(dark),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                      sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                        (ctx, i) => OrderCard(
+                          order: _orders[i],
+                          onAction: (a) => _orderAction(_orders[i], a),
+                          onTap: () => _showOrderDetail(_orders[i]),
+                          liveKm: _orders[i].isOnWay && _taxiRunning
+                              ? _taxiKm
+                              : null,
+                          liveFare: _orders[i].isOnWay && _taxiRunning
+                              ? _taxiFare
+                              : null,
+                        ),
+                        childCount: _orders.length,
+                      )),
+                    ),
+                ]
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _header(bool dark) {
     final balance = double.tryParse(_driver?.balance ?? '') ?? 0;
-    final balanceNeg = balance < 0;
-    final balColor = balanceNeg ? AppColors.danger : AppColors.primary;
+    final balNeg = balance < 0;
+    final balColor = balNeg ? AppColors.danger : AppColors.primary;
     final onDuty = _driver?.isOnDuty ?? false;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: dark ? AppColors.cardDark : Colors.white,
-        border: Border(bottom: BorderSide(
-            color: dark ? AppColors.borderDark : AppColors.borderLight, width: 0.8)),
-      ),
+      padding: EdgeInsets.fromLTRB(
+          16, MediaQuery.of(context).padding.top + 10, 16, 12),
+      color: dark ? AppColors.bgDark : Colors.white,
       child: Row(
         children: [
-          // Hamburger menu
+          // Hamburger
           Builder(
             builder: (ctx) => GestureDetector(
               onTap: () => Scaffold.of(ctx).openDrawer(),
               child: Container(
-                width: 42, height: 42,
+                width: 44, height: 44,
                 decoration: BoxDecoration(
-                  color: dark ? AppColors.surfaceDark : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                      color: dark ? AppColors.borderDark : AppColors.borderLight),
+                  color: dark ? AppColors.surfaceDark : const Color(0xFFF2F2F2),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: Stack(
                   alignment: Alignment.center,
@@ -778,9 +822,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _menuLine(dark),
-                        const SizedBox(height: 4),
-                        _menuLine(dark, width: 14),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 5),
+                        _menuLine(dark, width: 12),
+                        const SizedBox(height: 5),
                         _menuLine(dark),
                       ],
                     ),
@@ -790,7 +834,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         child: Container(
                           width: 8, height: 8,
                           decoration: const BoxDecoration(
-                              color: AppColors.danger, shape: BoxShape.circle),
+                              color: AppColors.danger,
+                              shape: BoxShape.circle),
                         ),
                       ),
                   ],
@@ -807,17 +852,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               children: [
                 Text(
                   _driver?.fullName ?? 'Yuklanmoqda...',
-                  style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w900, letterSpacing: -0.2),
+                  style: TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w900,
+                    letterSpacing: -0.3,
+                    color: dark ? Colors.white : AppColors.textPrimary,
+                  ),
                   maxLines: 1, overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Row(
                   children: [
                     Container(
-                      width: 6, height: 6,
+                      width: 7, height: 7,
                       decoration: BoxDecoration(
-                        color: onDuty ? AppColors.success : Colors.grey.shade400,
+                        color: onDuty
+                            ? AppColors.success
+                            : Colors.grey.shade500,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -825,9 +875,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     Text(
                       onDuty ? 'Ish navbatida' : 'Oflayn',
                       style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: onDuty ? AppColors.success : Colors.grey.shade400,
+                        fontSize: 11, fontWeight: FontWeight.w700,
+                        color: onDuty
+                            ? AppColors.success
+                            : Colors.grey.shade500,
                       ),
                     ),
                   ],
@@ -836,28 +887,35 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ),
 
-          // Balance
+          // Balance chip
           GestureDetector(
             onTap: () => setState(() => _tab = 3),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
               decoration: BoxDecoration(
-                color: dark ? AppColors.surfaceDark : const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(12),
+                color: dark ? AppColors.surfaceDark : const Color(0xFFF2F2F2),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                    color: balColor.withValues(alpha: 0.25)),
+                    color: balColor.withValues(alpha: 0.35), width: 1.2),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('BALANS',
-                      style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800,
-                          color: Colors.grey, letterSpacing: 0.5)),
+                  Text(
+                    'BALANS',
+                    style: TextStyle(
+                        fontSize: 8, fontWeight: FontWeight.w800,
+                        color: Colors.grey.shade500, letterSpacing: 0.8),
+                  ),
                   const SizedBox(height: 1),
                   Text(
-                    '${balance.toStringAsFixed(0)} UZS',
+                    '${balance.toStringAsFixed(0)} so\'m',
                     style: TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w900, color: balColor),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        color: balColor),
                   ),
                 ],
               ),
@@ -871,78 +929,180 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _menuLine(bool dark, {double width = 18}) => Container(
     width: width, height: 2,
     decoration: BoxDecoration(
-      color: dark ? Colors.grey.shade400 : const Color(0xFF374151),
+      color: dark ? Colors.grey.shade500 : const Color(0xFF1A1A1A),
       borderRadius: BorderRadius.circular(1),
     ),
   );
 
   Widget _onlineStatusHeader(bool dark) {
+    final balance = double.tryParse(_driver?.balance ?? '') ?? 0;
+    final balNeg = balance < 0;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      child: Column(
+        children: [
+          // ── Stat kartalar ────────────────────────────────────────────────
+          Row(
+            children: [
+              _statusCard(
+                Icons.list_alt_rounded,
+                '$_activeOrderCount ta',
+                'Faol buyurtma',
+                AppColors.info,
+                dark,
+              ),
+              const SizedBox(width: 10),
+              _statusCard(
+                Icons.account_balance_wallet_rounded,
+                '${balance.toStringAsFixed(0)} so\'m',
+                balNeg ? 'Qarzdorlik' : 'Balans',
+                balNeg ? AppColors.danger : AppColors.success,
+                dark,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // ── Joylashuv + Tugatish banneri ──────────────────────────────────
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: dark ? AppColors.cardDark : Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                  color: AppColors.success.withValues(alpha: 0.25)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.wifi_rounded,
+                      color: AppColors.success, size: 18),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Ish navbatidasiz',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900, fontSize: 13,
+                          color: AppColors.success,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(
+                            _address != null
+                                ? Icons.location_on_rounded
+                                : Icons.gps_fixed_rounded,
+                            size: 11,
+                            color: Colors.grey.shade500,
+                          ),
+                          const SizedBox(width: 3),
+                          Expanded(
+                            child: Text(
+                              _address ??
+                                  (_lat != null
+                                      ? 'Manzil aniqlanmoqda...'
+                                      : 'GPS qidirilmoqda...'),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey.shade500,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _togglingDuty
+                    ? const SizedBox(
+                        width: 22, height: 22,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: AppColors.danger))
+                    : GestureDetector(
+                        onTap: _toggleDuty,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.danger.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: AppColors.danger
+                                    .withValues(alpha: 0.3)),
+                          ),
+                          child: const Text(
+                            'Tugatish',
+                            style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w900,
+                              color: AppColors.danger,
+                            ),
+                          ),
+                        ),
+                      ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusCard(
+      IconData icon, String value, String label, Color color, bool dark) {
+    return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
           color: dark ? AppColors.cardDark : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: dark ? AppColors.borderDark : AppColors.borderLight),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              width: 36, height: 36,
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.verified_user_rounded, color: AppColors.primary, size: 22),
+              child: Icon(icon, color: color, size: 18),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Siz ish navbatidasiz',
-                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                  Text(
+                    value,
+                    style: TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w900,
+                        color: color),
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Icon(
-                        _address != null ? Icons.location_on_rounded : Icons.gps_fixed_rounded,
-                        size: 12,
-                        color: _address != null ? AppColors.primary : Colors.grey.shade400,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          _address ?? (_lat != null ? 'Manzil aniqlanmoqda...' : 'GPS qidirilmoqda...'),
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: _address != null ? Colors.grey.shade500 : Colors.grey.shade400,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 1),
+                  Text(
+                    label,
+                    style: TextStyle(
+                        fontSize: 10, color: Colors.grey.shade500,
+                        fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
             ),
-            _togglingDuty
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                : OutlinedButton(
-                    onPressed: _toggleDuty,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      side: BorderSide(color: AppColors.danger.withValues(alpha: 0.5)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      foregroundColor: AppColors.danger,
-                    ),
-                    child: const Text('Tugatish', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900)),
-                  ),
           ],
         ),
       ),
@@ -950,71 +1110,164 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _offlineState(bool dark) {
-    return Center(
+    final balance = double.tryParse(_driver?.balance ?? '') ?? 0;
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(28, 32, 28, 28),
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Offline icon
-            Container(
-              width: 130, height: 130,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: dark ? AppColors.cardDark : Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: dark ? 0.3 : 0.04),
-                    blurRadius: 30,
-                  )
-                ],
-                border: Border.all(color: dark ? AppColors.borderDark : AppColors.borderLight, width: 2),
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.wifi_off_rounded,
-                  size: 52,
-                  color: dark ? Colors.grey.shade600 : Colors.grey.shade400,
-                ),
-              ),
+            const SizedBox(height: 8),
+
+            // ── Katta Yandex-uslub pulse tugmasi ─────────────────────────
+            _OfflinePulseButton(
+              onTap: _togglingDuty ? null : _toggleDuty,
+              loading: _togglingDuty,
             ),
-            const SizedBox(height: 32),
-            const Text(
-              'Siz oflaynsiz',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5),
-            ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 28),
+
             Text(
-              'Yangi buyurtmalarni qabul qilish va boshlash uchun tizimni onlayn rejimiga o\'tkazing.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade500, height: 1.6),
-            ),
-            const SizedBox(height: 40),
-            SizedBox(
-              width: double.infinity, height: 56,
-              child: ElevatedButton(
-                onPressed: _togglingDuty ? null : _toggleDuty,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.black,
-                  shadowColor: AppColors.primary.withValues(alpha: 0.3),
-                  elevation: 6,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                child: _togglingDuty
-                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 3))
-                    : const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.power_settings_new_rounded, size: 20),
-                          SizedBox(width: 10),
-                          Text('ISH NAVBATINI BOSHLASH', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900)),
-                        ],
-                      ),
+              'Oflayn',
+              style: TextStyle(
+                fontSize: 30, fontWeight: FontWeight.w900,
+                letterSpacing: -1,
+                color: dark ? Colors.white : AppColors.textPrimary,
               ),
             ),
+            const SizedBox(height: 8),
+            Text(
+              'Ish navbatini boshlang va\nbuyurtmalar qabul qiling',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14, color: Colors.grey.shade500,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 28),
+
+            // ── Tezkor statistika karta ───────────────────────────────────
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: dark ? AppColors.cardDark : Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                    color: dark ? AppColors.borderDark : AppColors.borderLight),
+              ),
+              child: Row(
+                children: [
+                  _offlineStat(
+                    Icons.account_balance_wallet_rounded,
+                    '${balance.toStringAsFixed(0)}',
+                    'Balans (so\'m)',
+                    balance >= 0 ? AppColors.success : AppColors.danger,
+                    dark,
+                  ),
+                  Container(
+                    width: 1, height: 44,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    color: dark ? AppColors.borderDark : AppColors.borderLight,
+                  ),
+                  _offlineStat(
+                    Icons.directions_car_rounded,
+                    _driver?.carNumber ?? '—',
+                    'Mashina',
+                    AppColors.info,
+                    dark,
+                  ),
+                  Container(
+                    width: 1, height: 44,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    color: dark ? AppColors.borderDark : AppColors.borderLight,
+                  ),
+                  _offlineStat(
+                    Icons.star_rounded,
+                    '5.0',
+                    'Reyting',
+                    AppColors.warning,
+                    dark,
+                  ),
+                ],
+              ),
+            ),
+
+            if (_driver?.approvalStatus != null &&
+                _driver!.approvalStatus != 'approved') ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                      color: AppColors.warning.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36, height: 36,
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.info_outline_rounded,
+                          color: AppColors.warning, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _driver!.approvalStatus == 'rejected'
+                            ? "Hisobingiz rad etilgan. Administrator bilan bog'laning."
+                            : 'Hisobingiz tasdiqlanishi kutilmoqda.',
+                        style: const TextStyle(
+                          fontSize: 13, color: AppColors.warning,
+                          fontWeight: FontWeight.w700, height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _offlineStat(
+      IconData icon, String value, String label, Color color, bool dark) {
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w900,
+              color: dark ? Colors.white : AppColors.textPrimary,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1, overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+                fontSize: 9, color: Colors.grey.shade500,
+                fontWeight: FontWeight.w600),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -1026,21 +1279,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Radar Wave Animation
             const SizedBox(
               width: 160, height: 160,
               child: _RadarScanner(),
             ),
-            const SizedBox(height: 32),
-            const Text(
-              'Buyurtmalar qidirilmoqda...',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            const SizedBox(height: 28),
+            Text(
+              'Buyurtmalar qidirilmoqda',
+              style: TextStyle(
+                fontSize: 18, fontWeight: FontWeight.w900,
+                color: dark ? Colors.white : AppColors.textPrimary,
+                letterSpacing: -0.4,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Yaqin atrofdagi faol arizalar qidirilmoqda.\nKutish: ${_nextRefreshIn}s',
+              'Yaqin atrofdagi arizalar skanlanmoqda.\nYangilanish: ${_nextRefreshIn}s',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade500, height: 1.5),
+              style: TextStyle(
+                fontSize: 13, color: Colors.grey.shade500, height: 1.6,
+              ),
             ),
             const SizedBox(height: 24),
           ],
@@ -1050,11 +1308,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _activeBadgeBanner(bool dark) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.info.withValues(alpha: 0.08),
+        color: AppColors.info.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
       ),
@@ -1062,12 +1320,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         children: [
           Container(
             width: 8, height: 8,
-            decoration: const BoxDecoration(color: AppColors.info, shape: BoxShape.circle),
+            decoration: const BoxDecoration(
+                color: AppColors.info, shape: BoxShape.circle),
           ),
           const SizedBox(width: 10),
           Text(
             '$_activeOrderCount ta faol buyurtma davom etmoqda',
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppColors.info),
+            style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: AppColors.info),
           ),
         ],
       ),
@@ -1075,10 +1337,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   );
 
   Widget _ordersLabel(bool dark) => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+    padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
     child: Row(
       children: [
-        const Text('ATROFDAGI BUYURTMALAR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 0.8)),
+        Text(
+          'ATROFDAGI BUYURTMALAR',
+          style: TextStyle(
+            fontSize: 11, fontWeight: FontWeight.w900,
+            color: Colors.grey.shade500, letterSpacing: 1,
+          ),
+        ),
         const Spacer(),
         if (!_loadingOrders && _orders.isNotEmpty)
           Container(
@@ -1089,7 +1357,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             child: Text(
               '${_orders.length} ta',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.primary),
+              style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary),
             ),
           ),
       ],
@@ -1142,57 +1413,68 @@ class _OrderDetailSheet extends StatelessWidget {
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       decoration: BoxDecoration(
         color: dark ? AppColors.cardDark : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        border: Border.all(color: dark ? AppColors.borderDark : AppColors.borderLight, width: 0.8),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Drag Handle
+          // Drag handle
           Center(
             child: Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 18),
-              width: 38, height: 4,
+              margin: const EdgeInsets.only(top: 14, bottom: 20),
+              width: 36, height: 4,
               decoration: BoxDecoration(
                 color: dark ? Colors.grey.shade700 : Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
-          
-          // Order ID + Title + Status
+
+          // Header row
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: _statusColor,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     '#${order.id}',
-                    style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 13),
+                    style: const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 13),
                   ),
                 ),
                 const SizedBox(width: 12),
                 const Text(
-                  'Tafsilotlar',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                  'Buyurtma tafsiloti',
+                  style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.4),
                 ),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: _statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: _statusColor.withValues(alpha: 0.3)),
+                    border: Border.all(
+                        color: _statusColor.withValues(alpha: 0.3)),
                   ),
                   child: Text(
                     order.statusLabel,
-                    style: TextStyle(color: _statusColor, fontSize: 12, fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                        color: _statusColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800),
                   ),
                 ),
               ],
@@ -1205,13 +1487,17 @@ class _OrderDetailSheet extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: dark ? AppColors.surfaceDark : const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: dark ? AppColors.borderDark : AppColors.borderLight),
+                color: dark ? AppColors.surfaceDark : const Color(0xFFF7F7F7),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: dark
+                        ? AppColors.borderDark
+                        : AppColors.borderLight),
               ),
               child: Column(
                 children: [
-                  _infoRow(Icons.radio_button_checked_rounded, AppColors.success, 'MIJOZ MANZILI', order.fromAddress),
+                  _infoRow(Icons.radio_button_checked_rounded,
+                      AppColors.success, 'MIJOZ MANZILI', order.fromAddress),
                   if (order.toAddress.isNotEmpty) ...[
                     Padding(
                       padding: const EdgeInsets.only(left: 15),
@@ -1494,6 +1780,134 @@ class _OrderDetailSheet extends StatelessWidget {
           elevation: 2,
           shadowColor: color.withValues(alpha: 0.3),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Yandex-uslub pulsatsiyali oflayn tugmasi ────────────────────────────────
+class _OfflinePulseButton extends StatefulWidget {
+  final VoidCallback? onTap;
+  final bool loading;
+  const _OfflinePulseButton({required this.onTap, required this.loading});
+  @override
+  State<_OfflinePulseButton> createState() => _OfflinePulseButtonState();
+}
+
+class _OfflinePulseButtonState extends State<_OfflinePulseButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _pCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _pCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: SizedBox(
+        width: 220, height: 220,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Pulsatsiyali halqa 1
+            AnimatedBuilder(
+              animation: _pCtrl,
+              builder: (_, __) {
+                final v = _pCtrl.value;
+                return Container(
+                  width: 130 + (80 * v),
+                  height: 130 + (80 * v),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.success.withValues(alpha: (1 - v) * 0.35),
+                      width: 2,
+                    ),
+                  ),
+                );
+              },
+            ),
+            // Pulsatsiyali halqa 2 (kechiktirilgan)
+            AnimatedBuilder(
+              animation: _pCtrl,
+              builder: (_, __) {
+                final v = (_pCtrl.value + 0.5) % 1.0;
+                return Container(
+                  width: 130 + (80 * v),
+                  height: 130 + (80 * v),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.success.withValues(alpha: (1 - v) * 0.35),
+                      width: 2,
+                    ),
+                  ),
+                );
+              },
+            ),
+            // Yashil glow
+            Container(
+              width: 136, height: 136,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.success.withValues(alpha: 0.07),
+              ),
+            ),
+            // Asosiy tugma
+            Container(
+              width: 118, height: 118,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [AppColors.success, Color(0xFF16a34a)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.success.withValues(alpha: 0.45),
+                    blurRadius: 30, spreadRadius: 6,
+                  ),
+                ],
+              ),
+              child: widget.loading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 3,
+                      ))
+                  : const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.power_settings_new_rounded,
+                          size: 42, color: Colors.white,
+                        ),
+                        SizedBox(height: 5),
+                        Text(
+                          'BOSHLASH',
+                          style: TextStyle(
+                            color: Colors.white, fontSize: 11,
+                            fontWeight: FontWeight.w900, letterSpacing: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ],
         ),
       ),
     );
