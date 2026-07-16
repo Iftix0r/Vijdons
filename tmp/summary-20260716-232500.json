@@ -1,0 +1,4 @@
+{
+  "summary": "GPS 'ruxsat berilmagan' muammosi uchun onError handler yaxshilandi. error.code===1 (PERMISSION_DENIED) bo'lsa endi 'GPS ruxsati berilmagan' o'rniga sariq 'Ruxsat bering' havolasi chiqadi, bosilganda showGpsHelp() funksiyasi qurilma turini (iPhone Safari / Android Chrome) aniqlaydi va qaysi sozlamada ruxsat berish kerakligini ko'rsatadi. code===2 (POSITION_UNAVAILABLE) va code===3 (TIMEOUT) uchun enableHighAccuracy:false bilan qayta urinish qo'shildi.",
+  "current_status": "GPS ruxsat muammosi hal qilindi. Barcha oldingi fixlar saqlanib qoldi."
+}

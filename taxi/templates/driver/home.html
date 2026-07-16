@@ -622,8 +622,44 @@ document.addEventListener('visibilitychange', () => {
   let _lastGeoLat = null, _lastGeoLng = null;
   let _geoTimer = null;
 
-  // Reverse geocode — 5s timeout, aks holda koordinat ko'rsatadi
+  // Reverse geocode — Yandex (agar key bo'lsa) yoki Nominatim fallback
+  const _YANDEX_KEY = '{{ YANDEX_MAPKIT_KEY }}';
+
   async function reverseGeocode(lat, lng) {
+    if (_YANDEX_KEY) {
+      return await _yandexGeocode(lat, lng) || await _nominatimGeocode(lat, lng);
+    }
+    return await _nominatimGeocode(lat, lng);
+  }
+
+  async function _yandexGeocode(lat, lng) {
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 5000);
+    try {
+      const r = await fetch(
+        `https://geocode-maps.yandex.ru/1.x/?apikey=${_YANDEX_KEY}&geocode=${lng},${lat}&format=json&lang=uz_UZ&results=1`,
+        { signal: controller.signal }
+      );
+      clearTimeout(tid);
+      const d = await r.json();
+      const member = d?.response?.GeoObjectCollection?.featureMember?.[0]?.GeoObject;
+      if (!member) return null;
+      const meta = member.metaDataProperty?.GeocoderMetaData?.Address?.Components || [];
+      // street + house, yoki street + district
+      const street = meta.find(c => c.kind === 'street')?.name || '';
+      const house  = meta.find(c => c.kind === 'house')?.name  || '';
+      const district = meta.find(c => c.kind === 'district')?.name || '';
+      const locality = meta.find(c => c.kind === 'locality')?.name || '';
+      if (street) return street + (house ? ', ' + house : (district ? ', ' + district : ''));
+      if (locality) return locality + (district ? ', ' + district : '');
+      return member.name || null;
+    } catch (_) {
+      clearTimeout(tid);
+      return null;
+    }
+  }
+
+  async function _nominatimGeocode(lat, lng) {
     const controller = new AbortController();
     const tid = setTimeout(() => controller.abort(), 5000);
     try {
@@ -679,9 +715,20 @@ document.addEventListener('visibilitychange', () => {
 
   function onError(e) {
     if (!el) return;
-    if (e.code === 1) el.textContent = 'GPS ruxsati berilmagan';
-    else if (e.code === 2) el.textContent = 'GPS signal yo\'q';
-    else el.textContent = '';
+    if (e.code === 1) {
+      // Brauzer sozlamalarida ruxsat berilmagan — haydovchiga ko'rsatma
+      el.innerHTML = '<a onclick="showGpsHelp()" style="color:#FF9500;text-decoration:underline;cursor:pointer">📍 Ruxsat bering</a>';
+    } else if (e.code === 2) {
+      // GPS signal yo'q — past aniqlik bilan qayta urinish
+      navigator.geolocation.getCurrentPosition(onPosition, () => {
+        el.textContent = 'GPS signal yo\'q';
+      }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
+    } else if (e.code === 3) {
+      // Timeout — past aniqlik bilan qayta urinish
+      navigator.geolocation.getCurrentPosition(onPosition, () => {
+        el.textContent = '';
+      }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 });
+    }
   }
 
   if (!navigator.geolocation) { el.textContent = ''; return; }
@@ -693,6 +740,20 @@ document.addEventListener('visibilitychange', () => {
     maximumAge: 15000
   });
 })();
+
+function showGpsHelp() {
+  // Brauzer turini aniqlab tegishli ko'rsatma beramiz
+  const ua = navigator.userAgent.toLowerCase();
+  let msg = '';
+  if (/iphone|ipad|safari/.test(ua) && !/chrome/.test(ua)) {
+    msg = 'iPhone/Safari:\nSozlamalar → Safari → Joylashuv → "Ilovadan so\'rash" yoki "Ruxsat"\n\nSaytni yoping va qayta oching.';
+  } else if (/android/.test(ua) && /chrome/.test(ua)) {
+    msg = 'Android Chrome:\nManzil satridagi 🔒 belgisiga bosing → Ruxsatlar → Joylashuv → Ruxsat bering.\n\nYoki: Sozlamalar → Ilovalar → Chrome → Ruxsatlar → Joylashuv.';
+  } else {
+    msg = 'Brauzer sozlamalarida bu sayt uchun joylashuv ruxsatini bering, so\'ng sahifani yangilang.';
+  }
+  alert(msg);
+}
 {% endif %}
 
 function openTelegram(phone) {

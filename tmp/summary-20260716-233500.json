@@ -1,0 +1,4 @@
+{
+  "summary": "Reverse geocoding Yandex + Nominatim fallback sifatida yangilandi. context_processors.py ga YANDEX_MAPKIT_KEY qo'shildi (MapsSettings.get() orqali). home.html da reverseGeocode() ikkiga bo'lindi: _yandexGeocode() (agar YANDEX_MAPKIT_KEY bo'lsa) va _nominatimGeocode() (fallback). Yandex GeoObjectCollection dan street+house yoki street+district formatida qisqa manzil olinadi. Yandex 5s timeout bilan, xato bo'lsa Nominatim ishga tushadi.",
+  "current_status": "GPS location navbar: Yandex (asosiy) + Nominatim (fallback) dual geocoding. Ruxsat xato handleri yaxshilandi. Barcha oldingi fixlar saqlanib qoldi."
+}
