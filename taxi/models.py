@@ -32,6 +32,9 @@ class Driver(models.Model):
     destination_lng       = models.FloatField(null=True, blank=True, verbose_name="Yo'nalish uzunlik")
     destination_address   = models.CharField(max_length=255, blank=True, default='', verbose_name="Yo'nalish manzil")
     photo                 = models.ImageField(upload_to='driver_photos/', blank=True, null=True, verbose_name="Profil rasmi")
+    rating                = models.DecimalField(max_digits=3, decimal_places=2, default=5.00, verbose_name="Reyting (1–5)")
+    trips_count           = models.PositiveIntegerField(default=0, verbose_name="Jami safarlar soni")
+    rating_count          = models.PositiveIntegerField(default=0, verbose_name="Reytinglar soni")
 
     def __str__(self):
         return f"{self.full_name} ({self.car_number})"
@@ -90,6 +93,7 @@ class Order(models.Model):
     dispatched_to = models.ForeignKey(Driver, on_delete=models.SET_NULL, null=True, blank=True, related_name='dispatched_orders', verbose_name="Yuborilgan haydovchi")
     dispatched_at = models.DateTimeField(null=True, blank=True, verbose_name="Yuborilgan vaqti")
     rejected_by   = models.ManyToManyField(Driver, blank=True, related_name='rejected_orders', verbose_name="Rad etgan haydovchilar")
+    client_rating = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name="Mijoz reytingi (1-5)")
     created_at    = models.DateTimeField(auto_now_add=True, verbose_name="Yaratilgan vaqti")
     updated_at    = models.DateTimeField(auto_now=True, verbose_name="Yangilangan vaqti")
 

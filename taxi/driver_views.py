@@ -130,13 +130,24 @@ def driver_home(request, driver):
 def driver_orders_json(request, driver):
     """AJAX: buyurtmalar o'zgardimi tekshirish."""
     from django.db.models import Q
+    from django.utils import timezone
     qs = Order.objects.filter(
         Q(status='pending', dispatched_to=driver) |
         Q(status='pending', dispatched_to__isnull=True) |
         Q(driver=driver, status__in=['accepted', 'on_way', 'arrived'])
     ).exclude(Q(status='pending', rejected_by=driver))
     ids = list(qs.values_list('id', flat=True))
-    return JsonResponse({'reload': True, 'new_ids': ids})
+
+    # Dispatch timer: dispatched_to=driver bo'lgan pending buyurtmaga qancha vaqt qoldi
+    timer_sec = None
+    dispatched = qs.filter(status='pending', dispatched_to=driver).first()
+    if dispatched and dispatched.dispatched_at:
+        from taxi.models import TariffSettings
+        timeout = TariffSettings.get().dispatch_timeout
+        elapsed = (timezone.now() - dispatched.dispatched_at).total_seconds()
+        timer_sec = max(0, int(timeout - elapsed))
+
+    return JsonResponse({'reload': True, 'new_ids': ids, 'timer_sec': timer_sec})
 
 
 # ── Order actions ─────────────────────────────────────────────────────────────
@@ -317,3 +328,65 @@ def driver_duty_toggle(request, driver):
     driver.is_on_duty = not driver.is_on_duty
     driver.save(update_fields=['is_on_duty'])
     return JsonResponse({'ok': True, 'is_on_duty': driver.is_on_duty})
+
+
+# ── ETA: haydovchi qancha vaqtda yetib keladi ─────────────────────────────────
+@driver_login_required
+def driver_order_eta(request, driver, pk):
+    """Haydovchining buyurtma manziliga ETA ni hisoblaydi (daqiqa)."""
+    order = get_object_or_404(Order, pk=pk)
+    eta_min = None
+    distance_km = None
+    if (driver.latitude and driver.longitude and
+            order.from_lat and order.from_lng):
+        from .utils import haversine
+        distance_km = haversine(driver.latitude, driver.longitude,
+                                order.from_lat, order.from_lng)
+        if distance_km is not None:
+            # Shahar ichida o'rtacha 30 km/h tezlik
+            eta_min = round(distance_km / 30 * 60)
+            eta_min = max(1, eta_min)
+    return JsonResponse({'ok': True, 'eta_min': eta_min, 'distance_km': round(distance_km, 2) if distance_km else None})
+
+
+# ── Rating: buyurtma yakunida haydovchiga reyting berish ─────────────────────
+@require_POST
+@driver_login_required
+def driver_order_rate(request, driver, pk):
+    """Operator yoki mijoz haydovchiga reyting beradi (1-5)."""
+    order = get_object_or_404(Order, pk=pk)
+    if order.status != 'completed':
+        return JsonResponse({'ok': False, 'error': 'Faqat yakunlangan buyurtmaga reyting beriladi'}, status=400)
+    try:
+        stars = int(request.POST.get('stars', 0))
+        if not 1 <= stars <= 5:
+            raise ValueError
+    except (ValueError, TypeError):
+        return JsonResponse({'ok': False, 'error': '1-5 orasida reyting bering'}, status=400)
+
+    order.client_rating = stars
+    order.save(update_fields=['client_rating'])
+
+    # Haydovchi o'rtacha reytingini yangilash
+    if order.driver:
+        d = order.driver
+        rated_orders = Order.objects.filter(
+            driver=d, status='completed', client_rating__isnull=False
+        )
+        count = rated_orders.count()
+        if count > 0:
+            from django.db.models import Avg
+            avg = rated_orders.aggregate(a=Avg('client_rating'))['a']
+            d.rating = round(avg, 2)
+            d.rating_count = count
+            d.save(update_fields=['rating', 'rating_count'])
+    return JsonResponse({'ok': True})
+
+
+# ── Surge: hozirgi narx multiplikatori ───────────────────────────────────────
+@driver_login_required
+def driver_surge_info(request, driver):
+    """Hozirgi surge (narx oshishi) ma'lumotini qaytaradi."""
+    from .utils import get_surge_multiplier
+    multiplier, reason = get_surge_multiplier()
+    return JsonResponse({'ok': True, 'multiplier': multiplier, 'reason': reason})

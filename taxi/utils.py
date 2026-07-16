@@ -3,7 +3,31 @@ import urllib.request
 import urllib.parse
 import json
 
-def haversine(lat1, lon1, lat2, lon2):
+def get_surge_multiplier():
+    """
+    Yandex Taxi uslubida surge pricing:
+    - Faol buyurtmalar / navbatdagi haydovchilar nisbatiga qarab narx oshadi.
+    - 1.0x (normal) → 1.5x → 2.0x
+    """
+    from taxi.models import Order, Driver
+    pending = Order.objects.filter(status='pending').count()
+    on_duty = Driver.objects.filter(
+        is_active=True, is_on_duty=True, approval_status='approved'
+    ).count()
+
+    if on_duty == 0:
+        return 1.5, "Haydovchilar kam"
+
+    ratio = pending / on_duty
+    if ratio >= 3:
+        return 2.0, "Talab juda yuqori"
+    elif ratio >= 1.5:
+        return 1.5, "Talab yuqori"
+    else:
+        return 1.0, "Normal"
+
+
+
     """
     Calculate the great circle distance in kilometers between two points 
     on the earth (specified in decimal degrees)

@@ -21,4 +21,9 @@ urlpatterns = [
     path('sync/fcm/',      driver_views.driver_fcm_sync,      name='fcm_sync'),
     path('sync/location/', driver_views.driver_location_sync, name='location_sync'),
     path('duty/',          driver_views.driver_duty_toggle,   name='duty_toggle'),
+
+    # Yandex-style funksiyalar
+    path('orders/<int:pk>/eta/',    driver_views.driver_order_eta,    name='order_eta'),
+    path('orders/<int:pk>/rate/',   driver_views.driver_order_rate,   name='order_rate'),
+    path('surge/',                  driver_views.driver_surge_info,   name='surge_info'),
 ]
