@@ -3,18 +3,18 @@
 
 {% block content %}
 <!-- Header -->
-<div class="bg-white dark:bg-[#1C1C1E] px-4 pt-3 pb-3 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
+<div class="bg-white dark:bg-[#1C1C1E] px-4 pt-3 pb-3 flex items-center justify-between border-b border-gray-100 dark:border-gray-800 sticky top-0 z-10 backdrop-blur-xl bg-white/95 dark:bg-[#1C1C1E]/95">
   <div>
     <h1 class="text-lg font-black tracking-tight">{{ driver.full_name }}</h1>
     <div class="flex items-center gap-1.5 mt-0.5">
-      <span class="w-2 h-2 rounded-full {% if driver.is_on_duty %}bg-green-500{% else %}bg-gray-400{% endif %}"></span>
+      <span class="w-2 h-2 rounded-full {% if driver.is_on_duty %}bg-green-500 animate-pulse{% else %}bg-gray-400{% endif %}"></span>
       <span class="text-xs font-bold {% if driver.is_on_duty %}text-green-500{% else %}text-gray-400{% endif %}">
         {% if driver.is_on_duty %}Ish navbatida{% else %}Oflayn{% endif %}
       </span>
     </div>
   </div>
   <div class="flex items-center gap-2">
-    <!-- Balans -->
+    <!-- Balance -->
     <div class="bg-gray-100 dark:bg-[#2C2C2E] rounded-2xl px-3 py-2 text-right">
       <div class="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Balans</div>
       <div class="text-sm font-black {% if driver.balance < 0 %}text-red-500{% else %}text-[#FFD600]{% endif %}">
@@ -25,8 +25,16 @@
     <button id="duty-btn" onclick="toggleDuty()"
             class="w-11 h-11 rounded-2xl flex items-center justify-center transition-all active:scale-90
             {% if driver.is_on_duty %}bg-red-500/10 border border-red-500/30{% else %}bg-green-500/10 border border-green-500/30{% endif %}">
-      <i class="fas {% if driver.is_on_duty %}fa-power-off text-red-500{% else %}fa-power-off text-green-500{% endif %} text-lg"></i>
+      <i class="fas fa-power-off {% if driver.is_on_duty %}text-red-500{% else %}text-green-500{% endif %} text-lg"></i>
     </button>
+  </div>
+</div>
+
+<!-- Pull to refresh indicator -->
+<div id="ptr-indicator" class="flex items-center justify-center overflow-hidden" style="height:0;opacity:0">
+  <div class="py-3 flex items-center gap-2 text-gray-400 text-sm font-semibold">
+    <i class="fas fa-arrow-rotate-right" id="ptr-icon"></i>
+    <span id="ptr-text">Yangilash uchun torting</span>
   </div>
 </div>
 
@@ -34,7 +42,7 @@
 <div class="px-4 py-4 space-y-3" id="orders-container">
   {% if not driver.is_on_duty %}
   <!-- Offline state -->
-  <div class="flex flex-col items-center justify-center py-20 gap-6">
+  <div class="flex flex-col items-center justify-center py-20 gap-6 fade-in">
     <button onclick="toggleDuty()"
             class="w-36 h-36 rounded-full bg-green-500 flex flex-col items-center justify-center shadow-2xl shadow-green-500/40 active:scale-95 transition-transform">
       <i class="fas fa-power-off text-white text-4xl"></i>
@@ -50,8 +58,9 @@
   <!-- Active orders -->
   {% if orders %}
     {% for order in orders %}
-    <div class="bg-white dark:bg-[#2C2C2E] rounded-3xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 slide-up"
-         onclick="openOrder({{ order.id }})">
+    <div class="bg-white dark:bg-[#2C2C2E] rounded-3xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 slide-up active:scale-[0.98] transition-transform cursor-pointer"
+         onclick="openOrder({{ order.id }})" style="animation-delay: {{ forloop.counter0 }}00ms">
+
       <!-- Status + ID -->
       <div class="flex items-center justify-between mb-3">
         <span class="text-xs font-black px-2.5 py-1 rounded-xl
@@ -62,7 +71,14 @@
           {% endif %}">
           {{ order.get_status_display }}
         </span>
-        <span class="text-xs text-gray-400 font-bold">#{{ order.id }}</span>
+        <div class="flex items-center gap-2">
+          {% if order.payment_type == 'cash' %}
+          <span class="text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 px-2 py-0.5 rounded-lg font-bold">💵 Naqd</span>
+          {% else %}
+          <span class="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-500 px-2 py-0.5 rounded-lg font-bold">💳 Karta</span>
+          {% endif %}
+          <span class="text-xs text-gray-400 font-bold">#{{ order.id }}</span>
+        </div>
       </div>
 
       <!-- Route -->
@@ -88,28 +104,30 @@
           {% if order.distance_km %}
           <span class="text-xs text-gray-400 font-semibold">{{ order.distance_km|floatformat:1 }} km</span>
           {% endif %}
-          <span class="text-xs px-2 py-0.5 rounded-lg font-bold
-            {% if order.payment_type == 'cash' %}bg-gray-100 dark:bg-gray-800 text-gray-500{% else %}bg-blue-50 dark:bg-blue-900/20 text-blue-500{% endif %}">
-            {% if order.payment_type == 'cash' %}💵 Naqd{% else %}💳 Karta{% endif %}
-          </span>
         </div>
         <i class="fas fa-chevron-right text-gray-300 dark:text-gray-600 text-xs"></i>
       </div>
     </div>
     {% endfor %}
+
   {% else %}
   <!-- Searching state -->
-  <div class="flex flex-col items-center justify-center py-16 gap-4">
+  <div class="flex flex-col items-center justify-center py-16 gap-4 fade-in">
     <div class="relative w-24 h-24">
-      <div class="absolute inset-0 rounded-full bg-[#FFD600]/10 animate-ping"></div>
-      <div class="absolute inset-3 rounded-full bg-[#FFD600]/20 animate-ping" style="animation-delay:.3s"></div>
+      <div class="absolute inset-0 rounded-full bg-[#FFD600]/20 animate-ping"></div>
+      <div class="absolute inset-3 rounded-full bg-[#FFD600]/30 animate-ping" style="animation-delay:.4s"></div>
       <div class="w-24 h-24 rounded-full bg-[#FFD600] flex items-center justify-center shadow-xl shadow-yellow-500/30">
         <i class="fas fa-location-crosshairs text-[#1C1C1E] text-2xl"></i>
       </div>
     </div>
     <div class="text-center">
       <p class="text-lg font-black text-gray-800 dark:text-white">Buyurtmalar qidirilmoqda</p>
-      <p class="text-gray-400 text-sm mt-1" id="refresh-counter">Yangilanish: <span id="counter">30</span>s</p>
+      <p class="text-gray-400 text-sm mt-1">Yangi buyurtma kelganda xabar beriladi</p>
+    </div>
+    <!-- Skeleton cards -->
+    <div class="w-full space-y-3 mt-2">
+      <div class="skeleton h-24 w-full opacity-40"></div>
+      <div class="skeleton h-20 w-full opacity-25"></div>
     </div>
   </div>
   {% endif %}
@@ -118,9 +136,8 @@
 
 <!-- Order detail bottom sheet -->
 <div id="order-sheet" class="fixed inset-0 z-50 hidden">
-  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeSheet()"></div>
-  <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-[#2C2C2E] rounded-t-3xl slide-up max-h-[90vh] overflow-y-auto" id="sheet-content">
-    <!-- filled by JS -->
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeSheet()"></div>
+  <div class="absolute bottom-0 left-0 right-0 bg-white dark:bg-[#2C2C2E] rounded-t-3xl slide-up max-h-[92vh] overflow-y-auto" id="sheet-content">
   </div>
 </div>
 {% endblock %}
@@ -128,65 +145,125 @@
 {% block extra_js %}
 <script>
 const ORDERS = {{ orders_json|safe }};
-let refreshTimer = 30;
-let countdownEl = document.getElementById('counter');
+let _prevOrderIds = new Set(ORDERS.map(o => o.id));
+let _dutyBusy = false;
 
-// ── Countdown ──────────────────────────────────────────────────────────────
-{% if driver.is_on_duty %}
-setInterval(() => {
-  refreshTimer--;
-  if (countdownEl) countdownEl.textContent = refreshTimer;
-  if (refreshTimer <= 0) {
-    refreshTimer = 30;
-    loadOrders();
+// ── Pull to refresh ──────────────────────────────────────────────────────────
+let _ptrStart = 0, _ptrActive = false;
+const _main = document.getElementById('main-content');
+_main.addEventListener('touchstart', e => {
+  if (_main.scrollTop === 0) _ptrStart = e.touches[0].clientY;
+}, {passive:true});
+_main.addEventListener('touchmove', e => {
+  if (!_ptrStart) return;
+  const dy = e.touches[0].clientY - _ptrStart;
+  if (dy > 10 && _main.scrollTop === 0) {
+    _ptrActive = true;
+    const h = Math.min(dy * 0.4, 60);
+    const ptr = document.getElementById('ptr-indicator');
+    ptr.style.height = h + 'px';
+    ptr.style.opacity = Math.min(h / 60, 1);
+    if (h > 50) {
+      document.getElementById('ptr-icon').className = 'fas fa-arrow-rotate-right animate-spin';
+      document.getElementById('ptr-text').textContent = 'Qo\'yib yuboring';
+    }
   }
-}, 1000);
+}, {passive:true});
+_main.addEventListener('touchend', () => {
+  const ptr = document.getElementById('ptr-indicator');
+  if (_ptrActive && parseFloat(ptr.style.height) > 50) {
+    loadOrders(true);
+  }
+  ptr.style.height = '0';
+  ptr.style.opacity = '0';
+  _ptrStart = 0;
+  _ptrActive = false;
+  document.getElementById('ptr-icon').className = 'fas fa-arrow-rotate-right';
+  document.getElementById('ptr-text').textContent = 'Yangilash uchun torting';
+});
 
-// Auto-refresh har 3 sekundda (navbatchilikda)
-setInterval(loadOrders, 3000);
+// ── Auto-refresh ─────────────────────────────────────────────────────────────
+{% if driver.is_on_duty %}
+setInterval(() => loadOrders(false), 4000);
 {% endif %}
 
-// ── Yangi buyurtma signali ─────────────────────────────────────────────────
-function onNewOrder() { loadOrders(); }
-
-// ── Buyurtmalarni yuklash ──────────────────────────────────────────────────
-async function loadOrders() {
+async function loadOrders(showFeedback = false) {
+  if (!navigator.onLine) return;
   try {
     const res = await fetch('{% url "driver:orders_json" %}');
     const data = await res.json();
-    if (data.reload) location.reload();
+    if (data.reload) {
+      // Yangi buyurtma bormi?
+      if (data.new_ids && data.new_ids.length) {
+        data.new_ids.forEach(id => {
+          if (!_prevOrderIds.has(id)) {
+            Native.vibrate([100, 50, 100, 50, 200]);
+            showToast('🚖 Yangi buyurtma!', 'Buyurtmani ko\'rish uchun bosing', 'order');
+            playBeep();
+          }
+        });
+        _prevOrderIds = new Set(data.new_ids);
+      }
+      location.reload();
+    }
+    if (showFeedback) showToast('Yangilandi', '', 'success');
   } catch(_) {}
 }
 
-// ── Duty toggle ────────────────────────────────────────────────────────────
+// ── Beep sound ───────────────────────────────────────────────────────────────
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 150, 300].forEach(delay => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + delay/1000);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay/1000 + 0.15);
+      osc.start(ctx.currentTime + delay/1000);
+      osc.stop(ctx.currentTime + delay/1000 + 0.15);
+    });
+  } catch(_) {}
+}
+
+// ── Duty toggle ───────────────────────────────────────────────────────────────
 async function toggleDuty() {
+  if (_dutyBusy) return;
+  _dutyBusy = true;
   Native.vibrate();
+  const btn = document.getElementById('duty-btn');
+  if (btn) { btn.style.opacity = '0.5'; btn.style.pointerEvents = 'none'; }
   try {
     const res = await fetch('{% url "driver:duty_toggle" %}', {
       method: 'POST',
       headers: {'X-CSRFToken': getCookie('csrftoken')}
     });
     if (res.ok) location.reload();
-  } catch(_) {}
+  } catch(_) {
+    showToast('Xatolik', 'Qayta urinib ko\'ring', 'error');
+  } finally {
+    _dutyBusy = false;
+    if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
+  }
 }
 
-// ── Order detail sheet ─────────────────────────────────────────────────────
+// ── Order detail sheet ────────────────────────────────────────────────────────
 function openOrder(id) {
   Native.vibrate();
   const order = ORDERS.find(o => o.id === id);
   if (!order) return;
 
   const statusColors = {
-    pending:  'bg-yellow-100 text-yellow-700',
-    accepted: 'bg-blue-100 text-blue-700',
-    on_way:   'bg-purple-100 text-purple-700',
-    arrived:  'bg-green-100 text-green-700',
+    pending:  'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+    accepted: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    on_way:   'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+    arrived:  'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   };
   const statusLabels = {
-    pending: 'Kutilmoqda', accepted: 'Qabul qilindi',
-    on_way: "Yo'lda", arrived: 'Yetib keldim',
+    pending:'Kutilmoqda', accepted:'Qabul qilindi', on_way:"Yo'lda", arrived:'Yetib keldim'
   };
-
   const actionBtns = {
     pending:  `<button onclick="orderAction(${id},'accept')" class="w-full bg-[#FFD600] text-[#1C1C1E] font-black py-4 rounded-2xl text-base active:scale-95 transition-transform">✓ Qabul qilish</button>
                <button onclick="orderAction(${id},'reject')" class="w-full bg-red-500/10 text-red-500 font-bold py-3.5 rounded-2xl text-sm border border-red-500/20 active:scale-95 transition-transform">Rad etish</button>`,
@@ -200,18 +277,20 @@ function openOrder(id) {
 
   document.getElementById('sheet-content').innerHTML = `
     <div class="p-5 space-y-4">
-      <!-- Handle -->
       <div class="w-10 h-1 bg-gray-300 dark:bg-gray-600 rounded-full mx-auto mb-2"></div>
 
-      <!-- Header -->
       <div class="flex items-center justify-between">
         <span class="text-xs font-black px-3 py-1.5 rounded-xl ${statusColors[order.status] || 'bg-gray-100 text-gray-600'}">
           ${statusLabels[order.status] || order.status}
         </span>
-        <span class="text-sm font-black text-gray-400">#${order.id}</span>
+        <div class="flex items-center gap-2">
+          <span class="text-xs ${order.payment_type==='cash' ? 'bg-gray-100 dark:bg-gray-800 text-gray-500' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-500'} px-2 py-0.5 rounded-lg font-bold">
+            ${order.payment_type==='cash' ? '💵 Naqd' : '💳 Karta'}
+          </span>
+          <span class="text-sm font-black text-gray-400">#${order.id}</span>
+        </div>
       </div>
 
-      <!-- Route -->
       <div class="bg-gray-50 dark:bg-[#3A3A3C] rounded-2xl p-4 space-y-3">
         <div class="flex items-start gap-3">
           <i class="fas fa-circle text-green-500 text-[8px] mt-2 flex-shrink-0"></i>
@@ -230,45 +309,49 @@ function openOrder(id) {
         </div>` : ''}
       </div>
 
-      <!-- Client info -->
       <div class="bg-gray-50 dark:bg-[#3A3A3C] rounded-2xl p-4">
         <div class="flex items-center gap-3">
-          <div class="w-11 h-11 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-            <i class="fas fa-person text-blue-500 text-lg"></i>
+          <div class="w-11 h-11 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-user text-blue-500 text-lg"></i>
           </div>
-          <div class="flex-1">
-            <div class="text-sm font-bold">${order.client_name || 'Mijoz'}</div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-bold truncate">${order.client_name || 'Mijoz'}</div>
             ${order.status !== 'pending' ? `
             <button onclick="Native.callPhone('${order.client_phone}')"
-                    class="flex items-center gap-1.5 text-blue-500 text-xs font-bold mt-0.5">
+                    class="flex items-center gap-1.5 text-blue-500 text-xs font-bold mt-0.5 active:opacity-70">
               <i class="fas fa-phone text-[10px]"></i>${order.client_phone}
-            </button>` : `<div class="text-xs text-gray-400 font-semibold mt-0.5">+998 ** *** ** **</div>`}
+            </button>` : `<div class="text-xs text-gray-400 font-semibold mt-0.5">Qabul qilgach ko'rinadi</div>`}
           </div>
-          ${order.price ? `<div class="text-right">
+          ${order.price ? `<div class="text-right flex-shrink-0">
             <div class="text-base font-black text-green-600 dark:text-green-400">${parseInt(order.price).toLocaleString()} so'm</div>
             ${order.distance_km ? `<div class="text-xs text-gray-400">${parseFloat(order.distance_km).toFixed(1)} km</div>` : ''}
           </div>` : ''}
         </div>
       </div>
 
-      <!-- Actions -->
-      <div class="space-y-2.5">
+      <div class="space-y-2.5 pb-2">
         ${actionBtns[order.status] || ''}
       </div>
     </div>
   `;
-
   document.getElementById('order-sheet').classList.remove('hidden');
 }
 
 function closeSheet() {
-  document.getElementById('order-sheet').classList.add('hidden');
+  const sheet = document.getElementById('order-sheet');
+  sheet.querySelector('#sheet-content').style.transform = 'translateY(100%)';
+  setTimeout(() => {
+    sheet.classList.add('hidden');
+    sheet.querySelector('#sheet-content').style.transform = '';
+  }, 250);
 }
 
-// ── Order action ───────────────────────────────────────────────────────────
+// ── Order action ──────────────────────────────────────────────────────────────
 async function orderAction(id, action) {
   Native.vibrate();
   closeSheet();
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
   try {
     const res = await fetch(`/driver/orders/${id}/${action}/`, {
       method: 'POST',
@@ -277,18 +360,18 @@ async function orderAction(id, action) {
     const data = await res.json();
     if (data.ok) {
       if (action === 'accept') {
-        // Qabul qilinganda telefon qo'ng'iroq
         const order = ORDERS.find(o => o.id === id);
-        if (order && order.client_phone && !order.client_phone.includes('*')) {
-          setTimeout(() => Native.callPhone(order.client_phone), 600);
+        if (order?.client_phone && !order.client_phone.includes('*')) {
+          showToast('✓ Qabul qilindi', order.client_phone, 'success');
+          setTimeout(() => Native.callPhone(order.client_phone), 1200);
         }
       }
-      location.reload();
+      setTimeout(() => location.reload(), 400);
     } else {
-      alert(data.error || 'Xatolik yuz berdi');
+      showToast('Xatolik', data.error || 'Qayta urinib ko\'ring', 'error');
     }
   } catch(_) {
-    alert('Tarmoq xatosi');
+    showToast('Tarmoq xatosi', 'Internet aloqasini tekshiring', 'error');
   }
 }
 </script>

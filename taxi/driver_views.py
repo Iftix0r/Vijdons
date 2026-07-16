@@ -130,12 +130,13 @@ def driver_home(request, driver):
 def driver_orders_json(request, driver):
     """AJAX: buyurtmalar o'zgardimi tekshirish."""
     from django.db.models import Q
-    count = Order.objects.filter(
+    qs = Order.objects.filter(
         Q(status='pending', dispatched_to=driver) |
         Q(status='pending', dispatched_to__isnull=True) |
         Q(driver=driver, status__in=['accepted', 'on_way', 'arrived'])
-    ).exclude(Q(status='pending', rejected_by=driver)).count()
-    return JsonResponse({'reload': True, 'count': count})
+    ).exclude(Q(status='pending', rejected_by=driver))
+    ids = list(qs.values_list('id', flat=True))
+    return JsonResponse({'reload': True, 'new_ids': ids})
 
 
 # ── Order actions ─────────────────────────────────────────────────────────────
