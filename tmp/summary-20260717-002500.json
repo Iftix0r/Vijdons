@@ -1,0 +1,4 @@
+{
+  "summary": "GPS location navbar kodi tubdan soddalashtirildi. tryNativeBridge/tryBrowserGeo/isFlutter tekshiruvlari olib tashlandi. Endi: window.addEventListener('vijdon_location') — Flutter har 15s da yuboradi, darhol gotCoords chaqiriladi. 6 soniya timeout: agar Flutter event kelmasa (oddiy brauzerda) — navigator.geolocation.getCurrentPosition enableHighAccuracy:false bilan BITTA marta chaqiriladi. watchPosition yo'q, alert yo'q, ruxsat so'rov yo'q Flutter ilovada.",
+  "current_status": "GPS navbar tozalandi. Flutter APK qayta build kerak. Web tomoni tayyor."
+}

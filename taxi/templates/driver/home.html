@@ -621,7 +621,6 @@ document.addEventListener('visibilitychange', () => {
 
   let _lastGeoLat = null, _lastGeoLng = null;
   let _geoTimer   = null;
-  let _watchId    = null;
 
   // ── Reverse geocode — Nominatim ──────────────────────────────────────────
   async function reverseGeocode(lat, lng) {
@@ -672,70 +671,31 @@ document.addEventListener('visibilitychange', () => {
     }, 1500);
   }
 
-  // ── Flutter NativeBridge orqali GPS ───────────────────────────────────────
-  // Flutter har 15s da window.dispatchEvent('vijdon_location', {lat,lng}) yuboradi.
-  // Biz shu eventni tinglaymiz — NativeBridge.postMessage kerak emas.
-  function tryNativeBridge() {
-    // Agar Flutter WebView bo'lsa user agent ichida yoki NativeBridge bo'lsa
-    const isFlutter = typeof NativeBridge !== 'undefined' ||
-                      navigator.userAgent.includes('wv') || // Android WebView
-                      window.flutter_inappwebview ||
-                      window._vijdonNotifyInjected; // Flutter tomondan inject qilinadi
+  // ── Flutter vijdon_location eventini tinglash ─────────────────────────────
+  // Flutter (main.dart) _sendLocation() har 15s da:
+  //   window.dispatchEvent(CustomEvent('vijdon_location', {detail:{lat,lng}}))
+  // yuboradi. Geolocation ruxsati KERAK EMAS.
 
-    // vijdon_location eventini har doim tinglaymiz
-    // (Flutter _sendLocation() har 15s chaqiradi)
-    window.addEventListener('vijdon_location', function(e) {
-      if (e.detail?.lat && e.detail?.lng) {
-        gotCoords(e.detail.lat, e.detail.lng);
-      }
-    });
+  let _flutterSeen = false;
 
-    // NativeBridge mavjud bo'lsa, bir marta so'raymiz
-    if (typeof NativeBridge !== 'undefined') {
-      try {
-        NativeBridge.postMessage(JSON.stringify({ action: 'get_location' }));
-      } catch (_) {}
-    }
-
-    // Flutter ilova bo'lsa browser geo-ga tushmaymiz
-    return isFlutter;
-  }
-
-  // ── Browser geolocation ───────────────────────────────────────────────────
-  function tryBrowserGeo() {
-    if (!navigator.geolocation) { if (el) el.textContent = ''; return; }
-    _watchId = navigator.geolocation.watchPosition(
-      pos => gotCoords(pos.coords.latitude, pos.coords.longitude),
-      err => {
-        if (!el) return;
-        if (err.code === 1) {
-          // Ruxsat rad — toast chiqaramiz, alert emas
-          el.textContent = '';
-          showToast('GPS ruxsati', 'Telefon sozlamalarida joylashuv ruxsatini bering', 'error', 6000);
-        } else if (err.code === 2 || err.code === 3) {
-          // Signal yo'q yoki timeout — past aniqlik bilan urinish
-          navigator.geolocation.getCurrentPosition(
-            pos => gotCoords(pos.coords.latitude, pos.coords.longitude),
-            () => { if (el) el.textContent = ''; },
-            { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
-          );
-        }
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 }
-    );
-  }
-
-  // ── Ishga tushirish: avval Flutter, bo'lmasa browser ─────────────────────
-  if (!tryNativeBridge()) {
-    tryBrowserGeo();
-  }
-
-  // Sahifa aktiv bo'lganda qayta urinish
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      if (!tryNativeBridge() && !_watchId) tryBrowserGeo();
+  window.addEventListener('vijdon_location', function(e) {
+    if (e.detail?.lat && e.detail?.lng) {
+      _flutterSeen = true;
+      gotCoords(e.detail.lat, e.detail.lng);
     }
   });
+
+  // 6 soniya kutamiz — agar Flutter event kelmasa, oddiy brauzerda ochilgan
+  // demak, browser geolocation ishlatamiz (alert EMAS, faqat toast)
+  setTimeout(() => {
+    if (_flutterSeen) return;
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      pos => gotCoords(pos.coords.latitude, pos.coords.longitude),
+      () => { if (el) el.textContent = ''; },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+    );
+  }, 6000);
 })();
 {% endif %}
 
