@@ -3,21 +3,24 @@ import urllib.request
 import urllib.parse
 import json
 
+def haversine(lat1, lon1, lat2, lon2):
+    if lat1 is None or lon1 is None or lat2 is None or lon2 is None:
+        return None
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+    return 2 * math.asin(math.sqrt(a)) * 6371
+
+
 def get_surge_multiplier():
-    """
-    Yandex Taxi uslubida surge pricing:
-    - Faol buyurtmalar / navbatdagi haydovchilar nisbatiga qarab narx oshadi.
-    - 1.0x (normal) → 1.5x → 2.0x
-    """
     from taxi.models import Order, Driver
     pending = Order.objects.filter(status='pending').count()
     on_duty = Driver.objects.filter(
         is_active=True, is_on_duty=True, approval_status='approved'
     ).count()
-
     if on_duty == 0:
         return 1.5, "Haydovchilar kam"
-
     ratio = pending / on_duty
     if ratio >= 3:
         return 2.0, "Talab juda yuqori"
@@ -25,26 +28,6 @@ def get_surge_multiplier():
         return 1.5, "Talab yuqori"
     else:
         return 1.0, "Normal"
-
-
-
-    """
-    Calculate the great circle distance in kilometers between two points 
-    on the earth (specified in decimal degrees)
-    """
-    if lat1 is None or lon1 is None or lat2 is None or lon2 is None:
-        return None
-
-    # convert decimal degrees to radians 
-    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
-
-    # haversine formula 
-    dlon = lon2 - lon1 
-    dlat = lat2 - lat1 
-    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
-    c = 2 * math.asin(math.sqrt(a)) 
-    r = 6371 # Radius of earth in kilometers.
-    return c * r
 
 def find_nearest_driver(drivers, lat, lng):
     nearest_driver = None
