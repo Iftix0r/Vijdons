@@ -18,9 +18,10 @@ urlpatterns = [
     path('orders/json/',              driver_views.driver_orders_json,   name='orders_json'),
     path('orders/<int:pk>/<str:action>/', driver_views.driver_order_action, name='order_action'),
 
-    path('sync/fcm/',      driver_views.driver_fcm_sync,      name='fcm_sync'),
-    path('sync/location/', driver_views.driver_location_sync, name='location_sync'),
-    path('duty/',          driver_views.driver_duty_toggle,   name='duty_toggle'),
+    path('sync/fcm/',      driver_views.driver_fcm_sync,        name='fcm_sync'),
+    path('sync/location/', driver_views.driver_location_sync,   name='location_sync'),
+    path('sync/push/',     driver_views.driver_push_subscribe,  name='push_subscribe'),
+    path('duty/',          driver_views.driver_duty_toggle,     name='duty_toggle'),
 
     # Yandex-style funksiyalar
     path('orders/<int:pk>/eta/',    driver_views.driver_order_eta,    name='order_eta'),

@@ -206,8 +206,25 @@ function playBeep(){
   }catch(_){}
 }
 
+// ── Web Push ─────────────────────────────────────────────────────────────────
+const VAPID_PUBLIC = 'BLgc9UVdWIvPZqoVrGTc3ukeDgdz7Ag9E-QTwlS-mIMZJPJn1dNYJSwEHJCr57WZRt2ZQnwS-Dd6XscYCVjv1FA';
+function _b64(b){const p=(b+'===').slice(0,b.length+(4-b.length%4)%4).replace(/-/g,'+').replace(/_/g,'/');const r=atob(p);const a=new Uint8Array(r.length);for(let i=0;i<r.length;i++)a[i]=r.charCodeAt(i);return a;}
+async function initPush(){
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)) return;
+  try{
+    const reg=await navigator.serviceWorker.register('/static/driver/sw.js',{scope:'/driver/'});
+    await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub){
+      if(await Notification.requestPermission()!=='granted') return;
+      sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:_b64(VAPID_PUBLIC)});
+    }
+    await fetch('{% url "driver:push_subscribe" %}',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},body:JSON.stringify(sub.toJSON())});
+  }catch(_){}
+}
+{% if driver.is_on_duty %}initPush();{% endif %}
+
 // ── Wake Lock ─────────────────────────────────────────────────────────────────
-let _wakeLock = null;
 async function requestWakeLock() {
   if (!('wakeLock' in navigator)) return;
   try {

@@ -35,6 +35,7 @@ class Driver(models.Model):
     rating                = models.DecimalField(max_digits=3, decimal_places=2, default=5.00, verbose_name="Reyting (1–5)")
     trips_count           = models.PositiveIntegerField(default=0, verbose_name="Jami safarlar soni")
     rating_count          = models.PositiveIntegerField(default=0, verbose_name="Reytinglar soni")
+    push_subscription     = models.TextField(blank=True, null=True, verbose_name="Web Push Subscription")
 
     def __str__(self):
         return f"{self.full_name} ({self.car_number})"

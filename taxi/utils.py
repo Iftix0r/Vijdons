@@ -442,6 +442,15 @@ def dispatch_order(order):
             'client_phone': order.client.phone_number,
         },
     )
+    # Web Push
+    try:
+        from taxi.driver_views import send_push_to_driver
+        body = f"📍 {order.from_address}"
+        if order.price:
+            body += f" | 💰 {int(order.price):,} so'm"
+        send_push_to_driver(nearest, '🚖 Yangi buyurtma!', body)
+    except Exception:
+        pass
     tg_order_dispatched(order, nearest)
 
     # 10 sekundlik (yoki sozlangan) kutish taymeri

@@ -303,6 +303,41 @@ def driver_profile(request, driver):
     })
 
 
+# ── Web Push ─────────────────────────────────────────────────────────────────
+
+@require_POST
+@driver_login_required
+def driver_push_subscribe(request, driver):
+    """Haydovchining push subscription ma'lumotini saqlaydi."""
+    try:
+        data = json.loads(request.body)
+        driver.push_subscription = json.dumps(data)
+        driver.save(update_fields=['push_subscription'])
+    except Exception:
+        return JsonResponse({'ok': False}, status=400)
+    return JsonResponse({'ok': True})
+
+
+def send_push_to_driver(driver, title, body, url='/driver/home/'):
+    """Haydovchiga Web Push yuboradi."""
+    if not getattr(driver, 'push_subscription', None):
+        return
+    from django.conf import settings
+    from pywebpush import webpush, WebPushException
+    try:
+        sub = json.loads(driver.push_subscription)
+        webpush(
+            subscription_info=sub,
+            data=json.dumps({'title': title, 'body': body, 'url': url}),
+            vapid_private_key=settings.VAPID_PRIVATE_KEY,
+            vapid_claims=settings.VAPID_CLAIMS,
+        )
+    except WebPushException:
+        pass
+    except Exception:
+        pass
+
+
 # ── Sync endpoints (Native bridge) ───────────────────────────────────────────
 
 @require_POST
