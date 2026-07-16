@@ -152,7 +152,7 @@ def driver_orders_json(request, driver):
     """AJAX: buyurtmalar o'zgardimi tekshirish."""
     from django.db.models import Q
     from django.utils import timezone
-    qs = Order.objects.filter(
+    qs = Order.objects.select_related('client').filter(
         Q(status='pending', dispatched_to=driver) |
         Q(status='pending', dispatched_to__isnull=True) |
         Q(driver=driver, status__in=['accepted', 'on_way', 'arrived'])
@@ -172,11 +172,18 @@ def driver_orders_json(request, driver):
     for o in qs:
         orders_data.append({
             'id':           o.id,
+            'status':       o.status,
             'from_address': o.from_address,
             'to_address':   o.to_address,
+            'client_name':  o.client.full_name or 'Mijoz',
+            'client_phone': o.client.phone_number if o.status != 'pending' else _mask_phone(o.client.phone_number),
             'price':        str(o.price) if o.price else None,
             'distance_km':  o.distance_km,
             'payment_type': o.payment_type,
+            'note':         o.note or '',
+            'commission':   str(o.commission) if o.commission else None,
+            'is_dispatched': o.dispatched_to_id == driver.id,
+            'timer_sec':    timer_sec if o.dispatched_to_id == driver.id else None,
         })
 
     return JsonResponse({'new_ids': ids, 'timer_sec': timer_sec, 'orders': orders_data})

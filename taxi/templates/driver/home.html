@@ -456,7 +456,7 @@
 {% endblock %}
 {% block extra_js %}
 <script>
-const ORDERS = {{ orders_json|safe }};
+let ORDERS = {{ orders_json|safe }};
 let _known = new Set(ORDERS.map(o=>o.id));
 let _busy = false;
 
@@ -508,6 +508,9 @@ async function loadOrders(fb=false) {
     if(d.new_ids){
       const serverIds = new Set(d.new_ids);
 
+      // ORDERS ni har doim yangilaymiz
+      if(d.orders) ORDERS = d.orders;
+
       // Yangi buyurtma: serverda bor, bizda yo'q
       const added = d.new_ids.filter(id => !_known.has(id));
       if(added.length){
@@ -527,7 +530,6 @@ async function loadOrders(fb=false) {
         return;
       }
 
-      // Hech narsa o'zgarmagan — reload kerak emas
       _known = serverIds;
     }
   } catch(_){}
@@ -568,6 +570,11 @@ function showNewOrderModal(orderId, order) {
   // Show modal
   const modal = document.getElementById('new-order-modal');
   modal.classList.remove('hidden');
+  // Modal body ga bosish — sheet ochilsin
+  document.getElementById('nom-body').onclick = () => {
+    closeNewOrderModal(false);
+    if(_nomOrderId) _renderSheet(_nomOrderId, order);
+  };
 
   // Countdown 10s with progress bar
   const TOTAL = 10;
@@ -905,8 +912,12 @@ function openTelegram(phone) {
 
 function openOrder(id){
   Native.vibrate();
-  const o=ORDERS.find(x=>x.id===id); if(!o) return;
+  const o=ORDERS.find(x=>x.id===id);
+  if(!o) { location.reload(); return; }
+  _renderSheet(id, o);
+}
 
+function _renderSheet(id, o){
   const pill={
     pending: 'pill-yellow', accepted:'pill-blue', on_way:'pill-purple', arrived:'pill-green'
   };

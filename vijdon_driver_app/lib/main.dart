@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -60,7 +62,9 @@ class _DriverWebViewState extends State<DriverWebView>
   bool   _offline     = false;
   bool   _splashDone  = false;
   Timer? _locationTimer;
+  Timer? _pollTimer;
   final  _picker      = ImagePicker();
+  final  _knownIds    = <int>{};
 
   // ── Lifecycle ───────────────────────────────────────────────────────────────
   @override
@@ -74,6 +78,7 @@ class _DriverWebViewState extends State<DriverWebView>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _locationTimer?.cancel();
+    _pollTimer?.cancel();
     super.dispose();
   }
 
@@ -99,6 +104,7 @@ class _DriverWebViewState extends State<DriverWebView>
 
     _initWebView();
     _startLocationUpdates();
+    _startOrderPolling();
   }
 
   // ── WebView init ─────────────────────────────────────────────────────────────
@@ -198,6 +204,35 @@ class _DriverWebViewState extends State<DriverWebView>
       }
     } catch (_) {}
     return [];
+  }
+
+  // ── Order polling (fon rejimida ham ishlaydi) ──────────────────────────────
+  void _startOrderPolling() {
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) => _pollOrders());
+  }
+
+  Future<void> _pollOrders() async {
+    try {
+      final uri = Uri.parse('https://vijdontaxi.uz/driver/orders/json/');
+      final resp = await http.get(uri).timeout(const Duration(seconds: 6));
+      if (resp.statusCode != 200) return;
+      final data = json.decode(resp.body) as Map<String, dynamic>;
+      final ids = (data['new_ids'] as List?)?.map((e) => e as int).toSet() ?? {};
+      if (ids.isEmpty) return;
+
+      final newIds = ids.difference(_knownIds);
+      _knownIds
+        ..clear()
+        ..addAll(ids);
+
+      if (newIds.isNotEmpty) {
+        await NotificationService.notifyNewOrder(newIds.length);
+        // WebView ga ham xabar yuboramiz
+        _ctrl?.runJavaScript(
+          'if(typeof FlutterNotify!=="undefined")FlutterNotify.postMessage("${newIds.length}");',
+        );
+      }
+    } catch (_) {}
   }
 
   // ── GPS ──────────────────────────────────────────────────────────────────────
