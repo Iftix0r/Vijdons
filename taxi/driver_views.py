@@ -137,13 +137,17 @@ def driver_home(request, driver):
             'timer_sec':    timer_sec,
         })
 
+    _tariff = TariffSettings.get()
     return render(request, 'driver/home.html', {
         'driver':      driver,
         'orders':      orders,
         'orders_json': json.dumps(orders_data, ensure_ascii=False),
         'active_tab':  'home',
         'chat_unread': _chat_unread(driver),
-        'tariff':      TariffSettings.get(),
+        'tariff':      _tariff,
+        'tariff_base_price': int(_tariff.base_price),
+        'tariff_per_km': int(_tariff.price_per_km),
+        'driver_balance_int': int(driver.balance),
     })
 
 
