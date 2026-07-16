@@ -67,7 +67,9 @@ class OrderSerializer(serializers.ModelSerializer):
         model  = Order
         fields = [
             'id', 'client_name', 'client_phone', 'driver_name',
-            'from_address', 'to_address', 'price', 'commission', 'distance_km',
+            'from_address', 'from_lat', 'from_lng',
+            'to_address', 'to_lat', 'to_lng',
+            'price', 'commission', 'distance_km',
             'payment_type', 'note',
             'status', 'status_label', 'created_at', 'updated_at',
             'seconds_left',

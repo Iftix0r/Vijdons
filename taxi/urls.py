@@ -33,6 +33,9 @@ urlpatterns = [
     path('clients/<int:pk>/', views.client_detail, name='client_detail'),
     path('clients/<int:pk>/delete/', views.client_delete, name='client_delete'),
 
+    # ── Telegram Client Bot Webhook ──
+    path('bot/client-webhook/', views.client_bot_webhook, name='client_bot_webhook'),
+
     # ── Mobile API ──
     path('api/driver/register/',  api_views.driver_register,    name='api_driver_register'),
     path('api/driver/login/',     api_views.driver_login,       name='api_driver_login'),
@@ -58,4 +61,13 @@ urlpatterns = [
     # ── Destination mode ──
     path('api/driver/destination/',     api_views.destination_mode_set, name='api_destination_set'),
     path('api/driver/destination/get/', api_views.destination_mode_get, name='api_destination_get'),
+
+    # ── SOS ──
+    path('api/sos/send/', api_views.sos_send, name='api_sos_send'),
+    path('api/sos/my/',   api_views.sos_my,   name='api_sos_my'),
+
+    # ── SOS admin panel ──
+    path('sos/', views.sos_list, name='sos_list'),
+    path('sos/count/', views.sos_count, name='sos_count'),
+    path('sos/<int:pk>/resolve/', views.sos_resolve, name='sos_resolve'),
 ]

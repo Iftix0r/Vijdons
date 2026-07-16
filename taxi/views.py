@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q
 from django.http import JsonResponse
-from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings
+from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, SosAlert
 from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed
 
 
@@ -378,6 +378,7 @@ def bot_settings(request):
     if request.method == 'POST':
         bot.bot_token = request.POST.get('bot_token', '').strip()
         bot.group_id  = request.POST.get('group_id', '').strip()
+        bot.client_bot_token = request.POST.get('client_bot_token', '').strip()
         bot.notify_new_order       = 'notify_new_order'       in request.POST
         bot.notify_dispatched      = 'notify_dispatched'      in request.POST
         bot.notify_accepted        = 'notify_accepted'        in request.POST
@@ -400,6 +401,119 @@ def bot_settings(request):
             send_telegram('✅ <b>VijdonTaxi bot ulanishi muvaffaqiyatli!</b>\nBu test xabari.')
         return redirect('taxi:bot_settings')
     return render(request, 'taxi/bot_settings.html', {'bot': bot})
+
+
+# ── Telegram Client Bot Webhook ───────────────────────────────────────────────
+
+# Har bir mijoz sessiyasi: {chat_id: {'step': 'phone'|'from'|'to', 'phone': ..., 'from_address': ...}}
+_client_sessions = {}
+
+
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def client_bot_webhook(request):
+    """Mijoz Telegram boti webhook — buyurtma qabul qiladi."""
+    import json as _json
+    if request.method != 'POST':
+        from django.http import HttpResponse
+        return HttpResponse('ok')
+
+    try:
+        data = _json.loads(request.body)
+    except Exception:
+        from django.http import HttpResponse
+        return HttpResponse('ok')
+
+    msg = data.get('message') or data.get('edited_message')
+    if not msg:
+        from django.http import HttpResponse
+        return HttpResponse('ok')
+
+    chat_id = str(msg['chat']['id'])
+    text    = (msg.get('text') or '').strip()
+
+    bot = BotSettings.get()
+    token = bot.client_bot_token.strip()
+    if not token:
+        from django.http import HttpResponse
+        return HttpResponse('ok')
+
+    def _send(chat, txt, keyboard=None):
+        import urllib.request, urllib.parse
+        payload = {'chat_id': chat, 'text': txt, 'parse_mode': 'HTML'}
+        if keyboard:
+            import json as j
+            payload['reply_markup'] = j.dumps(keyboard)
+        data = urllib.parse.urlencode(payload).encode()
+        try:
+            urllib.request.urlopen(
+                f'https://api.telegram.org/bot{token}/sendMessage',
+                data=data, timeout=5
+            )
+        except Exception:
+            pass
+
+    session = _client_sessions.get(chat_id, {})
+    step    = session.get('step', 'start')
+
+    if text in ('/start', 'Yangi buyurtma 🚖'):
+        _client_sessions[chat_id] = {'step': 'phone'}
+        _send(chat_id,
+            '📞 <b>Telefon raqamingizni yuboring</b>\n'
+            'Masalan: <code>+998901234567</code>',
+            {'keyboard': [[{'text': 'Yangi buyurtma 🚖'}]], 'resize_keyboard': True}
+        )
+
+    elif step == 'phone':
+        phone = text.replace(' ', '')
+        if len(phone) < 9:
+            _send(chat_id, '❌ Telefon raqam noto\'g\'ri. Qayta kiriting:')
+        else:
+            _client_sessions[chat_id] = {'step': 'from', 'phone': phone}
+            _send(chat_id, '📍 <b>Qayerdan yo\'lga chiqasiz?</b>\nManzilni yozing:')
+
+    elif step == 'from':
+        _client_sessions[chat_id] = dict(session, step='to', from_address=text)
+        _send(chat_id,
+            '🏁 <b>Qayerga borasiz?</b>\nManzilni yozing yoki o\'tkazib yuboring:',
+            {'keyboard': [[{'text': "O'tkazib yuborish ➡️"}]], 'resize_keyboard': True}
+        )
+
+    elif step == 'to':
+        to_address = '' if text == "O'tkazib yuborish ➡️" else text
+        phone        = session.get('phone', '')
+        from_address = session.get('from_address', '')
+
+        client, _ = Client.objects.get_or_create(phone_number=phone)
+        tariff    = TariffSettings.get()
+        order = Order.objects.create(
+            client=client,
+            from_address=from_address,
+            to_address=to_address,
+            commission=tariff.commission,
+            status='pending',
+        )
+        tg_new_order(order)
+        if tariff.auto_dispatch:
+            import threading
+            threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
+
+        _client_sessions.pop(chat_id, None)
+        _send(chat_id,
+            f'✅ <b>Buyurtma #{order.id} qabul qilindi!</b>\n'
+            f'📍 Qayerdan: {from_address}\n'
+            + (f'🏁 Qayerga: {to_address}\n' if to_address else '') +
+            '⏳ Haydovchi tez orada topiladi.',
+            {'keyboard': [[{'text': 'Yangi buyurtma 🚖'}]], 'resize_keyboard': True}
+        )
+    else:
+        _send(chat_id, 'Boshlash uchun /start yuboring.',
+            {'keyboard': [[{'text': 'Yangi buyurtma 🚖'}]], 'resize_keyboard': True}
+        )
+
+    from django.http import HttpResponse
+    return HttpResponse('ok')
 
 
 def maps_settings(request):
@@ -430,6 +544,37 @@ def tariff_settings(request):
             pass
         return redirect('taxi:tariff_settings')
     return render(request, 'taxi/tariff_settings.html', {'tariff': tariff})
+
+
+# ── SOS ──────────────────────────────────────────────────────────────────────────────
+
+def sos_list(request):
+    qs = SosAlert.objects.select_related('driver').order_by('-created_at')
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+    return render(request, 'taxi/sos_list.html', {
+        'alerts':        qs,
+        'status_filter': status_filter,
+        'new_count':     SosAlert.objects.filter(status=SosAlert.STATUS_NEW).count(),
+    })
+
+
+def sos_resolve(request, pk):
+    alert = get_object_or_404(SosAlert, pk=pk)
+    if request.method == 'POST':
+        from django.utils import timezone
+        alert.status      = request.POST.get('status', SosAlert.STATUS_RESOLVED)
+        alert.resolved_by = request.POST.get('resolved_by', '').strip()
+        if alert.status == SosAlert.STATUS_RESOLVED:
+            alert.resolved_at = timezone.now()
+        alert.save(update_fields=['status', 'resolved_by', 'resolved_at'])
+    return redirect(request.META.get('HTTP_REFERER', 'taxi:sos_list'))
+
+
+def sos_count(request):
+    count = SosAlert.objects.filter(status=SosAlert.STATUS_NEW).count()
+    return JsonResponse({'count': count})
 
 
 def driver_map(request):

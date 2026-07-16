@@ -4,7 +4,11 @@ class OrderModel {
   final String  clientPhone;
   final String? driverName;
   final String  fromAddress;
+  final double? fromLat;
+  final double? fromLng;
   final String  toAddress;
+  final double? toLat;
+  final double? toLng;
   final String? price;
   final String? commission;
   final double? distanceKm;
@@ -31,7 +35,11 @@ class OrderModel {
     required this.clientPhone,
     this.driverName,
     required this.fromAddress,
+    this.fromLat,
+    this.fromLng,
     required this.toAddress,
+    this.toLat,
+    this.toLng,
     this.price,
     this.commission,
     this.distanceKm,
@@ -53,7 +61,11 @@ class OrderModel {
     clientPhone:      j['client_phone'] ?? '',
     driverName:       j['driver_name'],
     fromAddress:      j['from_address'] ?? '',
+    fromLat:          (j['from_lat'] as num?)?.toDouble(),
+    fromLng:          (j['from_lng'] as num?)?.toDouble(),
     toAddress:        j['to_address'] ?? '',
+    toLat:            (j['to_lat'] as num?)?.toDouble(),
+    toLng:            (j['to_lng'] as num?)?.toDouble(),
     price:            j['price']?.toString(),
     commission:       j['commission']?.toString(),
     distanceKm:       j['distance_km'] != null
@@ -93,7 +105,9 @@ class OrderModel {
   /// copyWith — countdown uchun
   OrderModel copyWithSecondsLeft(int? s) => OrderModel(
     id: id, clientName: clientName, clientPhone: clientPhone,
-    driverName: driverName, fromAddress: fromAddress, toAddress: toAddress,
+    driverName: driverName,
+    fromAddress: fromAddress, fromLat: fromLat, fromLng: fromLng,
+    toAddress: toAddress, toLat: toLat, toLng: toLng,
     price: price, commission: commission, distanceKm: distanceKm,
     status: status, statusLabel: statusLabel, createdAt: createdAt,
     paymentType: paymentType, note: note,

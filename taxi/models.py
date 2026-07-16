@@ -129,6 +129,8 @@ class BotSettings(models.Model):
                                   help_text='@BotFather dan olingan token')
     group_id   = models.CharField(max_length=50, blank=True, default='', verbose_name='Guruh Chat ID',
                                   help_text='Operatorlar Telegram guruhi chat_id')
+    client_bot_token = models.CharField(max_length=200, blank=True, default='', verbose_name='Mijoz Bot Token',
+                                        help_text='Mijozlar buyurtma beruvchi bot tokeni')
 
     # Bildirishnoma toggle lar
     notify_new_order      = models.BooleanField(default=True,  verbose_name='Yangi buyurtma')
@@ -200,6 +202,35 @@ class MapsSettings(models.Model):
     class Meta:
         verbose_name = 'Maps sozlamalari'
         verbose_name_plural = 'Maps sozlamalari'
+
+
+class SosAlert(models.Model):
+    STATUS_NEW      = 'new'
+    STATUS_VIEWED   = 'viewed'
+    STATUS_RESOLVED = 'resolved'
+    STATUS_CHOICES  = (
+        (STATUS_NEW,      'Yangi'),
+        (STATUS_VIEWED,   "Ko'rildi"),
+        (STATUS_RESOLVED, 'Hal qilindi'),
+    )
+
+    driver     = models.ForeignKey('Driver', on_delete=models.CASCADE, related_name='sos_alerts', verbose_name='Haydovchi')
+    latitude   = models.FloatField(null=True, blank=True, verbose_name='Kenglik')
+    longitude  = models.FloatField(null=True, blank=True, verbose_name='Uzunlik')
+    address    = models.CharField(max_length=500, blank=True, default='', verbose_name='Manzil')
+    note       = models.TextField(blank=True, default='', verbose_name='Izoh')
+    status     = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_NEW, verbose_name='Holati')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Vaqt')
+    resolved_at= models.DateTimeField(null=True, blank=True, verbose_name='Hal qilingan vaqt')
+    resolved_by= models.CharField(max_length=255, blank=True, default='', verbose_name='Kim hal qildi')
+
+    def __str__(self):
+        return f"SOS #{self.id} — {self.driver.full_name} ({self.created_at:%d.%m.%Y %H:%M})"
+
+    class Meta:
+        verbose_name = 'SOS signal'
+        verbose_name_plural = 'SOS signallar'
+        ordering = ['-created_at']
 
 
 class DriverActivityLog(models.Model):

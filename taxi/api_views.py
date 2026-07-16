@@ -27,14 +27,14 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 
-from .models import Driver, Order, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog
+from .models import Driver, Order, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, SosAlert
 from .serializers import (
     DriverRegisterSerializer,
     DriverLoginSerializer,
     DriverProfileSerializer,
     OrderSerializer,
 )
-from .utils import send_telegram, dispatch_order, tg_new_order, tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected, tg_driver_registered, tg_driver_login, tg_duty_changed
+from .utils import send_telegram, dispatch_order, tg_new_order, tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected, tg_driver_registered, tg_driver_login, tg_duty_changed, tg_sos_alert
 
 
 def _get_ip(request):
@@ -554,3 +554,47 @@ def destination_mode_get(request, driver):
         'destination_lng':     driver.destination_lng,
         'destination_address': driver.destination_address,
     })
+
+
+# ── SOS ──────────────────────────────────────────────────────────────────────────────
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@driver_required
+def sos_send(request, driver):
+    """
+    Haydovchi SOS signal yuboradi.
+    Body: { "lat": 41.2, "lng": 69.2, "address": "...", "note": "..." }
+    """
+    lat     = request.data.get('lat')
+    lng     = request.data.get('lng')
+    address = request.data.get('address', '').strip()
+    note    = request.data.get('note', '').strip()
+
+    alert = SosAlert.objects.create(
+        driver=driver,
+        latitude=float(lat) if lat is not None else None,
+        longitude=float(lng) if lng is not None else None,
+        address=address,
+        note=note,
+    )
+    tg_sos_alert(alert)
+    return Response({'id': alert.id, 'detail': 'SOS signal yuborildi.'}, status=201)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@driver_required
+def sos_my(request, driver):
+    """Haydovchining o'z SOS tarixi."""
+    alerts = SosAlert.objects.filter(driver=driver)[:20]
+    data = [{
+        'id':         a.id,
+        'latitude':   a.latitude,
+        'longitude':  a.longitude,
+        'address':    a.address,
+        'note':       a.note,
+        'status':     a.status,
+        'created_at': a.created_at.isoformat(),
+    } for a in alerts]
+    return Response(data)

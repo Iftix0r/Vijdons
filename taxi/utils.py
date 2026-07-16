@@ -271,6 +271,24 @@ def tg_duty_changed(driver, is_on_duty):
     )
 
 
+def tg_sos_alert(alert):
+    """SOS signal Telegram guruhiga yuboriladi."""
+    driver = alert.driver
+    lines = [
+        f"🆘 <b>SOS SIGNAL! #{alert.id}</b>",
+        f"👤 {driver.full_name} | <code>{driver.phone_number}</code>",
+        f"🚗 {driver.car_model} <code>{driver.car_number}</code>",
+    ]
+    if alert.address:
+        lines.append(f"📍 Manzil: {alert.address}")
+    if alert.latitude and alert.longitude:
+        lines.append(f"🗺 Koordinata: <code>{alert.latitude:.5f}, {alert.longitude:.5f}</code>")
+        lines.append(f"🔗 <a href='https://maps.google.com/?q={alert.latitude},{alert.longitude}'>Google Maps</a>")
+    if alert.note:
+        lines.append(f"📝 Izoh: {alert.note}")
+    send_telegram('\n'.join(lines))
+
+
 def send_fcm(fcm_token, title, body, data=None):
     """FCM push notification yuborish."""
     from django.conf import settings

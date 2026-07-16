@@ -45,7 +45,7 @@
         <div class="px-6 py-5 space-y-4">
             <div>
                 <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
-                    <i class="fas fa-key text-yellow-500 mr-1"></i>Bot Token
+                    <i class="fas fa-key text-yellow-500 mr-1"></i>Bot Token (Operator guruhi)
                 </label>
                 <input type="text" name="bot_token" value="{{ bot.bot_token }}"
                        placeholder="1234567890:AAF..."
@@ -65,6 +65,22 @@
                     Guruhga <a href="https://t.me/userinfobot" target="_blank" class="text-blue-500 hover:underline">@userinfobot</a> qo'shing → chat ID oling
                     <span class="ml-1 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded font-mono text-[11px]">-100...</span>
                 </p>
+            </div>
+            <!-- Mijoz boti -->
+            <div class="pt-2 border-t border-gray-100 dark:border-gray-800">
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                    <i class="fas fa-user text-green-500 mr-1"></i>Mijoz Bot Token
+                </label>
+                <input type="text" name="client_bot_token" value="{{ bot.client_bot_token }}"
+                       placeholder="Mijozlar buyurtma beruvchi bot tokeni"
+                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-400 dark:text-white transition">
+                <p class="text-xs text-gray-400 mt-1">Mijozlar shu bot orqali buyurtma beradi (qayerdan → qayerga)</p>
+                {% if bot.client_bot_token %}
+                <div class="mt-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800/40">
+                    <p class="text-xs font-bold text-green-700 dark:text-green-400 mb-1"><i class="fas fa-link mr-1"></i>Webhook URL (BotFather ga o'rnating):</p>
+                    <code class="text-xs text-green-800 dark:text-green-300 break-all">{{ request.scheme }}://{{ request.get_host }}{% url 'taxi:client_bot_webhook' %}</code>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>

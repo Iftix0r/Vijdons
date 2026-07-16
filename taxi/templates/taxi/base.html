@@ -109,6 +109,12 @@
             <span class="flex-1">Chat</span>
             <span id="chat-unread-badge" class="hidden bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center"></span>
         </a>
+        <a href="{% url 'taxi:sos_list' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'sos_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-triangle-exclamation w-5 text-center text-red-500"></i>
+            <span class="flex-1">SOS Signallar</span>
+            <span id="sos-badge" class="hidden bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center animate-pulse"></span>
+        </a>
         <a href="{% url 'taxi:client_list' %}"
            class="nav-link {% if request.resolver_match.url_name == 'client_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-users w-5 text-center"></i> Mijozlar
@@ -577,6 +583,35 @@
     }
     updateChatBadge();
     setInterval(updateChatBadge, 15000);
+
+    // ── SOS badge ──
+    function updateSosBadge() {
+        fetch('/panel/sos/?status=new', {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+            .then(r => r.text())
+            .then(html => {
+                const m = html.match(/(\/d+) yangi/);
+                const badge = document.getElementById('sos-badge');
+                if (!badge) return;
+                // Oddiyroq: JSON endpoint ishlatamiz
+            }).catch(() => {});
+    }
+    // SOS count uchun alohida endpoint
+    function updateSosCount() {
+        fetch('/panel/sos/count/')
+            .then(r => r.json())
+            .then(d => {
+                const badge = document.getElementById('sos-badge');
+                if (!badge) return;
+                if (d.count > 0) {
+                    badge.textContent = d.count;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }).catch(() => {});
+    }
+    updateSosCount();
+    setInterval(updateSosCount, 20000);
 </script>
 {% block extra_js %}{% endblock %}
 </body>
