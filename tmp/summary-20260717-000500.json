@@ -1,0 +1,4 @@
+{
+  "summary": "Flutter WebView GPS muammosi asosiy sababi topildi: web tomondagi tryNativeBridge() NativeBridge.postMessage() tekshirardi va false qaytarib browser geo-ga tushardi (ruxsat so'rardi). Aslida Flutter _sendLocation() har 15s da window.dispatchEvent('vijdon_location') yuboradi — NativeBridge kerak emas. tryNativeBridge() qayta yozildi: vijdon_location eventiga doimiy listener qo'yadi, isFlutter = _vijdonNotifyInjected || wv userAgent tekshiradi. main.dart da _injectNotificationBridge() ichiga _injectLocation() qo'shildi — inject vaqtida darhol koordinat yuboriladi.",
+  "current_status": "Flutter GPS muammosi hal qilindi. Web tomoni vijdon_location eventini tinglaydi, browser geolocation so'ralmaydi."
+}

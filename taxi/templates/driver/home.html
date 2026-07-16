@@ -620,16 +620,17 @@ document.addEventListener('visibilitychange', () => {
   if (!el) return;
 
   let _lastGeoLat = null, _lastGeoLng = null;
-  let _geoTimer = null;
+  let _geoTimer   = null;
+  let _watchId    = null;
 
-  // Reverse geocode — Nominatim (OpenStreetMap), o'zbek tili
+  // ── Reverse geocode — Nominatim ──────────────────────────────────────────
   async function reverseGeocode(lat, lng) {
-    const controller = new AbortController();
-    const tid = setTimeout(() => controller.abort(), 6000);
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 6000);
     try {
       const r = await fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=uz&zoom=16`,
-        { signal: controller.signal }
+        { signal: ctrl.signal }
       );
       clearTimeout(tid);
       const d = await r.json();
@@ -641,17 +642,13 @@ document.addEventListener('visibilitychange', () => {
       if (street && house) return `${street}, ${house}`;
       if (street && area)  return `${street}, ${area}`;
       return street || area || d.display_name?.split(',')[0] || null;
-    } catch (_) {
-      clearTimeout(tid);
-      return null;
-    }
+    } catch (_) { clearTimeout(tid); return null; }
   }
 
-  async function onPosition(pos) {
-    const { latitude: lat, longitude: lng, accuracy } = pos.coords;
-
-    // Darhol koordinatni ko'rsatamiz (fallback)
-    el.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  // ── Koordinat keldi ───────────────────────────────────────────────────────
+  async function gotCoords(lat, lng) {
+    // Darhol koordinatni ko'rsatamiz
+    if (el) el.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 
     // 50m dan kam ko'chsa geocode so'ramaymiz
     if (_lastGeoLat !== null) {
@@ -661,12 +658,12 @@ document.addEventListener('visibilitychange', () => {
     }
     _lastGeoLat = lat; _lastGeoLng = lng;
 
-    // Debounce: 1.5s kutamiz (tez harakatda ko'p so'rov ketmasin)
+    // 1.5s debounce
     clearTimeout(_geoTimer);
     _geoTimer = setTimeout(async () => {
       const addr = await reverseGeocode(lat, lng);
       if (addr && el) el.textContent = addr;
-      // Servergayam yuboramiz
+      // Server ga ham yuboramiz
       fetch('{% url "driver:location_sync" %}', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
@@ -675,47 +672,71 @@ document.addEventListener('visibilitychange', () => {
     }, 1500);
   }
 
-  function onError(e) {
-    if (!el) return;
-    if (e.code === 1) {
-      // Brauzer sozlamalarida ruxsat berilmagan — haydovchiga ko'rsatma
-      el.innerHTML = '<a onclick="showGpsHelp()" style="color:#FF9500;text-decoration:underline;cursor:pointer">📍 Ruxsat bering</a>';
-    } else if (e.code === 2) {
-      // GPS signal yo'q — past aniqlik bilan qayta urinish
-      navigator.geolocation.getCurrentPosition(onPosition, () => {
-        el.textContent = 'GPS signal yo\'q';
-      }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
-    } else if (e.code === 3) {
-      // Timeout — past aniqlik bilan qayta urinish
-      navigator.geolocation.getCurrentPosition(onPosition, () => {
-        el.textContent = '';
-      }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 });
+  // ── Flutter NativeBridge orqali GPS ───────────────────────────────────────
+  // Flutter har 15s da window.dispatchEvent('vijdon_location', {lat,lng}) yuboradi.
+  // Biz shu eventni tinglaymiz — NativeBridge.postMessage kerak emas.
+  function tryNativeBridge() {
+    // Agar Flutter WebView bo'lsa user agent ichida yoki NativeBridge bo'lsa
+    const isFlutter = typeof NativeBridge !== 'undefined' ||
+                      navigator.userAgent.includes('wv') || // Android WebView
+                      window.flutter_inappwebview ||
+                      window._vijdonNotifyInjected; // Flutter tomondan inject qilinadi
+
+    // vijdon_location eventini har doim tinglaymiz
+    // (Flutter _sendLocation() har 15s chaqiradi)
+    window.addEventListener('vijdon_location', function(e) {
+      if (e.detail?.lat && e.detail?.lng) {
+        gotCoords(e.detail.lat, e.detail.lng);
+      }
+    });
+
+    // NativeBridge mavjud bo'lsa, bir marta so'raymiz
+    if (typeof NativeBridge !== 'undefined') {
+      try {
+        NativeBridge.postMessage(JSON.stringify({ action: 'get_location' }));
+      } catch (_) {}
     }
+
+    // Flutter ilova bo'lsa browser geo-ga tushmaymiz
+    return isFlutter;
   }
 
-  if (!navigator.geolocation) { el.textContent = ''; return; }
+  // ── Browser geolocation ───────────────────────────────────────────────────
+  function tryBrowserGeo() {
+    if (!navigator.geolocation) { if (el) el.textContent = ''; return; }
+    _watchId = navigator.geolocation.watchPosition(
+      pos => gotCoords(pos.coords.latitude, pos.coords.longitude),
+      err => {
+        if (!el) return;
+        if (err.code === 1) {
+          // Ruxsat rad — toast chiqaramiz, alert emas
+          el.textContent = '';
+          showToast('GPS ruxsati', 'Telefon sozlamalarida joylashuv ruxsatini bering', 'error', 6000);
+        } else if (err.code === 2 || err.code === 3) {
+          // Signal yo'q yoki timeout — past aniqlik bilan urinish
+          navigator.geolocation.getCurrentPosition(
+            pos => gotCoords(pos.coords.latitude, pos.coords.longitude),
+            () => { if (el) el.textContent = ''; },
+            { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
+          );
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 }
+    );
+  }
 
-  // watchPosition — bir marta ruxsat so'raydi, keyin doimiy kuzatadi
-  navigator.geolocation.watchPosition(onPosition, onError, {
-    enableHighAccuracy: true,
-    timeout: 10000,
-    maximumAge: 15000
+  // ── Ishga tushirish: avval Flutter, bo'lmasa browser ─────────────────────
+  if (!tryNativeBridge()) {
+    tryBrowserGeo();
+  }
+
+  // Sahifa aktiv bo'lganda qayta urinish
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      if (!tryNativeBridge() && !_watchId) tryBrowserGeo();
+    }
   });
 })();
-
-function showGpsHelp() {
-  // Brauzer turini aniqlab tegishli ko'rsatma beramiz
-  const ua = navigator.userAgent.toLowerCase();
-  let msg = '';
-  if (/iphone|ipad|safari/.test(ua) && !/chrome/.test(ua)) {
-    msg = 'iPhone/Safari:\nSozlamalar → Safari → Joylashuv → "Ilovadan so\'rash" yoki "Ruxsat"\n\nSaytni yoping va qayta oching.';
-  } else if (/android/.test(ua) && /chrome/.test(ua)) {
-    msg = 'Android Chrome:\nManzil satridagi 🔒 belgisiga bosing → Ruxsatlar → Joylashuv → Ruxsat bering.\n\nYoki: Sozlamalar → Ilovalar → Chrome → Ruxsatlar → Joylashuv.';
-  } else {
-    msg = 'Brauzer sozlamalarida bu sayt uchun joylashuv ruxsatini bering, so\'ng sahifani yangilang.';
-  }
-  alert(msg);
-}
 {% endif %}
 
 function openTelegram(phone) {

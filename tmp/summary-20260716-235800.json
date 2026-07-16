@@ -1,0 +1,4 @@
+{
+  "summary": "Flutter WebView GPS muammosi hal qilindi. tryNativeBridge() funksiyasi qo'shildi — avval NativeBridge.postMessage({action:'get_location'}) orqali Flutter dan koordinat so'raydi (vijdon_location event), ishlamasa tryBrowserGeo() ga o'tadi. showGpsHelp()+alert() olib tashlandi, o'rniga showToast() ishlatiladi. watchPosition _watchId da saqlanadi. visibilitychange da ham qayta urinadi.",
+  "current_status": "GPS navbar Flutter NativeBridge + browser geolocation dual mode. alert() yo'q. Barcha oldingi o'zgarishlar saqlanib qoldi."
+}

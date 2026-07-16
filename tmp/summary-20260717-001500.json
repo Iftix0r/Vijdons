@@ -1,0 +1,4 @@
+{
+  "summary": "LateInitializationError hal qilindi. Asosiy sabab: 'late final WebViewController _ctrl' — _requestPermissionsAndInit() async bo'lgani uchun build() chaqirilganda _ctrl hali initialize qilinmagan edi. Yechim: _ctrl nullable qilindi (WebViewController?), _initWebView() ichida ctrl local yaratib setState(() => _ctrl = ctrl) bilan saqlandi, build() da _ctrl != null tekshiruvi qo'shildi, barcha _ctrl ishlatadigan joylar ?. operator bilan yangilandi. dart analyze: faqat _showToast unused warning — xato yo'q.",
+  "current_status": "Flutter LateInitializationError tuzatildi. dart analyze clean. Build tayyor."
+}

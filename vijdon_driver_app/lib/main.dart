@@ -34,7 +34,7 @@ class DriverWebView extends StatefulWidget {
 }
 
 class _DriverWebViewState extends State<DriverWebView> {
-  late final WebViewController _ctrl;
+  WebViewController? _ctrl;
   bool _loading = true;
   bool _firstLoad = true;
   Timer? _locationTimer;
@@ -56,6 +56,7 @@ class _DriverWebViewState extends State<DriverWebView> {
     await [
       Permission.location,
       Permission.locationWhenInUse,
+      Permission.locationAlways,
       Permission.notification,
     ].request();
     _initWebView();
@@ -63,7 +64,9 @@ class _DriverWebViewState extends State<DriverWebView> {
   }
 
   void _initWebView() {
-    _ctrl = WebViewController()
+    final ctrl = WebViewController(
+      onPermissionRequest: (request) => request.grant(),
+    )
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..addJavaScriptChannel(
         'FlutterNotify',
@@ -89,6 +92,7 @@ class _DriverWebViewState extends State<DriverWebView> {
         },
       ))
       ..loadRequest(Uri.parse(kBaseUrl));
+    setState(() => _ctrl = ctrl);
   }
 
   void _startLocationUpdates() {
@@ -163,14 +167,14 @@ class _DriverWebViewState extends State<DriverWebView> {
   }
 
   void _sendLocation(double lat, double lng) {
-    _ctrl.runJavaScript(
+    _ctrl?.runJavaScript(
       "window.dispatchEvent(new CustomEvent('vijdon_location',"
       "{detail:{lat:$lat,lng:$lng}}))",
     );
   }
 
   Future<void> _injectNotificationBridge() async {
-    await _ctrl.runJavaScript("""
+    await _ctrl?.runJavaScript("""
       (function() {
         if (window._vijdonNotifyInjected) return;
         window._vijdonNotifyInjected = true;
@@ -190,8 +194,8 @@ class _DriverWebViewState extends State<DriverWebView> {
       body: SafeArea(
         child: Stack(
           children: [
-            WebViewWidget(controller: _ctrl),
-            if (_loading)
+            if (_ctrl != null) WebViewWidget(controller: _ctrl!),
+            if (_loading || _ctrl == null)
               const Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
