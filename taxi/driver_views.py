@@ -620,3 +620,54 @@ def driver_surge_info(request, driver):
     from .utils import get_surge_multiplier
     multiplier, reason = get_surge_multiplier()
     return JsonResponse({'ok': True, 'multiplier': multiplier, 'reason': reason})
+
+
+# ── Taximeter state: saqlash va yuklash ───────────────────────────────────────
+
+@require_POST
+@driver_login_required
+def driver_tmx_save(request, driver, pk):
+    """Taximetr holatini serverga saqlaydi (har 5 soniyada JS chaqiradi)."""
+    order = get_object_or_404(Order, pk=pk, driver=driver)
+    if order.status not in ('on_way', 'arrived'):
+        return JsonResponse({'ok': False}, status=400)
+    try:
+        data      = json.loads(request.body)
+        start_ms  = data.get('start_ms')
+        dist_km   = float(data.get('dist_km', 0))
+        paused    = bool(data.get('paused', False))
+        paused_ms = int(data.get('paused_ms', 0))
+
+        if start_ms:
+            from django.utils import timezone
+            order.tmx_start_time = timezone.datetime.fromtimestamp(
+                int(start_ms) / 1000, tz=timezone.utc
+            )
+        order.tmx_dist_km   = dist_km
+        order.tmx_paused    = paused
+        order.tmx_paused_ms = paused_ms
+        order.save(update_fields=['tmx_start_time', 'tmx_dist_km', 'tmx_paused', 'tmx_paused_ms'])
+    except Exception:
+        return JsonResponse({'ok': False}, status=400)
+    return JsonResponse({'ok': True})
+
+
+@driver_login_required
+def driver_tmx_load(request, driver):
+    """Haydovchining faol on_way/arrived buyurtmasidagi taximetr holatini qaytaradi."""
+    order = Order.objects.filter(
+        driver=driver, status__in=['on_way', 'arrived']
+    ).order_by('-updated_at').first()
+    if not order or not order.tmx_start_time:
+        return JsonResponse({'ok': False, 'active': False})
+    start_ms = int(order.tmx_start_time.timestamp() * 1000)
+    return JsonResponse({
+        'ok':        True,
+        'active':    True,
+        'order_id':  order.id,
+        'status':    order.status,
+        'start_ms':  start_ms,
+        'dist_km':   order.tmx_dist_km or 0,
+        'paused':    order.tmx_paused,
+        'paused_ms': order.tmx_paused_ms or 0,
+    })

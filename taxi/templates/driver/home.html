@@ -147,10 +147,25 @@ let _known = new Set(ORDERS.map(o => o.id));
 // Sahifa yuklanishi bilan darhol DOM ni render qilamiz
 renderOrdersDOM();
 
-// on_way buyurtma bo'lsa taximeter ochiladi
-(function(){
+// on_way buyurtma bo'lsa taximeter ochiladi — avval serverdan tiklaymiz
+(async function(){
+  try {
+    const r = await fetch('{% url "driver:tmx_load" %}', {cache:'no-store'});
+    const d = await r.json();
+    if (d.ok && d.active) {
+      const order = ORDERS.find(o => o.id === d.order_id) || null;
+      tmxStart(d.order_id, order, {
+        start_ms:  d.start_ms,
+        dist_km:   d.dist_km,
+        paused:    d.paused,
+        paused_ms: d.paused_ms,
+      });
+      return;
+    }
+  } catch(_) {}
+  // Serverda saqlanmagan bo'lsa — eski usul (faqat on_way)
   const onWay = ORDERS.find(o => o.status === 'on_way');
-  if(onWay) tmxStart(onWay.id, onWay);
+  if (onWay) tmxStart(onWay.id, onWay);
 })();
 
 // ── Auto-refresh: har 2 soniyada ──────────────────────────────────────────
@@ -564,11 +579,12 @@ const TMX_PER_KM      = {{ tariff_per_km }};
 let _tmxActive    = false;
 let _tmxPaused    = false;
 let _tmxPauseStart= null;
-let _tmxTotalPaused = 0; // ms
+let _tmxTotalPaused = 0;
 let _tmxOrderId   = null;
 let _tmxOrder     = null;
 let _tmxStartTime = null;
 let _tmxInterval  = null;
+let _tmxSaveInterval = null;
 let _tmxDistKm    = 0;
 let _tmxPrevLat   = null;
 let _tmxPrevLng   = null;
@@ -588,16 +604,16 @@ function _haversine(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-function tmxStart(orderId, order) {
+function tmxStart(orderId, order, restore) {
   if (_tmxActive) return;
   _tmxActive    = true;
-  _tmxPaused    = false;
+  _tmxPaused    = restore?.paused    || false;
   _tmxPauseStart= null;
-  _tmxTotalPaused = 0;
+  _tmxTotalPaused = restore?.paused_ms || 0;
   _tmxOrderId   = orderId;
   _tmxOrder     = order;
-  _tmxStartTime = Date.now();
-  _tmxDistKm    = 0;
+  _tmxStartTime = restore?.start_ms  || Date.now();
+  _tmxDistKm    = restore?.dist_km   || 0;
   _tmxPrevLat   = null;
   _tmxPrevLng   = null;
   _tmxPriceStr  = TMX_BASE_PRICE.toLocaleString('uz-UZ');
@@ -615,6 +631,8 @@ function tmxStart(orderId, order) {
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 3000 }
     );
   }
+  // Har 5 soniyada serverga saqlaymiz
+  _tmxSaveInterval = setInterval(_tmxSave, 5000);
 }
 
 function tmxPause() {
@@ -703,12 +721,33 @@ function tmxStop() {
   _tmxPaused    = false;
   _tmxPauseStart= null;
   clearInterval(_tmxInterval);
-  _tmxInterval  = null;
+  clearInterval(_tmxSaveInterval);
+  _tmxInterval     = null;
+  _tmxSaveInterval = null;
   if (_tmxWatchId !== null) {
     navigator.geolocation?.clearWatch(_tmxWatchId);
     _tmxWatchId = null;
   }
   window.removeEventListener('vijdon_location', _tmxOnLocation);
+}
+
+async function _tmxSave() {
+  if (!_tmxActive || !_tmxOrderId) return;
+  const paused_ms = _tmxPaused && _tmxPauseStart
+    ? _tmxTotalPaused + (Date.now() - _tmxPauseStart)
+    : _tmxTotalPaused;
+  try {
+    await fetch(`/driver/tmx/${_tmxOrderId}/save/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+      body: JSON.stringify({
+        start_ms:  _tmxStartTime,
+        dist_km:   _tmxDistKm,
+        paused:    _tmxPaused,
+        paused_ms: paused_ms,
+      }),
+    });
+  } catch(_) {}
 }
 
 function tmxArrived() {
