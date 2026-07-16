@@ -46,23 +46,47 @@ self.addEventListener('fetch', e => {
   );
 });
 
-// Push notification
+// Push notification — OVOZLI va kuchli
 self.addEventListener('push', e => {
-  const data = e.data ? e.data.json() : {};
+  let data = {};
+  try { data = e.data ? e.data.json() : {}; } catch(_) {}
+
+  const title = data.title || '🚖 Yangi buyurtma!';
+  const body  = data.body  || 'Yaqin atrofda buyurtma kutmoqda';
+  const url   = data.url   || '/driver/home/';
+
+  const opts = {
+    body:    body,
+    icon:    '/static/driver/sounds/../icon-192.png',
+    badge:   '/static/driver/sounds/../icon-192.png',
+    tag:     'new-order',
+    renotify: true,
+    requireInteraction: true,         // foydalanuvchi yopmagunicha turadi
+    vibrate:  [200, 100, 200, 100, 400, 100, 600],
+    sound:   '/static/driver/sounds/new_order.wav',
+    data:    { url: url },
+    actions: [
+      { action: 'open',    title: '✅ Ko\'rish' },
+      { action: 'dismiss', title: '❌ Yopish'   },
+    ],
+  };
+
   e.waitUntil(
-    self.registration.showNotification(data.title || 'Yangi buyurtma!', {
-      body:     data.body  || '',
-      icon:     data.icon  || '/static/driver/icon-192.png',
-      badge:    data.badge || '/static/driver/icon-192.png',
-      tag:      'new-order',
-      renotify: true,
-      vibrate:  [100, 50, 100, 50, 200],
-      data:     { url: data.url || '/driver/home/' },
-    })
+    self.registration.showNotification(title, opts)
   );
 });
 
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  e.waitUntil(clients.openWindow(e.notification.data.url));
+  if (e.action === 'dismiss') return;
+  const url = (e.notification.data && e.notification.data.url) || '/driver/home/';
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      // Agar sahifa allaqachon ochiq bo'lsa — focusga olamiz
+      for (const c of list) {
+        if (c.url.includes('/driver/') && 'focus' in c) return c.focus();
+      }
+      return clients.openWindow(url);
+    })
+  );
 });

@@ -481,7 +481,9 @@ const Audio = {
   online()   { this._play([[0,.2,523],[.15,.25,784]]); },
 };
 
-// ── Service Worker ────────────────────────────────────────────────────────────
+// ── Web Push Subscription ────────────────────────────────────────────────────
+// Push subscription home.html da (driver.is_on_duty bo'lganda) amalga oshiriladi.
+// Service Worker ni faqat ro'yxatdan o'tkazamiz:
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/static/driver/sw.js', { scope: '/driver/' }).catch(() => {});
 }

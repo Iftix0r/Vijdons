@@ -278,7 +278,7 @@ function closeNewOrderModal(autoClose = false) {
 }
 
 // ── Web Push ─────────────────────────────────────────────────────────────────
-const VAPID_PUBLIC = 'BLgc9UVdWIvPZqoVrGTc3ukeDgdz7Ag9E-QTwlS-mIMZJPJn1dNYJSwEHJCr57WZRt2ZQnwS-Dd6XscYCVjv1FA';
+const VAPID_PUBLIC = '{{ VAPID_PUBLIC_KEY }}';
 function _b64(b){const p=(b+'===').slice(0,b.length+(4-b.length%4)%4).replace(/-/g,'+').replace(/_/g,'/');const r=atob(p);const a=new Uint8Array(r.length);for(let i=0;i<r.length;i++)a[i]=r.charCodeAt(i);return a;}
 async function initPush(){
   if(!('serviceWorker' in navigator)||!('PushManager' in window)) return;
