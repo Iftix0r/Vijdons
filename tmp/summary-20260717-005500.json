@@ -1,0 +1,4 @@
+{
+  "summary": "Flutter ruxsatlar muammosi hal qilindi. Avval barcha ruxsatlar bir vaqtda (.request() list) so'ralardi — Android faqat birinchisini ko'rsatardi. Endi ketma-ket: 1) locationWhenInUse, 2) location, 3) locationAlways (faqat granted bo'lsa), 4) notification, 5) camera, 6) photos, 7) videos, 8) mediaLibrary, 9) microphone. AndroidManifest.xml ga RECORD_AUDIO va READ_MEDIA_VIDEO qo'shildi. dart analyze: No issues found.",
+  "current_status": "Flutter ruxsatlar ketma-ket, to'liq. Build tayyor."
+}

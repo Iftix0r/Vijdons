@@ -52,15 +52,32 @@ class _DriverWebViewState extends State<DriverWebView> {
   }
 
   Future<void> _requestPermissionsAndInit() async {
-    await [
-      Permission.location,
-      Permission.locationWhenInUse,
-      Permission.locationAlways,
-      Permission.notification,
-      Permission.camera,
-      Permission.photos,
-      Permission.mediaLibrary,
-    ].request();
+    // Ketma-ket so'raymiz — Android bir vaqtda hammani ko'rsatmaydi
+
+    // 1. Joylashuv — eng muhim
+    await Permission.locationWhenInUse.request();
+    final locStatus = await Permission.location.request();
+
+    // locationAlways faqat locationWhenInUse granted bo'lsa so'rash mumkin
+    if (locStatus.isGranted) {
+      await Permission.locationAlways.request();
+    }
+
+    // 2. Bildirishnoma
+    await Permission.notification.request();
+
+    // 3. Kamera
+    await Permission.camera.request();
+
+    // 4. Galereya / media
+    // Android 13+ READ_MEDIA_IMAGES, pastroq READ_EXTERNAL_STORAGE
+    await Permission.photos.request();
+    await Permission.videos.request();
+    await Permission.mediaLibrary.request();
+
+    // 5. Mikrofon (WebView audio/video uchun)
+    await Permission.microphone.request();
+
     _initWebView();
     _startLocationUpdates();
   }
