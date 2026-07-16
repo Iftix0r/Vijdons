@@ -37,14 +37,6 @@
           {{ driver.balance|floatformat:0 }} so'm
         </div>
       </div>
-      <!-- Duty toggle button -->
-      <button id="duty-btn" onclick="toggleDuty()"
-              class="relative w-11 h-11 rounded-full flex items-center justify-center transition-all active:opacity-60
-              {% if driver.is_on_duty %}text-[#FF3B30]{% else %}text-[#34C759]{% endif %}"
-              style="background:{% if driver.is_on_duty %}rgba(255,59,48,.12){% else %}rgba(52,199,89,.12){% endif %}">
-        {% if driver.is_on_duty %}<div class="duty-ring absolute inset-0 rounded-full text-[#FF3B30]"></div>{% endif %}
-        <i class="fas fa-power-off text-[18px]"></i>
-      </button>
     </div>
   </div>
 </div>
@@ -237,15 +229,11 @@ async function loadOrders(fb=false) {
       // Buyurtma kamaygan (qabul/bekor) — silent reload
       if(serverIds.size !== _known.size){
         _known = serverIds;
-        if(typeof FlutterToast !== 'undefined') FlutterToast.postMessage('Yangilandi');
         location.reload();
         return;
       }
     }
-    if(d.reload){
-      if(typeof FlutterToast !== 'undefined') FlutterToast.postMessage('Yangilandi');
-      location.reload();
-    }
+    if(d.reload) location.reload();
     if(fb) showToast('Yangilandi','','success',1600);
   } catch(_){}
 }

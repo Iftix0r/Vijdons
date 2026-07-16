@@ -313,10 +313,74 @@ body { background: var(--ios-bg); color: var(--ios-label); }
       <span class="ios-caption2 {% if active_tab == 'chat' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Chat</span>
     </a>
 
+    <!-- Hamburger -->
+    <button onclick="Native.vibrate();toggleHamburger()"
+            class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60">
+      <i class="fas fa-bars text-[24px] text-[#8E8E93]"></i>
+      <span class="ios-caption2 text-[#8E8E93]">Menu</span>
+    </button>
+
+
+
+  </div>
+</div>
+
+<!-- Hamburger Bottom Sheet -->
+<div id="hbg-overlay" class="fixed inset-0 z-[150] hidden" onclick="toggleHamburger()">
+  <div class="absolute inset-0" style="background:rgba(0,0,0,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)"></div>
+</div>
+<div id="hbg-sheet" class="ios-sheet fixed bottom-0 left-0 right-0 z-[160]"
+     style="transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom,34px)">
+  <div class="ios-sheet-handle"></div>
+  <div class="px-4 pt-3 pb-4 space-y-2">
+
+    <!-- Duty toggle -->
+    <button id="hbg-duty-btn" onclick="hbgToggleDuty()"
+            class="w-full flex items-center gap-4 px-4 py-4 rounded-[16px] active:opacity-60 transition-opacity"
+            style="background:{% if driver.is_on_duty %}rgba(255,59,48,.1){% else %}rgba(52,199,89,.1){% endif %}">
+      <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0
+                  {% if driver.is_on_duty %}bg-[rgba(255,59,48,.15)] text-[#FF3B30]{% else %}bg-[rgba(52,199,89,.15)] text-[#34C759]{% endif %}">
+        {% if driver.is_on_duty %}
+        <div class="duty-ring absolute rounded-full text-[#FF3B30]" style="width:44px;height:44px"></div>
+        {% endif %}
+        <i class="fas fa-power-off text-[18px]"></i>
+      </div>
+      <div class="text-left">
+        <div class="ios-subhead font-semibold {% if driver.is_on_duty %}text-[#FF3B30]{% else %}text-[#34C759]{% endif %}">
+          {% if driver.is_on_duty %}Navbatni tugatish{% else %}Navbatni boshlash{% endif %}
+        </div>
+        <div class="ios-caption mt-0.5" style="color:var(--ios-label3)">
+          {% if driver.is_on_duty %}Hozir ish navbatidasiz{% else %}Oflayn rejimdasiz{% endif %}
+        </div>
+      </div>
+      <i class="fas fa-chevron-right ml-auto ios-caption" style="color:var(--ios-label3)"></i>
+    </button>
+
+    <!-- Profil -->
     <a href="{% url 'driver:profile' %}" onclick="Native.vibrate()"
-       class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60">
-      <i class="fas fa-person text-[24px] {% if active_tab == 'profile' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
-      <span class="ios-caption2 {% if active_tab == 'profile' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Profil</span>
+       class="w-full flex items-center gap-4 px-4 py-4 rounded-[16px] ios-card active:opacity-60 transition-opacity">
+      <div class="w-11 h-11 rounded-full flex-shrink-0 overflow-hidden bg-[#FFD600] flex items-center justify-center">
+        {% if driver.photo %}
+        <img src="{{ driver.photo.url }}" class="w-full h-full object-cover">
+        {% else %}
+        <span class="ios-subhead font-bold text-black">{{ driver.full_name|first|upper }}</span>
+        {% endif %}
+      </div>
+      <div class="text-left flex-1">
+        <div class="ios-subhead font-semibold">{{ driver.full_name }}</div>
+        <div class="ios-caption mt-0.5" style="color:var(--ios-label3)">Profil, reyting, mashina</div>
+      </div>
+      <i class="fas fa-chevron-right ios-caption" style="color:var(--ios-label3)"></i>
+    </a>
+
+    <!-- Logout -->
+    <a href="{% url 'driver:logout' %}" onclick="Native.vibrate()"
+       class="w-full flex items-center gap-4 px-4 py-4 rounded-[16px] active:opacity-60 transition-opacity"
+       style="background:rgba(255,59,48,.08)">
+      <div class="w-11 h-11 rounded-full bg-[rgba(255,59,48,.12)] flex items-center justify-center flex-shrink-0">
+        <i class="fas fa-arrow-right-from-bracket text-[#FF3B30] text-base"></i>
+      </div>
+      <div class="ios-subhead font-semibold text-[#FF3B30]">Tizimdan chiqish</div>
     </a>
 
   </div>
@@ -534,6 +598,35 @@ window.addEventListener('vijdon_location', e=>{
     body:JSON.stringify({lat:e.detail.lat,lng:e.detail.lng})
   }).catch(()=>{});
 });
+
+// ── Hamburger Menu ────────────────────────────────────────────────────────────
+let _hbgOpen = false;
+function toggleHamburger() {
+  _hbgOpen = !_hbgOpen;
+  const ov = document.getElementById('hbg-overlay');
+  const sh = document.getElementById('hbg-sheet');
+  if (_hbgOpen) {
+    ov.classList.remove('hidden');
+    requestAnimationFrame(() => { sh.style.transform = 'translateY(0)'; });
+  } else {
+    sh.style.transform = 'translateY(100%)';
+    setTimeout(() => ov.classList.add('hidden'), 360);
+  }
+}
+
+let _hbgBusy = false;
+async function hbgToggleDuty() {
+  if (_hbgBusy) return; _hbgBusy = true; Native.vibrate();
+  const btn = document.getElementById('hbg-duty-btn');
+  if (btn) { btn.style.opacity = '.4'; btn.style.pointerEvents = 'none'; }
+  try {
+    const r = await fetch('/driver/duty/', { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+    const d = await r.json();
+    if (d.ok) location.reload();
+    else showToast('Xatolik', d.error || "Qayta urinib ko'ring", 'error', 4000);
+  } catch(_) { showToast('Xatolik', "Qayta urinib ko'ring", 'error'); }
+  finally { _hbgBusy = false; if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; } }
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getCookie(n) {
