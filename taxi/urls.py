@@ -22,6 +22,7 @@ urlpatterns = [
     path('chat/', views.operator_chat, name='operator_chat'),
     path('chat/unread/', views.operator_chat_unread, name='operator_chat_unread'),
     path('maps/', views.maps_settings, name='maps_settings'),
+    path('bot/', views.bot_settings, name='bot_settings'),
     path('tariff/', views.tariff_settings, name='tariff_settings'),
     path('drivers/map/', views.driver_map, name='driver_map'),
     path('drivers/api/locations/', views.active_drivers_locations, name='active_drivers_locations'),
