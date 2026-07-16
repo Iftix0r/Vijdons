@@ -464,10 +464,22 @@ let _busy = false;
 (function() {
   const onWay = ORDERS.find(o => o.status === 'on_way');
   if (onWay) {
-    // DOM tayyor bo'lgandan keyin
     window.addEventListener('DOMContentLoaded', () => tmxStart(onWay.id, onWay), { once: true });
-    // DOMContentLoaded o'tib ketgan bo'lsa ham ishlasin
     if (document.readyState !== 'loading') tmxStart(onWay.id, onWay);
+  }
+
+  // Reload dan keyin ham yangi buyurtma modalini ko'rsatish
+  const pending = sessionStorage.getItem('vijdon_new_order');
+  if (pending) {
+    sessionStorage.removeItem('vijdon_new_order');
+    try {
+      const { id, order } = JSON.parse(pending);
+      if (id && !ORDERS.find(o => o.id === id && o.status !== 'pending')) {
+        // Buyurtma hali pending bo'lsa ko'rsat
+        const found = ORDERS.find(o => o.id === id);
+        if (found) setTimeout(() => showNewOrderModal(id, found), 400);
+      }
+    } catch(_) {}
   }
 })();
 
@@ -516,17 +528,22 @@ async function loadOrders(fb=false) {
       if(added.length){
         Native.vibrate([60,30,60,30,120]);
         _known = serverIds;
+        if(d.orders) ORDERS = d.orders;
         if(typeof FlutterNotify !== 'undefined') FlutterNotify.postMessage(String(added.length));
         const newOrder = (d.orders||[]).find(o => added.includes(o.id)) || null;
+        // sessionStorage ga saqlaymiz — reload bo'lsa ham modal chiqsin
+        sessionStorage.setItem('vijdon_new_order', JSON.stringify({id: added[0], order: newOrder}));
         showNewOrderModal(added[0], newOrder);
         return;
       }
 
-      // Buyurtma o'chirilgan yoki kamaygan — reload
+      // Buyurtma o'chirilgan yoki kamaygan — ORDERS ni yangilaymiz, reload emas
       const removed = [..._known].filter(id => !serverIds.has(id));
       if(removed.length){
         _known = serverIds;
-        location.reload();
+        if(d.orders) ORDERS = d.orders;
+        // Faqat taximeter ochiq bo'lmasa reload qilamiz
+        if(!_tmxActive) location.reload();
         return;
       }
 
@@ -599,6 +616,7 @@ function closeNewOrderModal(autoClose = false) {
   clearInterval(_nomTimer);
   Audio.stopNewOrder();
   document.getElementById('new-order-modal').classList.add('hidden');
+  sessionStorage.removeItem('vijdon_new_order');
   if (autoClose) {
     _known = new Set(); // force reload to re-check
     setTimeout(() => location.reload(), 300);
@@ -1042,6 +1060,7 @@ function closeSheet(){
 
 async function doAction(id,action){
   Native.vibrate(); closeSheet(); closeNewOrderModal(false);
+  sessionStorage.removeItem('vijdon_new_order');
   if(action==='accept') Audio.accept();
   else if(action==='reject'||action==='cancel') Audio.reject();
   else if(action==='complete') Audio.complete();
