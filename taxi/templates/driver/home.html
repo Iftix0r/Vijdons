@@ -154,6 +154,8 @@ renderOrdersDOM();
 // ── Auto-refresh: har 2 soniyada ──────────────────────────────────────────
 if(IS_ON_DUTY) setInterval(loadOrders, 2000);
 
+let _suppressModal = false;
+
 async function loadOrders() {
   if(!navigator.onLine) return;
   try {
@@ -170,7 +172,7 @@ async function loadOrders() {
       renderOrdersDOM();
       Native.vibrate([60,30,60,30,120]);
       if(typeof FlutterNotify !== 'undefined') FlutterNotify.postMessage(String(added.length));
-      showNewOrderModal(added[0], ORDERS.find(o => o.id === added[0]) || null);
+      if(!_suppressModal) showNewOrderModal(added[0], ORDERS.find(o => o.id === added[0]) || null);
       return;
     }
 
@@ -848,11 +850,15 @@ async function doAction(id,action){
         await loadOrders();
       } else if(action==='arrived'||action==='cancel'||action==='complete'){
         tmxStop();
+        _suppressModal = true;
         _known = new Set();
         await loadOrders();
+        setTimeout(()=>{ _suppressModal = false; }, 5000);
       } else if(action==='accept'){
+        _suppressModal = true;
         _known = new Set();
         await loadOrders();
+        setTimeout(()=>{ _suppressModal = false; }, 5000);
         const updated=ORDERS.find(x=>x.id===id||x.id===Number(id));
         if(updated?.client_phone&&!updated.client_phone.includes('*')){
           showToast('Qabul qilindi',updated.client_phone,'success');
@@ -860,8 +866,10 @@ async function doAction(id,action){
         }
         if(updated) _renderSheet(id, updated);
       } else {
+        _suppressModal = true;
         _known = new Set();
         await loadOrders();
+        setTimeout(()=>{ _suppressModal = false; }, 3000);
       }
     } else showToast('Xatolik',d.error||"Qayta urinib ko'ring",'error');
   }catch(_){showToast('Tarmoq xatosi','Internet aloqasini tekshiring','error');}
