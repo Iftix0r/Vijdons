@@ -38,9 +38,15 @@ def find_nearest_driver(drivers, lat, lng):
 
 def send_telegram(text):
     """Telegram guruhiga xabar yuborish."""
-    from django.conf import settings
-    token = getattr(settings, 'TELEGRAM_BOT_TOKEN', '')
-    chat_id = getattr(settings, 'TELEGRAM_GROUP_ID', '')
+    try:
+        from taxi.models import BotSettings
+        cfg = BotSettings.get()
+        token   = cfg.bot_token.strip()
+        chat_id = cfg.group_id.strip()
+    except Exception:
+        from django.conf import settings
+        token   = getattr(settings, 'TELEGRAM_BOT_TOKEN', '')
+        chat_id = getattr(settings, 'TELEGRAM_GROUP_ID', '')
     if not token or not chat_id:
         return
     try:
@@ -56,6 +62,213 @@ def send_telegram(text):
         urllib.request.urlopen(req, timeout=5)
     except Exception:
         pass
+
+
+def _cfg():
+    """BotSettings singleton ni qaytaradi."""
+    try:
+        from taxi.models import BotSettings
+        return BotSettings.get()
+    except Exception:
+        return None
+
+
+# ── Telegram xabar shablonlari ────────────────────────────────────────────────
+
+def tg_new_order(order):
+    cfg = _cfg()
+    if cfg and not cfg.notify_new_order:
+        return
+    client = order.client
+    lines = [
+        f"🚨 <b>Yangi buyurtma #{order.id}</b>",
+        f"👤 Mijoz: {client.full_name or '—'} | <code>{client.phone_number}</code>",
+        f"📍 Qayerdan: {order.from_address}",
+    ]
+    if order.to_address:
+        lines.append(f"🏁 Qayerga: {order.to_address}")
+    if order.distance_km:
+        lines.append(f"📏 Masofa: {order.distance_km:.1f} km")
+    if order.price:
+        lines.append(f"💰 Narx: <b>{order.price} UZS</b>")
+    lines.append(f"💳 To'lov: {'Naqd 💵' if order.payment_type == 'cash' else 'Karta 💳'}")
+    if order.note:
+        lines.append(f"📝 Izoh: {order.note}")
+    send_telegram('\n'.join(lines))
+
+
+def tg_order_dispatched(order, driver):
+    cfg = _cfg()
+    if cfg and not cfg.notify_dispatched:
+        return
+    send_telegram(
+        f"📡 <b>Buyurtma #{order.id} yuborildi</b>\n"
+        f"🚗 Haydovchi: {driver.full_name} ({driver.car_number})\n"
+        f"📍 {order.from_address}"
+    )
+
+
+def tg_order_accepted(order, driver):
+    cfg = _cfg()
+    if cfg and not cfg.notify_accepted:
+        return
+    send_telegram(
+        f"✅ <b>Buyurtma #{order.id} qabul qilindi</b>\n"
+        f"🚗 {driver.full_name} | {driver.car_model} <code>{driver.car_number}</code>\n"
+        f"👤 {order.client.full_name or '—'} | <code>{order.client.phone_number}</code>\n"
+        f"📍 {order.from_address}" + (f" → {order.to_address}" if order.to_address else "") + "\n"
+        f"💰 {order.price or '—'} UZS"
+    )
+
+
+def tg_order_on_way(order, driver):
+    cfg = _cfg()
+    if cfg and not cfg.notify_on_way:
+        return
+    send_telegram(
+        f"🚗 <b>Haydovchi yo'lda #{order.id}</b>\n"
+        f"🚗 {driver.full_name} | <code>{driver.car_number}</code>\n"
+        f"👤 {order.client.full_name or '—'} | <code>{order.client.phone_number}</code>"
+    )
+
+
+def tg_order_arrived(order, driver):
+    cfg = _cfg()
+    if cfg and not cfg.notify_arrived:
+        return
+    send_telegram(
+        f"📍 <b>Haydovchi yetib keldi #{order.id}</b>\n"
+        f"🚗 {driver.full_name} | <code>{driver.car_number}</code> kutmoqda\n"
+        f"👤 {order.client.full_name or '—'} | <code>{order.client.phone_number}</code>"
+    )
+
+
+def tg_order_completed(order, driver):
+    cfg = _cfg()
+    if cfg and not cfg.notify_completed:
+        return
+    send_telegram(
+        f"🏁 <b>Buyurtma yakunlandi #{order.id}</b>\n"
+        f"🚗 {driver.full_name} | <code>{driver.car_number}</code>\n"
+        f"👤 {order.client.full_name or '—'} | <code>{order.client.phone_number}</code>\n"
+        f"📍 {order.from_address}" + (f" → {order.to_address}" if order.to_address else "") + "\n"
+        f"💰 {order.price or '—'} UZS | 📏 {f'{order.distance_km:.1f} km' if order.distance_km else '—'}"
+    )
+
+
+def tg_order_cancelled(order, driver):
+    cfg = _cfg()
+    if cfg and not cfg.notify_cancelled:
+        return
+    send_telegram(
+        f"❌ <b>Buyurtma bekor qilindi #{order.id}</b>\n"
+        f"🚗 Haydovchi: {driver.full_name}\n"
+        f"👤 {order.client.full_name or '—'} | <code>{order.client.phone_number}</code>\n"
+        f"📍 {order.from_address}"
+    )
+
+
+def tg_order_rejected(order, driver):
+    cfg = _cfg()
+    if cfg and not cfg.notify_rejected:
+        return
+    send_telegram(
+        f"🔄 <b>Buyurtma #{order.id} rad etildi</b>\n"
+        f"🚗 {driver.full_name} rad etdi\n"
+        f"📍 {order.from_address}"
+    )
+
+
+def tg_driver_registered(driver):
+    cfg = _cfg()
+    if cfg and not cfg.notify_driver_register:
+        return
+    send_telegram(
+        f"🆕 <b>Yangi haydovchi ro'yxatdan o'tdi</b>\n"
+        f"👤 {driver.full_name} | <code>{driver.phone_number}</code>\n"
+        f"🚗 {driver.car_model} | <code>{driver.car_number}</code>\n"
+        f"⏳ Tasdiqlash kutilmoqda"
+    )
+
+
+def tg_driver_approved(driver):
+    cfg = _cfg()
+    if cfg and not cfg.notify_driver_approved:
+        return
+    send_telegram(
+        f"✅ <b>Haydovchi tasdiqlandi</b>\n"
+        f"👤 {driver.full_name} | <code>{driver.phone_number}</code>\n"
+        f"🚗 {driver.car_model} | <code>{driver.car_number}</code>"
+    )
+
+
+def tg_driver_rejected(driver):
+    cfg = _cfg()
+    if cfg and not cfg.notify_driver_rejected:
+        return
+    send_telegram(
+        f"🚫 <b>Haydovchi rad etildi</b>\n"
+        f"👤 {driver.full_name} | <code>{driver.phone_number}</code>"
+    )
+
+
+def tg_driver_blocked(driver):
+    cfg = _cfg()
+    if cfg and not cfg.notify_driver_blocked:
+        return
+    send_telegram(
+        f"🔒 <b>Haydovchi bloklandi</b>\n"
+        f"👤 {driver.full_name} | <code>{driver.phone_number}</code>\n"
+        f"🚗 {driver.car_model} | <code>{driver.car_number}</code>"
+    )
+
+
+def tg_driver_unblocked(driver):
+    cfg = _cfg()
+    if cfg and not cfg.notify_driver_blocked:
+        return
+    send_telegram(
+        f"🔓 <b>Haydovchi bloki ochildi</b>\n"
+        f"👤 {driver.full_name} | <code>{driver.phone_number}</code>"
+    )
+
+
+def tg_driver_login(driver, ip=None):
+    cfg = _cfg()
+    if cfg and not cfg.notify_driver_login:
+        return
+    send_telegram(
+        f"🔑 <b>Haydovchi kirdi</b>\n"
+        f"👤 {driver.full_name} | <code>{driver.phone_number}</code>\n"
+        + (f"🌐 IP: <code>{ip}</code>" if ip else "")
+    )
+
+
+def tg_balance_changed(driver, amount, action):
+    cfg = _cfg()
+    if cfg and not cfg.notify_balance_changed:
+        return
+    sign = '+' if action == 'add' else '-'
+    emoji = '💚' if action == 'add' else '🔴'
+    send_telegram(
+        f"{emoji} <b>Balans o'zgardi</b>\n"
+        f"👤 {driver.full_name} | <code>{driver.phone_number}</code>\n"
+        f"💰 {sign}{amount} UZS\n"
+        f"📊 Joriy balans: {driver.balance} UZS"
+    )
+
+
+def tg_duty_changed(driver, is_on_duty):
+    cfg = _cfg()
+    if cfg and not cfg.notify_duty_changed:
+        return
+    emoji = '🟢' if is_on_duty else '🔴'
+    status = 'Navbatga kirdi' if is_on_duty else 'Navbatdan chiqdi'
+    send_telegram(
+        f"{emoji} <b>{status}</b>\n"
+        f"👤 {driver.full_name} | <code>{driver.phone_number}</code>\n"
+        f"🚗 {driver.car_model} | <code>{driver.car_number}</code>"
+    )
 
 
 def send_fcm(fcm_token, title, body, data=None):
@@ -181,6 +394,7 @@ def dispatch_order(order):
             'client_phone': order.client.phone_number,
         },
     )
+    tg_order_dispatched(order, nearest)
 
     # 10 sekundlik (yoki sozlangan) kutish taymeri
     import threading

@@ -133,18 +133,18 @@ class _MapScreenState extends State<MapScreen> {
         ),
       );
       final session = await result.result;
-      if (session.routes.isNotEmpty) {
-        final route = session.routes.first;
+      final routes = session.routes;
+      if (routes != null && routes.isNotEmpty) {
+        final geometry = routes.first.geometry;
         setState(() {
           _mapObjects.removeWhere((o) => o.mapId == _routePolylineId);
           _mapObjects.add(PolylineMapObject(
             mapId: _routePolylineId,
-            polyline: route.geometry,
+            polyline: Polyline(points: geometry),
             strokeColor: AppColors.primary,
             strokeWidth: 4,
           ));
         });
-        // Kamera marshrut bo'ylab joylashsin
         _mapController?.moveCamera(
           CameraUpdate.newBounds(
             BoundingBox(

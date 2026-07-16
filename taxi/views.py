@@ -1,8 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q
 from django.http import JsonResponse
-from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog
-from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order
+from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings
+from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed
 
 
 def _get_client_ip(request):
@@ -72,17 +72,7 @@ def order_create(request):
             )
 
             # Telegram xabar
-            driver_txt = driver.full_name if driver else 'Biriktirilmagan'
-            send_telegram(
-                f"🚨 <b>Yangi buyurtma #{order.id}</b>\n"
-                f"👤 Mijoz: {client.full_name or phone_number} ({phone_number})\n"
-                f"📍 Manzil: {from_address}"
-                + (f" → {to_address}" if to_address else "")
-                + f"\n💰 Narx: {price or '—'} UZS | {distance_km and f'{distance_km:.1f} km' or '—'}\n"
-                f"🚗 Haydovchi: {driver_txt}\n"
-                f"💳 To'lov: {'Naqd' if payment_type == 'cash' else 'Karta'}"
-                + (f"\n📝 Izoh: {note}" if note else "")
-            )
+            tg_new_order(order)
 
             # Dispatch — eng yaqin haydovchiga yuborish
             import threading
@@ -149,6 +139,10 @@ def driver_toggle_active(request, pk):
         detail = 'Admin tomonidan ' + ('blok ochildi' if driver.is_active else 'bloklandi')
         DriverActivityLog.objects.create(driver=driver, action=action, detail=detail,
             ip_address=_get_client_ip(request), user_agent=request.META.get('HTTP_USER_AGENT', ''))
+        if driver.is_active:
+            tg_driver_unblocked(driver)
+        else:
+            tg_driver_blocked(driver)
     return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
 
 
@@ -162,9 +156,11 @@ def driver_approve(request, pk):
             if driver.user:
                 driver.user.is_active = True
                 driver.user.save(update_fields=['is_active'])
+            tg_driver_approved(driver)
         elif action == 'reject':
             driver.approval_status = Driver.APPROVAL_REJECTED
             driver.is_active = False
+            tg_driver_rejected(driver)
         driver.save(update_fields=['approval_status', 'is_active'])
     return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
 
@@ -173,21 +169,20 @@ def driver_recharge(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == 'POST':
         amount = request.POST.get('amount')
-        action = request.POST.get('action', 'add')  # 'add' or 'deduct'
+        action = request.POST.get('action', 'add')
         from decimal import Decimal
         try:
             amount = Decimal(amount)
             if action == 'deduct':
                 driver.balance -= amount
                 detail = f"-{amount} UZS (admin ayirdi)"
-                log_action = DriverActivityLog.ACTION_BALANCE
             else:
                 driver.balance += amount
                 detail = f"+{amount} UZS (admin qo'shdi)"
-                log_action = DriverActivityLog.ACTION_BALANCE
             driver.save(update_fields=['balance'])
-            DriverActivityLog.objects.create(driver=driver, action=log_action, detail=detail,
+            DriverActivityLog.objects.create(driver=driver, action=DriverActivityLog.ACTION_BALANCE, detail=detail,
                 ip_address=_get_client_ip(request), user_agent=request.META.get('HTTP_USER_AGENT', ''))
+            tg_balance_changed(driver, amount, action)
         except (ValueError, TypeError, Exception):
             pass
     return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
@@ -348,6 +343,35 @@ def client_list(request):
 
 
 # ── Tariff Settings ────────────────────────────────────────────────────────────
+
+def bot_settings(request):
+    bot = BotSettings.get()
+    if request.method == 'POST':
+        bot.bot_token = request.POST.get('bot_token', '').strip()
+        bot.group_id  = request.POST.get('group_id', '').strip()
+        bot.notify_new_order       = 'notify_new_order'       in request.POST
+        bot.notify_dispatched      = 'notify_dispatched'      in request.POST
+        bot.notify_accepted        = 'notify_accepted'        in request.POST
+        bot.notify_on_way          = 'notify_on_way'          in request.POST
+        bot.notify_arrived         = 'notify_arrived'         in request.POST
+        bot.notify_completed       = 'notify_completed'       in request.POST
+        bot.notify_cancelled       = 'notify_cancelled'       in request.POST
+        bot.notify_rejected        = 'notify_rejected'        in request.POST
+        bot.notify_driver_register = 'notify_driver_register' in request.POST
+        bot.notify_driver_approved = 'notify_driver_approved' in request.POST
+        bot.notify_driver_rejected = 'notify_driver_rejected' in request.POST
+        bot.notify_driver_blocked  = 'notify_driver_blocked'  in request.POST
+        bot.notify_driver_login    = 'notify_driver_login'    in request.POST
+        bot.notify_duty_changed    = 'notify_duty_changed'    in request.POST
+        bot.notify_balance_changed = 'notify_balance_changed' in request.POST
+        bot.save()
+        # Test xabar yuborish
+        if 'test' in request.POST and bot.bot_token and bot.group_id:
+            from .utils import send_telegram
+            send_telegram('✅ <b>VijdonTaxi bot ulanishi muvaffaqiyatli!</b>\nBu test xabari.')
+        return redirect('taxi:bot_settings')
+    return render(request, 'taxi/bot_settings.html', {'bot': bot})
+
 
 def maps_settings(request):
     maps = MapsSettings.get()

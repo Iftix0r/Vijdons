@@ -115,7 +115,50 @@ class ChatMessage(models.Model):
         ordering = ['created_at']
 
 
-class MapsSettings(models.Model):
+class BotSettings(models.Model):
+    """Singleton: Telegram bot sozlamalari."""
+    bot_token  = models.CharField(max_length=200, blank=True, default='', verbose_name='Bot Token',
+                                  help_text='@BotFather dan olingan token')
+    group_id   = models.CharField(max_length=50, blank=True, default='', verbose_name='Guruh Chat ID',
+                                  help_text='Operatorlar Telegram guruhi chat_id')
+
+    # Bildirishnoma toggle lar
+    notify_new_order      = models.BooleanField(default=True,  verbose_name='Yangi buyurtma')
+    notify_dispatched     = models.BooleanField(default=True,  verbose_name='Buyurtma yuborildi')
+    notify_accepted       = models.BooleanField(default=True,  verbose_name='Buyurtma qabul qilindi')
+    notify_on_way         = models.BooleanField(default=True,  verbose_name="Haydovchi yo'lda")
+    notify_arrived        = models.BooleanField(default=True,  verbose_name='Haydovchi yetib keldi')
+    notify_completed      = models.BooleanField(default=True,  verbose_name='Buyurtma yakunlandi')
+    notify_cancelled      = models.BooleanField(default=True,  verbose_name='Buyurtma bekor qilindi')
+    notify_rejected       = models.BooleanField(default=False, verbose_name='Buyurtma rad etildi')
+    notify_driver_register= models.BooleanField(default=True,  verbose_name="Yangi haydovchi ro'yxatdan o'tdi")
+    notify_driver_approved= models.BooleanField(default=True,  verbose_name='Haydovchi tasdiqlandi')
+    notify_driver_rejected= models.BooleanField(default=True,  verbose_name='Haydovchi rad etildi')
+    notify_driver_blocked = models.BooleanField(default=True,  verbose_name='Haydovchi bloklandi/ochildi')
+    notify_driver_login   = models.BooleanField(default=False, verbose_name='Haydovchi kirdi (login)')
+    notify_duty_changed   = models.BooleanField(default=False, verbose_name='Navbat holati o\'zgardi')
+    notify_balance_changed= models.BooleanField(default=True,  verbose_name='Balans o\'zgardi')
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return 'Telegram Bot Sozlamalari'
+
+    class Meta:
+        verbose_name = 'Bot sozlamalari'
+        verbose_name_plural = 'Bot sozlamalari'
+
+
+
     """Singleton: admin paneldan geocoding API sozlamalari."""
     PROVIDER_NOMINATIM = 'nominatim'
     PROVIDER_YANDEX    = 'yandex'

@@ -34,7 +34,7 @@ from .serializers import (
     DriverProfileSerializer,
     OrderSerializer,
 )
-from .utils import send_telegram, dispatch_order
+from .utils import send_telegram, dispatch_order, tg_new_order, tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected, tg_driver_registered, tg_driver_login, tg_duty_changed
 
 
 def _get_ip(request):
@@ -90,6 +90,7 @@ def driver_register(request):
     serializer = DriverRegisterSerializer(data=request.data)
     if serializer.is_valid():
         driver = serializer.save()
+        tg_driver_registered(driver)
         return Response(
             {
                 'detail': "Ro'yxatdan muvaffaqiyatli o'tdingiz. Admin tasdiqlagandan so'ng kirishingiz mumkin.",
@@ -124,6 +125,7 @@ def driver_login(request):
 
     token, _ = Token.objects.get_or_create(user=user)
     _log(driver, DriverActivityLog.ACTION_LOGIN, request=request)
+    tg_driver_login(driver, ip=_get_ip(request))
     return Response({'token': token.key, 'driver': DriverProfileSerializer(driver).data})
 
 
@@ -144,6 +146,7 @@ def driver_duty_toggle(request, driver):
     driver.save(update_fields=['is_on_duty'])
     action = DriverActivityLog.ACTION_DUTY_ON if driver.is_on_duty else DriverActivityLog.ACTION_DUTY_OFF
     _log(driver, action, request=request)
+    tg_duty_changed(driver, driver.is_on_duty)
     return Response({'is_on_duty': driver.is_on_duty})
 
 
@@ -261,7 +264,11 @@ def _order_action(request, driver, pk, allowed_statuses, new_status):
     order.save(update_fields=update_fields)
 
     # Telegram xabarlari
-    _notify_telegram(order, new_status, driver)
+    if new_status == 'accepted':  tg_order_accepted(order, driver)
+    elif new_status == 'on_way':  tg_order_on_way(order, driver)
+    elif new_status == 'arrived': tg_order_arrived(order, driver)
+    elif new_status == 'completed': tg_order_completed(order, driver)
+    elif new_status == 'cancelled': tg_order_cancelled(order, driver)
 
     return Response(OrderSerializer(order, context={'request': request}).data)
 
@@ -286,8 +293,7 @@ def order_reject(request, driver, pk):
     if was_dispatched:
         order.dispatched_to = None
         order.save(update_fields=['dispatched_to'])
-
-        # Keyingi haydovchiga yuborish
+        tg_order_rejected(order, driver)
         import threading
         threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
 
@@ -328,40 +334,6 @@ def order_complete(request, driver, pk):
 def order_cancel(request, driver, pk):
     return _order_action(request, driver, pk, ['accepted', 'on_way', 'arrived'], 'cancelled')
 
-
-def _notify_telegram(order, new_status, driver):
-    msgs = {
-        'accepted': (
-            f"🚖 <b>Buyurtma #{order.id} qabul qilindi</b>\n"
-            f"👤 Mijoz: {order.client.full_name or order.client.phone_number}\n"
-            f"📍 {order.from_address} → {order.to_address}\n"
-            f"🚗 Haydovchi: {driver.full_name} ({driver.car_number})\n"
-            f"💰 Narx: {order.price or '—'} UZS"
-        ),
-        'on_way': (
-            f"🚗 <b>Haydovchi yo'lda #{order.id}</b>\n"
-            f"👤 {order.client.full_name or order.client.phone_number} ({order.client.phone_number})\n"
-            f"🚗 {driver.full_name} — {driver.car_model} ({driver.car_number})"
-        ),
-        'arrived': (
-            f"📍 <b>Haydovchi yetib keldi #{order.id}</b>\n"
-            f"👤 {order.client.full_name or order.client.phone_number} ({order.client.phone_number})\n"
-            f"🚗 {driver.full_name} — {driver.car_number} kutmoqda"
-        ),
-        'completed': (
-            f"✅ <b>Buyurtma yakunlandi #{order.id}</b>\n"
-            f"👤 {order.client.full_name or order.client.phone_number}\n"
-            f"📍 {order.from_address} → {order.to_address}\n"
-            f"💰 {order.price or '—'} UZS | 🚗 {driver.full_name}"
-        ),
-        'cancelled': (
-            f"❌ <b>Buyurtma bekor qilindi #{order.id}</b>\n"
-            f"🚗 Haydovchi: {driver.full_name}"
-        ),
-    }
-    msg = msgs.get(new_status)
-    if msg:
-        send_telegram(msg)
 
 
 # ── Maps config ──────────────────────────────────────────────────────────────

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
-import 'core/api_service.dart';
 import 'core/theme.dart';
 import 'core/notification_service.dart';
 import 'screens/splash_screen.dart';
@@ -10,8 +9,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   AndroidYandexMap.useAndroidViewSurface = false;
-  final apiKey = await ApiService.getMapsApiKey() ?? '';
-  await YandexMap.initialize(apiKey: apiKey);
+  // API key AndroidManifest.xml orqali beriladi, initialize chaqirilmaydi
 
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -34,8 +32,7 @@ class VijdonDriverApp extends StatelessWidget {
       title: 'VijdonTaxi',
       debugShowCheckedModeBanner: false,
       theme:     AppTheme.light,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.light,
       home: const SplashScreen(),
     );
   }
