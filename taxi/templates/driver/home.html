@@ -846,18 +846,23 @@ async function doAction(id,action){
       if(action==='on_way'){
         const o=ORDERS.find(x=>x.id===id||x.id===Number(id));
         tmxStart(id, o||null);
+        _suppressModal = true;
         _known = new Set();
         await loadOrders();
+        renderOrdersDOM();
+        setTimeout(()=>{ _suppressModal = false; }, 5000);
       } else if(action==='arrived'||action==='cancel'||action==='complete'){
         tmxStop();
         _suppressModal = true;
         _known = new Set();
         await loadOrders();
+        renderOrdersDOM();
         setTimeout(()=>{ _suppressModal = false; }, 5000);
       } else if(action==='accept'){
         _suppressModal = true;
         _known = new Set();
         await loadOrders();
+        renderOrdersDOM();
         setTimeout(()=>{ _suppressModal = false; }, 5000);
         const updated=ORDERS.find(x=>x.id===id||x.id===Number(id));
         if(updated?.client_phone&&!updated.client_phone.includes('*')){
@@ -869,6 +874,7 @@ async function doAction(id,action){
         _suppressModal = true;
         _known = new Set();
         await loadOrders();
+        renderOrdersDOM();
         setTimeout(()=>{ _suppressModal = false; }, 3000);
       }
     } else showToast('Xatolik',d.error||"Qayta urinib ko'ring",'error');
