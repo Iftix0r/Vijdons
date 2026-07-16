@@ -9,6 +9,7 @@ urlpatterns = [
 
     path('orders/', views.order_list, name='order_list'),
     path('orders/add/', views.order_create, name='order_create'),
+    path('orders/<int:pk>/', views.order_detail, name='order_detail'),
     path('orders/<int:pk>/status/', views.order_update_status, name='order_update_status'),
     path('orders/<int:pk>/delete/', views.order_delete, name='order_delete'),
 
@@ -29,6 +30,7 @@ urlpatterns = [
 
     path('clients/', views.client_list, name='client_list'),
     path('clients/add/', views.client_create, name='client_create'),
+    path('clients/<int:pk>/', views.client_detail, name='client_detail'),
     path('clients/<int:pk>/delete/', views.client_delete, name='client_delete'),
 
     # ── Mobile API ──

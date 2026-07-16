@@ -1,50 +1,40 @@
 import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-/// Buyurtma kelganda ovoz va bildirishnoma chiqarish servisi
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notif =
       FlutterLocalNotificationsPlugin();
   static final AudioPlayer _player = AudioPlayer();
-
   static bool _initialized = false;
-
-  // ── Init ──────────────────────────────────────────────────────────────────
 
   static Future<void> init() async {
     if (_initialized) return;
 
-    // Android init
     const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-
-    // iOS init
+        AndroidInitializationSettings('@drawable/ic_notification');
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
 
-    const initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
-
     await _notif.initialize(
-      settings: initSettings,
+      settings: const InitializationSettings(
+        android: androidSettings,
+        iOS: iosSettings,
+      ),
       onDidReceiveNotificationResponse: (_) {},
     );
 
-    // Android notification channel
     final vibrationPattern = Int64List.fromList([0, 300, 200, 300]);
-
     final channel = AndroidNotificationChannel(
       'new_orders_channel',
       'Yangi buyurtmalar',
       description: 'Yangi buyurtma kelganda bildirishnoma',
       importance: Importance.max,
-      playSound: false, // ovozni audioplayers orqali chiqaramiz
+      playSound: false,
       enableVibration: true,
       vibrationPattern: vibrationPattern,
     );
@@ -57,9 +47,6 @@ class NotificationService {
     _initialized = true;
   }
 
-  // ── Show notification + play sound ────────────────────────────────────────
-
-  /// [count] - yangi buyurtmalar soni
   static Future<void> notifyNewOrder(int count) async {
     await _playOrderSound();
     await _showNotification(count);
@@ -70,12 +57,9 @@ class NotificationService {
       await _player.stop();
       await _player.setReleaseMode(ReleaseMode.loop);
       await _player.play(AssetSource('sounds/new_order.wav'));
-    } catch (_) {
-      // Ovoz chiqmasa ham ilovani to'xtatmaymiz
-    }
+    } catch (_) {}
   }
 
-  /// Ovoz chalishni to'xtatish
   static Future<void> stopOrderSound() async {
     try {
       await _player.stop();
@@ -101,7 +85,9 @@ class NotificationService {
       playSound: false,
       enableVibration: true,
       vibrationPattern: vibrationPattern,
-      icon: '@mipmap/ic_launcher',
+      icon: '@drawable/ic_notification',
+      color: const Color(0xFFFFD600),
+      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
     );
 
     const iosDetails = DarwinNotificationDetails(
@@ -110,16 +96,14 @@ class NotificationService {
       presentSound: true,
     );
 
-    final details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-
     await _notif.show(
       id: 1001,
       title: title,
       body: body,
-      notificationDetails: details,
+      notificationDetails: NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      ),
     );
   }
 

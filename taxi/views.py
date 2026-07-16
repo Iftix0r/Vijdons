@@ -14,7 +14,38 @@ def _get_client_ip(request):
 
 # ── Order ──────────────────────────────────────────────────────────────────────
 
-def order_create(request):
+def order_detail(request, pk):
+    order = get_object_or_404(
+        Order.objects.select_related('client', 'driver', 'dispatched_to')
+             .prefetch_related('rejected_by'),
+        pk=pk
+    )
+    client_orders = Order.objects.filter(client=order.client).order_by('-created_at')[:10]
+    return render(request, 'taxi/order_detail.html', {
+        'order':         order,
+        'client_orders': client_orders,
+        'drivers':       Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED),
+    })
+
+
+def client_detail(request, pk):
+    from django.db.models import Sum, Count
+    client = get_object_or_404(Client, pk=pk)
+    orders = Order.objects.filter(client=client).select_related('driver').order_by('-created_at')
+    stats = orders.aggregate(
+        total=Count('id'),
+        completed=Count('id', filter=Q(status='completed')),
+        cancelled=Count('id', filter=Q(status='cancelled')),
+        total_spent=Sum('price', filter=Q(status='completed')),
+    )
+    return render(request, 'taxi/client_detail.html', {
+        'client': client,
+        'orders': orders,
+        'stats':  stats,
+    })
+
+
+
     if request.method == 'POST':
         phone_number = request.POST.get('phone_number', '').strip()
         from_address = request.POST.get('from_address', '').strip()
