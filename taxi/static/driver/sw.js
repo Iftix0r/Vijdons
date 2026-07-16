@@ -1,50 +1,12 @@
-const CACHE = 'vijdon-v3';
-const PRECACHE = [
-  '/driver/home/',
-  '/driver/history/',
-  '/driver/chat/',
-  '/driver/profile/',
-];
-
-// Install: asosiy sahifalarni keshga olish
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting())
-  );
-});
-
-// Activate: eski keshlarni tozalash
+// Barcha keshlarni tozalaymiz — sahifa har doim serverdan yuklanadi
+self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
-
-// Fetch: Network-first, offline bo'lsa keshdan
-self.addEventListener('fetch', e => {
-  const url = new URL(e.request.url);
-
-  // API so'rovlarini keshlamaymiz
-  if (url.pathname.includes('/json') ||
-      url.pathname.includes('/sync/') ||
-      url.pathname.includes('/orders/') ||
-      e.request.method !== 'GET') return;
-
-  e.respondWith(
-    fetch(e.request)
-      .then(res => {
-        // Muvaffaqiyatli javobni keshga saqlaymiz
-        if (res.ok && url.pathname.startsWith('/driver/')) {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-        }
-        return res;
-      })
-      .catch(() => caches.match(e.request))
-  );
-});
+// Fetch: hech narsani keshlamaymiz, har doim network
 
 // Push notification — OVOZLI va kuchli
 self.addEventListener('push', e => {

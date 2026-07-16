@@ -64,260 +64,21 @@
   <span class="ios-caption" id="ptr-txt">Yangilash uchun torting</span>
 </div>
 
-<!-- Content -->
-<div class="px-4 py-3 space-y-3" id="orders-wrap">
+<style>
+@keyframes radar-ring{0%{transform:scale(.55);opacity:.7}100%{transform:scale(2.6);opacity:0}}
+.radar-ring{position:absolute;inset:0;border-radius:50%;border:2px solid #FFD600;animation:radar-ring 2.4s ease-out infinite}
+.radar-ring:nth-child(2){animation-delay:.8s}.radar-ring:nth-child(3){animation-delay:1.6s}
+@keyframes radar-sweep{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.radar-sweep{position:absolute;inset:0;border-radius:50%;animation:radar-sweep 2s linear infinite;background:conic-gradient(from 0deg,rgba(255,214,0,.45) 0deg,transparent 90deg)}
+@keyframes dot-blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+.dot-blink{animation:dot-blink 1.4s ease-in-out infinite}
+.dot-blink:nth-child(2){animation-delay:.2s}.dot-blink:nth-child(3){animation-delay:.4s}
+@keyframes wave-shadow{0%,100%{box-shadow:0 8px 32px rgba(255,214,0,.18)}50%{box-shadow:0 12px 48px rgba(255,214,0,.42)}}
+.radar-core{animation:wave-shadow 2s ease-in-out infinite}
+</style>
 
-  {% if not driver.is_on_duty %}
-  <!-- ── OFFLINE STATE ── -->
-  <div class="space-y-3 anim-fade">
-
-    <!-- Balans karta -->
-    <div class="ios-card rounded-[16px] p-5">
-      <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">JORIY BALANS</div>
-      <div class="text-[34px] font-bold leading-tight {% if driver.balance < 0 %}text-[#FF3B30]{% else %}text-[#34C759]{% endif %}">
-        {{ driver.balance|floatformat:0 }}<span class="ios-title font-medium ml-1" style="color:var(--ios-label3)">so'm</span>
-      </div>
-      {% if driver.balance < 0 %}
-      <div class="flex items-center gap-1.5 mt-2 text-[#FF3B30] ios-caption font-medium">
-        <i class="fas fa-exclamation-circle text-xs"></i> Navbat boshlash uchun balansni to'ldiring
-      </div>
-      {% endif %}
-    </div>
-
-    <!-- Statistika -->
-    <div class="grid grid-cols-2 gap-2">
-      <div class="ios-card rounded-[14px] p-4">
-        <div class="ios-caption2 font-semibold mb-2" style="color:var(--ios-label3)">JAMI SAFARLAR</div>
-        <div class="ios-title font-bold text-[#FFD600]">{{ driver.trips_count|default:0 }}</div>
-      </div>
-      <div class="ios-card rounded-[14px] p-4">
-        <div class="ios-caption2 font-semibold mb-2" style="color:var(--ios-label3)">REYTING</div>
-        <div class="ios-title font-bold text-[#FF9500]">
-          {% if driver.rating %}{{ driver.rating|floatformat:1 }} &#9733;{% else %}&mdash;{% endif %}
-        </div>
-      </div>
-    </div>
-
-    <!-- Mashina ma'lumoti -->
-    <div class="ios-card rounded-[16px] p-4 flex items-center gap-3">
-      <div class="w-11 h-11 rounded-[12px] bg-[rgba(0,122,255,.1)] flex items-center justify-center flex-shrink-0">
-        <i class="fas fa-car text-[#007AFF] text-lg"></i>
-      </div>
-      <div class="flex-1">
-        <div class="ios-subhead font-semibold">{{ driver.car_model }}</div>
-        <div class="ios-caption font-mono tracking-wider mt-0.5" style="color:var(--ios-label3)">{{ driver.car_number }}</div>
-      </div>
-      <a href="{% url 'driver:profile' %}" class="ios-caption font-medium text-[#007AFF] active:opacity-60">Tahrirlash</a>
-    </div>
-
-    <!-- Tarix havolasi -->
-    <a href="{% url 'driver:history' %}" onclick="Native.vibrate()"
-       class="ios-card rounded-[16px] p-4 flex items-center gap-3 active:opacity-70 transition-opacity">
-      <div class="w-11 h-11 rounded-[12px] bg-[rgba(255,214,0,.12)] flex items-center justify-center flex-shrink-0">
-        <i class="fas fa-clock-rotate-left text-[#FFD600] text-lg"></i>
-      </div>
-      <div class="flex-1">
-        <div class="ios-subhead font-semibold">Buyurtmalar tarixi</div>
-        <div class="ios-caption mt-0.5" style="color:var(--ios-label3)">O'tgan safarlarni ko'rish</div>
-      </div>
-      <i class="fas fa-chevron-right ios-caption" style="color:var(--ios-label3)"></i>
-    </a>
-
-  </div>
-
-  {% elif orders %}
-  <!-- ── ORDERS LIST ── -->
-  {% for order in orders %}
-  <div class="ios-card active:opacity-70 transition-opacity cursor-pointer anim-up"
-       onclick="openOrder({{ order.id }})"
-       style="animation-delay:{{ forloop.counter0 }}0ms;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-    <div class="p-4">
-      <!-- Top row -->
-      <div class="flex items-center justify-between mb-3">
-        <span class="ios-caption2 font-semibold px-2.5 py-1 rounded-[8px]
-          {% if order.status == 'pending' %}pill-yellow
-          {% elif order.status == 'accepted' %}pill-blue
-          {% elif order.status == 'on_way' %}pill-purple
-          {% elif order.status == 'arrived' %}pill-green{% endif %}">
-          {{ order.get_status_display }}
-        </span>
-        <div class="flex items-center gap-2">
-          <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">
-            {% if order.payment_type == 'cash' %}💵 Naqd{% else %}💳 Karta{% endif %}
-          </span>
-          <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">#{{ order.id }}</span>
-        </div>
-      </div>
-      <!-- Route -->
-      <div class="space-y-2">
-        <div class="flex items-start gap-2.5">
-          <div class="w-2 h-2 rounded-full bg-[#34C759] mt-1.5 flex-shrink-0"></div>
-          <span class="ios-subhead font-medium leading-snug">{{ order.from_address }}</span>
-        </div>
-        {% if order.to_address %}
-        <div class="flex items-start gap-2.5">
-          <i class="fas fa-location-dot text-[#FF3B30] text-xs mt-1 flex-shrink-0"></i>
-          <span class="ios-subhead leading-snug" style="color:var(--ios-label3)">{{ order.to_address }}</span>
-        </div>
-        {% endif %}
-      </div>
-      <!-- Footer -->
-      <div class="flex items-center justify-between mt-3 pt-3" style="border-top:.5px solid var(--ios-sep)">
-        <div class="flex items-center gap-3">
-          {% if order.price %}<span class="ios-subhead font-semibold text-[#34C759]">{{ order.price|floatformat:0 }} so'm</span>{% endif %}
-          {% if order.distance_km %}<span class="ios-caption" style="color:var(--ios-label3)">{{ order.distance_km|floatformat:1 }} km</span>{% endif %}
-        </div>
-        <i class="fas fa-chevron-right ios-caption2" style="color:var(--ios-label3)"></i>
-      </div>
-    </div>
-  </div>
-  {% endfor %}
-
-  {% else %}
-  <!-- ── SEARCHING STATE ── -->
-  <style>
-    /* Radar halqalari */
-    @keyframes radar-ring {
-      0%   { transform: scale(.55); opacity: .7; }
-      100% { transform: scale(2.6); opacity: 0; }
-    }
-    .radar-ring {
-      position: absolute;
-      inset: 0;
-      border-radius: 50%;
-      border: 2px solid #FFD600;
-      animation: radar-ring 2.4s ease-out infinite;
-    }
-    .radar-ring:nth-child(2) { animation-delay: .8s; }
-    .radar-ring:nth-child(3) { animation-delay: 1.6s; }
-
-    /* Aylanuvchi "sweeper" chizig'i */
-    @keyframes radar-sweep {
-      from { transform: rotate(0deg); }
-      to   { transform: rotate(360deg); }
-    }
-    .radar-sweep {
-      position: absolute;
-      inset: 0;
-      border-radius: 50%;
-      animation: radar-sweep 2s linear infinite;
-      background: conic-gradient(from 0deg, rgba(255,214,0,.45) 0deg, transparent 90deg);
-    }
-
-    /* Dot blink */
-    @keyframes dot-blink {
-      0%,100% { opacity: 1; transform: scale(1); }
-      50%      { opacity: .4; transform: scale(.7); }
-    }
-    .dot-blink { animation: dot-blink 1.4s ease-in-out infinite; }
-    .dot-blink:nth-child(2) { animation-delay: .2s; }
-    .dot-blink:nth-child(3) { animation-delay: .4s; }
-
-    /* Shimmer kartalar */
-    @keyframes shimmer-move {
-      0%   { background-position: -600px 0; }
-      100% { background-position:  600px 0; }
-    }
-    .search-card-shimmer {
-      border-radius: 16px;
-      background: linear-gradient(
-        90deg,
-        var(--ios-card) 0%,
-        var(--ios-fill) 40%,
-        rgba(255,214,0,.08) 50%,
-        var(--ios-fill) 60%,
-        var(--ios-card) 100%
-      );
-      background-size: 600px 100%;
-      animation: shimmer-move 1.8s ease-in-out infinite;
-    }
-
-    /* Pastdagi to'lqin soya */
-    @keyframes wave-shadow {
-      0%,100% { box-shadow: 0 8px 32px rgba(255,214,0,.18); }
-      50%      { box-shadow: 0 12px 48px rgba(255,214,0,.42); }
-    }
-    .radar-core { animation: wave-shadow 2s ease-in-out infinite; }
-  </style>
-
-  <div class="flex flex-col items-center pt-10 pb-6 gap-6 anim-fade">
-
-    <!-- Radar animatsiyasi -->
-    <div class="relative flex items-center justify-center" style="width:160px;height:160px">
-      <!-- Halqalar -->
-      <div class="radar-ring"></div>
-      <div class="radar-ring"></div>
-      <div class="radar-ring"></div>
-      <!-- Sweeper -->
-      <div class="absolute inset-0 rounded-full overflow-hidden">
-        <div class="radar-sweep"></div>
-      </div>
-      <!-- Markaziy disk -->
-      <div class="radar-core relative z-10 w-[72px] h-[72px] rounded-full bg-[#FFD600] flex items-center justify-center"
-           style="border: 3px solid rgba(255,214,0,.3)">
-        <i class="fas fa-taxi text-black text-[26px]"></i>
-      </div>
-    </div>
-
-    <!-- Matn + dot animatsiya -->
-    <div class="text-center">
-      <p class="ios-title font-semibold">Buyurtma qidirilmoqda</p>
-      <div class="flex items-center justify-center gap-1.5 mt-2">
-        <span class="dot-blink w-[6px] h-[6px] rounded-full bg-[#FFD600]"></span>
-        <span class="dot-blink w-[6px] h-[6px] rounded-full bg-[#FFD600]"></span>
-        <span class="dot-blink w-[6px] h-[6px] rounded-full bg-[#FFD600]"></span>
-      </div>
-      <p class="ios-caption mt-2" style="color:var(--ios-label3)">Yangi buyurtma kelganda signal beriladi</p>
-    </div>
-
-    <!-- Shimmer "kutilayotgan buyurtma" kartalar -->
-    <div class="w-full space-y-3">
-      <!-- Karta 1 -->
-      <div class="search-card-shimmer p-4" style="height:96px;position:relative;overflow:hidden">
-        <div style="display:flex;gap:10px;align-items:flex-start">
-          <div style="width:8px;height:8px;border-radius:50%;background:rgba(52,199,89,.3);margin-top:5px;flex-shrink:0"></div>
-          <div style="flex:1">
-            <div style="height:11px;border-radius:6px;background:var(--ios-fill);width:70%;margin-bottom:10px"></div>
-            <div style="height:9px;border-radius:6px;background:var(--ios-fill);width:45%"></div>
-          </div>
-          <div style="width:52px;height:20px;border-radius:8px;background:rgba(255,214,0,.15)"></div>
-        </div>
-        <div style="height:.5px;background:var(--ios-sep);margin:10px 0 8px"></div>
-        <div style="display:flex;gap:8px">
-          <div style="height:9px;border-radius:5px;background:var(--ios-fill);width:30%"></div>
-          <div style="height:9px;border-radius:5px;background:var(--ios-fill);width:20%"></div>
-        </div>
-      </div>
-      <!-- Karta 2 -->
-      <div class="search-card-shimmer p-4" style="height:78px;opacity:.65;position:relative;overflow:hidden;animation-delay:.3s">
-        <div style="display:flex;gap:10px;align-items:flex-start">
-          <div style="width:8px;height:8px;border-radius:50%;background:rgba(52,199,89,.3);margin-top:5px;flex-shrink:0"></div>
-          <div style="flex:1">
-            <div style="height:11px;border-radius:6px;background:var(--ios-fill);width:55%;margin-bottom:10px"></div>
-            <div style="height:9px;border-radius:6px;background:var(--ios-fill);width:35%"></div>
-          </div>
-          <div style="width:40px;height:20px;border-radius:8px;background:rgba(0,122,255,.1)"></div>
-        </div>
-        <div style="height:.5px;background:var(--ios-sep);margin:10px 0 8px"></div>
-        <div style="height:9px;border-radius:5px;background:var(--ios-fill);width:25%"></div>
-      </div>
-      <!-- Karta 3 -->
-      <div class="search-card-shimmer p-4" style="height:64px;opacity:.35;position:relative;overflow:hidden;animation-delay:.6s">
-        <div style="display:flex;gap:10px;align-items:flex-start">
-          <div style="width:8px;height:8px;border-radius:50%;background:rgba(52,199,89,.2);margin-top:5px;flex-shrink:0"></div>
-          <div style="flex:1">
-            <div style="height:11px;border-radius:6px;background:var(--ios-fill);width:40%"></div>
-          </div>
-        </div>
-        <div style="height:.5px;background:var(--ios-sep);margin:10px 0 8px"></div>
-        <div style="height:9px;border-radius:5px;background:var(--ios-fill);width:20%"></div>
-      </div>
-    </div>
-
-  </div>
-  {% endif %}
-
-</div>
+<!-- Content: JS tomonidan to'ldiriladi -->
+<div class="px-4 py-3 space-y-3" id="orders-wrap"></div>
 
 <!-- ── Taximeter Overlay ── -->
 <div id="taximeter" class="fixed inset-0 z-[150] hidden flex flex-col"
@@ -456,38 +217,161 @@
 {% endblock %}
 {% block extra_js %}
 <script>
+const IS_ON_DUTY = {{ driver.is_on_duty|yesno:'true,false' }};
+const DRIVER_NAME = {{ driver.full_name|first|upper|json_script:"" }};
+const DRIVER_BALANCE = {{ driver.balance|floatformat:0 }};
+const DRIVER_CAR = "{{ driver.car_model }}";
+const DRIVER_CAR_NUM = "{{ driver.car_number }}";
+const DRIVER_TRIPS = {{ driver.trips_count|default:0 }};
+const DRIVER_RATING = "{% if driver.rating %}{{ driver.rating|floatformat:1 }}{% endif %}";
+
 let ORDERS = {{ orders_json|safe }};
-let _known = new Set(ORDERS.map(o=>o.id));
-let _busy = false;
+let _known = new Set(ORDERS.map(o => o.id));
 
-// Agar on_way buyurtma bo'lsa — sahifa yuklanganida taximeter ochiladi
-(function() {
+// Sahifa yuklanishi bilan darhol DOM ni render qilamiz
+renderOrdersDOM();
+
+// on_way buyurtma bo'lsa taximeter ochiladi
+(function(){
   const onWay = ORDERS.find(o => o.status === 'on_way');
-  if (onWay) {
-    window.addEventListener('DOMContentLoaded', () => tmxStart(onWay.id, onWay), { once: true });
-    if (document.readyState !== 'loading') tmxStart(onWay.id, onWay);
-  }
-
-  // JS boshqaruvga o'tadi — server HTML ni JS bilan almashtiramiz
-  // (shunda keyingi loadOrders chaqiruvlarida DOM yangilanadi)
-  if ({{ driver.is_on_duty|yesno:'true,false' }}) {
-    document.addEventListener('DOMContentLoaded', () => renderOrdersDOM(), { once: true });
-    if (document.readyState !== 'loading') renderOrdersDOM();
-  }
-
-  // Reload dan keyin ham yangi buyurtma modalini ko'rsatish
-  const pending = sessionStorage.getItem('vijdon_new_order');
-  if (pending) {
-    sessionStorage.removeItem('vijdon_new_order');
-    try {
-      const { id, order } = JSON.parse(pending);
-      const found = ORDERS.find(o => o.id === id || o.id === Number(id));
-      if (found && found.status === 'pending') {
-        setTimeout(() => showNewOrderModal(found.id, found), 400);
-      }
-    } catch(_) {}
-  }
+  if(onWay) tmxStart(onWay.id, onWay);
 })();
+
+// ── Auto-refresh: har 2 soniyada ──────────────────────────────────────────
+if(IS_ON_DUTY) setInterval(loadOrders, 2000);
+
+async function loadOrders() {
+  if(!navigator.onLine) return;
+  try {
+    const r = await fetch('{% url "driver:orders_json" %}', {cache:'no-store'});
+    const d = await r.json();
+    if(!Array.isArray(d.new_ids)) return;
+
+    const serverIds = new Set(d.new_ids);
+    if(d.orders) ORDERS = d.orders;
+
+    const added = d.new_ids.filter(id => !_known.has(id));
+    if(added.length) {
+      _known = serverIds;
+      renderOrdersDOM();
+      Native.vibrate([60,30,60,30,120]);
+      if(typeof FlutterNotify !== 'undefined') FlutterNotify.postMessage(String(added.length));
+      showNewOrderModal(added[0], ORDERS.find(o => o.id === added[0]) || null);
+      return;
+    }
+
+    const removed = [..._known].filter(id => !serverIds.has(id));
+    if(removed.length) {
+      _known = serverIds;
+      if(!_tmxActive) renderOrdersDOM();
+      return;
+    }
+    _known = serverIds;
+  } catch(_){}
+}
+
+function renderOrdersDOM() {
+  const wrap = document.getElementById('orders-wrap');
+  if(!wrap) return;
+
+  if(!IS_ON_DUTY) {
+    wrap.innerHTML = `
+      <div class="space-y-3 anim-fade">
+        <div class="ios-card rounded-[16px] p-5">
+          <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">JORIY BALANS</div>
+          <div class="text-[34px] font-bold leading-tight ${DRIVER_BALANCE < 0 ? 'text-[#FF3B30]' : 'text-[#34C759]'}">
+            ${Number(DRIVER_BALANCE).toLocaleString()}<span class="ios-title font-medium ml-1" style="color:var(--ios-label3)">so'm</span>
+          </div>
+          ${DRIVER_BALANCE < 0 ? '<div class="flex items-center gap-1.5 mt-2 text-[#FF3B30] ios-caption font-medium"><i class="fas fa-exclamation-circle text-xs"></i> Navbat boshlash uchun balansni to\'ldiring</div>' : ''}
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="ios-card rounded-[14px] p-4">
+            <div class="ios-caption2 font-semibold mb-2" style="color:var(--ios-label3)">JAMI SAFARLAR</div>
+            <div class="ios-title font-bold text-[#FFD600]">${DRIVER_TRIPS}</div>
+          </div>
+          <div class="ios-card rounded-[14px] p-4">
+            <div class="ios-caption2 font-semibold mb-2" style="color:var(--ios-label3)">REYTING</div>
+            <div class="ios-title font-bold text-[#FF9500]">${DRIVER_RATING ? DRIVER_RATING + ' ★' : '—'}</div>
+          </div>
+        </div>
+        <div class="ios-card rounded-[16px] p-4 flex items-center gap-3">
+          <div class="w-11 h-11 rounded-[12px] bg-[rgba(0,122,255,.1)] flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-car text-[#007AFF] text-lg"></i>
+          </div>
+          <div class="flex-1">
+            <div class="ios-subhead font-semibold">${DRIVER_CAR}</div>
+            <div class="ios-caption font-mono tracking-wider mt-0.5" style="color:var(--ios-label3)">${DRIVER_CAR_NUM}</div>
+          </div>
+          <a href="{% url 'driver:profile' %}" class="ios-caption font-medium text-[#007AFF]">Tahrirlash</a>
+        </div>
+        <a href="{% url 'driver:history' %}" class="ios-card rounded-[16px] p-4 flex items-center gap-3 active:opacity-70 transition-opacity">
+          <div class="w-11 h-11 rounded-[12px] bg-[rgba(255,214,0,.12)] flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-clock-rotate-left text-[#FFD600] text-lg"></i>
+          </div>
+          <div class="flex-1">
+            <div class="ios-subhead font-semibold">Buyurtmalar tarixi</div>
+            <div class="ios-caption mt-0.5" style="color:var(--ios-label3)">O'tgan safarlarni ko'rish</div>
+          </div>
+          <i class="fas fa-chevron-right ios-caption" style="color:var(--ios-label3)"></i>
+        </a>
+      </div>`;
+    return;
+  }
+
+  if(!ORDERS.length) {
+    wrap.innerHTML = `
+      <div class="flex flex-col items-center pt-10 pb-6 gap-6 anim-fade">
+        <div class="relative flex items-center justify-center" style="width:160px;height:160px">
+          <div class="radar-ring"></div><div class="radar-ring"></div><div class="radar-ring"></div>
+          <div class="absolute inset-0 rounded-full overflow-hidden"><div class="radar-sweep"></div></div>
+          <div class="radar-core relative z-10 w-[72px] h-[72px] rounded-full bg-[#FFD600] flex items-center justify-center" style="border:3px solid rgba(255,214,0,.3)">
+            <i class="fas fa-taxi text-black text-[26px]"></i>
+          </div>
+        </div>
+        <div class="text-center">
+          <p class="ios-title font-semibold">Buyurtma qidirilmoqda</p>
+          <div class="flex items-center justify-center gap-1.5 mt-2">
+            <span class="dot-blink w-[6px] h-[6px] rounded-full bg-[#FFD600]"></span>
+            <span class="dot-blink w-[6px] h-[6px] rounded-full bg-[#FFD600]"></span>
+            <span class="dot-blink w-[6px] h-[6px] rounded-full bg-[#FFD600]"></span>
+          </div>
+          <p class="ios-caption mt-2" style="color:var(--ios-label3)">Yangi buyurtma kelganda signal beriladi</p>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const pill = {pending:'pill-yellow',accepted:'pill-blue',on_way:'pill-purple',arrived:'pill-green'};
+  const lbl  = {pending:'Kutilmoqda',accepted:'Qabul qilindi',on_way:"Yo'lda",arrived:'Yetib keldim'};
+  wrap.innerHTML = ORDERS.map((o,i) => `
+    <div class="ios-card active:opacity-70 transition-opacity cursor-pointer anim-up"
+         onclick="openOrder(${o.id})"
+         style="animation-delay:${i*50}ms;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+      <div class="p-4">
+        <div class="flex items-center justify-between mb-3">
+          <span class="ios-caption2 font-semibold px-2.5 py-1 rounded-[8px] ${pill[o.status]||''}">${lbl[o.status]||o.status}</span>
+          <div class="flex items-center gap-2">
+            <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">${o.payment_type==='cash'?'💵 Naqd':'💳 Karta'}</span>
+            <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">#${o.id}</span>
+          </div>
+        </div>
+        <div class="space-y-2">
+          <div class="flex items-start gap-2.5">
+            <div class="w-2 h-2 rounded-full bg-[#34C759] mt-1.5 flex-shrink-0"></div>
+            <span class="ios-subhead font-medium leading-snug">${o.from_address}</span>
+          </div>
+          ${o.to_address?`<div class="flex items-start gap-2.5"><i class="fas fa-location-dot text-[#FF3B30] text-xs mt-1 flex-shrink-0"></i><span class="ios-subhead leading-snug" style="color:var(--ios-label3)">${o.to_address}</span></div>`:''}
+        </div>
+        <div class="flex items-center justify-between mt-3 pt-3" style="border-top:.5px solid var(--ios-sep)">
+          <div class="flex items-center gap-3">
+            ${o.price?`<span class="ios-subhead font-semibold text-[#34C759]">${parseInt(o.price).toLocaleString()} so'm</span>`:''}
+            ${o.distance_km?`<span class="ios-caption" style="color:var(--ios-label3)">${parseFloat(o.distance_km).toFixed(1)} km</span>`:''}
+          </div>
+          <i class="fas fa-chevron-right ios-caption2" style="color:var(--ios-label3)"></i>
+        </div>
+      </div>
+    </div>`).join('');
+}
 
 // ── Pull-to-refresh ───────────────────────────────────────────────────────────
 let _py=0;
