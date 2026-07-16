@@ -1,96 +1,105 @@
 <!DOCTYPE html>
-<html lang="uz" class="dark">
+<html lang="uz">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#1C1C1E">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
 <title>Ro'yxatdan o'tish — Vijdon Driver</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 <style>
-  * { font-family:-apple-system,'SF Pro Text','Segoe UI',sans-serif; -webkit-tap-highlight-color:transparent; }
-  body { overscroll-behavior:none; }
-  @keyframes fadeUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
-  .fade-up { animation:fadeUp .35s cubic-bezier(.34,1.4,.64,1) both; }
-  input:focus { outline:none; }
+  *{font-family:-apple-system,'SF Pro Display','SF Pro Text','Helvetica Neue',sans-serif;-webkit-tap-highlight-color:transparent;box-sizing:border-box;}
+  body{overscroll-behavior:none;background:#000;color:#fff;}
+  .ios-input{background:rgba(118,118,128,.24);border-radius:10px;padding:13px 16px 13px 44px;font-size:17px;color:#fff;width:100%;border:none;outline:none;transition:background .2s;}
+  .ios-input::placeholder{color:rgba(235,235,245,.3);}
+  .ios-input:focus{background:rgba(118,118,128,.32);}
+  .lbl{font-size:13px;font-weight:600;color:rgba(235,235,245,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;padding-left:4px;}
+  @keyframes fadeUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .fu{animation:fadeUp .36s cubic-bezier(.25,.46,.45,.94) both;}
 </style>
 </head>
-<body class="bg-[#1C1C1E] min-h-screen flex flex-col" style="padding-top:env(safe-area-inset-top,44px); padding-bottom:env(safe-area-inset-bottom,16px)">
+<body style="padding-top:env(safe-area-inset-top,47px);padding-bottom:env(safe-area-inset-bottom,34px);min-height:100vh;overflow-y:auto">
 
-<div class="flex-1 flex flex-col items-center justify-center px-5 py-8">
+<div class="w-full max-w-sm mx-auto px-5 py-8 space-y-6">
 
   <!-- Header -->
-  <div class="flex flex-col items-center gap-3 mb-6 fade-up">
-    <div class="w-16 h-16 rounded-[20px] bg-[#FFD600] flex items-center justify-center shadow-xl shadow-yellow-500/30">
-      <span class="text-3xl font-black text-[#1C1C1E]">V</span>
-    </div>
-    <h1 class="text-xl font-black text-white">Ro'yxatdan o'tish</h1>
-  </div>
-
-  <div class="w-full max-w-sm fade-up" style="animation-delay:.08s">
-    <div class="bg-[#2C2C2E] rounded-3xl p-5 space-y-3">
-
-      {% if error %}
-      <div class="bg-red-500/15 border border-red-500/30 rounded-2xl px-4 py-3 flex items-center gap-2.5">
-        <i class="fas fa-circle-exclamation text-red-400 flex-shrink-0"></i>
-        <span class="text-red-400 text-sm font-semibold">{{ error }}</span>
-      </div>
-      {% endif %}
-
-      <form method="POST" class="space-y-3" id="reg-form">
-        {% csrf_token %}
-
-          {% with inp_cls="w-full bg-[#3A3A3C] text-white placeholder-gray-600 rounded-2xl pl-10 pr-4 py-3.5 text-sm font-semibold focus:ring-2 focus:ring-[#FFD600] transition" %}
-        <div>
-          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">To'liq ism familya</label>
-          <div class="relative"><i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
-          <input type="text" name="full_name" required placeholder="Abdullayev Abdulla" class="{{ inp_cls }}"></div>
-        </div>
-        <div>
-          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Telefon raqami</label>
-          <div class="relative"><i class="fas fa-phone absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
-          <input type="tel" name="phone_number" required placeholder="+998 90 000 00 00" class="{{ inp_cls }}"></div>
-        </div>
-        <div>
-          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Mashina modeli</label>
-          <div class="relative"><i class="fas fa-car absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
-          <input type="text" name="car_model" required placeholder="Cobalt 2, Nexia 3..." class="{{ inp_cls }}"></div>
-        </div>
-        <div>
-          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Mashina raqami</label>
-          <div class="relative"><i class="fas fa-hashtag absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
-          <input type="text" name="car_number" required placeholder="01 A 123 AA" class="{{ inp_cls }}"></div>
-        </div>
-        <div>
-          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Parol</label>
-          <div class="relative"><i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
-          <input type="password" name="password" required placeholder="Kamida 6 ta belgi" class="{{ inp_cls }}"></div>
-        </div>
-        {% endwith %}
-
-        <button type="submit" id="reg-btn"
-                class="w-full bg-[#FFD600] text-[#1C1C1E] font-black text-base rounded-2xl py-4 mt-1 active:scale-95 transition-transform shadow-lg shadow-yellow-500/25 flex items-center justify-center gap-2">
-          <span id="reg-btn-text">Ro'yxatdan o'tish</span>
-          <i class="fas fa-arrow-right text-sm" id="reg-btn-icon"></i>
-        </button>
-      </form>
-    </div>
-
-    <a href="{% url 'driver:login' %}"
-       class="flex items-center justify-center gap-1.5 mt-5 text-gray-500 text-sm font-semibold active:text-gray-300">
-      <i class="fas fa-arrow-left text-xs"></i> Kirish sahifasiga qaytish
+  <div class="flex items-center gap-4 fu">
+    <a href="{% url 'driver:login' %}" style="color:#FFD600;font-size:17px;font-weight:500">
+      <i class="fas fa-chevron-left mr-1"></i>Orqaga
     </a>
   </div>
+
+  <div class="fu" style="animation-delay:.05s">
+    <div style="font-size:34px;font-weight:700;letter-spacing:.37px">Ro'yxatdan<br>o'tish</div>
+    <div style="font-size:15px;color:rgba(235,235,245,.5);margin-top:6px">Haydovchi sifatida qo'shiling</div>
+  </div>
+
+  {% if error %}
+  <div style="background:rgba(255,59,48,.15);border:1px solid rgba(255,59,48,.3);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px" class="fu">
+    <i class="fas fa-circle-exclamation" style="color:#FF3B30;flex-shrink:0"></i>
+    <span style="font-size:15px;color:#FF3B30;font-weight:500">{{ error }}</span>
+  </div>
+  {% endif %}
+
+  <form method="POST" id="form" class="space-y-4 fu" style="animation-delay:.1s">
+    {% csrf_token %}
+
+    {% with inp="ios-input" %}
+    <div>
+      <div class="lbl">To'liq ism familya</div>
+      <div class="relative">
+        <i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(235,235,245,.35);font-size:15px"></i>
+        <input type="text" name="full_name" required placeholder="Abdullayev Abdulla" class="{{ inp }}">
+      </div>
+    </div>
+    <div>
+      <div class="lbl">Telefon raqami</div>
+      <div class="relative">
+        <i class="fas fa-phone absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(235,235,245,.35);font-size:15px"></i>
+        <input type="tel" name="phone_number" required placeholder="+998 90 000 00 00" class="{{ inp }}">
+      </div>
+    </div>
+    <div>
+      <div class="lbl">Mashina modeli</div>
+      <div class="relative">
+        <i class="fas fa-car absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(235,235,245,.35);font-size:15px"></i>
+        <input type="text" name="car_model" required placeholder="Cobalt 2, Nexia 3..." class="{{ inp }}">
+      </div>
+    </div>
+    <div>
+      <div class="lbl">Mashina raqami</div>
+      <div class="relative">
+        <i class="fas fa-hashtag absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(235,235,245,.35);font-size:15px"></i>
+        <input type="text" name="car_number" required placeholder="01 A 123 AA" class="{{ inp }}" style="text-transform:uppercase">
+      </div>
+    </div>
+    <div>
+      <div class="lbl">Parol</div>
+      <div class="relative">
+        <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(235,235,245,.35);font-size:15px"></i>
+        <input type="password" name="password" required placeholder="Kamida 6 ta belgi" class="{{ inp }}">
+      </div>
+    </div>
+    {% endwith %}
+
+    <button type="submit" id="sbtn"
+            style="width:100%;background:#FFD600;color:#000;font-size:17px;font-weight:600;letter-spacing:-.41px;border-radius:14px;padding:16px;margin-top:8px;transition:opacity .15s;display:flex;align-items:center;justify-content:center;gap:8px">
+      <span id="btxt">Ro'yxatdan o'tish</span>
+      <i class="fas fa-arrow-right text-sm" id="bico"></i>
+    </button>
+  </form>
+
 </div>
 
 <script>
-document.getElementById('reg-form').addEventListener('submit', () => {
-  const btn = document.getElementById('reg-btn');
-  btn.disabled = true; btn.style.opacity = '0.7';
-  document.getElementById('reg-btn-text').textContent = 'Yuborilmoqda...';
-  document.getElementById('reg-btn-icon').className = 'fas fa-spinner fa-spin text-sm';
+document.getElementById('form').addEventListener('submit',()=>{
+  const b=document.getElementById('sbtn');
+  b.style.opacity='.6'; b.disabled=true;
+  document.getElementById('btxt').textContent='Yuborilmoqda...';
+  document.getElementById('bico').className='fas fa-spinner fa-spin text-sm';
 });
 </script>
 </body>
