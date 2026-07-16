@@ -639,15 +639,17 @@ function tmxStop() {
 function tmxArrived() {
   if (!_tmxOrderId) return;
   Native.vibrate();
+  const id = _tmxOrderId;
   tmxStop();
-  doAction(_tmxOrderId, 'arrived');
+  doAction(id, 'arrived');
 }
 
 function tmxCancel() {
   if (!_tmxOrderId) return;
   Native.vibrate();
+  const id = _tmxOrderId;
   tmxStop();
-  doAction(_tmxOrderId, 'cancel');
+  doAction(id, 'cancel');
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -829,11 +831,11 @@ async function doAction(id,action){
   if(typeof FlutterNotify !== 'undefined') FlutterNotify.postMessage('0');
 
   // Taximeter ma'lumotlarini arrived/complete da yuboramiz
-  const tmxPayload = (_tmxActive || action==='complete') ? {
-    tmx_dist_km: _tmxDistKm,
-    tmx_price:   parseFloat(_tmxPriceStr.replace(/[^\d.]/g,'')) || 0,
-    tmx_time:    _tmxTimeStr,
-  } : {};
+  const tmxPayload = {
+    tmx_dist_km: _tmxDistKm || 0,
+    tmx_price:   parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,'')) || 0,
+    tmx_time:    _tmxTimeStr || '0:00',
+  };
 
   try{
     const r=await fetch(`/driver/orders/${id}/${action}/`,{
