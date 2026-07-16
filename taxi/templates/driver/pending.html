@@ -1,21 +1,40 @@
 <!DOCTYPE html>
-<html lang="uz">
+<html lang="uz" class="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1C1C1E">
 <title>Tasdiq kutilmoqda — Vijdon Driver</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<style>* { font-family: -apple-system, 'SF Pro Text', sans-serif; }</style>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<style>
+  * { font-family:-apple-system,'SF Pro Text',sans-serif; -webkit-tap-highlight-color:transparent; }
+  @keyframes fadeUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+  .fade-up { animation:fadeUp .4s cubic-bezier(.34,1.4,.64,1) both; }
+  @keyframes spin-slow { to{transform:rotate(360deg)} }
+  .spin-slow { animation:spin-slow 3s linear infinite; }
+</style>
 </head>
-<body class="bg-[#1C1C1E] min-h-screen flex flex-col items-center justify-center px-6 text-center">
-<div class="w-20 h-20 rounded-[24px] bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center mb-6">
-  <i class="fas fa-clock text-yellow-400 text-3xl"></i>
+<body class="bg-[#1C1C1E] min-h-screen flex flex-col items-center justify-center px-6 text-center"
+      style="padding-top:env(safe-area-inset-top,44px);padding-bottom:env(safe-area-inset-bottom,16px)">
+
+<div class="fade-up">
+  <div class="w-20 h-20 rounded-[24px] bg-yellow-500/15 border border-yellow-500/30 flex items-center justify-center mx-auto mb-6">
+    <i class="fas fa-clock text-yellow-400 text-3xl spin-slow"></i>
+  </div>
+  <h1 class="text-2xl font-black text-white mb-3">Tasdiq kutilmoqda</h1>
+  <p class="text-gray-400 text-sm leading-relaxed max-w-xs mx-auto">
+    Hisobingiz admin tomonidan ko'rib chiqilmoqda.<br>
+    Tasdiqlangandan so'ng kirish mumkin bo'ladi.
+  </p>
+  <div class="mt-6 bg-[#2C2C2E] rounded-2xl px-4 py-3 inline-flex items-center gap-2 text-sm text-gray-400 font-semibold">
+    <i class="fas fa-user text-gray-500"></i> {{ driver.full_name }}
+  </div>
 </div>
-<h1 class="text-2xl font-black text-white mb-3">Tasdiq kutilmoqda</h1>
-<p class="text-gray-400 text-sm leading-relaxed max-w-xs">
-  Hisobingiz admin tomonidan tasdiqlanishi kerak.<br>
-  Tasdiqlangandan so'ng kirish mumkin bo'ladi.
-</p>
-<a href="{% url 'driver:logout' %}" class="mt-8 text-red-400 text-sm font-bold">Chiqish</a>
+
+<a href="{% url 'driver:logout' %}"
+   class="mt-10 text-red-400 text-sm font-bold active:opacity-60 fade-up" style="animation-delay:.15s">
+  <i class="fas fa-right-from-bracket mr-1.5"></i>Chiqish
+</a>
 </body>
 </html>

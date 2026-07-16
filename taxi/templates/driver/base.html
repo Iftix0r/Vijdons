@@ -14,92 +14,87 @@
 <style>
   * { font-family: -apple-system, 'SF Pro Text', 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
   body { overscroll-behavior: none; }
-  .tab-bar { padding-bottom: env(safe-area-inset-bottom); }
-  .safe-top { padding-top: env(safe-area-inset-top, 44px); }
-  @keyframes slideUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
-  @keyframes slideDown { from{transform:translateY(-20px);opacity:0} to{transform:translateY(0);opacity:1} }
-  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-  @keyframes pulse-ring { 0%{transform:scale(.8);opacity:1} 100%{transform:scale(2.2);opacity:0} }
-  @keyframes bounce-in { 0%{transform:scale(.5);opacity:0} 70%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
-  .slide-up { animation: slideUp .3s cubic-bezier(.34,1.56,.64,1); }
-  .slide-down { animation: slideDown .3s ease; }
-  .fade-in { animation: fadeIn .25s ease; }
-  .bounce-in { animation: bounce-in .4s cubic-bezier(.34,1.56,.64,1); }
-  .pulse-ring::before { content:''; position:absolute; inset:0; border-radius:50%; background:currentColor; animation: pulse-ring 1.5s ease-out infinite; }
+  .tab-bar { padding-bottom: env(safe-area-inset-bottom, 16px); }
+  .safe-top { height: env(safe-area-inset-top, 44px); }
   ::-webkit-scrollbar { display: none; }
-  .tab-item { -webkit-tap-highlight-color: transparent; }
-  .tab-item.active { transform: scale(1.05); }
 
-  /* Pull to refresh */
-  #ptr-indicator { transition: height .2s ease, opacity .2s ease; }
+  @keyframes slideUp   { from{transform:translateY(24px);opacity:0} to{transform:translateY(0);opacity:1} }
+  @keyframes fadeIn    { from{opacity:0} to{opacity:1} }
+  @keyframes bounceIn  { 0%{transform:scale(.6);opacity:0} 70%{transform:scale(1.08)} 100%{transform:scale(1);opacity:1} }
+  @keyframes shimmer   { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+  @keyframes ping2     { 0%{transform:scale(1);opacity:.8} 100%{transform:scale(2.2);opacity:0} }
 
-  /* Toast */
-  #toast { transition: all .3s cubic-bezier(.34,1.56,.64,1); }
+  .slide-up  { animation: slideUp .32s cubic-bezier(.34,1.4,.64,1) both; }
+  .fade-in   { animation: fadeIn .25s ease both; }
+  .bounce-in { animation: bounceIn .38s cubic-bezier(.34,1.4,.64,1) both; }
+  .skeleton  { background: linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%); background-size:200% 100%; animation:shimmer 1.4s infinite; border-radius:14px; }
+  .dark .skeleton { background: linear-gradient(90deg,#3a3a3c 25%,#48484a 50%,#3a3a3c 75%); background-size:200% 100%; }
+  .ping2::after { content:''; position:absolute; inset:0; border-radius:50%; background:inherit; animation:ping2 1.6s ease-out infinite; }
 
-  /* New order badge pulse */
-  @keyframes badge-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.2)} }
-  .badge-pulse { animation: badge-pulse .6s ease infinite; }
-
-  /* Skeleton shimmer */
-  @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-  .skeleton { background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 12px; }
-  .dark .skeleton { background: linear-gradient(90deg, #3a3a3c 25%, #48484a 50%, #3a3a3c 75%); background-size: 200% 100%; }
+  /* Sheet drag handle */
+  .sheet-handle { width:40px; height:4px; background:#d1d5db; border-radius:4px; margin:0 auto 16px; }
+  .dark .sheet-handle { background:#4b5563; }
 </style>
 </head>
 <body class="bg-[#F2F2F7] dark:bg-[#1C1C1E] text-[#1C1C1E] dark:text-white min-h-screen flex flex-col">
 
-<!-- Safe area top -->
-<div class="safe-top flex-shrink-0"></div>
+<div class="safe-top flex-shrink-0 bg-white dark:bg-[#1C1C1E]"></div>
 
-<!-- Connection status bar -->
-<div id="conn-bar" class="hidden fixed top-0 left-0 right-0 z-[100] text-center text-xs font-bold py-1.5 transition-all"
-     style="margin-top: env(safe-area-inset-top, 44px)"></div>
+<!-- Offline bar -->
+<div id="offline-bar" class="hidden fixed left-0 right-0 z-[200] text-center text-xs font-bold py-2 bg-red-500 text-white"
+     style="top: env(safe-area-inset-top, 44px)">
+  ⚠ Internet aloqasi yo'q
+</div>
 
-<!-- Toast notification -->
-<div id="toast" class="fixed top-16 left-4 right-4 z-[200] hidden">
-  <div id="toast-inner" class="rounded-2xl px-4 py-3.5 flex items-center gap-3 shadow-2xl">
-    <i id="toast-icon" class="text-lg"></i>
-    <div class="flex-1">
-      <div id="toast-title" class="text-sm font-black"></div>
-      <div id="toast-body" class="text-xs opacity-80 mt-0.5"></div>
+<!-- Toast -->
+<div id="toast" class="fixed z-[300] left-4 right-4 hidden" style="top: calc(env(safe-area-inset-top, 44px) + 12px)">
+  <div id="toast-box" class="rounded-2xl px-4 py-3.5 flex items-center gap-3 shadow-2xl bounce-in">
+    <i id="toast-icon" class="text-xl flex-shrink-0"></i>
+    <div class="flex-1 min-w-0">
+      <div id="toast-title" class="text-sm font-black leading-tight"></div>
+      <div id="toast-body"  class="text-xs opacity-75 mt-0.5 leading-tight"></div>
     </div>
-    <button onclick="hideToast()" class="opacity-60 text-lg">×</button>
+    <button onclick="hideToast()" class="text-xl opacity-50 flex-shrink-0 leading-none">×</button>
   </div>
 </div>
 
-<!-- Page content -->
-<main class="flex-1 overflow-y-auto pb-20" id="main-content">
+<!-- Page -->
+<main class="flex-1 overflow-y-auto pb-[72px]" id="main-content">
   {% block content %}{% endblock %}
 </main>
 
-<!-- Bottom Tab Bar -->
-<nav class="tab-bar fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-xl border-t border-gray-200/50 dark:border-gray-800/50 z-50">
-  <div class="flex items-center justify-around px-2 pt-2 pb-1">
+<!-- Tab Bar -->
+<nav class="tab-bar fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-xl border-t border-gray-200/60 dark:border-white/5">
+  <div class="flex items-center justify-around px-1 pt-2">
 
     <a href="{% url 'driver:home' %}" onclick="Native.vibrate()"
-       class="tab-item flex flex-col items-center gap-0.5 px-5 py-1 rounded-xl transition-all {% if active_tab == 'home' %}text-[#FFD600]{% else %}text-gray-400{% endif %}">
-      <i class="fas fa-car-side text-xl"></i>
+       class="flex flex-col items-center gap-0.5 px-5 py-1 rounded-xl transition-all active:scale-90
+              {% if active_tab == 'home' %}text-[#FFD600]{% else %}text-gray-400 dark:text-gray-500{% endif %}">
+      <i class="fas fa-car-side text-[22px]"></i>
       <span class="text-[10px] font-bold">Asosiy</span>
     </a>
 
     <a href="{% url 'driver:history' %}" onclick="Native.vibrate()"
-       class="tab-item flex flex-col items-center gap-0.5 px-5 py-1 rounded-xl transition-all {% if active_tab == 'history' %}text-[#FFD600]{% else %}text-gray-400{% endif %}">
-      <i class="fas fa-clock-rotate-left text-xl"></i>
+       class="flex flex-col items-center gap-0.5 px-5 py-1 rounded-xl transition-all active:scale-90
+              {% if active_tab == 'history' %}text-[#FFD600]{% else %}text-gray-400 dark:text-gray-500{% endif %}">
+      <i class="fas fa-clock-rotate-left text-[22px]"></i>
       <span class="text-[10px] font-bold">Tarix</span>
     </a>
 
     <a href="{% url 'driver:chat' %}" onclick="Native.vibrate()"
-       class="tab-item relative flex flex-col items-center gap-0.5 px-5 py-1 rounded-xl transition-all {% if active_tab == 'chat' %}text-[#FFD600]{% else %}text-gray-400{% endif %}">
-      <i class="fas fa-message text-xl"></i>
+       class="relative flex flex-col items-center gap-0.5 px-5 py-1 rounded-xl transition-all active:scale-90
+              {% if active_tab == 'chat' %}text-[#FFD600]{% else %}text-gray-400 dark:text-gray-500{% endif %}">
+      <i class="fas fa-message text-[22px]"></i>
       {% if chat_unread > 0 %}
-      <span class="badge-pulse absolute top-0 right-2 bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[16px] text-center">{{ chat_unread }}</span>
+      <span class="absolute top-0 right-2.5 bg-red-500 text-white text-[9px] font-black min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">{{ chat_unread }}</span>
       {% endif %}
       <span class="text-[10px] font-bold">Chat</span>
     </a>
 
     <a href="{% url 'driver:profile' %}" onclick="Native.vibrate()"
-       class="tab-item flex flex-col items-center gap-0.5 px-5 py-1 rounded-xl transition-all {% if active_tab == 'profile' %}text-[#FFD600]{% else %}text-gray-400{% endif %}">
-      <i class="fas fa-user text-xl"></i>
+       class="flex flex-col items-center gap-0.5 px-5 py-1 rounded-xl transition-all active:scale-90
+              {% if active_tab == 'profile' %}text-[#FFD600]{% else %}text-gray-400 dark:text-gray-500{% endif %}">
+      <i class="fas fa-user text-[22px]"></i>
       <span class="text-[10px] font-bold">Profil</span>
     </a>
 
@@ -107,128 +102,95 @@
 </nav>
 
 <script>
-// ── Native Bridge ────────────────────────────────────────────────────────────
+// ── Native Bridge ─────────────────────────────────────────────────────────────
 const Native = {
   isApp: typeof NativeBridge !== 'undefined',
-
-  vibrate(pattern = 50) {
+  vibrate(p=50) {
     if (this.isApp) NativeBridge.postMessage(JSON.stringify({action:'vibrate'}));
-    else if (navigator.vibrate) navigator.vibrate(pattern);
+    else if (navigator.vibrate) navigator.vibrate(p);
   },
-
   getLocation() {
-    return new Promise((resolve, reject) => {
+    return new Promise((res, rej) => {
       if (this.isApp) {
         NativeBridge.postMessage(JSON.stringify({action:'get_location'}));
-        window.addEventListener('vijdon_location', e => resolve(e.detail), {once:true});
-        setTimeout(() => reject('timeout'), 10000);
+        window.addEventListener('vijdon_location', e => res(e.detail), {once:true});
+        setTimeout(() => rej('timeout'), 10000);
       } else if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
-          p => resolve({lat: p.coords.latitude, lng: p.coords.longitude}),
-          reject, {enableHighAccuracy:true, timeout:8000}
+          p => res({lat:p.coords.latitude, lng:p.coords.longitude}),
+          rej, {enableHighAccuracy:true, timeout:8000}
         );
-      } else reject('no_gps');
+      } else rej('no_gps');
     });
   },
-
   callPhone(phone) { window.location.href = 'tel:' + phone; }
 };
 
-// ── Dark mode ────────────────────────────────────────────────────────────────
-const _dark = localStorage.getItem('theme') === 'dark' ||
+// ── Dark mode ─────────────────────────────────────────────────────────────────
+const _isDark = localStorage.getItem('theme') === 'dark' ||
   (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme:dark)').matches);
-document.documentElement.classList.toggle('dark', _dark);
+document.documentElement.classList.toggle('dark', _isDark);
 
-// ── Toast ────────────────────────────────────────────────────────────────────
-let _toastTimer;
-function showToast(title, body = '', type = 'info') {
-  const colors = {
-    info:    'bg-[#2C2C2E] text-white',
-    success: 'bg-green-500 text-white',
-    warning: 'bg-[#FFD600] text-[#1C1C1E]',
-    error:   'bg-red-500 text-white',
-    order:   'bg-[#FFD600] text-[#1C1C1E]',
-  };
-  const icons = {
-    info:'fa-info-circle', success:'fa-check-circle',
-    warning:'fa-exclamation-triangle', error:'fa-times-circle', order:'fa-bell'
-  };
-  const el = document.getElementById('toast');
-  document.getElementById('toast-inner').className = `rounded-2xl px-4 py-3.5 flex items-center gap-3 shadow-2xl ${colors[type]}`;
-  document.getElementById('toast-icon').className = `fas ${icons[type]} text-lg`;
+function toggleTheme() {
+  const d = !document.documentElement.classList.contains('dark');
+  document.documentElement.classList.toggle('dark', d);
+  localStorage.setItem('theme', d ? 'dark' : 'light');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let _toastT;
+const _toastStyles = {
+  order:   {bg:'bg-[#FFD600]',   text:'text-[#1C1C1E]', icon:'fa-bell'},
+  success: {bg:'bg-green-500',   text:'text-white',      icon:'fa-check-circle'},
+  error:   {bg:'bg-red-500',     text:'text-white',      icon:'fa-circle-xmark'},
+  info:    {bg:'bg-[#2C2C2E]',   text:'text-white',      icon:'fa-info-circle'},
+};
+function showToast(title, body='', type='info', dur=3500) {
+  const s = _toastStyles[type] || _toastStyles.info;
+  const box = document.getElementById('toast-box');
+  box.className = `rounded-2xl px-4 py-3.5 flex items-center gap-3 shadow-2xl bounce-in ${s.bg} ${s.text}`;
+  document.getElementById('toast-icon').className  = `fas ${s.icon} text-xl flex-shrink-0`;
   document.getElementById('toast-title').textContent = title;
-  document.getElementById('toast-body').textContent = body;
+  document.getElementById('toast-body').textContent  = body;
+  const el = document.getElementById('toast');
   el.classList.remove('hidden');
-  el.classList.add('bounce-in');
-  clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(hideToast, type === 'order' ? 8000 : 3000);
+  clearTimeout(_toastT);
+  _toastT = setTimeout(hideToast, type === 'order' ? 8000 : dur);
 }
 function hideToast() {
   const el = document.getElementById('toast');
-  el.style.opacity = '0';
-  el.style.transform = 'translateY(-20px)';
-  setTimeout(() => { el.classList.add('hidden'); el.style.opacity=''; el.style.transform=''; }, 300);
+  el.style.opacity = '0'; el.style.transform = 'translateY(-12px)';
+  setTimeout(() => { el.classList.add('hidden'); el.style.opacity=''; el.style.transform=''; }, 280);
 }
 
-// ── Connection status ────────────────────────────────────────────────────────
-function updateConnBar(online) {
-  const bar = document.getElementById('conn-bar');
-  if (online) {
-    bar.className = 'fixed top-0 left-0 right-0 z-[100] text-center text-xs font-bold py-1.5 bg-green-500 text-white slide-down';
-    bar.textContent = '✓ Aloqa tiklandi';
-    setTimeout(() => bar.classList.add('hidden'), 2000);
-  } else {
-    bar.className = 'fixed top-0 left-0 right-0 z-[100] text-center text-xs font-bold py-1.5 bg-red-500 text-white';
-    bar.textContent = '⚠ Internet aloqasi yo\'q';
-    bar.classList.remove('hidden');
-  }
+// ── Offline ───────────────────────────────────────────────────────────────────
+function _setOffline(offline) {
+  const bar = document.getElementById('offline-bar');
+  if (offline) { bar.classList.remove('hidden'); }
+  else { bar.classList.add('hidden'); showToast('Aloqa tiklandi', '', 'success', 2000); }
 }
-window.addEventListener('online',  () => updateConnBar(true));
-window.addEventListener('offline', () => updateConnBar(false));
-if (!navigator.onLine) updateConnBar(false);
+window.addEventListener('offline', () => _setOffline(true));
+window.addEventListener('online',  () => _setOffline(false));
+if (!navigator.onLine) _setOffline(true);
 
-// ── GPS sync ─────────────────────────────────────────────────────────────────
-async function syncLocation() {
-  try {
-    const pos = await Native.getLocation();
-    await fetch('{% url "driver:location_sync" %}', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json', 'X-CSRFToken': getCookie('csrftoken')},
-      body: JSON.stringify({lat: pos.lat, lng: pos.lng})
-    });
-  } catch(_) {}
-}
-
+// ── GPS sync ──────────────────────────────────────────────────────────────────
 window.addEventListener('vijdon_location', e => {
   fetch('{% url "driver:location_sync" %}', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json', 'X-CSRFToken': getCookie('csrftoken')},
-    body: JSON.stringify({lat: e.detail.lat, lng: e.detail.lng})
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body:JSON.stringify({lat:e.detail.lat, lng:e.detail.lng})
   }).catch(()=>{});
 });
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-function getCookie(name) {
-  const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function getCookie(n) {
+  const v = document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)');
   return v ? v[2] : '';
 }
 
-function toggleTheme() {
-  const dark = !document.documentElement.classList.contains('dark');
-  document.documentElement.classList.toggle('dark', dark);
-  localStorage.setItem('theme', dark ? 'dark' : 'light');
-}
-
-// ── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  syncLocation();
-  // Active tab highlight
-  document.querySelectorAll('.tab-item').forEach(el => {
-    el.addEventListener('click', () => {
-      el.style.transform = 'scale(0.9)';
-      setTimeout(() => el.style.transform = '', 150);
-    });
-  });
+  // GPS bir marta olish
+  Native.getLocation().catch(()=>{});
 });
 </script>
 {% block extra_js %}{% endblock %}
