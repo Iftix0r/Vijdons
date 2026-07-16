@@ -36,7 +36,9 @@ class DriverWebView extends StatefulWidget {
 class _DriverWebViewState extends State<DriverWebView> {
   late final WebViewController _ctrl;
   bool _loading = true;
+  bool _firstLoad = true;
   Timer? _locationTimer;
+  OverlayEntry? _toastOverlay;
 
   @override
   void initState() {
@@ -74,10 +76,18 @@ class _DriverWebViewState extends State<DriverWebView> {
           }
         },
       )
+      ..addJavaScriptChannel(
+        'FlutterToast',
+        onMessageReceived: (msg) => _showToast(msg.message),
+      )
       ..setNavigationDelegate(NavigationDelegate(
-        onPageStarted: (_) => setState(() => _loading = true),
+        onPageStarted: (_) {
+          if (_firstLoad) setState(() => _loading = true);
+        },
         onPageFinished: (_) async {
-          setState(() => _loading = false);
+          if (_firstLoad) {
+            setState(() { _loading = false; _firstLoad = false; });
+          }
           await _injectLocation();
           await _injectNotificationBridge();
         },
@@ -105,6 +115,51 @@ class _DriverWebViewState extends State<DriverWebView> {
       );
       _sendLocation(pos.latitude, pos.longitude);
     } catch (_) {}
+  }
+
+  void _showToast(String message) {
+    _toastOverlay?.remove();
+    _toastOverlay = OverlayEntry(
+      builder: (_) => Positioned(
+        top: MediaQuery.of(context).padding.top + 12,
+        left: 16, right: 16,
+        child: Material(
+          color: Colors.transparent,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: 1),
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+            builder: (_, v, child) => Opacity(
+              opacity: v,
+              child: Transform.translate(offset: Offset(0, -8 * (1 - v)), child: child),
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1C1C1E),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFFD600).withValues(alpha: .4)),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .3), blurRadius: 16)],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Color(0xFFFFD600), size: 16),
+                  const SizedBox(width: 8),
+                  Flexible(child: Text(message,
+                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500))),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    Overlay.of(context).insert(_toastOverlay!);
+    Future.delayed(const Duration(seconds: 2), () {
+      _toastOverlay?.remove();
+      _toastOverlay = null;
+    });
   }
 
   void _sendLocation(double lat, double lng) {

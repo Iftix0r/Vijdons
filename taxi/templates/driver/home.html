@@ -234,14 +234,18 @@ async function loadOrders(fb=false) {
         showNewOrderModal(nw[0], newOrder);
         return;
       }
-      // Buyurtma kamaygan (qabul/bekor) — reload
+      // Buyurtma kamaygan (qabul/bekor) — silent reload
       if(serverIds.size !== _known.size){
         _known = serverIds;
+        if(typeof FlutterToast !== 'undefined') FlutterToast.postMessage('Yangilandi');
         location.reload();
         return;
       }
     }
-    if(d.reload) location.reload();
+    if(d.reload){
+      if(typeof FlutterToast !== 'undefined') FlutterToast.postMessage('Yangilandi');
+      location.reload();
+    }
     if(fb) showToast('Yangilandi','','success',1600);
   } catch(_){}
 }
