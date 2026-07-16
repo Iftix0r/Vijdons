@@ -120,45 +120,33 @@ class ApiService {
     await _post(AppConstants.location, body: {'latitude': lat, 'longitude': lng});
   }
 
-  /// OpenStreetMap Nominatim orqali koordinatalarni manzilga aylantiradi (bepul, API kalit shart emas)
+  /// Yandex Geocoder orqali koordinatalarni manzilga aylantiradi (O'zbekiston uchun aniq)
+  static const _yandexGeoKey = '469e8d29-be0b-42da-9bd4-ed515dbdb741';
+
   static Future<String?> reverseGeocode(double lat, double lng) async {
     final url = Uri.parse(
-      'https://nominatim.openstreetmap.org/reverse'
-      '?lat=$lat&lon=$lng'
+      'https://geocode-maps.yandex.ru/1.x/'
+      '?apikey=$_yandexGeoKey'
+      '&geocode=$lng,$lat'
       '&format=json'
-      '&accept-language=uz,ru'
-      '&addressdetails=1',
+      '&lang=uz_UZ'
+      '&results=1',
     );
     try {
-      final resp = await http.get(url, headers: {
-        'User-Agent': 'VijdonTaxiDriverApp/1.0',
-        'Accept': 'application/json',
-      }).timeout(const Duration(seconds: 8));
-
+      final resp = await http.get(url).timeout(const Duration(seconds: 8));
       if (resp.statusCode != 200) return null;
 
       final data = json.decode(utf8.decode(resp.bodyBytes));
+      final members = data['response']?['GeoObjectCollection']
+          ?['featureMember'] as List?;
+      if (members == null || members.isEmpty) return null;
 
-      // display_name dan qisqa, aniq manzil yasash
-      final addr = data['address'] as Map<String, dynamic>?;
-      if (addr == null) return data['display_name'] as String?;
+      final obj = members.first['GeoObject'];
+      final name = obj?['name'] as String?;
+      final desc = obj?['description'] as String?;
 
-      final parts = <String>[];
-
-      // Ko'cha/yo'l nomi
-      final road = addr['road'] ?? addr['street'] ?? addr['pedestrian'];
-      if (road != null) parts.add(road.toString());
-
-      // Mahalla / tuman
-      final suburb = addr['suburb'] ?? addr['neighbourhood'] ?? addr['quarter'];
-      if (suburb != null) parts.add(suburb.toString());
-
-      // Shahar
-      final city = addr['city'] ?? addr['town'] ?? addr['village'] ?? addr['county'];
-      if (city != null) parts.add(city.toString());
-
-      if (parts.isEmpty) return data['display_name'] as String?;
-      return parts.join(', ');
+      if (name != null && desc != null) return '$name, $desc';
+      return name ?? desc;
     } catch (_) {
       return null;
     }
