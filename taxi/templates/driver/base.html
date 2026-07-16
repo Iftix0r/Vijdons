@@ -298,12 +298,6 @@ body { background: var(--ios-bg); color: var(--ios-label); }
       <span class="ios-caption2 {% if active_tab == 'home' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Asosiy</span>
     </a>
 
-    <a href="{% url 'driver:history' %}" onclick="Native.vibrate()"
-       class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60">
-      <i class="fas fa-clock-rotate-left text-[24px] {% if active_tab == 'history' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
-      <span class="ios-caption2 {% if active_tab == 'history' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Tarix</span>
-    </a>
-
     <!-- Duty toggle -->
     <button onclick="Native.vibrate();hbgToggleDuty()"
             class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60 relative">
@@ -316,18 +310,11 @@ body { background: var(--ios-bg); color: var(--ios-label); }
       </span>
     </button>
 
-    <a href="{% url 'driver:chat' %}" onclick="Native.vibrate()"
-       class="relative flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60">
-      <i class="fas fa-message text-[24px] {% if active_tab == 'chat' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
-      {% if chat_unread > 0 %}
-      <span class="ios-badge absolute -top-0.5 right-1.5">{{ chat_unread }}</span>
-      {% endif %}
-      <span class="ios-caption2 {% if active_tab == 'chat' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Chat</span>
+    <a href="{% url 'driver:history' %}" onclick="Native.vibrate()"
+       class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60">
+      <i class="fas fa-clock-rotate-left text-[24px] {% if active_tab == 'history' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+      <span class="ios-caption2 {% if active_tab == 'history' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Tarix</span>
     </a>
-
-    </button>
-
-
 
   </div>
 </div>

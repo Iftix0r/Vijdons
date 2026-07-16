@@ -37,6 +37,15 @@
           {{ driver.balance|floatformat:0 }} so'm
         </div>
       </div>
+      <!-- Chat -->
+      <a href="{% url 'driver:chat' %}" onclick="Native.vibrate()"
+         class="relative w-10 h-10 rounded-full flex items-center justify-center active:opacity-60 transition-opacity"
+         style="background:var(--ios-fill)">
+        <i class="fas fa-message text-[18px] {% if active_tab == 'chat' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+        {% if chat_unread > 0 %}
+        <span class="ios-badge absolute -top-0.5 -right-0.5">{{ chat_unread }}</span>
+        {% endif %}
+      </a>
     </div>
   </div>
 </div>
