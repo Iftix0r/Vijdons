@@ -15,38 +15,34 @@
 <div class="max-w-xl">
     <form method="POST" class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
         {% csrf_token %}
-
         <div class="px-6 py-5 space-y-5">
-            <!-- Base price -->
+
             <div>
                 <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
-                    <i class="fas fa-flag-checkered text-yellow-500 mr-1"></i>Boshlang'ich narx (UZS)
+                    <i class="fas fa-flag-checkered text-green-500 mr-1"></i>Boshlang'ich narx (UZS)
                 </label>
                 <input type="number" name="base_price" value="{{ tariff.base_price }}" min="0" required
-                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-green-400 dark:text-white transition">
                 <p class="text-xs text-gray-400 mt-1">Har bir buyurtma uchun minimal narx</p>
             </div>
 
-            <!-- Price per km -->
             <div>
                 <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
                     <i class="fas fa-road text-blue-500 mr-1"></i>1 km narxi (UZS)
                 </label>
                 <input type="number" name="price_per_km" value="{{ tariff.price_per_km }}" min="0" required
-                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-green-400 dark:text-white transition">
             </div>
 
-            <!-- Commission -->
             <div>
                 <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
                     <i class="fas fa-percent text-red-500 mr-1"></i>Haydovchi komissiyasi (UZS)
                 </label>
                 <input type="number" name="commission" value="{{ tariff.commission }}" min="0" required
-                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-green-400 dark:text-white transition">
                 <p class="text-xs text-gray-400 mt-1">Har bir qabul qilingan buyurtma uchun haydovchi balansidan yechiladi</p>
             </div>
 
-            <!-- Auto dispatch -->
             <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-100 dark:border-gray-700">
                 <div>
                     <p class="text-sm font-bold text-gray-800 dark:text-white">Avtomatik taqsimlash</p>
@@ -54,36 +50,33 @@
                 </div>
                 <label class="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" name="auto_dispatch" {% if tariff.auto_dispatch %}checked{% endif %} class="sr-only peer">
-                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-yellow-400 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-400 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
                 </label>
             </div>
 
-            <!-- Max dispatch attempts -->
             <div>
                 <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
                     <i class="fas fa-users-cog text-purple-500 mr-1"></i>Maksimal urinishlar soni
                 </label>
                 <input type="number" name="max_dispatch_attempts" value="{{ tariff.max_dispatch_attempts }}" min="1" required
-                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-green-400 dark:text-white transition">
                 <p class="text-xs text-gray-400 mt-1">Buyurtma umumiy tabloda tushishidan oldin ko'pi bilan nechta yaqin haydovchiga navbatma-navbat ko'rsatiladi</p>
             </div>
 
-            <!-- Dispatch timeout -->
             <div>
                 <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
                     <i class="fas fa-hourglass-half text-orange-500 mr-1"></i>Kutish vaqti (sekund)
                 </label>
                 <input type="number" name="dispatch_timeout" value="{{ tariff.dispatch_timeout }}" min="5" required
-                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-green-400 dark:text-white transition">
                 <p class="text-xs text-gray-400 mt-1">Har bir haydovchiga buyurtmani qabul qilish uchun beriladigan soniya</p>
             </div>
 
-            <!-- Preview -->
-            <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/40 rounded-xl p-4">
-                <p class="text-xs font-bold text-yellow-700 dark:text-yellow-400 uppercase tracking-wide mb-2">
+            <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40 rounded-xl p-4">
+                <p class="text-xs font-bold text-green-700 dark:text-green-400 uppercase tracking-wide mb-2">
                     <i class="fas fa-calculator mr-1"></i>Misol hisob-kitob
                 </p>
-                <p class="text-sm text-yellow-800 dark:text-yellow-300">
+                <p class="text-sm text-green-800 dark:text-green-300">
                     5 km uchun: <b>{{ tariff.base_price }} + (5 × {{ tariff.price_per_km }}) = {{ tariff.calc_price|default:"—" }} UZS</b>
                 </p>
             </div>
@@ -91,7 +84,7 @@
 
         <div class="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex gap-3">
             <button type="submit"
-                    class="flex-1 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-sm rounded-xl shadow-sm shadow-yellow-200 dark:shadow-none transition-all hover:-translate-y-0.5">
+                    class="flex-1 py-3 bg-green-500 hover:bg-green-600 text-white font-bold text-sm rounded-xl shadow-sm shadow-green-200 dark:shadow-none transition-all hover:-translate-y-0.5">
                 <i class="fas fa-save mr-2"></i>Saqlash
             </button>
             <a href="{% url 'taxi:panel_dashboard' %}"
