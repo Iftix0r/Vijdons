@@ -599,8 +599,8 @@ function _syncSheetTmx() {
   const t = document.getElementById('sheet-tmx-time');
   const d = document.getElementById('sheet-tmx-dist');
   const s = document.getElementById('sheet-tmx-speed');
-  if(p) p.textContent = _tmxPriceStr;
-  if(t) t.textContent = _tmxTimeStr;
+  if(p) p.textContent = _tmxPriceStr || '0';
+  if(t) t.textContent = _tmxTimeStr  || '0:00';
   if(d) d.textContent = _tmxDistKm.toFixed(2);
   if(s) s.textContent = _tmxSpeedKmh;
 }
@@ -811,8 +811,7 @@ function _renderSheet(id, o){
   ov.classList.remove('hidden');
   requestAnimationFrame(()=>{
     sh.style.transform='translateY(0)';
-    // Agar on_way bo'lsa — taximeter qiymatlarini darhol to'ldiramiz
-    if(o.status==='on_way' && _tmxActive) _syncSheetTmx();
+    if((o.status==='on_way'||o.status==='arrived') && _tmxStartTime) _syncSheetTmx();
   });
 }
 
@@ -848,18 +847,21 @@ async function doAction(id,action){
       if(action==='on_way'){
         const o=ORDERS.find(x=>x.id===id||x.id===Number(id));
         tmxStart(id, o||null);
+        _known = new Set();
+        await loadOrders();
       } else if(action==='arrived'||action==='cancel'||action==='complete'){
         tmxStop();
         _known = new Set();
         await loadOrders();
       } else if(action==='accept'){
-        const o=ORDERS.find(x=>x.id===id||x.id===Number(id));
-        if(o?.client_phone&&!o.client_phone.includes('*')){
-          showToast('Qabul qilindi',o.client_phone,'success');
-          setTimeout(()=>Native.callPhone(o.client_phone),900);
-        }
         _known = new Set();
         await loadOrders();
+        const updated=ORDERS.find(x=>x.id===id||x.id===Number(id));
+        if(updated?.client_phone&&!updated.client_phone.includes('*')){
+          showToast('Qabul qilindi',updated.client_phone,'success');
+          setTimeout(()=>Native.callPhone(updated.client_phone),900);
+        }
+        if(updated) _renderSheet(id, updated);
       } else {
         _known = new Set();
         await loadOrders();
