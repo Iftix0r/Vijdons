@@ -5,14 +5,28 @@
 <!-- iOS Navigation Bar -->
 <div class="ios-navbar sticky top-0 z-20 px-4 pt-3 pb-3">
   <div class="flex items-center justify-between">
-    <div>
-      <div class="ios-title font-semibold" style="color:var(--ios-label)">{{ driver.full_name }}</div>
-      <div class="flex items-center gap-1.5 mt-0.5">
-        <span class="w-[7px] h-[7px] rounded-full {% if driver.is_on_duty %}bg-[#34C759]{% else %}bg-[#8E8E93]{% endif %}
-              {% if driver.is_on_duty %}animate-pulse{% endif %}"></span>
-        <span class="ios-caption font-medium {% if driver.is_on_duty %}text-[#34C759]{% else %}text-[#8E8E93]{% endif %}">
-          {% if driver.is_on_duty %}Ish navbatida{% else %}Oflayn{% endif %}
-        </span>
+    <div class="flex items-center gap-2.5">
+      <!-- Profile avatar -->
+      <a href="{% url 'driver:profile' %}" onclick="Native.vibrate()" class="flex-shrink-0 active:opacity-60 transition-opacity">
+        {% if driver.photo %}
+        <img src="{{ driver.photo.url }}" alt=""
+             class="w-9 h-9 rounded-full object-cover ring-2 ring-[#FFD600]">
+        {% else %}
+        <div class="w-9 h-9 rounded-full bg-[#FFD600] flex items-center justify-center"
+             style="box-shadow:0 2px 8px rgba(255,214,0,.4)">
+          <span class="ios-caption font-bold text-black">{{ driver.full_name|first|upper }}</span>
+        </div>
+        {% endif %}
+      </a>
+      <div>
+        <div class="ios-title font-semibold" style="color:var(--ios-label)">{{ driver.full_name }}</div>
+        <div class="flex items-center gap-1.5 mt-0.5">
+          <span class="w-[7px] h-[7px] rounded-full {% if driver.is_on_duty %}bg-[#34C759]{% else %}bg-[#8E8E93]{% endif %}
+                {% if driver.is_on_duty %}animate-pulse{% endif %}"></span>
+          <span class="ios-caption font-medium {% if driver.is_on_duty %}text-[#34C759]{% else %}text-[#8E8E93]{% endif %}">
+            {% if driver.is_on_duty %}Ish navbatida{% else %}Oflayn{% endif %}
+          </span>
+        </div>
       </div>
     </div>
     <div class="flex items-center gap-2.5">
@@ -143,7 +157,11 @@
         <i class="fas fa-bell text-black text-2xl"></i>
       </div>
       <div class="ios-title font-bold text-black">Yangi buyurtma!</div>
-      <div id="nom-timer" class="ios-caption font-semibold text-black mt-1 opacity-70">10</div>
+      <div id="nom-timer" class="ios-caption font-semibold text-black mt-1 opacity-70">10s</div>
+      <!-- Progress bar -->
+      <div class="w-full mt-3 rounded-full overflow-hidden" style="height:3px;background:rgba(0,0,0,.15)">
+        <div id="nom-progress" class="h-full rounded-full bg-black" style="width:100%;transition:width 1s linear"></div>
+      </div>
     </div>
     <!-- Body -->
     <div class="px-5 py-4 space-y-2" id="nom-body"></div>
@@ -203,19 +221,25 @@ async function loadOrders(fb=false) {
   try {
     const r=await fetch('{% url "driver:orders_json" %}');
     const d=await r.json();
+    // Dispatch timer tugagan bo'lsa reload
+    if(d.timer_sec !== null && d.timer_sec === 0) { location.reload(); return; }
     if(d.new_ids){
-      const nw=d.new_ids.filter(id=>!_known.has(id));
+      const serverIds = new Set(d.new_ids);
+      const nw = d.new_ids.filter(id=>!_known.has(id));
       if(nw.length){
-        nw.forEach(()=>{ Native.vibrate([60,30,60,30,120]); });
-        _known=new Set(d.new_ids);
-        // Flutter ilovasiga bildirishnoma yuborish
+        Native.vibrate([60,30,60,30,120]);
+        _known = serverIds;
         if(typeof FlutterNotify !== 'undefined') FlutterNotify.postMessage(String(nw.length));
-        // Yangi buyurtmani topib modalda ko'rsatish
         const newOrder = (d.orders||[]).find(o=>nw.includes(o.id)) || null;
         showNewOrderModal(nw[0], newOrder);
         return;
       }
-      if(d.new_ids.length!==_known.size){ location.reload(); return; }
+      // Buyurtma kamaygan (qabul/bekor) — reload
+      if(serverIds.size !== _known.size){
+        _known = serverIds;
+        location.reload();
+        return;
+      }
     }
     if(d.reload) location.reload();
     if(fb) showToast('Yangilandi','','success',1600);
@@ -258,12 +282,17 @@ function showNewOrderModal(orderId, order) {
   const modal = document.getElementById('new-order-modal');
   modal.classList.remove('hidden');
 
-  // Countdown 10s
-  let sec = 10;
-  document.getElementById('nom-timer').textContent = sec + 's';
+  // Countdown 10s with progress bar
+  const TOTAL = 10;
+  let sec = TOTAL;
+  const timerEl = document.getElementById('nom-timer');
+  const progressEl = document.getElementById('nom-progress');
+  timerEl.textContent = sec + 's';
+  if(progressEl) progressEl.style.width = '100%';
   _nomTimer = setInterval(() => {
     sec--;
-    document.getElementById('nom-timer').textContent = sec + 's';
+    timerEl.textContent = sec + 's';
+    if(progressEl) progressEl.style.width = (sec / TOTAL * 100) + '%';
     if (sec <= 0) closeNewOrderModal(true);
   }, 1000);
 
@@ -276,7 +305,10 @@ function closeNewOrderModal(autoClose = false) {
   clearInterval(_nomTimer);
   Audio.stopNewOrder();
   document.getElementById('new-order-modal').classList.add('hidden');
-  if (autoClose) setTimeout(() => location.reload(), 300);
+  if (autoClose) {
+    _known = new Set(); // force reload to re-check
+    setTimeout(() => location.reload(), 300);
+  }
 }
 
 // ── Web Push ─────────────────────────────────────────────────────────────────
@@ -320,7 +352,9 @@ async function toggleDuty(){
   if(btn){btn.style.opacity='.4';btn.style.pointerEvents='none';}
   try{
     const r=await fetch('{% url "driver:duty_toggle" %}',{method:'POST',headers:{'X-CSRFToken':getCookie('csrftoken')}});
-    if(r.ok) location.reload();
+    const d=await r.json();
+    if(d.ok) location.reload();
+    else showToast('Xatolik', d.error||'Qayta urinib ko\'ring', 'error', 4000);
   }catch(_){showToast('Xatolik','Qayta urinib ko\'ring','error');}
   finally{_busy=false;if(btn){btn.style.opacity='';btn.style.pointerEvents='';}}
 }
@@ -415,11 +449,10 @@ function closeSheet(){
 }
 
 async function doAction(id,action){
-  Native.vibrate(); closeSheet();
+  Native.vibrate(); closeSheet(); closeNewOrderModal(false);
   if(action==='accept') Audio.accept();
   else if(action==='reject'||action==='cancel') Audio.reject();
   else if(action==='complete') Audio.complete();
-  // Buyurtma qabul/rad/bekor bo'lsa badge tozala
   if(typeof FlutterNotify !== 'undefined') FlutterNotify.postMessage('0');
   try{
     const r=await fetch(`/driver/orders/${id}/${action}/`,{method:'POST',headers:{'X-CSRFToken':getCookie('csrftoken')}});

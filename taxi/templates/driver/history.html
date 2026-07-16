@@ -21,7 +21,9 @@
     <div class="ios-caption2 mt-0.5" style="color:var(--ios-label3)">Jami</div>
   </div>
   <div class="ios-card rounded-[14px] p-3 text-center">
-    <div class="ios-footnote font-bold text-[#34C759] leading-tight" id="s-earned">—</div>
+    <div class="ios-footnote font-bold text-[#34C759] leading-tight" id="s-earned">
+      {% if total_earned %}{{ total_earned|floatformat:0 }} so'm{% else %}&mdash;{% endif %}
+    </div>
     <div class="ios-caption2 mt-0.5" style="color:var(--ios-label3)">Daromad</div>
   </div>
   <div class="ios-card rounded-[14px] p-3 text-center">

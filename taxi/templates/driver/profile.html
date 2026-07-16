@@ -40,14 +40,14 @@
   <!-- ── Stats ── -->
   <div class="grid grid-cols-3 gap-2 anim-up" style="animation-delay:80ms">
     <div class="ios-card rounded-[14px] p-3.5 text-center">
-      <div class="ios-title font-bold text-[#FFD600]">{{ driver.orders.count|default:0 }}</div>
-      <div class="ios-caption2 mt-1" style="color:var(--ios-label3)">Buyurtma</div>
+      <div class="ios-title font-bold text-[#FFD600]">{{ driver.trips_count|default:0 }}</div>
+      <div class="ios-caption2 mt-1" style="color:var(--ios-label3)">Safarlar</div>
     </div>
     <div class="ios-card rounded-[14px] p-3.5 text-center">
-      <div class="ios-title font-bold {% if driver.approval_status == 'approved' %}text-[#34C759]{% else %}text-[#FF9500]{% endif %}">
-        {% if driver.approval_status == 'approved' %}✓{% else %}⏳{% endif %}
+      <div class="ios-title font-bold text-[#FF9500]">
+        {% if driver.rating %}{{ driver.rating|floatformat:1 }}⭐{% else %}—{% endif %}
       </div>
-      <div class="ios-caption2 mt-1" style="color:var(--ios-label3)">Holat</div>
+      <div class="ios-caption2 mt-1" style="color:var(--ios-label3)">Reyting</div>
     </div>
     <div class="ios-card rounded-[14px] p-3.5 text-center">
       <div class="ios-title font-bold {% if driver.is_on_duty %}text-[#34C759]{% else %}text-[#8E8E93]{% endif %}">

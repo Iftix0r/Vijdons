@@ -69,7 +69,7 @@ scrollBottom(false);
 async function sendMsg(){
   const inp=document.getElementById('msg-in');
   const text=inp.value.trim(); if(!text) return;
-  inp.value=''; Native.vibrate(10);
+  inp.value=''; inp.blur(); Native.vibrate(10);
   appendMsg({sender:'driver',text,created_at:new Date().toISOString()});
   try{
     const r=await fetch('{% url "driver:chat_send" %}',{

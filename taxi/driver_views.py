@@ -90,6 +90,14 @@ def driver_register_view(request):
     return render(request, 'driver/register.html', {'error': error})
 
 
+def _mask_phone(phone):
+    """Telefon raqamni mask qiladi: +998901234567 → +998 90 ***-**-67"""
+    p = ''.join(filter(str.isdigit, phone or ''))
+    if len(p) >= 9:
+        return phone[:4] + ' ** *** ** ' + phone[-2:]
+    return '** *** ** **'
+
+
 # ── Home ──────────────────────────────────────────────────────────────────────
 
 @driver_login_required
@@ -119,7 +127,7 @@ def driver_home(request, driver):
             'from_address': o.from_address,
             'to_address':   o.to_address,
             'client_name':  o.client.full_name or 'Mijoz',
-            'client_phone': o.client.phone_number if o.status != 'pending' else '+998 ** *** ** **',
+            'client_phone': o.client.phone_number if o.status != 'pending' else _mask_phone(o.client.phone_number),
             'price':        str(o.price) if o.price else None,
             'distance_km':  o.distance_km,
             'payment_type': o.payment_type,
@@ -252,10 +260,16 @@ def driver_order_action(request, driver, pk, action):
 
 @driver_login_required
 def driver_history(request, driver):
+    from django.db.models import Sum, Count, Q as DQ
     orders = Order.objects.filter(driver=driver).order_by('-created_at')[:50]
+    stats = orders.aggregate(
+        total_earned=Sum('price', filter=DQ(status='completed')),
+        completed=Count('id', filter=DQ(status='completed')),
+    )
     return render(request, 'driver/history.html', {
         'driver':      driver,
         'orders':      orders,
+        'total_earned': stats['total_earned'] or 0,
         'active_tab':  'history',
         'chat_unread': _chat_unread(driver),
     })
@@ -383,6 +397,13 @@ def driver_location_sync(request, driver):
 @require_POST
 @driver_login_required
 def driver_duty_toggle(request, driver):
+    tariff = TariffSettings.get()
+    # Navbatga kirishda balans yetarlimi tekshirish
+    if not driver.is_on_duty and driver.balance < tariff.commission:
+        return JsonResponse({
+            'ok': False,
+            'error': f"Balans yetarli emas. Kamida {int(tariff.commission):,} so'm bo'lishi kerak."
+        }, status=400)
     driver.is_on_duty = not driver.is_on_duty
     driver.save(update_fields=['is_on_duty'])
     return JsonResponse({'ok': True, 'is_on_duty': driver.is_on_duty})
