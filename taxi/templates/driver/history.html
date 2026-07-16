@@ -1,0 +1,39 @@
+{% extends "driver/base.html" %}
+{% block title %}Tarix — Vijdon Driver{% endblock %}
+
+{% block content %}
+<div class="bg-white dark:bg-[#1C1C1E] px-4 pt-3 pb-3 border-b border-gray-100 dark:border-gray-800">
+  <h1 class="text-lg font-black">Buyurtmalar tarixi</h1>
+  <p class="text-xs text-gray-400 mt-0.5">So'nggi 50 ta buyurtma</p>
+</div>
+
+<div class="px-4 py-4 space-y-3">
+  {% for order in orders %}
+  <div class="bg-white dark:bg-[#2C2C2E] rounded-3xl p-4 border border-gray-100 dark:border-gray-800">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs font-black px-2.5 py-1 rounded-xl
+        {% if order.status == 'completed' %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400
+        {% elif order.status == 'cancelled' %}bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400
+        {% else %}bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400{% endif %}">
+        {{ order.get_status_display }}
+      </span>
+      <span class="text-xs text-gray-400">#{{ order.id }} · {{ order.created_at|date:"d.m H:i" }}</span>
+    </div>
+    <div class="text-sm font-semibold text-gray-800 dark:text-white">{{ order.from_address }}</div>
+    {% if order.to_address %}
+    <div class="text-xs text-gray-400 mt-0.5">→ {{ order.to_address }}</div>
+    {% endif %}
+    <div class="flex items-center gap-3 mt-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+      {% if order.price %}<span class="text-sm font-black text-green-600 dark:text-green-400">{{ order.price|floatformat:0 }} so'm</span>{% endif %}
+      {% if order.distance_km %}<span class="text-xs text-gray-400">{{ order.distance_km|floatformat:1 }} km</span>{% endif %}
+      <span class="text-xs text-gray-400 ml-auto">{{ order.client.phone_number }}</span>
+    </div>
+  </div>
+  {% empty %}
+  <div class="text-center py-20 text-gray-400">
+    <i class="fas fa-clock-rotate-left text-4xl mb-4 opacity-30"></i>
+    <p class="font-semibold">Hali buyurtma yo'q</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

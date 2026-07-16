@@ -1,0 +1,24 @@
+from django.urls import path
+from . import driver_views
+
+app_name = 'driver'
+
+urlpatterns = [
+    path('',           driver_views.driver_login_view,    name='login'),
+    path('logout/',    driver_views.driver_logout_view,   name='logout'),
+    path('register/',  driver_views.driver_register_view, name='register'),
+
+    path('home/',      driver_views.driver_home,          name='home'),
+    path('history/',   driver_views.driver_history,       name='history'),
+    path('chat/',      driver_views.driver_chat,          name='chat'),
+    path('chat/send/', driver_views.driver_chat_send,     name='chat_send'),
+    path('chat/poll/', driver_views.driver_chat_poll,     name='chat_poll'),
+    path('profile/',   driver_views.driver_profile,       name='profile'),
+
+    path('orders/json/',              driver_views.driver_orders_json,   name='orders_json'),
+    path('orders/<int:pk>/<str:action>/', driver_views.driver_order_action, name='order_action'),
+
+    path('sync/fcm/',      driver_views.driver_fcm_sync,      name='fcm_sync'),
+    path('sync/location/', driver_views.driver_location_sync, name='location_sync'),
+    path('duty/',          driver_views.driver_duty_toggle,   name='duty_toggle'),
+]

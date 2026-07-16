@@ -27,5 +27,6 @@ admin.site.index_title = "Tizimga Xush Kelibsiz"
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('panel/', include('taxi.urls')),
+    path('driver/', include('taxi.driver_urls')),
     path('', RedirectView.as_view(url='/panel/', permanent=False)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -791,6 +791,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
+      backgroundColor: dark ? AppColors.bgDark : Colors.white,
       drawer: _drawer(dark),
       body: IndexedStack(
         index: _tab,

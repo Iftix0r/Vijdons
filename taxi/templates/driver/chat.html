@@ -1,0 +1,109 @@
+{% extends "driver/base.html" %}
+{% block title %}Chat — Vijdon Driver{% endblock %}
+
+{% block content %}
+<div class="bg-white dark:bg-[#1C1C1E] px-4 pt-3 pb-3 border-b border-gray-100 dark:border-gray-800">
+  <h1 class="text-lg font-black">Operator bilan chat</h1>
+</div>
+
+<div class="flex flex-col h-[calc(100vh-180px)]">
+  <!-- Messages -->
+  <div class="flex-1 overflow-y-auto px-4 py-4 space-y-3" id="messages">
+    {% for msg in messages %}
+    <div class="flex {% if msg.sender == 'driver' %}justify-end{% else %}justify-start{% endif %}">
+      <div class="max-w-[80%] px-4 py-2.5 rounded-2xl text-sm font-semibold
+        {% if msg.sender == 'driver' %}bg-[#FFD600] text-[#1C1C1E] rounded-br-sm
+        {% else %}bg-white dark:bg-[#2C2C2E] text-gray-800 dark:text-white rounded-bl-sm border border-gray-100 dark:border-gray-800{% endif %}">
+        {{ msg.text }}
+        <div class="text-[10px] mt-1 {% if msg.sender == 'driver' %}text-yellow-800/60{% else %}text-gray-400{% endif %}">
+          {{ msg.created_at|date:"H:i" }}
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="text-center py-10 text-gray-400">
+      <i class="fas fa-message text-3xl mb-3 opacity-30"></i>
+      <p class="text-sm font-semibold">Operator bilan muloqot boshlang</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Input -->
+  <div class="px-4 py-3 bg-white dark:bg-[#1C1C1E] border-t border-gray-100 dark:border-gray-800 flex gap-2">
+    <input type="text" id="msg-input" placeholder="Xabar yozing..."
+           class="flex-1 bg-gray-100 dark:bg-[#2C2C2E] rounded-2xl px-4 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-[#FFD600] dark:text-white"
+           onkeydown="if(event.key==='Enter') sendMsg()">
+    <button onclick="sendMsg()"
+            class="w-11 h-11 bg-[#FFD600] rounded-2xl flex items-center justify-center active:scale-90 transition-transform">
+      <i class="fas fa-paper-plane text-[#1C1C1E]"></i>
+    </button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let lastId = {{ messages.last.id|default:0 }};
+
+function scrollBottom() {
+  const el = document.getElementById('messages');
+  el.scrollTop = el.scrollHeight;
+}
+scrollBottom();
+
+async function sendMsg() {
+  const input = document.getElementById('msg-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  Native.vibrate();
+
+  // Optimistic UI
+  appendMsg({sender:'driver', text, created_at: new Date().toISOString()});
+
+  try {
+    const res = await fetch('{% url "driver:chat_send" %}', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+      body: JSON.stringify({text})
+    });
+    const data = await res.json();
+    if (data.ok) lastId = data.id;
+  } catch(_) {}
+}
+
+function appendMsg(msg) {
+  const el = document.getElementById('messages');
+  const isDriver = msg.sender === 'driver';
+  const time = new Date(msg.created_at).toLocaleTimeString('uz', {hour:'2-digit', minute:'2-digit'});
+  const div = document.createElement('div');
+  div.className = `flex ${isDriver ? 'justify-end' : 'justify-start'}`;
+  div.innerHTML = `
+    <div class="max-w-[80%] px-4 py-2.5 rounded-2xl text-sm font-semibold
+      ${isDriver ? 'bg-[#FFD600] text-[#1C1C1E] rounded-br-sm'
+                 : 'bg-white dark:bg-[#2C2C2E] text-gray-800 dark:text-white rounded-bl-sm border border-gray-100 dark:border-gray-800'}">
+      ${msg.text}
+      <div class="text-[10px] mt-1 ${isDriver ? 'text-yellow-800/60' : 'text-gray-400'}">${time}</div>
+    </div>`;
+  el.appendChild(div);
+  scrollBottom();
+}
+
+// Polling
+setInterval(async () => {
+  try {
+    const res = await fetch(`{% url "driver:chat_poll" %}?last_id=${lastId}`);
+    const data = await res.json();
+    data.messages.forEach(m => {
+      if (m.id > lastId) {
+        lastId = m.id;
+        if (m.sender !== 'driver') {
+          appendMsg(m);
+          Native.vibrate();
+        }
+      }
+    });
+  } catch(_) {}
+}, 3000);
+</script>
+{% endblock %}

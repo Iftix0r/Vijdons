@@ -11,40 +11,43 @@ class NotificationService {
 
   static Future<void> init() async {
     if (_initialized) return;
+    try {
+      const androidSettings =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      const iosSettings = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
 
-    const androidSettings =
-        AndroidInitializationSettings('@drawable/ic_notification');
-    const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
+      await _notif.initialize(
+        settings: const InitializationSettings(
+          android: androidSettings,
+          iOS: iosSettings,
+        ),
+        onDidReceiveNotificationResponse: (_) {},
+      );
 
-    await _notif.initialize(
-      settings: const InitializationSettings(
-        android: androidSettings,
-        iOS: iosSettings,
-      ),
-      onDidReceiveNotificationResponse: (_) {},
-    );
+      final vibrationPattern = Int64List.fromList([0, 300, 200, 300]);
+      final channel = AndroidNotificationChannel(
+        'new_orders_channel',
+        'Yangi buyurtmalar',
+        description: 'Yangi buyurtma kelganda bildirishnoma',
+        importance: Importance.max,
+        playSound: false,
+        enableVibration: true,
+        vibrationPattern: vibrationPattern,
+      );
 
-    final vibrationPattern = Int64List.fromList([0, 300, 200, 300]);
-    final channel = AndroidNotificationChannel(
-      'new_orders_channel',
-      'Yangi buyurtmalar',
-      description: 'Yangi buyurtma kelganda bildirishnoma',
-      importance: Importance.max,
-      playSound: false,
-      enableVibration: true,
-      vibrationPattern: vibrationPattern,
-    );
+      final androidPlugin = _notif.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      await androidPlugin?.createNotificationChannel(channel);
+      await androidPlugin?.requestNotificationsPermission();
 
-    final androidPlugin = _notif.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
-    await androidPlugin?.createNotificationChannel(channel);
-    await androidPlugin?.requestNotificationsPermission();
-
-    _initialized = true;
+      _initialized = true;
+    } catch (_) {
+      _initialized = true;
+    }
   }
 
   static Future<void> notifyNewOrder(int count) async {
@@ -87,7 +90,7 @@ class NotificationService {
       playSound: false,
       enableVibration: true,
       vibrationPattern: vibrationPattern,
-      icon: '@drawable/ic_notification',
+      icon: '@mipmap/ic_launcher',
       color: const Color(0xFFFFD600),
       largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       styleInformation: BigTextStyleInformation(

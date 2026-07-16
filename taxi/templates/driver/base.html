@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>{% block title %}Vijdon Driver{% endblock %}</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config = { darkMode: 'class' }</script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<style>
+  * { font-family: -apple-system, 'SF Pro Text', 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
+  body { overscroll-behavior: none; }
+  .tab-bar { padding-bottom: env(safe-area-inset-bottom); }
+  .safe-top { padding-top: env(safe-area-inset-top, 44px); }
+  @keyframes pulse-ring { 0%{transform:scale(.8);opacity:1} 100%{transform:scale(2);opacity:0} }
+  .pulse-ring::before { content:''; position:absolute; inset:0; border-radius:50%; background:currentColor; animation: pulse-ring 1.5s ease-out infinite; }
+  .slide-up { animation: slideUp .3s ease; }
+  @keyframes slideUp { from{transform:translateY(100%);opacity:0} to{transform:translateY(0);opacity:1} }
+  ::-webkit-scrollbar { display: none; }
+</style>
+</head>
+<body class="bg-[#F2F2F7] dark:bg-[#1C1C1E] text-[#1C1C1E] dark:text-white min-h-screen flex flex-col">
+
+<!-- ── Safe area top spacer ── -->
+<div class="safe-top flex-shrink-0"></div>
+
+<!-- ── Page content ── -->
+<main class="flex-1 overflow-y-auto pb-20" id="main-content">
+  {% block content %}{% endblock %}
+</main>
+
+<!-- ── Bottom Tab Bar ── -->
+<nav class="tab-bar fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-[#1C1C1E]/90 backdrop-blur-xl border-t border-gray-200/50 dark:border-gray-800/50 z-50">
+  <div class="flex items-center justify-around px-2 pt-2 pb-1">
+    <a href="{% url 'driver:home' %}" class="tab-item flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-all {% if active_tab == 'home' %}text-[#1C1C1E] dark:text-white{% else %}text-gray-400{% endif %}">
+      <i class="fas fa-radar text-xl {% if active_tab == 'home' %}{% else %}opacity-50{% endif %}"></i>
+      <span class="text-[10px] font-semibold">Asosiy</span>
+    </a>
+    <a href="{% url 'driver:history' %}" class="tab-item flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-all {% if active_tab == 'history' %}text-[#1C1C1E] dark:text-white{% else %}text-gray-400{% endif %}">
+      <i class="fas fa-clock-rotate-left text-xl {% if active_tab == 'history' %}{% else %}opacity-50{% endif %}"></i>
+      <span class="text-[10px] font-semibold">Tarix</span>
+    </a>
+    <a href="{% url 'driver:chat' %}" class="tab-item relative flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-all {% if active_tab == 'chat' %}text-[#1C1C1E] dark:text-white{% else %}text-gray-400{% endif %}">
+      <i class="fas fa-message text-xl {% if active_tab == 'chat' %}{% else %}opacity-50{% endif %}"></i>
+      {% if chat_unread > 0 %}
+      <span class="absolute top-0 right-2 bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[16px] text-center">{{ chat_unread }}</span>
+      {% endif %}
+      <span class="text-[10px] font-semibold">Chat</span>
+    </a>
+    <a href="{% url 'driver:profile' %}" class="tab-item flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-all {% if active_tab == 'profile' %}text-[#1C1C1E] dark:text-white{% else %}text-gray-400{% endif %}">
+      <i class="fas fa-person text-xl {% if active_tab == 'profile' %}{% else %}opacity-50{% endif %}"></i>
+      <span class="text-[10px] font-semibold">Profil</span>
+    </a>
+  </div>
+</nav>
+
+<script>
+// ── Native Bridge ──────────────────────────────────────────────────────────
+const Native = {
+  isApp: typeof NativeBridge !== 'undefined',
+  fcmToken: window.nativeFcmToken || '',
+
+  vibrate() {
+    if (this.isApp) NativeBridge.postMessage(JSON.stringify({action:'vibrate'}));
+    else if (navigator.vibrate) navigator.vibrate(50);
+  },
+
+  getLocation() {
+    return new Promise((resolve, reject) => {
+      if (this.isApp) {
+        NativeBridge.postMessage(JSON.stringify({action:'get_location'}));
+        window.addEventListener('vijdon_location', e => resolve(e.detail), {once:true});
+        setTimeout(() => reject('timeout'), 10000);
+      } else if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          p => resolve({lat: p.coords.latitude, lng: p.coords.longitude}),
+          reject, {enableHighAccuracy: true, timeout: 8000}
+        );
+      } else reject('no_gps');
+    });
+  },
+
+  getFcmToken() {
+    return new Promise(resolve => {
+      if (window.nativeFcmToken) { resolve(window.nativeFcmToken); return; }
+      if (this.isApp) {
+        NativeBridge.postMessage(JSON.stringify({action:'get_fcm_token'}));
+        window.addEventListener('vijdon_fcm', e => resolve(e.detail), {once:true});
+        setTimeout(() => resolve(''), 3000);
+      } else resolve('');
+    });
+  },
+
+  callPhone(phone) {
+    window.location.href = 'tel:' + phone;
+  }
+};
+
+// ── Dark mode ──────────────────────────────────────────────────────────────
+const dark = localStorage.getItem('theme') === 'dark' ||
+  (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme:dark)').matches);
+document.documentElement.classList.toggle('dark', dark);
+
+// ── FCM token ni serverga yuborish ────────────────────────────────────────
+async function syncFcmToken() {
+  const token = await Native.getFcmToken();
+  if (!token) return;
+  const stored = localStorage.getItem('fcm_synced');
+  if (stored === token) return;
+  try {
+    const res = await fetch('{% url "driver:fcm_sync" %}', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+      body: JSON.stringify({fcm_token: token})
+    });
+    if (res.ok) localStorage.setItem('fcm_synced', token);
+  } catch(_) {}
+}
+
+// ── GPS ni serverga yuborish ──────────────────────────────────────────────
+async function syncLocation() {
+  try {
+    const pos = await Native.getLocation();
+    await fetch('{% url "driver:location_sync" %}', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+      body: JSON.stringify({lat: pos.lat, lng: pos.lng})
+    });
+  } catch(_) {}
+}
+
+function getCookie(name) {
+  const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+  return v ? v[2] : '';
+}
+
+// ── Yangi buyurtma signali (FCM dan) ─────────────────────────────────────
+window.addEventListener('vijdon_new_order', () => {
+  Native.vibrate();
+  if (typeof onNewOrder === 'function') onNewOrder();
+});
+
+// ── GPS background sync ───────────────────────────────────────────────────
+window.addEventListener('vijdon_location', e => {
+  fetch('{% url "driver:location_sync" %}', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+    body: JSON.stringify({lat: e.detail.lat, lng: e.detail.lng})
+  }).catch(()=>{});
+});
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  syncFcmToken();
+  syncLocation();
+});
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

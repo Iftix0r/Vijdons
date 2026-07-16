@@ -3,16 +3,13 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  audioplayers_windows
-  file_selector_windows
+  firebase_core
   geolocator_windows
   permission_handler_windows
-  url_launcher_windows
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
   flutter_local_notifications_windows
-  jni
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)
