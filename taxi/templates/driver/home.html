@@ -667,10 +667,22 @@ function _tmxOnLocation(e) {
       _tmxDistKm += d;
       document.getElementById('tmx-dist').textContent = _tmxDistKm.toFixed(2);
       _tmxUpdatePrice();
+      _syncSheetTmx();
     }
   }
   _tmxPrevLat = lat;
   _tmxPrevLng = lng;
+}
+
+function _syncSheetTmx() {
+  const p = document.getElementById('sheet-tmx-price');
+  const t = document.getElementById('sheet-tmx-time');
+  const d = document.getElementById('sheet-tmx-dist');
+  const s = document.getElementById('sheet-tmx-speed');
+  if(p) p.textContent = document.getElementById('tmx-price').textContent;
+  if(t) t.textContent = document.getElementById('tmx-time').textContent;
+  if(d) d.textContent = document.getElementById('tmx-dist').textContent;
+  if(s) s.textContent = document.getElementById('tmx-speed').textContent;
 }
 
 function _tmxTick() {
@@ -681,6 +693,7 @@ function _tmxTick() {
   document.getElementById('tmx-time').textContent =
     min + ':' + String(sec).padStart(2, '0');
   _tmxUpdatePrice();
+  _syncSheetTmx();
 }
 
 function _tmxUpdatePrice() {
@@ -848,6 +861,33 @@ function _renderSheet(id, o){
       <span class="ios-subhead" style="color:var(--ios-label2)">${o.note}</span>
     </div>`:''}
 
+    <!-- Taximeter (faqat on_way da) -->
+    ${o.status==='on_way'?`
+    <div style="background:#111;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08)">
+      <div style="padding:10px 14px 6px;display:flex;align-items:center;gap:6px">
+        <div style="width:6px;height:6px;border-radius:50%;background:#AF52DE;box-shadow:0 0 6px #AF52DE"></div>
+        <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,.4);letter-spacing:.5px;text-transform:uppercase">Taximetr</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;padding:0 10px 10px">
+        <div style="text-align:center;padding:8px 4px">
+          <div style="font-size:10px;font-weight:600;color:rgba(255,214,0,.5);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">NARX</div>
+          <div style="font-size:18px;font-weight:700;color:#FFD600;font-variant-numeric:tabular-nums" id="sheet-tmx-price">—</div>
+        </div>
+        <div style="text-align:center;padding:8px 4px">
+          <div style="font-size:10px;font-weight:600;color:rgba(175,82,222,.5);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">VAQT</div>
+          <div style="font-size:18px;font-weight:700;color:#AF52DE;font-variant-numeric:tabular-nums" id="sheet-tmx-time">—</div>
+        </div>
+        <div style="text-align:center;padding:8px 4px">
+          <div style="font-size:10px;font-weight:600;color:rgba(0,122,255,.5);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">KM</div>
+          <div style="font-size:18px;font-weight:700;color:#007AFF;font-variant-numeric:tabular-nums" id="sheet-tmx-dist">—</div>
+        </div>
+        <div style="text-align:center;padding:8px 4px">
+          <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,.3);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">KM/H</div>
+          <div style="font-size:18px;font-weight:700;color:rgba(255,255,255,.6);font-variant-numeric:tabular-nums" id="sheet-tmx-speed">—</div>
+        </div>
+      </div>
+    </div>`:''}
+
     <!-- Actions -->
     <div>${btns[o.status]||''}</div>
   `;
@@ -855,7 +895,11 @@ function _renderSheet(id, o){
   const ov=document.getElementById('sheet-overlay');
   const sh=document.getElementById('sheet');
   ov.classList.remove('hidden');
-  requestAnimationFrame(()=>{ sh.style.transform='translateY(0)'; });
+  requestAnimationFrame(()=>{
+    sh.style.transform='translateY(0)';
+    // Agar on_way bo'lsa — taximeter qiymatlarini darhol to'ldiramiz
+    if(o.status==='on_way' && _tmxActive) _syncSheetTmx();
+  });
 }
 
 function closeSheet(){
