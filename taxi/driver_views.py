@@ -105,6 +105,14 @@ def driver_home(request, driver):
 
     orders_data = []
     for o in orders:
+        # Dispatch timer uchun qancha vaqt qolganini hisoblash
+        timer_sec = None
+        if o.status == 'pending' and o.dispatched_to_id == driver.id and o.dispatched_at:
+            from django.utils import timezone
+            timeout = TariffSettings.get().dispatch_timeout
+            elapsed = (timezone.now() - o.dispatched_at).total_seconds()
+            timer_sec = max(0, int(timeout - elapsed))
+
         orders_data.append({
             'id':           o.id,
             'status':       o.status,
@@ -115,6 +123,10 @@ def driver_home(request, driver):
             'price':        str(o.price) if o.price else None,
             'distance_km':  o.distance_km,
             'payment_type': o.payment_type,
+            'note':         o.note or '',
+            'commission':   str(o.commission) if o.commission else None,
+            'is_dispatched': o.dispatched_to_id == driver.id,
+            'timer_sec':    timer_sec,
         })
 
     return render(request, 'driver/home.html', {

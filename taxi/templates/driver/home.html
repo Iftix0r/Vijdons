@@ -206,6 +206,23 @@ function playBeep(){
   }catch(_){}
 }
 
+// ── Wake Lock ─────────────────────────────────────────────────────────────────
+let _wakeLock = null;
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    _wakeLock = await navigator.wakeLock.request('screen');
+    _wakeLock.addEventListener('release', () => { _wakeLock = null; });
+  } catch(_) {}
+}
+async function releaseWakeLock() {
+  if (_wakeLock) { await _wakeLock.release(); _wakeLock = null; }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && {{ driver.is_on_duty|yesno:'true,false' }}) requestWakeLock();
+});
+{% if driver.is_on_duty %}requestWakeLock();{% endif %}
+
 // ── Duty toggle ───────────────────────────────────────────────────────────────
 async function toggleDuty(){
   if(_busy) return; _busy=true; Native.vibrate();
