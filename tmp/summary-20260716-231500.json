@@ -1,0 +1,4 @@
+{
+  "summary": "GPS location navbar fix: getCurrentPosition (har safar ruxsat so'ragan) o'rniga watchPosition ishlatildi — bir marta ruxsat so'raydi, keyin doimiy kuzatadi. Nominatim uchun 5s AbortController timeout qo'shildi. GPS koordinati darhol ko'rsatiladi (fallback), keyin geocode natijasi kelganda almashtiriladi. 50m dan kam ko'chsa geocode so'ralmaydi, 1.5s debounce. Xato holatlari: ruxsat yo'q / signal yo'q / bo'sh string.",
+  "current_status": "Chat, klaviatura, animatsiya, 3 aloqa tugmasi, taximeter HTML, navbar GPS manzil — barchasi to'g'rilandi."
+}
