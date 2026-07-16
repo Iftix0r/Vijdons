@@ -263,28 +263,33 @@ def _order_action(request, driver, pk, allowed_statuses, new_status):
     update_fields = ['status', 'updated_at']
 
     if new_status == 'accepted':
-        # Agar buyurtma pending bo'lsa, u bu haydovchiga yuborilgan yoki umumiy tabloda bo'lishi kerak
-        if order.status == 'pending':
-            if order.dispatched_to and order.dispatched_to != driver:
+        from django.db import transaction
+        from decimal import Decimal
+        with transaction.atomic():
+            # Atomik: boshqa haydovchi qabul qilmagan bo'lsin
+            locked = Order.objects.select_for_update().get(pk=order.pk)
+            if locked.status != 'pending':
+                return Response({'detail': 'Bu buyurtmani allaqachon boshqa haydovchi qabul qildi.'}, status=409)
+            if locked.dispatched_to and locked.dispatched_to_id != driver.id:
                 return Response({'detail': 'Bu buyurtma sizga yuborilmagan.'}, status=403)
 
-        tariff = TariffSettings.get()
-        commission = order.commission if order.commission else tariff.commission
-        if driver.balance < commission:
-            return Response(
-                {'detail': f"Balansingizda yetarli mablag' yo'q. Komissiya: {commission} UZS. Joriy balans: {driver.balance} UZS."},
-                status=400,
-            )
-        from decimal import Decimal
-        driver.balance -= Decimal(str(commission))
-        driver.save(update_fields=['balance'])
-        order.driver = driver
-        order.commission = commission
-        order.dispatched_to = None
-        update_fields = ['status', 'driver', 'commission', 'dispatched_to', 'updated_at']
-
-    order.status = new_status
-    order.save(update_fields=update_fields)
+            tariff = TariffSettings.get()
+            commission = locked.commission if locked.commission else tariff.commission
+            if driver.balance < commission:
+                return Response(
+                    {'detail': f"Balansingizda yetarli mablag' yo'q. Komissiya: {commission} UZS. Joriy balans: {driver.balance} UZS."},
+                    status=400,
+                )
+            driver.balance -= Decimal(str(commission))
+            driver.save(update_fields=['balance'])
+            order.driver = driver
+            order.commission = commission
+            order.dispatched_to = None
+            order.status = new_status
+            order.save(update_fields=['status', 'driver', 'commission', 'dispatched_to', 'updated_at'])
+    else:
+        order.status = new_status
+        order.save(update_fields=update_fields)
 
     # Mijoz trips_count ni yangilash (yakunlanganda)
     if new_status == 'completed':

@@ -47,6 +47,9 @@ class ApiService {
       clearToken();
       throw const ApiException('Sessiya tugadi. Qayta kiring.', 401);
     }
+    if (r.statusCode == 409) {
+      throw const ApiException('Bu buyurtmani allaqachon boshqa haydovchi qabul qildi.', 409);
+    }
     if (r.statusCode >= 400) {
       String msg = 'Xatolik yuz berdi';
       if (body is Map) {

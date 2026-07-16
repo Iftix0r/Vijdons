@@ -68,11 +68,13 @@ class NotificationService {
 
   static Future<void> _showNotification(int count) async {
     final String title = count == 1
-        ? '🚖 Yangi buyurtma keldi!'
-        : '🚖 $count ta yangi buyurtma!';
-    const String body = "Buyurtmani ko'rish uchun bosing";
+        ? 'Yangi buyurtma'
+        : '$count ta yangi buyurtma';
+    final String body = count == 1
+        ? '\u{1F4CD} Yaqin atrofda buyurtma kutmoqda'
+        : '\u{1F4CD} $count ta buyurtma sizni kutmoqda';
 
-    final vibrationPattern = Int64List.fromList([0, 300, 200, 300]);
+    final vibrationPattern = Int64List.fromList([0, 200, 100, 200, 100, 400]);
 
     final androidDetails = AndroidNotificationDetails(
       'new_orders_channel',
@@ -80,7 +82,7 @@ class NotificationService {
       channelDescription: 'Yangi buyurtma kelganda bildirishnoma',
       importance: Importance.max,
       priority: Priority.high,
-      ticker: 'Yangi buyurtma',
+      ticker: title,
       fullScreenIntent: true,
       playSound: false,
       enableVibration: true,
@@ -88,12 +90,24 @@ class NotificationService {
       icon: '@drawable/ic_notification',
       color: const Color(0xFFFFD600),
       largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      styleInformation: BigTextStyleInformation(
+        body,
+        htmlFormatBigText: false,
+        contentTitle: title,
+        summaryText: 'Vijdon Driver',
+      ),
+      category: AndroidNotificationCategory.call,
+      visibility: NotificationVisibility.public,
+      ongoing: false,
+      autoCancel: true,
     );
 
     const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
+      interruptionLevel: InterruptionLevel.timeSensitive,
+      threadIdentifier: 'new_orders',
     );
 
     await _notif.show(

@@ -7,7 +7,8 @@ import '../core/theme.dart';
 import '../models/order_model.dart';
 
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key});
+  final Future<void> Function(OrderModel, String)? onOrderAction;
+  const HistoryScreen({super.key, this.onOrderAction});
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
@@ -72,6 +73,11 @@ class _HistoryScreenState extends State<HistoryScreen>
   Future<void> _orderAction(OrderModel order, String action) async {
     HapticFeedback.mediumImpact();
     try {
+      if (widget.onOrderAction != null) {
+        await widget.onOrderAction!(order, action);
+        await _load();
+        return;
+      }
       final ep = {
         'on_way':   AppConstants.onWayOrder(order.id),
         'arrived':  AppConstants.arrivedOrder(order.id),

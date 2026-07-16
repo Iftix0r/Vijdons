@@ -698,9 +698,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       await ApiService.orderAction(ep);
       _snack(_actionLabel(action), icon: _actionIcon(action));
 
-      // ── Qabul qilinganda: ovozni to'xtat + mijozga avtomatik qo'ng'iroq ──
+      // ── Qabul qilinganda: ovozni to'xtat + mijozga avtomatik qo'ng'iroq + Tarix tabiga o'tish ──
       if (action == 'accept') {
         await NotificationService.stopOrderSound();
+        if (mounted) setState(() => _tab = 1);
         if (order.clientPhone.isNotEmpty &&
             !order.clientPhone.contains('*')) {
           await Future.delayed(const Duration(milliseconds: 600));
@@ -719,8 +720,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
 
       await Future.wait([_loadOrders(silent: true), _loadProfile()]);
-    } catch (e) {
-      _snack(e.toString(), error: true);
+    } on ApiException catch (e) {
+      if (e.statusCode == 409) {
+        if (mounted) {
+          setState(() => _orders.removeWhere((o) => o.id == order.id));
+          _snack('Bu buyurtmani boshqa haydovchi qabul qildi', error: true, icon: Icons.person_rounded);
+        }
+        await _loadOrders(silent: true);
+      } else {
+        _snack(e.toString(), error: true);
+      }
     }
   }
 
@@ -784,7 +793,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         index: _tab,
         children: [
           _ordersTab(dark),
-          const HistoryScreen(),
+          HistoryScreen(onOrderAction: _orderAction),
           const ChatScreen(),
           ProfileScreen(driver: _driver, onLogout: _logout),
         ],
