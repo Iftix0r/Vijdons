@@ -10,9 +10,23 @@
 
   <!-- ── Avatar section ── -->
   <div class="flex flex-col items-center gap-3 py-4 anim-fade">
-    <div class="w-[88px] h-[88px] rounded-full bg-[#FFD600] flex items-center justify-center"
-         style="box-shadow:0 4px 20px rgba(255,214,0,.4)">
-      <span class="text-[36px] font-bold text-black">{{ driver.full_name|first|upper }}</span>
+    <div class="relative">
+      {% if driver.photo %}
+      <img src="{{ driver.photo.url }}" alt=""
+           class="w-[88px] h-[88px] rounded-full object-cover"
+           style="box-shadow:0 4px 20px rgba(255,214,0,.4)">
+      {% else %}
+      <div class="w-[88px] h-[88px] rounded-full bg-[#FFD600] flex items-center justify-center"
+           style="box-shadow:0 4px 20px rgba(255,214,0,.4)">
+        <span class="text-[36px] font-bold text-black">{{ driver.full_name|first|upper }}</span>
+      </div>
+      {% endif %}
+      <label for="photo-input"
+             class="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-[#007AFF] flex items-center justify-center cursor-pointer active:opacity-70"
+             style="box-shadow:0 2px 8px rgba(0,0,0,.3)">
+        <i class="fas fa-camera text-white text-[11px]"></i>
+      </label>
+      <input id="photo-input" type="file" accept="image/*" class="hidden" onchange="uploadPhoto(this)">
     </div>
     <div class="text-center">
       <div class="ios-title font-semibold">{{ driver.full_name }}</div>
@@ -78,7 +92,15 @@
         <i class="fas fa-moon text-[#5856D6] text-sm"></i>
       </div>
       <div class="flex-1 ios-subhead font-medium">Qorong'u rejim</div>
-      <div class="ios-toggle {% if True %}{% endif %}" id="theme-tog"></div>
+      <div class="ios-toggle" id="theme-tog"></div>
+    </div>
+    <!-- Parol o'zgartirish -->
+    <div class="ios-row gap-3" onclick="showPasswordSheet()">
+      <div class="w-9 h-9 rounded-[10px] bg-[rgba(255,149,0,.12)] flex items-center justify-center flex-shrink-0">
+        <i class="fas fa-lock text-[#FF9500] text-sm"></i>
+      </div>
+      <div class="flex-1 ios-subhead font-medium">Parolni o'zgartirish</div>
+      <i class="fas fa-chevron-right ios-caption" style="color:var(--ios-label3)"></i>
     </div>
     <!-- Version -->
     <div class="ios-row gap-3">
@@ -87,6 +109,21 @@
       </div>
       <div class="flex-1 ios-subhead font-medium">Vijdon Driver</div>
       <span class="ios-caption" style="color:var(--ios-label3)">v1.0</span>
+    </div>
+  </div>
+
+  <!-- ── Parol sheet ── -->
+  <div id="pwd-overlay" class="fixed inset-0 z-[150] hidden" onclick="hidePwdSheet()">
+    <div class="absolute inset-0" style="background:rgba(0,0,0,.5);backdrop-filter:blur(4px)"></div>
+  </div>
+  <div id="pwd-sheet" class="ios-sheet fixed bottom-0 left-0 right-0 z-[160]"
+       style="transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom,34px)">
+    <div class="ios-sheet-handle"></div>
+    <div class="px-4 pt-4 pb-4 space-y-3">
+      <div class="ios-title font-semibold mb-1">Parolni o'zgartirish</div>
+      <input id="pwd-old" type="password" placeholder="Eski parol" class="ios-input">
+      <input id="pwd-new" type="password" placeholder="Yangi parol (kamida 6 ta belgi)" class="ios-input">
+      <button onclick="changePassword()" class="ios-btn-primary">Saqlash</button>
     </div>
   </div>
 
@@ -108,9 +145,45 @@
 {% endblock %}
 {% block extra_js %}
 <script>
-// Sync toggle state
 const tog=document.getElementById('theme-tog');
 if(tog&&document.documentElement.classList.contains('dark')) tog.classList.add('on');
+
+async function uploadPhoto(input) {
+  const file = input.files[0]; if (!file) return;
+  const fd = new FormData();
+  fd.append('photo', file);
+  fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+  try {
+    const r = await fetch('{% url "driver:profile_photo" %}', {method:'POST', body:fd});
+    const d = await r.json();
+    if (d.ok) location.reload();
+    else showToast('Xatolik', d.error||'', 'error');
+  } catch(_) { showToast('Tarmoq xatosi','','error'); }
+}
+
+function showPasswordSheet() {
+  Native.vibrate();
+  document.getElementById('pwd-overlay').classList.remove('hidden');
+  requestAnimationFrame(()=>{ document.getElementById('pwd-sheet').style.transform='translateY(0)'; });
+}
+function hidePwdSheet() {
+  document.getElementById('pwd-sheet').style.transform='translateY(100%)';
+  setTimeout(()=>document.getElementById('pwd-overlay').classList.add('hidden'),360);
+}
+async function changePassword() {
+  const old = document.getElementById('pwd-old').value.trim();
+  const nw  = document.getElementById('pwd-new').value.trim();
+  if (!old || !nw) return showToast('Xatolik', 'Barcha maydonlarni to\'ldiring', 'error');
+  const fd = new FormData();
+  fd.append('old_password', old); fd.append('new_password', nw);
+  fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+  try {
+    const r = await fetch('{% url "driver:profile_password" %}', {method:'POST', body:fd});
+    const d = await r.json();
+    if (d.ok) { hidePwdSheet(); showToast('Parol o\'zgartirildi','','success'); }
+    else showToast('Xatolik', d.error||'', 'error');
+  } catch(_) { showToast('Tarmoq xatosi','','error'); }
+}
 
 async function sendSOS() {
   Native.vibrate([100,50,100,50,200]);

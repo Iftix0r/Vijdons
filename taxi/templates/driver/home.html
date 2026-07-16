@@ -375,35 +375,17 @@ async function initPush(){
 
 // ── Wake Lock ─────────────────────────────────────────────────────────────────
 async function requestWakeLock() {
+let _wakeLock = null;
   if (!('wakeLock' in navigator)) return;
   try {
     _wakeLock = await navigator.wakeLock.request('screen');
     _wakeLock.addEventListener('release', () => { _wakeLock = null; });
   } catch(_) {}
 }
-async function releaseWakeLock() {
-  if (_wakeLock) { await _wakeLock.release(); _wakeLock = null; }
-}
-document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && {{ driver.is_on_duty|yesno:'true,false' }}) requestWakeLock();
 });
 {% if driver.is_on_duty %}requestWakeLock();{% endif %}
 
-// ── Duty toggle ───────────────────────────────────────────────────────────────
-async function toggleDuty(){
-  if(_busy) return; _busy=true; Native.vibrate();
-  const btn=document.getElementById('duty-btn');
-  if(btn){btn.style.opacity='.4';btn.style.pointerEvents='none';}
-  try{
-    const r=await fetch('{% url "driver:duty_toggle" %}',{method:'POST',headers:{'X-CSRFToken':getCookie('csrftoken')}});
-    const d=await r.json();
-    if(d.ok) location.reload();
-    else showToast('Xatolik', d.error||'Qayta urinib ko\'ring', 'error', 4000);
-  }catch(_){showToast('Xatolik','Qayta urinib ko\'ring','error');}
-  finally{_busy=false;if(btn){btn.style.opacity='';btn.style.pointerEvents='';}}
-}
-
-// ── Sheet ─────────────────────────────────────────────────────────────────────
 function openOrder(id){
   Native.vibrate();
   const o=ORDERS.find(x=>x.id===id); if(!o) return;

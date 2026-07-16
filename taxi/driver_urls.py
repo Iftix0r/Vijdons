@@ -14,6 +14,8 @@ urlpatterns = [
     path('chat/send/', driver_views.driver_chat_send,     name='chat_send'),
     path('chat/poll/', driver_views.driver_chat_poll,     name='chat_poll'),
     path('profile/',   driver_views.driver_profile,       name='profile'),
+    path('profile/photo/',    driver_views.driver_profile_photo,    name='profile_photo'),
+    path('profile/password/', driver_views.driver_profile_password, name='profile_password'),
 
     path('orders/json/',              driver_views.driver_orders_json,   name='orders_json'),
     path('orders/<int:pk>/<str:action>/', driver_views.driver_order_action, name='order_action'),

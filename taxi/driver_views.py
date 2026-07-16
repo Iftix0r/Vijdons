@@ -328,6 +328,37 @@ def driver_profile(request, driver):
     })
 
 
+@require_POST
+@driver_login_required
+def driver_profile_photo(request, driver):
+    photo = request.FILES.get('photo')
+    if not photo:
+        return JsonResponse({'ok': False, 'error': 'Rasm tanlanmadi'}, status=400)
+    if driver.photo:
+        driver.photo.delete(save=False)
+    driver.photo = photo
+    driver.save(update_fields=['photo'])
+    return JsonResponse({'ok': True, 'url': request.build_absolute_uri(driver.photo.url)})
+
+
+@require_POST
+@driver_login_required
+def driver_profile_password(request, driver):
+    old = request.POST.get('old_password', '')
+    new = request.POST.get('new_password', '')
+    if not driver.user:
+        return JsonResponse({'ok': False, 'error': 'Foydalanuvchi topilmadi'}, status=400)
+    if not driver.user.check_password(old):
+        return JsonResponse({'ok': False, 'error': "Eski parol noto'g'ri"}, status=400)
+    if len(new) < 6:
+        return JsonResponse({'ok': False, 'error': 'Parol kamida 6 ta belgi bo\'lishi kerak'}, status=400)
+    driver.user.set_password(new)
+    driver.user.save()
+    from django.contrib.auth import update_session_auth_hash
+    update_session_auth_hash(request, driver.user)
+    return JsonResponse({'ok': True})
+
+
 # ── Web Push ─────────────────────────────────────────────────────────────────
 
 @require_POST

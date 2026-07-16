@@ -76,10 +76,6 @@ class _DriverWebViewState extends State<DriverWebView> {
           }
         },
       )
-      ..addJavaScriptChannel(
-        'FlutterToast',
-        onMessageReceived: (msg) => _showToast(msg.message),
-      )
       ..setNavigationDelegate(NavigationDelegate(
         onPageStarted: (_) {
           if (_firstLoad) setState(() => _loading = true);
@@ -99,8 +95,10 @@ class _DriverWebViewState extends State<DriverWebView> {
     _locationTimer = Timer.periodic(const Duration(seconds: 15), (_) async {
       try {
         final pos = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-          timeLimit: const Duration(seconds: 8),
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 8),
+          ),
         );
         _sendLocation(pos.latitude, pos.longitude);
       } catch (_) {}
@@ -110,8 +108,10 @@ class _DriverWebViewState extends State<DriverWebView> {
   Future<void> _injectLocation() async {
     try {
       final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 8),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 8),
+        ),
       );
       _sendLocation(pos.latitude, pos.longitude);
     } catch (_) {}
