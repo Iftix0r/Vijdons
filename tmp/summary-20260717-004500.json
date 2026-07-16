@@ -1,0 +1,4 @@
+{
+  "summary": "Sahifa tez-tez reload bo'lganda 'aniqlanmoqda' → koordinat → manzil takrorlanishi hal qilindi. sessionStorage ishlatildi: manzil 'vijdon_addr', koordinatlar 'vijdon_lat'/'vijdon_lng' kalitlari bilan saqlanadi. initNavLocation boshida sessionStorage dan manzilni darhol ko'rsatadi — reload bo'lganida Nominatim qayta chaqirilmaydi. 50m kam ko'chsa ham cached manzil ko'rsatiladi. hbgToggleDuty() (base.html) da Stop bosilganda sessionStorage tozalanadi.",
+  "current_status": "Manzil flicker muammosi hal qilindi. sessionStorage cache ishlaydi."
+}

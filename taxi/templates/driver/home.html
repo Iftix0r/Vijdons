@@ -619,8 +619,17 @@ document.addEventListener('visibilitychange', () => {
   const el = document.getElementById('nav-location');
   if (!el) return;
 
-  let _lastGeoLat = null, _lastGeoLng = null;
+  const SS_ADDR = 'vijdon_addr';
+  const SS_LAT  = 'vijdon_lat';
+  const SS_LNG  = 'vijdon_lng';
+
+  let _lastGeoLat = parseFloat(sessionStorage.getItem(SS_LAT)) || null;
+  let _lastGeoLng = parseFloat(sessionStorage.getItem(SS_LNG)) || null;
   let _geoTimer   = null;
+
+  // Oldingi manzil sessionStorage da saqlangan bo'lsa — darhol ko'rsatamiz
+  const _saved = sessionStorage.getItem(SS_ADDR);
+  if (_saved) el.textContent = _saved;
 
   // ── Reverse geocode — Nominatim ──────────────────────────────────────────
   async function reverseGeocode(lat, lng) {
@@ -646,22 +655,34 @@ document.addEventListener('visibilitychange', () => {
 
   // ── Koordinat keldi ───────────────────────────────────────────────────────
   async function gotCoords(lat, lng) {
-    // Darhol koordinatni ko'rsatamiz
-    if (el) el.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-
-    // 50m dan kam ko'chsa geocode so'ramaymiz
+    // 50m dan kam ko'chsa geocode so'ramaymiz, koordinatni ham ko'rsatmaymiz
     if (_lastGeoLat !== null) {
       const dlat = (lat - _lastGeoLat) * 111320;
       const dlng = (lng - _lastGeoLng) * 111320 * Math.cos(lat * Math.PI / 180);
-      if (Math.sqrt(dlat * dlat + dlng * dlng) < 50) return;
+      if (Math.sqrt(dlat * dlat + dlng * dlng) < 50) {
+        // Saqlanganidan foydalanish
+        const cached = sessionStorage.getItem(SS_ADDR);
+        if (cached && el) el.textContent = cached;
+        return;
+      }
     }
     _lastGeoLat = lat; _lastGeoLng = lng;
+    sessionStorage.setItem(SS_LAT, lat);
+    sessionStorage.setItem(SS_LNG, lng);
+
+    // Koordinatni vaqtincha ko'rsatamiz (geocode kelgunga qadar)
+    if (el && !sessionStorage.getItem(SS_ADDR)) {
+      el.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    }
 
     // 1.5s debounce
     clearTimeout(_geoTimer);
     _geoTimer = setTimeout(async () => {
       const addr = await reverseGeocode(lat, lng);
-      if (addr && el) el.textContent = addr;
+      if (addr) {
+        sessionStorage.setItem(SS_ADDR, addr);
+        if (el) el.textContent = addr;
+      }
       // Server ga ham yuboramiz
       fetch('{% url "driver:location_sync" %}', {
         method: 'POST',

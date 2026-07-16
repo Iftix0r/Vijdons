@@ -542,7 +542,12 @@ async function hbgToggleDuty() {
   try {
     const r = await fetch('{% url "driver:duty_toggle" %}', { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
     const d = await r.json();
-    if (d.ok) location.reload();
+    if (d.ok) {
+      sessionStorage.removeItem('vijdon_addr');
+      sessionStorage.removeItem('vijdon_lat');
+      sessionStorage.removeItem('vijdon_lng');
+      location.reload();
+    }
     else showToast('Xatolik', d.error || "Qayta urinib ko'ring", 'error', 4000);
   } catch(_) { showToast('Xatolik', "Qayta urinib ko'ring", 'error'); }
   finally { _hbgBusy = false; }
