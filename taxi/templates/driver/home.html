@@ -607,8 +607,8 @@ document.addEventListener('visibilitychange', () => {
 {% endif %}
 
 // ── TAXIMETER ─────────────────────────────────────────────────────────────────
-const TMX_BASE_PRICE  = {{ tariff.base_price|default:5000 }};
-const TMX_PER_KM      = {{ tariff.price_per_km|default:2000 }};
+const TMX_BASE_PRICE  = {{ tariff.base_price|default:5000|floatformat:0 }};
+const TMX_PER_KM      = {{ tariff.price_per_km|default:2000|floatformat:0 }};
 
 let _tmxActive    = false;
 let _tmxOrderId   = null;
