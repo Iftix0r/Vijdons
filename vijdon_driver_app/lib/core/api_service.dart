@@ -120,33 +120,13 @@ class ApiService {
     await _post(AppConstants.location, body: {'latitude': lat, 'longitude': lng});
   }
 
-  /// Yandex Geocoder orqali koordinatalarni manzilga aylantiradi (O'zbekiston uchun aniq)
-  static const _yandexGeoKey = '469e8d29-be0b-42da-9bd4-ed515dbdb741';
-
+  /// Backend orqali koordinatalarni manzilga aylantiradi
   static Future<String?> reverseGeocode(double lat, double lng) async {
-    final url = Uri.parse(
-      'https://geocode-maps.yandex.ru/1.x/'
-      '?apikey=$_yandexGeoKey'
-      '&geocode=$lng,$lat'
-      '&format=json'
-      '&lang=uz_UZ'
-      '&results=1',
-    );
     try {
-      final resp = await http.get(url).timeout(const Duration(seconds: 8));
-      if (resp.statusCode != 200) return null;
-
-      final data = json.decode(utf8.decode(resp.bodyBytes));
-      final members = data['response']?['GeoObjectCollection']
-          ?['featureMember'] as List?;
-      if (members == null || members.isEmpty) return null;
-
-      final obj = members.first['GeoObject'];
-      final name = obj?['name'] as String?;
-      final desc = obj?['description'] as String?;
-
-      if (name != null && desc != null) return '$name, $desc';
-      return name ?? desc;
+      final r = await _get('${AppConstants.geocodeReverse}?lat=$lat&lng=$lng');
+      final data = _decode(r) as Map<String, dynamic>;
+      final addr = data['address'] as String?;
+      return (addr != null && addr.isNotEmpty) ? addr : null;
     } catch (_) {
       return null;
     }

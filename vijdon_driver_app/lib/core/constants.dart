@@ -9,6 +9,7 @@ class AppConstants {
   static const String duty = '/driver/duty/';
   static const String fcm = '/driver/fcm/';
   static const String location = '/driver/location/';
+  static const String geocodeReverse = '/geocode/reverse/';
 
   // Orders
   static const String availableOrders = '/orders/available/';

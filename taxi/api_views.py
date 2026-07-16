@@ -27,7 +27,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 
-from .models import Driver, Order, TariffSettings, ChatMessage
+from .models import Driver, Order, TariffSettings, ChatMessage, MapsSettings
 from .serializers import (
     DriverRegisterSerializer,
     DriverLoginSerializer,
@@ -346,6 +346,76 @@ def _notify_telegram(order, new_status, driver):
     msg = msgs.get(new_status)
     if msg:
         send_telegram(msg)
+
+
+# ── Geocoding ────────────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def reverse_geocode(request):
+    """Koordinatalarni manzilga aylantiradi — admin tanlagan API orqali."""
+    lat = request.query_params.get('lat')
+    lng = request.query_params.get('lng')
+    if not lat or not lng:
+        return Response({'detail': 'lat va lng talab qilinadi.'}, status=400)
+
+    maps = MapsSettings.get()
+    address = None
+
+    try:
+        import urllib.request, json
+
+        if maps.provider == MapsSettings.PROVIDER_YANDEX and maps.api_key:
+            url = (f'https://geocode-maps.yandex.ru/1.x/?apikey={maps.api_key}'
+                   f'&geocode={lng},{lat}&format=json&lang=uz_UZ&results=1')
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                data = json.loads(resp.read().decode())
+            members = data['response']['GeoObjectCollection']['featureMember']
+            if members:
+                obj  = members[0]['GeoObject']
+                name = obj.get('name', '')
+                desc = obj.get('description', '')
+                address = f'{name}, {desc}' if name and desc else name or desc
+
+        elif maps.provider == MapsSettings.PROVIDER_GEOAPIFY and maps.api_key:
+            url = (f'https://api.geoapify.com/v1/geocode/reverse'
+                   f'?lat={lat}&lon={lng}&lang=uz&apiKey={maps.api_key}')
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                data = json.loads(resp.read().decode())
+            props = data['features'][0]['properties']
+            parts = [p for p in [props.get('street'), props.get('suburb') or props.get('district'), props.get('city') or props.get('town')] if p]
+            address = ', '.join(parts) or props.get('formatted')
+
+        elif maps.provider == MapsSettings.PROVIDER_GOOGLE and maps.api_key:
+            url = (f'https://maps.googleapis.com/maps/api/geocode/json'
+                   f'?latlng={lat},{lng}&key={maps.api_key}&language=uz')
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                data = json.loads(resp.read().decode())
+            results = data.get('results', [])
+            if results:
+                address = results[0].get('formatted_address')
+
+        else:  # Nominatim (default)
+            url = (f'https://nominatim.openstreetmap.org/reverse'
+                   f'?lat={lat}&lon={lng}&format=json&accept-language=uz,ru&zoom=16')
+            req = urllib.request.Request(url, headers={'User-Agent': 'VijdonTaxiDriverApp/1.0'})
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                data = json.loads(resp.read().decode())
+            addr = data.get('address', {})
+            parts = [p for p in [
+                addr.get('road') or addr.get('street') or addr.get('pedestrian') or addr.get('residential'),
+                addr.get('suburb') or addr.get('neighbourhood') or addr.get('village'),
+                addr.get('city') or addr.get('town') or addr.get('county'),
+            ] if p]
+            address = ', '.join(parts) or data.get('display_name')
+
+    except Exception:
+        pass
+
+    return Response({'address': address})
 
 
 # ── Chat ──────────────────────────────────────────────────────────────────────

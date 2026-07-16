@@ -1,0 +1,96 @@
+{% extends 'taxi/base.html' %}
+{% block title %}Maps Sozlamalari — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-end gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Maps API Sozlamalari 🗺️</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Geocoding uchun ishlatiluvchi API ni tanlang.</p>
+    </div>
+    <span class="text-xs text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-700">
+        <i class="fas fa-clock mr-1"></i>Oxirgi yangilanish: {{ maps.updated_at|date:"d.m.Y H:i" }}
+    </span>
+</div>
+
+<div class="max-w-xl">
+    <form method="POST" class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+        {% csrf_token %}
+        <div class="px-6 py-5 space-y-5">
+
+            <!-- Provider tanlash -->
+            <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+                    <i class="fas fa-map-marked-alt text-blue-500 mr-1"></i>Geocoding API
+                </label>
+                <div class="space-y-2">
+                    {% for value, label in maps.PROVIDER_CHOICES %}
+                    <label class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition
+                        {% if maps.provider == value %}border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20{% else %}border-gray-200 dark:border-gray-700 hover:border-gray-300{% endif %}">
+                        <input type="radio" name="provider" value="{{ value }}"
+                               {% if maps.provider == value %}checked{% endif %}
+                               class="accent-yellow-500">
+                        <div>
+                            <p class="text-sm font-bold text-gray-800 dark:text-white">{{ label }}</p>
+                            {% if value == 'nominatim' %}
+                            <p class="text-xs text-gray-400">API kalit shart emas. O'zbekiston uchun o'rtacha aniqlik.</p>
+                            {% elif value == 'yandex' %}
+                            <p class="text-xs text-gray-400">O'zbekiston uchun eng aniq. <a href="https://developer.tech.yandex.ru" target="_blank" class="text-blue-500 underline">Kalit olish →</a></p>
+                            {% elif value == 'geoapify' %}
+                            <p class="text-xs text-gray-400">Bepul 3000 req/kun. <a href="https://geoapify.com" target="_blank" class="text-blue-500 underline">Kalit olish →</a></p>
+                            {% elif value == 'google' %}
+                            <p class="text-xs text-gray-400">Eng aniq, lekin to'lovli. <a href="https://console.cloud.google.com" target="_blank" class="text-blue-500 underline">Kalit olish →</a></p>
+                            {% endif %}
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- API kalit -->
+            <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                    <i class="fas fa-key text-yellow-500 mr-1"></i>API Kalit
+                </label>
+                <input type="text" name="api_key" value="{{ maps.api_key }}"
+                       placeholder="Nominatim uchun bo'sh qoldiring..."
+                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                <p class="text-xs text-gray-400 mt-1">Yandex, Geoapify yoki Google tanlanganda kalit kiriting</p>
+            </div>
+
+            <!-- Faol -->
+            <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-100 dark:border-gray-700">
+                <div>
+                    <p class="text-sm font-bold text-gray-800 dark:text-white">Geocoding faol</p>
+                    <p class="text-xs text-gray-400 mt-0.5">O'chirilsa ilova koordinatalarni ko'rsatadi</p>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" name="is_active" {% if maps.is_active %}checked{% endif %} class="sr-only peer">
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-yellow-400 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
+                </label>
+            </div>
+
+            <!-- Joriy holat -->
+            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/40 rounded-xl p-4">
+                <p class="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide mb-1">
+                    <i class="fas fa-info-circle mr-1"></i>Joriy holat
+                </p>
+                <p class="text-sm text-blue-800 dark:text-blue-300">
+                    Faol API: <b>{{ maps.get_provider_display }}</b>
+                    {% if not maps.is_active %}<span class="text-red-500"> (O'chirilgan)</span>{% endif %}
+                </p>
+            </div>
+        </div>
+
+        <div class="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex gap-3">
+            <button type="submit"
+                    class="flex-1 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-sm rounded-xl shadow-sm transition-all hover:-translate-y-0.5">
+                <i class="fas fa-save mr-2"></i>Saqlash
+            </button>
+            <a href="{% url 'taxi:panel_dashboard' %}"
+               class="px-6 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-semibold text-sm rounded-xl hover:bg-gray-50 transition">
+                Bekor qilish
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

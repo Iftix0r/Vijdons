@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q
 from django.http import JsonResponse
-from .models import Order, Driver, Client, TariffSettings, ChatMessage
+from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings
 from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order
 
 
@@ -281,6 +281,17 @@ def client_list(request):
 
 
 # ── Tariff Settings ────────────────────────────────────────────────────────────
+
+def maps_settings(request):
+    maps = MapsSettings.get()
+    if request.method == 'POST':
+        maps.provider  = request.POST.get('provider', maps.provider)
+        maps.api_key   = request.POST.get('api_key', '').strip()
+        maps.is_active = request.POST.get('is_active') == 'on'
+        maps.save()
+        return redirect('taxi:maps_settings')
+    return render(request, 'taxi/maps_settings.html', {'maps': maps})
+
 
 def tariff_settings(request):
     tariff = TariffSettings.get()

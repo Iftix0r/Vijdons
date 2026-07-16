@@ -110,6 +110,10 @@
            class="nav-link {% if request.resolver_match.url_name == 'tariff_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-sliders w-5 text-center"></i> Tariff sozlamalari
         </a>
+        <a href="/panel/maps/"
+           class="nav-link {% if request.resolver_match.url_name == 'maps_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-map-marked-alt w-5 text-center"></i> Maps API
+        </a>
         <a href="/admin/"
            class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-shield-halved w-5 text-center"></i> Admin Panel

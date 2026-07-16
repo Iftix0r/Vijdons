@@ -192,31 +192,45 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _updateDriverLocation() async {
     try {
-      final hasPermission = await _checkLocationPermission();
-      if (!hasPermission) return;
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) setState(() => _address = 'GPS o\'chirilgan');
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        if (mounted) setState(() => _address = 'GPS ruxsati berilmagan');
+        return;
+      }
 
       final pos = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 5),
+        timeLimit: const Duration(seconds: 10),
       );
       final lat = pos.latitude;
       final lng = pos.longitude;
       if (mounted) setState(() { _lat = lat; });
 
-      // Backend ga yuborish (alohida try/catch - manzil olishni bloklamasin)
       try { await ApiService.updateLocation(lat, lng); } catch (_) {}
 
-      // Manzilni har doim yangilash (flag tiqilib qolmasin)
       if (!_fetchingAddress) {
         _fetchingAddress = true;
         try {
           final addr = await ApiService.reverseGeocode(lat, lng);
-          if (mounted) setState(() { _address = addr ?? _address; });
-        } catch (_) {}
+          if (mounted) setState(() { _address = addr ?? '$lat, $lng'; });
+        } catch (_) {
+          if (mounted) setState(() { _address = '$lat, $lng'; });
+        }
         _fetchingAddress = false;
       }
-    } catch (_) {
+    } catch (e) {
       _fetchingAddress = false;
+      if (mounted && _address == null) setState(() => _address = 'Manzil aniqlanmadi');
     }
   }
 

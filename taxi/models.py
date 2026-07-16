@@ -115,6 +115,41 @@ class ChatMessage(models.Model):
         ordering = ['created_at']
 
 
+class MapsSettings(models.Model):
+    """Singleton: admin paneldan geocoding API sozlamalari."""
+    PROVIDER_NOMINATIM = 'nominatim'
+    PROVIDER_YANDEX    = 'yandex'
+    PROVIDER_GEOAPIFY  = 'geoapify'
+    PROVIDER_GOOGLE    = 'google'
+    PROVIDER_CHOICES = (
+        (PROVIDER_NOMINATIM, 'OpenStreetMap (Nominatim) — Bepul'),
+        (PROVIDER_YANDEX,    'Yandex Geocoder'),
+        (PROVIDER_GEOAPIFY,  'Geoapify'),
+        (PROVIDER_GOOGLE,    'Google Maps'),
+    )
+
+    provider   = models.CharField(max_length=20, choices=PROVIDER_CHOICES, default=PROVIDER_NOMINATIM, verbose_name='Geocoding API')
+    api_key    = models.CharField(max_length=255, blank=True, default='', verbose_name='API kalit', help_text='Nominatim uchun shart emas')
+    is_active  = models.BooleanField(default=True, verbose_name='Faol')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return f'Maps: {self.get_provider_display()}'
+
+    class Meta:
+        verbose_name = 'Maps sozlamalari'
+        verbose_name_plural = 'Maps sozlamalari'
+
+
 class TariffSettings(models.Model):
     """Singleton: admin paneldan narx sozlamalari."""
     base_price    = models.DecimalField(max_digits=10, decimal_places=2, default=5000, verbose_name="Boshlang'ich narx (UZS)", help_text="Har bir buyurtma uchun minimal narx")
