@@ -158,7 +158,7 @@ class BotSettings(models.Model):
         verbose_name_plural = 'Bot sozlamalari'
 
 
-
+class MapsSettings(models.Model):
     """Singleton: admin paneldan geocoding API sozlamalari."""
     PROVIDER_NOMINATIM = 'nominatim'
     PROVIDER_YANDEX    = 'yandex'
