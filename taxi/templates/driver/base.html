@@ -102,7 +102,7 @@ body { background: var(--ios-bg); color: var(--ios-label); }
 .ios-caption { font-size: 12px; font-weight: 400; letter-spacing: 0; }
 .ios-caption2 { font-size: 11px; font-weight: 400; letter-spacing: .07px; }
 
-/* ── iOS Button ── */
+/* ── Touch Targets: minimal 56px ── */
 .ios-btn-primary {
   background: var(--ios-yellow);
   color: #000;
@@ -110,7 +110,8 @@ body { background: var(--ios-bg); color: var(--ios-label); }
   font-weight: 600;
   letter-spacing: -.41px;
   border-radius: 14px;
-  padding: 16px;
+  padding: 18px 16px;
+  min-height: 56px;
   width: 100%;
   transition: opacity .15s, transform .1s;
 }
@@ -123,7 +124,8 @@ body { background: var(--ios-bg); color: var(--ios-label); }
   font-weight: 600;
   letter-spacing: -.41px;
   border-radius: 14px;
-  padding: 16px;
+  padding: 18px 16px;
+  min-height: 56px;
   width: 100%;
   transition: opacity .15s, transform .1s;
 }
@@ -291,19 +293,19 @@ body { background: var(--ios-bg); color: var(--ios-label); }
        style="padding-bottom:env(safe-area-inset-bottom,34px)">
 
     <a href="{% url 'driver:home' %}" onclick="Native.vibrate()"
-       class="flex flex-col items-center gap-[3px] px-4 py-1 transition-all active:opacity-60">
+       class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60">
       <i class="fas fa-car-side text-[24px] {% if active_tab == 'home' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
       <span class="ios-caption2 {% if active_tab == 'home' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Asosiy</span>
     </a>
 
     <a href="{% url 'driver:history' %}" onclick="Native.vibrate()"
-       class="flex flex-col items-center gap-[3px] px-4 py-1 transition-all active:opacity-60">
+       class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60">
       <i class="fas fa-clock-rotate-left text-[24px] {% if active_tab == 'history' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
       <span class="ios-caption2 {% if active_tab == 'history' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Tarix</span>
     </a>
 
     <a href="{% url 'driver:chat' %}" onclick="Native.vibrate()"
-       class="relative flex flex-col items-center gap-[3px] px-4 py-1 transition-all active:opacity-60">
+       class="relative flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60">
       <i class="fas fa-message text-[24px] {% if active_tab == 'chat' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
       {% if chat_unread > 0 %}
       <span class="ios-badge absolute -top-0.5 right-1.5">{{ chat_unread }}</span>
@@ -312,7 +314,7 @@ body { background: var(--ios-bg); color: var(--ios-label); }
     </a>
 
     <a href="{% url 'driver:profile' %}" onclick="Native.vibrate()"
-       class="flex flex-col items-center gap-[3px] px-4 py-1 transition-all active:opacity-60">
+       class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60">
       <i class="fas fa-person text-[24px] {% if active_tab == 'profile' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
       <span class="ios-caption2 {% if active_tab == 'profile' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Profil</span>
     </a>
@@ -388,8 +390,43 @@ function hideToast() {
 }
 
 // ── Offline ───────────────────────────────────────────────────────────────────
-window.addEventListener('offline', ()=>{ document.getElementById('offline-bar').classList.remove('hidden'); });
-window.addEventListener('online',  ()=>{ document.getElementById('offline-bar').classList.add('hidden'); showToast('Aloqa tiklandi','','success',2000); });
+// ── Audio Alerts ─────────────────────────────────────────────────────────────
+const Audio = {
+  _play(notes) {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      notes.forEach(([t, f, v=0.3, d=0.15]) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.value = f; o.type = 'sine';
+        g.gain.setValueAtTime(v, ctx.currentTime + t);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + d);
+        o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + d);
+      });
+    } catch(_) {}
+  },
+  newOrder() { this._play([[0,.28,880],[.15,.22,1046],[.3,.3,1318]]); },
+  accept()   { this._play([[0,.2,523],[.12,.25,659]]); },
+  reject()   { this._play([[0,.3,440],[.15,.3,330]]); },
+  complete() { this._play([[0,.2,659],[.12,.2,784],[.24,.3,1047]]); },
+  offline()  { this._play([[0,.4,220,.4]]); },
+  online()   { this._play([[0,.2,523],[.15,.25,784]]); },
+};
+
+// ── Service Worker ────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/driver/sw.js', { scope: '/driver/' }).catch(() => {});
+}
+
+window.addEventListener('offline', () => {
+  document.getElementById('offline-bar').classList.remove('hidden');
+  Audio.offline();
+});
+window.addEventListener('online', () => {
+  document.getElementById('offline-bar').classList.add('hidden');
+  showToast('Aloqa tiklandi', '', 'success', 2000);
+  Audio.online();
+});
 if (!navigator.onLine) document.getElementById('offline-bar').classList.remove('hidden');
 
 // ── GPS sync ──────────────────────────────────────────────────────────────────
