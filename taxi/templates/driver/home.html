@@ -460,6 +460,17 @@ const ORDERS = {{ orders_json|safe }};
 let _known = new Set(ORDERS.map(o=>o.id));
 let _busy = false;
 
+// Agar on_way buyurtma bo'lsa — sahifa yuklanganida taximeter ochiladi
+(function() {
+  const onWay = ORDERS.find(o => o.status === 'on_way');
+  if (onWay) {
+    // DOM tayyor bo'lgandan keyin
+    window.addEventListener('DOMContentLoaded', () => tmxStart(onWay.id, onWay), { once: true });
+    // DOMContentLoaded o'tib ketgan bo'lsa ham ishlasin
+    if (document.readyState !== 'loading') tmxStart(onWay.id, onWay);
+  }
+})();
+
 // ── Pull-to-refresh ───────────────────────────────────────────────────────────
 let _py=0;
 const _mc=document.getElementById('main-content');
@@ -727,6 +738,163 @@ document.addEventListener('visibilitychange', () => {
 })();
 {% endif %}
 
+// ── TAXIMETER ─────────────────────────────────────────────────────────────────
+const TMX_BASE_PRICE  = {{ tariff.base_price|default:5000 }};
+const TMX_PER_KM      = {{ tariff.price_per_km|default:2000 }};
+
+let _tmxActive    = false;
+let _tmxOrderId   = null;
+let _tmxOrder     = null;
+let _tmxStartTime = null;
+let _tmxInterval  = null;
+let _tmxDistKm    = 0;
+let _tmxPrevLat   = null;
+let _tmxPrevLng   = null;
+let _tmxWatchId   = null;
+
+// Haversine masofa (km)
+function _haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 +
+            Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+            Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function tmxStart(orderId, order) {
+  if (_tmxActive) return;
+  _tmxActive  = true;
+  _tmxOrderId = orderId;
+  _tmxOrder   = order;
+  _tmxStartTime = Date.now();
+  _tmxDistKm  = 0;
+  _tmxPrevLat = null;
+  _tmxPrevLng = null;
+
+  // Overlay ochish
+  const tmx = document.getElementById('taximeter');
+  tmx.classList.remove('hidden');
+  document.getElementById('main-content').style.overflow = 'hidden';
+
+  // Buyurtma ma'lumotlari
+  document.getElementById('tmx-order-badge').textContent = '#' + orderId;
+  document.getElementById('tmx-from-txt').textContent = order?.from_address || '';
+  const toEl = document.getElementById('tmx-to-txt');
+  if (order?.to_address) {
+    toEl.textContent = order.to_address;
+    document.getElementById('tmx-to').style.display = 'flex';
+  } else {
+    document.getElementById('tmx-to').style.display = 'none';
+  }
+  document.getElementById('tmx-payment').textContent =
+    order?.payment_type === 'cash' ? '💵 Naqd to\'lov' : '💳 Karta to\'lov';
+
+  // Agar buyurtmada belgilangan narx bo'lsa
+  if (order?.price && parseFloat(order.price) > 0) {
+    const fixedBadge = document.getElementById('tmx-fixed-badge');
+    fixedBadge.classList.remove('hidden');
+    fixedBadge.style.display = 'inline-block';
+    document.getElementById('tmx-price').textContent =
+      parseInt(order.price).toLocaleString('uz-UZ');
+  } else {
+    document.getElementById('tmx-price').textContent = TMX_BASE_PRICE.toLocaleString('uz-UZ');
+  }
+
+  // Timer interval — har sekund
+  _tmxInterval = setInterval(_tmxTick, 1000);
+
+  // GPS watch
+  window.addEventListener('vijdon_location', _tmxOnLocation);
+  if (navigator.geolocation) {
+    _tmxWatchId = navigator.geolocation.watchPosition(
+      pos => _tmxOnLocation({ detail: { lat: pos.coords.latitude, lng: pos.coords.longitude, speed: pos.coords.speed } }),
+      () => {},
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 3000 }
+    );
+  }
+}
+
+function _tmxOnLocation(e) {
+  const lat = e.detail?.lat;
+  const lng = e.detail?.lng;
+  const spd = e.detail?.speed; // m/s yoki null
+  if (!lat || !lng || !_tmxActive) return;
+
+  // Tezlik
+  let kmh = 0;
+  if (spd != null && spd >= 0) {
+    kmh = Math.round(spd * 3.6);
+  }
+  document.getElementById('tmx-speed').textContent = kmh;
+
+  // Masofa
+  if (_tmxPrevLat !== null) {
+    const d = _haversine(_tmxPrevLat, _tmxPrevLng, lat, lng);
+    if (d > 0.005 && d < 1.0) { // 5m dan katta, 1km dan kichik (shovqin filtri)
+      _tmxDistKm += d;
+      document.getElementById('tmx-dist').textContent = _tmxDistKm.toFixed(2);
+      _tmxUpdatePrice();
+    }
+  }
+  _tmxPrevLat = lat;
+  _tmxPrevLng = lng;
+}
+
+function _tmxTick() {
+  if (!_tmxActive || !_tmxStartTime) return;
+  const elapsed = Math.floor((Date.now() - _tmxStartTime) / 1000);
+  const min = Math.floor(elapsed / 60);
+  const sec = elapsed % 60;
+  document.getElementById('tmx-time').textContent =
+    min + ':' + String(sec).padStart(2, '0');
+  _tmxUpdatePrice();
+}
+
+function _tmxUpdatePrice() {
+  if (!_tmxActive) return;
+  // Agar belgilangan narx bo'lsa — o'zgartirmaymiz
+  if (_tmxOrder?.price && parseFloat(_tmxOrder.price) > 0) return;
+  const price = Math.round(TMX_BASE_PRICE + _tmxDistKm * TMX_PER_KM);
+  const el = document.getElementById('tmx-price');
+  const prev = parseInt(el.textContent.replace(/\D/g, '')) || 0;
+  el.textContent = price.toLocaleString('uz-UZ');
+  if (price > prev) {
+    el.classList.remove('price-updated');
+    void el.offsetWidth; // reflow
+    el.classList.add('price-updated');
+  }
+}
+
+function tmxStop() {
+  _tmxActive = false;
+  clearInterval(_tmxInterval);
+  _tmxInterval = null;
+  if (_tmxWatchId !== null) {
+    navigator.geolocation?.clearWatch(_tmxWatchId);
+    _tmxWatchId = null;
+  }
+  window.removeEventListener('vijdon_location', _tmxOnLocation);
+  document.getElementById('taximeter').classList.add('hidden');
+  document.getElementById('main-content').style.overflow = '';
+}
+
+function tmxArrived() {
+  if (!_tmxOrderId) return;
+  Native.vibrate();
+  tmxStop();
+  doAction(_tmxOrderId, 'arrived');
+}
+
+function tmxCancel() {
+  if (!_tmxOrderId) return;
+  Native.vibrate();
+  tmxStop();
+  doAction(_tmxOrderId, 'cancel');
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function openTelegram(phone) {
   // +998901234567 → https://t.me/+998901234567
   // raqamdan faqat raqamlar va + belgisini olamiz
@@ -874,8 +1042,18 @@ async function doAction(id,action){
       if(action==='accept'){
         const o=ORDERS.find(x=>x.id===id);
         if(o?.client_phone&&!o.client_phone.includes('*')){ showToast('Qabul qilindi',o.client_phone,'success'); setTimeout(()=>Native.callPhone(o.client_phone),900); }
+        setTimeout(()=>location.reload(),300);
+      } else if(action==='on_way'){
+        // Taximeter ishga tushirish
+        const o=ORDERS.find(x=>x.id===id);
+        tmxStart(id, o || null);
+        // Sahifani reload qilmaymiz — taximeter ochiq
+      } else if(action==='arrived'||action==='cancel'||action==='complete'){
+        tmxStop();
+        setTimeout(()=>location.reload(),300);
+      } else {
+        setTimeout(()=>location.reload(),300);
       }
-      setTimeout(()=>location.reload(),300);
     } else showToast('Xatolik',d.error||'Qayta urinib ko\'ring','error');
   }catch(_){showToast('Tarmoq xatosi','Internet aloqasini tekshiring','error');}
 }

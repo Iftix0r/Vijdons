@@ -143,6 +143,7 @@ def driver_home(request, driver):
         'orders_json': json.dumps(orders_data, ensure_ascii=False),
         'active_tab':  'home',
         'chat_unread': _chat_unread(driver),
+        'tariff':      TariffSettings.get(),
     })
 
 

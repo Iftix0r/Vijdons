@@ -1,0 +1,4 @@
+{
+  "summary": "Flutter WebView ichida tel:, sms:, https://t.me/ URL lari ERR_UNKNOWN_URL_SCHEME xatosi berishi hal qilindi. url_launcher: ^6.3.1 pubspec.yaml ga qo'shildi. main.dart ga import va NavigationDelegate ga onNavigationRequest handler qo'shildi — tel:/sms:/tg:/https://t.me/ URL larni launchUrl(externalApplication) orqali tashqi ilovaga yo'naltiradi, WebView ichida ochmaydi. AndroidManifest.xml queries blokiga sms/smsto/tg/t.me sxemalari qo'shildi. flutter pub get && flutter build apk --release kerak.",
+  "current_status": "tel/sms/telegram URL lar tuzatildi. build kerak."
+}

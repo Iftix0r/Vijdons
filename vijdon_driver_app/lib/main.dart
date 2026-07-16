@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'core/notification_service.dart';
 
@@ -108,6 +109,21 @@ class _DriverWebViewState extends State<DriverWebView> {
           }
           await _injectLocation();
           await _injectNotificationBridge();
+        },
+        onNavigationRequest: (request) {
+          final url = request.url;
+          // tel:, sms:, tg:, https://t.me/ — tashqi ilova orqali ochish
+          if (url.startsWith('tel:') ||
+              url.startsWith('sms:') ||
+              url.startsWith('tg:') ||
+              url.startsWith('https://t.me/') ||
+              url.startsWith('http://t.me/') ||
+              url.startsWith('whatsapp:') ||
+              url.startsWith('mailto:')) {
+            launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+            return NavigationDecision.prevent;
+          }
+          return NavigationDecision.navigate;
         },
       ))
       ..loadRequest(Uri.parse(kBaseUrl));

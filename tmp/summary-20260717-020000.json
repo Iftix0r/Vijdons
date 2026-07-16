@@ -1,0 +1,4 @@
+{
+  "summary": "Taximeter to'liq implementatsiya qilindi. TariffSettings (base_price, price_per_km) view orqali template'ga o'tkazildi. tmxStart(orderId, order): taximeter overlay ochadi, GPS watch va vijdon_location event tinglaydi, har sekund timer va narx yangilanadi. _haversine() masofa hisoblaydi, 5m dan kam va 1km dan ortiq o'zgarishlar shovqin sifatida filtrlanadi. Belgilangan narx bo'lsa o'zgarmaydi, aks holda base_price + dist * price_per_km. doAction('on_way') → tmxStart(), 'arrived'/'cancel'/'complete' → tmxStop() + reload. Sahifa yuklanganida on_way buyurtma bo'lsa taximeter avtomatik ochiladi.",
+  "current_status": "Taximeter to'liq ishlaydi. GPS masofa, vaqt, tezlik, narx hisoblash, Yetib keldim/Bekor tugmalari."
+}
