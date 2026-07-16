@@ -110,6 +110,17 @@ class ApiService {
     return _decode(r) as Map<String, dynamic>;
   }
 
+  static Future<String> uploadPhoto(File file) async {
+    final token = await getToken();
+    final req = http.MultipartRequest('POST', _uri(AppConstants.photo));
+    if (token != null) req.headers['Authorization'] = 'Token $token';
+    req.files.add(await http.MultipartFile.fromPath('photo', file.path));
+    final streamed = await req.send().timeout(_timeout);
+    final r = await http.Response.fromStream(streamed);
+    final body = _decode(r) as Map<String, dynamic>;
+    return body['photo_url'] as String;
+  }
+
   static Future<Map<String, dynamic>> toggleDuty() async {
     final r = await _post(AppConstants.duty);
     return _decode(r) as Map<String, dynamic>;

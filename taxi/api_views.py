@@ -135,7 +135,22 @@ def driver_login(request):
 @permission_classes([IsAuthenticated])
 @driver_required
 def driver_profile(request, driver):
-    return Response(DriverProfileSerializer(driver).data)
+    return Response(DriverProfileSerializer(driver, context={'request': request}).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@driver_required
+def driver_photo_upload(request, driver):
+    photo = request.FILES.get('photo')
+    if not photo:
+        return Response({'detail': 'photo fayl talab qilinadi.'}, status=400)
+    if driver.photo:
+        driver.photo.delete(save=False)
+    driver.photo = photo
+    driver.save(update_fields=['photo'])
+    url = request.build_absolute_uri(driver.photo.url)
+    return Response({'photo_url': url})
 
 
 @api_view(['POST'])

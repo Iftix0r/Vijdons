@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../core/api_service.dart';
 import '../core/theme.dart';
-import '../models/driver_model.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -23,22 +22,13 @@ class _ChatScreenState extends State<ChatScreen>
   bool  _loading = true;
   bool  _sending = false;
   Timer? _timer;
-  DriverModel? _driver;
 
   @override
   void initState() {
     super.initState();
     _load();
-    _loadDriver();
     _timer = Timer.periodic(
         const Duration(seconds: 5), (_) => _load(silent: true));
-  }
-
-  Future<void> _loadDriver() async {
-    try {
-      final data = await ApiService.getProfile();
-      if (mounted) setState(() => _driver = DriverModel.fromJson(data));
-    } catch (_) {}
   }
 
   @override
@@ -212,49 +202,7 @@ class _ChatScreenState extends State<ChatScreen>
               child: Icon(Icons.refresh_rounded, size: 17, color: Colors.grey.shade500),
             ),
           ),
-          const SizedBox(width: 6),
-          // SMS tugmasi
-          GestureDetector(
-            onTap: () async {
-              HapticFeedback.mediumImpact();
-              final phone = _driver?.phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '') ?? '';
-              await launchUrl(
-                Uri(scheme: 'sms', path: phone),
-                mode: LaunchMode.externalApplication,
-              );
-            },
-            child: Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(11),
-                border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-              ),
-              child: const Icon(Icons.sms_rounded, size: 17, color: Colors.blue),
-            ),
-          ),
-          const SizedBox(width: 6),
-          // Telegram tugmasi
-          GestureDetector(
-            onTap: () async {
-              HapticFeedback.mediumImpact();
-              final phone = _driver?.phoneNumber.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
-              await launchUrl(
-                Uri.parse('https://t.me/+$phone'),
-                mode: LaunchMode.externalApplication,
-              );
-            },
-            child: Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                color: const Color(0xFF2AABEE).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(11),
-                border: Border.all(color: const Color(0xFF2AABEE).withValues(alpha: 0.3)),
-              ),
-              child: const Icon(Icons.telegram_rounded, size: 17, color: Color(0xFF2AABEE)),
-            ),
-          ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
           // Qo'ng'iroq tugmasi — 1351
           GestureDetector(
             onTap: () async {

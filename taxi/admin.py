@@ -4,12 +4,19 @@ from .models import Driver, Client, Order, DriverActivityLog
 
 @admin.register(Driver)
 class DriverAdmin(admin.ModelAdmin):
-    list_display  = ('full_name', 'phone_number', 'car_model', 'car_number', 'approval_status', 'is_active', 'is_on_duty', 'registered_at')
+    list_display  = ('photo_thumb', 'full_name', 'phone_number', 'car_model', 'car_number', 'approval_status', 'is_active', 'is_on_duty', 'registered_at')
     search_fields = ('full_name', 'phone_number', 'car_number')
     list_filter   = ('is_active', 'approval_status', 'is_on_duty')
     list_editable = ('approval_status', 'is_active')
-    readonly_fields = ('registered_at',)
+    readonly_fields = ('registered_at', 'photo_thumb')
     actions = ['approve_drivers', 'reject_drivers']
+
+    def photo_thumb(self, obj):
+        from django.utils.html import format_html
+        if obj.photo:
+            return format_html('<img src="{}" style="width:40px;height:40px;object-fit:cover;border-radius:50%">', obj.photo.url)
+        return '—'
+    photo_thumb.short_description = 'Rasm'
 
     @admin.action(description='Tanlangan haydovchilarni tasdiqlash')
     def approve_drivers(self, request, queryset):

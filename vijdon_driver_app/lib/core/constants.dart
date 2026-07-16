@@ -5,6 +5,7 @@ class AppConstants {
   static const String register = '/driver/register/';
   static const String login    = '/driver/login/';
   static const String profile  = '/driver/profile/';
+  static const String photo    = '/driver/photo/';
   static const String duty     = '/driver/duty/';
   static const String fcm      = '/driver/fcm/';
   static const String location = '/driver/location/';

@@ -36,11 +36,22 @@ class DriverLoginSerializer(serializers.Serializer):
 
 
 class DriverProfileSerializer(serializers.ModelSerializer):
+    photo_url = serializers.SerializerMethodField()
+
+    def get_photo_url(self, obj):
+        if obj.photo:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.photo.url)
+            return obj.photo.url
+        return None
+
     class Meta:
         model  = Driver
         fields = [
             'id', 'full_name', 'phone_number', 'car_model', 'car_number',
-            'is_active', 'is_on_duty', 'approval_status', 'registered_at', 'balance'
+            'is_active', 'is_on_duty', 'approval_status', 'registered_at', 'balance',
+            'photo_url',
         ]
         read_only_fields = ['approval_status', 'registered_at']
 
