@@ -6,192 +6,407 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#1C1C1E">
+<meta name="theme-color" content="#000000">
 <title>{% block title %}Vijdon Driver{% endblock %}</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<script>tailwind.config = { darkMode: 'class' }</script>
+<script>tailwind.config={darkMode:'class'}</script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 <style>
-  * { font-family: -apple-system, 'SF Pro Text', 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-  body { overscroll-behavior: none; }
-  .tab-bar { padding-bottom: env(safe-area-inset-bottom, 16px); }
-  .safe-top { height: env(safe-area-inset-top, 44px); }
-  ::-webkit-scrollbar { display: none; }
+/* ── iOS System Font ── */
+* {
+  font-family: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+body { overscroll-behavior: none; -webkit-overflow-scrolling: touch; }
+::-webkit-scrollbar { display: none; }
 
-  @keyframes slideUp   { from{transform:translateY(24px);opacity:0} to{transform:translateY(0);opacity:1} }
-  @keyframes fadeIn    { from{opacity:0} to{opacity:1} }
-  @keyframes bounceIn  { 0%{transform:scale(.6);opacity:0} 70%{transform:scale(1.08)} 100%{transform:scale(1);opacity:1} }
-  @keyframes shimmer   { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-  @keyframes ping2     { 0%{transform:scale(1);opacity:.8} 100%{transform:scale(2.2);opacity:0} }
+/* ── Safe Areas ── */
+.safe-top    { height: env(safe-area-inset-top, 47px); }
+.safe-bottom { height: env(safe-area-inset-bottom, 34px); }
+.pb-safe     { padding-bottom: calc(env(safe-area-inset-bottom, 34px) + 83px); }
 
-  .slide-up  { animation: slideUp .32s cubic-bezier(.34,1.4,.64,1) both; }
-  .fade-in   { animation: fadeIn .25s ease both; }
-  .bounce-in { animation: bounceIn .38s cubic-bezier(.34,1.4,.64,1) both; }
-  .skeleton  { background: linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%); background-size:200% 100%; animation:shimmer 1.4s infinite; border-radius:14px; }
-  .dark .skeleton { background: linear-gradient(90deg,#3a3a3c 25%,#48484a 50%,#3a3a3c 75%); background-size:200% 100%; }
-  .ping2::after { content:''; position:absolute; inset:0; border-radius:50%; background:inherit; animation:ping2 1.6s ease-out infinite; }
+/* ── iOS Colors ── */
+:root {
+  --ios-bg:        #F2F2F7;
+  --ios-card:      #FFFFFF;
+  --ios-card2:     #F2F2F7;
+  --ios-label:     #000000;
+  --ios-label2:    #3C3C43;
+  --ios-label3:    rgba(60,60,67,.6);
+  --ios-sep:       rgba(60,60,67,.29);
+  --ios-fill:      rgba(120,120,128,.2);
+  --ios-yellow:    #FFD600;
+  --ios-green:     #34C759;
+  --ios-red:       #FF3B30;
+  --ios-blue:      #007AFF;
+  --ios-purple:    #AF52DE;
+  --ios-orange:    #FF9500;
+}
+.dark {
+  --ios-bg:        #000000;
+  --ios-card:      #1C1C1E;
+  --ios-card2:     #2C2C2E;
+  --ios-label:     #FFFFFF;
+  --ios-label2:    rgba(235,235,245,.6);
+  --ios-label3:    rgba(235,235,245,.3);
+  --ios-sep:       rgba(84,84,88,.65);
+  --ios-fill:      rgba(118,118,128,.24);
+}
+body { background: var(--ios-bg); color: var(--ios-label); }
 
-  /* Sheet drag handle */
-  .sheet-handle { width:40px; height:4px; background:#d1d5db; border-radius:4px; margin:0 auto 16px; }
-  .dark .sheet-handle { background:#4b5563; }
+/* ── iOS Card ── */
+.ios-card {
+  background: var(--ios-card);
+  border-radius: 16px;
+}
+.ios-card2 {
+  background: var(--ios-card2);
+  border-radius: 16px;
+}
+
+/* ── iOS Tab Bar ── */
+.ios-tabbar {
+  background: rgba(255,255,255,.85);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-top: .5px solid var(--ios-sep);
+}
+.dark .ios-tabbar {
+  background: rgba(28,28,30,.85);
+}
+
+/* ── iOS Navigation Bar ── */
+.ios-navbar {
+  background: rgba(242,242,247,.85);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: .5px solid var(--ios-sep);
+}
+.dark .ios-navbar {
+  background: rgba(0,0,0,.85);
+}
+
+/* ── iOS Large Title ── */
+.ios-large-title {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: .37px;
+  line-height: 1.1;
+}
+.ios-title { font-size: 17px; font-weight: 600; letter-spacing: -.41px; }
+.ios-body  { font-size: 17px; font-weight: 400; letter-spacing: -.41px; }
+.ios-callout { font-size: 16px; font-weight: 400; letter-spacing: -.32px; }
+.ios-subhead { font-size: 15px; font-weight: 400; letter-spacing: -.24px; }
+.ios-footnote { font-size: 13px; font-weight: 400; letter-spacing: -.08px; }
+.ios-caption { font-size: 12px; font-weight: 400; letter-spacing: 0; }
+.ios-caption2 { font-size: 11px; font-weight: 400; letter-spacing: .07px; }
+
+/* ── iOS Button ── */
+.ios-btn-primary {
+  background: var(--ios-yellow);
+  color: #000;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -.41px;
+  border-radius: 14px;
+  padding: 16px;
+  width: 100%;
+  transition: opacity .15s, transform .1s;
+}
+.ios-btn-primary:active { opacity: .7; transform: scale(.98); }
+
+.ios-btn-destructive {
+  background: rgba(255,59,48,.12);
+  color: var(--ios-red);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -.41px;
+  border-radius: 14px;
+  padding: 16px;
+  width: 100%;
+  transition: opacity .15s, transform .1s;
+}
+.ios-btn-destructive:active { opacity: .7; transform: scale(.98); }
+
+/* ── iOS Input ── */
+.ios-input {
+  background: var(--ios-fill);
+  border-radius: 10px;
+  padding: 11px 16px;
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: -.41px;
+  color: var(--ios-label);
+  width: 100%;
+  border: none;
+  outline: none;
+  transition: background .2s;
+}
+.ios-input::placeholder { color: var(--ios-label3); }
+.ios-input:focus { background: rgba(120,120,128,.28); }
+
+/* ── iOS Grouped List ── */
+.ios-group {
+  background: var(--ios-card);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.ios-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: .5px solid var(--ios-sep);
+  transition: background .1s;
+}
+.ios-row:last-child { border-bottom: none; }
+.ios-row:active { background: var(--ios-fill); }
+
+/* ── iOS Toggle ── */
+.ios-toggle {
+  width: 51px; height: 31px;
+  background: #e5e5ea;
+  border-radius: 100px;
+  position: relative;
+  transition: background .3s;
+  flex-shrink: 0;
+}
+.ios-toggle.on { background: var(--ios-green); }
+.ios-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 27px; height: 27px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,.3);
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+}
+.ios-toggle.on::after { transform: translateX(20px); }
+
+/* ── iOS Badge ── */
+.ios-badge {
+  background: var(--ios-red);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  padding: 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Animations ── */
+@keyframes ios-slide-up   { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+@keyframes ios-fade       { from{opacity:0} to{opacity:1} }
+@keyframes ios-scale-in   { from{transform:scale(.92);opacity:0} to{transform:scale(1);opacity:1} }
+@keyframes ios-sheet-up   { from{transform:translateY(100%)} to{transform:translateY(0)} }
+@keyframes shimmer        { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+@keyframes pulse-ring     { 0%{transform:scale(1);opacity:.6} 100%{transform:scale(2.4);opacity:0} }
+@keyframes spin-slow      { to{transform:rotate(360deg)} }
+
+.anim-up     { animation: ios-slide-up .36s cubic-bezier(.25,.46,.45,.94) both; }
+.anim-fade   { animation: ios-fade .25s ease both; }
+.anim-scale  { animation: ios-scale-in .3s cubic-bezier(.34,1.56,.64,1) both; }
+
+.skeleton {
+  background: linear-gradient(90deg, var(--ios-fill) 25%, rgba(120,120,128,.12) 50%, var(--ios-fill) 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.6s infinite;
+  border-radius: 12px;
+}
+
+/* ── iOS Sheet ── */
+.ios-sheet {
+  border-radius: 12px 12px 0 0;
+  background: var(--ios-card);
+}
+.ios-sheet-handle {
+  width: 36px; height: 5px;
+  background: var(--ios-sep);
+  border-radius: 3px;
+  margin: 8px auto 0;
+}
+
+/* ── Status pills ── */
+.pill-yellow  { background:rgba(255,214,0,.15);  color:#B8860B; }
+.pill-blue    { background:rgba(0,122,255,.12);   color:var(--ios-blue); }
+.pill-purple  { background:rgba(175,82,222,.12);  color:var(--ios-purple); }
+.pill-green   { background:rgba(52,199,89,.12);   color:#1a7a35; }
+.dark .pill-yellow { color:#FFD600; }
+.dark .pill-green  { color:var(--ios-green); }
+
+/* ── Duty button ── */
+.duty-ring::before {
+  content:'';
+  position:absolute;
+  inset:-8px;
+  border-radius:50%;
+  border:2px solid currentColor;
+  opacity:.3;
+  animation: pulse-ring 2s ease-out infinite;
+}
 </style>
 </head>
-<body class="bg-[#F2F2F7] dark:bg-[#1C1C1E] text-[#1C1C1E] dark:text-white min-h-screen flex flex-col">
+<body>
 
-<div class="safe-top flex-shrink-0 bg-white dark:bg-[#1C1C1E]"></div>
+<!-- Status bar spacer -->
+<div class="safe-top" style="background:var(--ios-bg)"></div>
 
-<!-- Offline bar -->
-<div id="offline-bar" class="hidden fixed left-0 right-0 z-[200] text-center text-xs font-bold py-2 bg-red-500 text-white"
-     style="top: env(safe-area-inset-top, 44px)">
-  ⚠ Internet aloqasi yo'q
+<!-- Offline banner -->
+<div id="offline-bar" class="hidden fixed left-0 right-0 z-[500] text-center ios-caption2 font-semibold py-1.5 bg-[#FF3B30] text-white"
+     style="top:env(safe-area-inset-top,47px)">
+  Internet aloqasi yo'q
 </div>
 
-<!-- Toast -->
-<div id="toast" class="fixed z-[300] left-4 right-4 hidden" style="top: calc(env(safe-area-inset-top, 44px) + 12px)">
-  <div id="toast-box" class="rounded-2xl px-4 py-3.5 flex items-center gap-3 shadow-2xl bounce-in">
-    <i id="toast-icon" class="text-xl flex-shrink-0"></i>
-    <div class="flex-1 min-w-0">
-      <div id="toast-title" class="text-sm font-black leading-tight"></div>
-      <div id="toast-body"  class="text-xs opacity-75 mt-0.5 leading-tight"></div>
+<!-- iOS Toast / Alert Banner -->
+<div id="toast" class="fixed left-4 right-4 z-[400] hidden"
+     style="top:calc(env(safe-area-inset-top,47px) + 8px)">
+  <div id="toast-inner"
+       class="ios-card flex items-center gap-3 px-4 py-3.5 shadow-2xl"
+       style="border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+    <div id="toast-icon-wrap"
+         class="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0">
+      <i id="toast-icon" class="text-lg"></i>
     </div>
-    <button onclick="hideToast()" class="text-xl opacity-50 flex-shrink-0 leading-none">×</button>
+    <div class="flex-1 min-w-0">
+      <div id="toast-title" class="ios-footnote font-semibold leading-tight"></div>
+      <div id="toast-body"  class="ios-caption2 mt-0.5 leading-tight" style="color:var(--ios-label3)"></div>
+    </div>
+    <button onclick="hideToast()" style="color:var(--ios-label3);font-size:20px;line-height:1">×</button>
   </div>
 </div>
 
-<!-- Page -->
-<main class="flex-1 overflow-y-auto pb-[72px]" id="main-content">
+<!-- Page content -->
+<main class="pb-safe overflow-y-auto" id="main-content" style="min-height:100vh">
   {% block content %}{% endblock %}
 </main>
 
-<!-- Tab Bar -->
-<nav class="tab-bar fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-xl border-t border-gray-200/60 dark:border-white/5">
-  <div class="flex items-center justify-around px-1 pt-2">
+<!-- iOS Tab Bar -->
+<div class="ios-tabbar fixed bottom-0 left-0 right-0 z-50">
+  <div class="flex items-center justify-around px-2 pt-2"
+       style="padding-bottom:env(safe-area-inset-bottom,34px)">
 
     <a href="{% url 'driver:home' %}" onclick="Native.vibrate()"
-       class="flex flex-col items-center gap-0.5 px-5 py-1 rounded-xl transition-all active:scale-90
-              {% if active_tab == 'home' %}text-[#FFD600]{% else %}text-gray-400 dark:text-gray-500{% endif %}">
-      <i class="fas fa-car-side text-[22px]"></i>
-      <span class="text-[10px] font-bold">Asosiy</span>
+       class="flex flex-col items-center gap-[3px] px-4 py-1 transition-all active:opacity-60">
+      <i class="fas fa-car-side text-[24px] {% if active_tab == 'home' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+      <span class="ios-caption2 {% if active_tab == 'home' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Asosiy</span>
     </a>
 
     <a href="{% url 'driver:history' %}" onclick="Native.vibrate()"
-       class="flex flex-col items-center gap-0.5 px-5 py-1 rounded-xl transition-all active:scale-90
-              {% if active_tab == 'history' %}text-[#FFD600]{% else %}text-gray-400 dark:text-gray-500{% endif %}">
-      <i class="fas fa-clock-rotate-left text-[22px]"></i>
-      <span class="text-[10px] font-bold">Tarix</span>
+       class="flex flex-col items-center gap-[3px] px-4 py-1 transition-all active:opacity-60">
+      <i class="fas fa-clock-rotate-left text-[24px] {% if active_tab == 'history' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+      <span class="ios-caption2 {% if active_tab == 'history' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Tarix</span>
     </a>
 
     <a href="{% url 'driver:chat' %}" onclick="Native.vibrate()"
-       class="relative flex flex-col items-center gap-0.5 px-5 py-1 rounded-xl transition-all active:scale-90
-              {% if active_tab == 'chat' %}text-[#FFD600]{% else %}text-gray-400 dark:text-gray-500{% endif %}">
-      <i class="fas fa-message text-[22px]"></i>
+       class="relative flex flex-col items-center gap-[3px] px-4 py-1 transition-all active:opacity-60">
+      <i class="fas fa-message text-[24px] {% if active_tab == 'chat' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
       {% if chat_unread > 0 %}
-      <span class="absolute top-0 right-2.5 bg-red-500 text-white text-[9px] font-black min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">{{ chat_unread }}</span>
+      <span class="ios-badge absolute -top-0.5 right-1.5">{{ chat_unread }}</span>
       {% endif %}
-      <span class="text-[10px] font-bold">Chat</span>
+      <span class="ios-caption2 {% if active_tab == 'chat' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Chat</span>
     </a>
 
     <a href="{% url 'driver:profile' %}" onclick="Native.vibrate()"
-       class="flex flex-col items-center gap-0.5 px-5 py-1 rounded-xl transition-all active:scale-90
-              {% if active_tab == 'profile' %}text-[#FFD600]{% else %}text-gray-400 dark:text-gray-500{% endif %}">
-      <i class="fas fa-user text-[22px]"></i>
-      <span class="text-[10px] font-bold">Profil</span>
+       class="flex flex-col items-center gap-[3px] px-4 py-1 transition-all active:opacity-60">
+      <i class="fas fa-person text-[24px] {% if active_tab == 'profile' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+      <span class="ios-caption2 {% if active_tab == 'profile' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Profil</span>
     </a>
 
   </div>
-</nav>
+</div>
 
 <script>
 // ── Native Bridge ─────────────────────────────────────────────────────────────
 const Native = {
   isApp: typeof NativeBridge !== 'undefined',
-  vibrate(p=50) {
+  vibrate(p=10) {
     if (this.isApp) NativeBridge.postMessage(JSON.stringify({action:'vibrate'}));
     else if (navigator.vibrate) navigator.vibrate(p);
   },
   getLocation() {
-    return new Promise((res, rej) => {
+    return new Promise((res,rej) => {
       if (this.isApp) {
         NativeBridge.postMessage(JSON.stringify({action:'get_location'}));
-        window.addEventListener('vijdon_location', e => res(e.detail), {once:true});
-        setTimeout(() => rej('timeout'), 10000);
+        window.addEventListener('vijdon_location', e=>res(e.detail), {once:true});
+        setTimeout(()=>rej('timeout'), 10000);
       } else if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
-          p => res({lat:p.coords.latitude, lng:p.coords.longitude}),
-          rej, {enableHighAccuracy:true, timeout:8000}
+          p=>res({lat:p.coords.latitude,lng:p.coords.longitude}),
+          rej, {enableHighAccuracy:true,timeout:8000}
         );
       } else rej('no_gps');
     });
   },
-  callPhone(phone) { window.location.href = 'tel:' + phone; }
+  callPhone(phone) { window.location.href='tel:'+phone; }
 };
 
 // ── Dark mode ─────────────────────────────────────────────────────────────────
-const _isDark = localStorage.getItem('theme') === 'dark' ||
+const _dark = localStorage.getItem('theme')==='dark' ||
   (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme:dark)').matches);
-document.documentElement.classList.toggle('dark', _isDark);
+document.documentElement.classList.toggle('dark', _dark);
 
 function toggleTheme() {
   const d = !document.documentElement.classList.contains('dark');
   document.documentElement.classList.toggle('dark', d);
-  localStorage.setItem('theme', d ? 'dark' : 'light');
+  localStorage.setItem('theme', d?'dark':'light');
+  const tog = document.getElementById('theme-tog');
+  if (tog) tog.classList.toggle('on', d);
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
-let _toastT;
-const _toastStyles = {
-  order:   {bg:'bg-[#FFD600]',   text:'text-[#1C1C1E]', icon:'fa-bell'},
-  success: {bg:'bg-green-500',   text:'text-white',      icon:'fa-check-circle'},
-  error:   {bg:'bg-red-500',     text:'text-white',      icon:'fa-circle-xmark'},
-  info:    {bg:'bg-[#2C2C2E]',   text:'text-white',      icon:'fa-info-circle'},
+let _tt;
+const _TS = {
+  order:   {bg:'#FFD600',  ic:'#000',    icon:'fa-bell',         label:'Yangi buyurtma'},
+  success: {bg:'#34C759',  ic:'#fff',    icon:'fa-checkmark',    label:''},
+  error:   {bg:'#FF3B30',  ic:'#fff',    icon:'fa-xmark-circle', label:''},
+  info:    {bg:'#007AFF',  ic:'#fff',    icon:'fa-info',         label:''},
 };
-function showToast(title, body='', type='info', dur=3500) {
-  const s = _toastStyles[type] || _toastStyles.info;
-  const box = document.getElementById('toast-box');
-  box.className = `rounded-2xl px-4 py-3.5 flex items-center gap-3 shadow-2xl bounce-in ${s.bg} ${s.text}`;
-  document.getElementById('toast-icon').className  = `fas ${s.icon} text-xl flex-shrink-0`;
+function showToast(title, body='', type='info', dur=3200) {
+  const s = _TS[type]||_TS.info;
+  const wrap = document.getElementById('toast-icon-wrap');
+  wrap.style.background = s.bg+'22';
+  document.getElementById('toast-icon').className = `fas ${s.icon} text-lg`;
+  document.getElementById('toast-icon').style.color = s.bg;
   document.getElementById('toast-title').textContent = title;
   document.getElementById('toast-body').textContent  = body;
   const el = document.getElementById('toast');
   el.classList.remove('hidden');
-  clearTimeout(_toastT);
-  _toastT = setTimeout(hideToast, type === 'order' ? 8000 : dur);
+  el.style.opacity='1'; el.style.transform='translateY(0)';
+  clearTimeout(_tt);
+  _tt = setTimeout(hideToast, type==='order'?8000:dur);
 }
 function hideToast() {
   const el = document.getElementById('toast');
-  el.style.opacity = '0'; el.style.transform = 'translateY(-12px)';
-  setTimeout(() => { el.classList.add('hidden'); el.style.opacity=''; el.style.transform=''; }, 280);
+  el.style.transition='opacity .25s,transform .25s';
+  el.style.opacity='0'; el.style.transform='translateY(-8px)';
+  setTimeout(()=>{ el.classList.add('hidden'); el.style.transition=''; el.style.opacity=''; el.style.transform=''; }, 260);
 }
 
 // ── Offline ───────────────────────────────────────────────────────────────────
-function _setOffline(offline) {
-  const bar = document.getElementById('offline-bar');
-  if (offline) { bar.classList.remove('hidden'); }
-  else { bar.classList.add('hidden'); showToast('Aloqa tiklandi', '', 'success', 2000); }
-}
-window.addEventListener('offline', () => _setOffline(true));
-window.addEventListener('online',  () => _setOffline(false));
-if (!navigator.onLine) _setOffline(true);
+window.addEventListener('offline', ()=>{ document.getElementById('offline-bar').classList.remove('hidden'); });
+window.addEventListener('online',  ()=>{ document.getElementById('offline-bar').classList.add('hidden'); showToast('Aloqa tiklandi','','success',2000); });
+if (!navigator.onLine) document.getElementById('offline-bar').classList.remove('hidden');
 
 // ── GPS sync ──────────────────────────────────────────────────────────────────
-window.addEventListener('vijdon_location', e => {
-  fetch('{% url "driver:location_sync" %}', {
+window.addEventListener('vijdon_location', e=>{
+  fetch('{% url "driver:location_sync" %}',{
     method:'POST',
     headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
-    body:JSON.stringify({lat:e.detail.lat, lng:e.detail.lng})
+    body:JSON.stringify({lat:e.detail.lat,lng:e.detail.lng})
   }).catch(()=>{});
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getCookie(n) {
   const v = document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)');
-  return v ? v[2] : '';
+  return v?v[2]:'';
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-  // GPS bir marta olish
-  Native.getLocation().catch(()=>{});
-});
+document.addEventListener('DOMContentLoaded', ()=>{ Native.getLocation().catch(()=>{}); });
 </script>
 {% block extra_js %}{% endblock %}
 </body>
