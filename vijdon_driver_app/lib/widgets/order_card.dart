@@ -10,6 +10,9 @@ class OrderCard extends StatelessWidget {
   final VoidCallback? onTap;
   final double? liveKm;
   final double? liveFare;
+  final bool taxiPaused;
+  final String? taxiDuration;
+  final VoidCallback? onTaxiPause;
 
   const OrderCard({
     super.key,
@@ -18,6 +21,9 @@ class OrderCard extends StatelessWidget {
     this.onTap,
     this.liveKm,
     this.liveFare,
+    this.taxiPaused = false,
+    this.taxiDuration,
+    this.onTaxiPause,
   });
 
   Color _statusColor() => switch (order.status) {
@@ -426,53 +432,112 @@ class OrderCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(
                   horizontal: 14, vertical: 11),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.06),
+                color: taxiPaused
+                    ? AppColors.warning.withValues(alpha: 0.08)
+                    : AppColors.primary.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.2)),
+                    color: taxiPaused
+                        ? AppColors.warning.withValues(alpha: 0.3)
+                        : AppColors.primary.withValues(alpha: 0.2)),
               ),
-              child: Row(
+              child: Column(
                 children: [
-                  Container(
-                    width: 30, height: 30,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
+                  Row(
+                    children: [
+                      Container(
+                        width: 30, height: 30,
+                        decoration: BoxDecoration(
+                          color: (taxiPaused ? AppColors.warning : AppColors.primary)
+                              .withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          taxiPaused ? Icons.pause_circle_rounded : Icons.speed_rounded,
+                          color: taxiPaused ? AppColors.warning : AppColors.primary,
+                          size: 16,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        taxiPaused ? 'TO\'XTATILDI' : 'TAXIMETR',
+                        style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            color: taxiPaused ? AppColors.warning : AppColors.primary,
+                            letterSpacing: 0.8),
+                      ),
+                      if (taxiDuration != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: (taxiPaused ? AppColors.warning : AppColors.primary)
+                                .withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            taxiDuration!,
+                            style: TextStyle(
+                              fontSize: 10, fontWeight: FontWeight.w800,
+                              color: taxiPaused ? AppColors.warning : AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                      const Spacer(),
+                      Icon(Icons.straighten_rounded,
+                          size: 13, color: Colors.grey.shade500),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${liveKm!.toStringAsFixed(2)} km',
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            color: dark ? Colors.white : AppColors.textPrimary),
+                      ),
+                      const SizedBox(width: 14),
+                      const Icon(Icons.monetization_on_rounded,
+                          size: 13, color: AppColors.success),
+                      const SizedBox(width: 4),
+                      Text(
+                        "${liveFare!.toStringAsFixed(0)} so'm",
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.success),
+                      ),
+                    ],
+                  ),
+                  // Pause/Resume tugmasi
+                  if (onTaxiPause != null) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 38,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          HapticFeedback.mediumImpact();
+                          onTaxiPause!();
+                        },
+                        icon: Icon(
+                          taxiPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                          size: 16,
+                        ),
+                        label: Text(
+                          taxiPaused ? 'Davom ettirish (yolovchi tayyor)' : 'To\'xtatish (yolovchi tushdi)',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: taxiPaused ? AppColors.success : AppColors.warning,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
                     ),
-                    child: const Icon(Icons.speed_rounded,
-                        color: AppColors.primary, size: 16),
-                  ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'TAXIMETR',
-                    style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.primary,
-                        letterSpacing: 0.8),
-                  ),
-                  const Spacer(),
-                  Icon(Icons.straighten_rounded,
-                      size: 13, color: Colors.grey.shade500),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${liveKm!.toStringAsFixed(2)} km',
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
-                        color: dark ? Colors.white : AppColors.textPrimary),
-                  ),
-                  const SizedBox(width: 14),
-                  const Icon(Icons.monetization_on_rounded,
-                      size: 13, color: AppColors.success),
-                  const SizedBox(width: 4),
-                  Text(
-                    "${liveFare!.toStringAsFixed(0)} so'm",
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.success),
-                  ),
+                  ],
                 ],
               ),
             ),

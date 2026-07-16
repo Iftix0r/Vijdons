@@ -41,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // ── Taximetr holatlar ───────────────────────────────────────────────────────
   bool   _taxiRunning  = false;
+  bool   _taxiPaused   = false;   // ← YANGI: pause holati
   double _taxiKm       = 0.0;
   double _taxiFare     = 0.0;
   double? _taxiPrevLat;
@@ -48,6 +49,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Timer?  _taxiTimer;
   double _baseFare     = 5000;
   double _farePerKm    = 2000;
+  // Pause vaqtini hisoblash uchun
+  DateTime? _taxiPauseStart;
+  Duration  _taxiTotalPaused = Duration.zero;  // jami to'xtatilgan vaqt
+  DateTime? _taxiStartTime;                    // taximetr boshlangan vaqt
 
   // ── Destination Mode ────────────────────────────────────────────────────────
   bool   _destMode    = false;
@@ -111,22 +116,78 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _startTaximeter() {
     if (_taxiRunning) return;
     setState(() {
-      _taxiRunning = true;
-      _taxiKm      = 0.0;
-      _taxiFare    = _baseFare;  // boshlang'ich narxdan boshlanadi
+      _taxiRunning      = true;
+      _taxiPaused       = false;
+      _taxiKm           = 0.0;
+      _taxiFare         = _baseFare;
+      _taxiPrevLat      = null;
+      _taxiPrevLng      = null;
+      _taxiStartTime    = DateTime.now();
+      _taxiTotalPaused  = Duration.zero;
+      _taxiPauseStart   = null;
+    });
+    _taxiTimer = Timer.periodic(const Duration(seconds: 2), (_) => _taxiTick());
+  }
+
+  void _pauseTaximeter() {
+    if (!_taxiRunning || _taxiPaused) return;
+    setState(() {
+      _taxiPaused     = true;
+      _taxiPauseStart = DateTime.now();
+      _taxiPrevLat    = null;  // GPS o'rnini reset — qayta boshlanganda yangi nuqtadan
+      _taxiPrevLng    = null;
+    });
+  }
+
+  void _resumeTaximeter() {
+    if (!_taxiRunning || !_taxiPaused) return;
+    setState(() {
+      if (_taxiPauseStart != null) {
+        _taxiTotalPaused += DateTime.now().difference(_taxiPauseStart!);
+        _taxiPauseStart   = null;
+      }
+      _taxiPaused  = false;
       _taxiPrevLat = null;
       _taxiPrevLng = null;
     });
-    _taxiTimer = Timer.periodic(const Duration(seconds: 2), (_) => _taxiTick());
   }
 
   void _stopTaximeter() {
     _taxiTimer?.cancel();
     _taxiTimer = null;
-    if (mounted) setState(() => _taxiRunning = false);
+    if (_taxiPaused && _taxiPauseStart != null) {
+      _taxiTotalPaused += DateTime.now().difference(_taxiPauseStart!);
+    }
+    if (mounted) setState(() {
+      _taxiRunning    = false;
+      _taxiPaused     = false;
+      _taxiPauseStart = null;
+    });
+  }
+
+  // Taximetr ishlayotgan umumiy vaqt (pause vaqtisiz)
+  Duration get _taxiNetDuration {
+    if (_taxiStartTime == null) return Duration.zero;
+    final total = DateTime.now().difference(_taxiStartTime!);
+    final paused = _taxiPaused && _taxiPauseStart != null
+        ? _taxiTotalPaused + DateTime.now().difference(_taxiPauseStart!)
+        : _taxiTotalPaused;
+    final net = total - paused;
+    return net.isNegative ? Duration.zero : net;
+  }
+
+  String get _taxiDurationLabel {
+    final d = _taxiNetDuration;
+    final h = d.inHours;
+    final m = d.inMinutes % 60;
+    final s = d.inSeconds % 60;
+    if (h > 0) return '${h}s ${m}d';
+    if (m > 0) return '${m}d ${s}s';
+    return '${s}s';
   }
 
   Future<void> _taxiTick() async {
+    if (_taxiPaused) return;  // ← Pause bo'lsa GPS o'lchamaydi
     try {
       final pos = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
@@ -1799,8 +1860,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     order: order,
     onAction: (a) => _orderAction(order, a),
     onTap: () => _showOrderDetail(order),
-    liveKm:   order.isOnWay && _taxiRunning ? _taxiKm   : null,
-    liveFare: order.isOnWay && _taxiRunning ? _taxiFare : null,
+    liveKm:       order.isOnWay && _taxiRunning ? _taxiKm   : null,
+    liveFare:     order.isOnWay && _taxiRunning ? _taxiFare : null,
+    taxiPaused:   order.isOnWay && _taxiRunning && _taxiPaused,
+    taxiDuration: order.isOnWay && _taxiRunning ? _taxiDurationLabel : null,
+    onTaxiPause:  order.isOnWay && _taxiRunning ? (_taxiPaused ? _resumeTaximeter : _pauseTaximeter) : null,
   );
 
   // Faol buyurtmalar (accepted/on_way/arrived) doim tepada "pinned" ko'rinadi
@@ -1840,8 +1904,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             builder: (_) => MapScreen(activeOrder: order),
           ));
         },
-        liveKm:   order.isOnWay && _taxiRunning ? _taxiKm   : null,
-        liveFare: order.isOnWay && _taxiRunning ? _taxiFare : null,
+        liveKm:       order.isOnWay && _taxiRunning ? _taxiKm   : null,
+        liveFare:     order.isOnWay && _taxiRunning ? _taxiFare : null,
+        taxiPaused:   order.isOnWay && _taxiRunning && _taxiPaused,
+        taxiDuration: order.isOnWay && _taxiRunning ? _taxiDurationLabel : null,
+        onTaxiPause:  order.isOnWay && _taxiRunning ? (_taxiPaused ? _resumeTaximeter : _pauseTaximeter) : null,
       ),
     );
   }
@@ -1853,12 +1920,18 @@ class _OrderDetailSheet extends StatelessWidget {
   final VoidCallback? onOpenMap;
   final double? liveKm;
   final double? liveFare;
+  final bool taxiPaused;
+  final String? taxiDuration;
+  final VoidCallback? onTaxiPause;
   const _OrderDetailSheet({
     required this.order,
     required this.onAction,
     this.onOpenMap,
     this.liveKm,
     this.liveFare,
+    this.taxiPaused = false,
+    this.taxiDuration,
+    this.onTaxiPause,
   });
 
   Color get _statusColor {
@@ -2125,56 +2198,153 @@ class _OrderDetailSheet extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF1DB954), Color(0xFF0d7c3b)],
+                  gradient: LinearGradient(
+                    colors: taxiPaused
+                        ? [const Color(0xFFf59e0b), const Color(0xFFd97706)]
+                        : [const Color(0xFF1DB954), const Color(0xFF0d7c3b)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(18),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF1DB954).withValues(alpha: 0.3),
+                      color: (taxiPaused
+                          ? const Color(0xFFf59e0b)
+                          : const Color(0xFF1DB954)).withValues(alpha: 0.3),
                       blurRadius: 12, offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                child: Row(
+                child: Column(
                   children: [
-                    const Icon(Icons.speed_rounded, color: Colors.white, size: 28),
-                    const SizedBox(width: 14),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Row(
                       children: [
-                        const Text('TAXIMETR', style: TextStyle(
-                          color: Colors.white70, fontSize: 10,
-                          fontWeight: FontWeight.w900, letterSpacing: 1.5,
-                        )),
-                        Text(
-                          '${liveKm!.toStringAsFixed(2)} km',
-                          style: const TextStyle(
-                            color: Colors.white, fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                          ),
+                        Icon(
+                          taxiPaused ? Icons.pause_circle_filled_rounded : Icons.speed_rounded,
+                          color: Colors.white, size: 28,
+                        ),
+                        const SizedBox(width: 14),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              taxiPaused ? 'TAXIMETR TO\'XTATILDI' : 'TAXIMETR',
+                              style: const TextStyle(
+                                color: Colors.white70, fontSize: 10,
+                                fontWeight: FontWeight.w900, letterSpacing: 1.5,
+                              ),
+                            ),
+                            Text(
+                              '${liveKm!.toStringAsFixed(2)} km',
+                              style: const TextStyle(
+                                color: Colors.white, fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text('NARX', style: TextStyle(
+                              color: Colors.white70, fontSize: 10,
+                              fontWeight: FontWeight.w900, letterSpacing: 1.5,
+                            )),
+                            Text(
+                              '${liveFare!.toStringAsFixed(0)} so\'m',
+                              style: const TextStyle(
+                                color: Colors.white, fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    const Spacer(),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    // Vaqt + Pause/Resume tugmasi
+                    const SizedBox(height: 12),
+                    Row(
                       children: [
-                        const Text('NARX', style: TextStyle(
-                          color: Colors.white70, fontSize: 10,
-                          fontWeight: FontWeight.w900, letterSpacing: 1.5,
-                        )),
-                        Text(
-                          '${liveFare!.toStringAsFixed(0)} so\'m',
-                          style: const TextStyle(
-                            color: Colors.white, fontSize: 20,
-                            fontWeight: FontWeight.w900,
+                        // Vaqt
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.timer_rounded, color: Colors.white70, size: 13),
+                              const SizedBox(width: 5),
+                              Text(
+                                taxiDuration ?? '0s',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12, fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+                        const Spacer(),
+                        // Pause / Resume tugmasi
+                        if (onTaxiPause != null)
+                          GestureDetector(
+                            onTap: onTaxiPause,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    taxiPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                                    color: Colors.white, size: 18,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    taxiPaused ? 'Davom ettirish' : 'To\'xtatish',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13, fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                       ],
                     ),
+                    if (taxiPaused) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.info_outline_rounded, color: Colors.white70, size: 13),
+                            SizedBox(width: 6),
+                            Text(
+                              'Yolovchi do\'kon/uyda — narx hisoblanmayapti',
+                              style: TextStyle(
+                                color: Colors.white70, fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
