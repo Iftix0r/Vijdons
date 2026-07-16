@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'core/notification_service.dart';
 
 const String kBaseUrl = 'https://vijdontaxi.uz/driver/';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.init();
   runApp(const VijdonDriverApp());
 }
 
@@ -60,11 +62,19 @@ class _DriverWebViewState extends State<DriverWebView> {
   void _initWebView() {
     _ctrl = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..addJavaScriptChannel(
+        'FlutterNotify',
+        onMessageReceived: (msg) {
+          final count = int.tryParse(msg.message) ?? 1;
+          NotificationService.notifyNewOrder(count);
+        },
+      )
       ..setNavigationDelegate(NavigationDelegate(
         onPageStarted: (_) => setState(() => _loading = true),
         onPageFinished: (_) async {
           setState(() => _loading = false);
           await _injectLocation();
+          await _injectNotificationBridge();
         },
       ))
       ..loadRequest(Uri.parse(kBaseUrl));
@@ -97,6 +107,20 @@ class _DriverWebViewState extends State<DriverWebView> {
       "window.dispatchEvent(new CustomEvent('vijdon_location',"
       "{detail:{lat:$lat,lng:$lng}}))",
     );
+  }
+
+  Future<void> _injectNotificationBridge() async {
+    await _ctrl.runJavaScript("""
+      (function() {
+        if (window._vijdonNotifyInjected) return;
+        window._vijdonNotifyInjected = true;
+        const _orig = window.__vijdonOrderCount || 0;
+        window.__vijdonOrderCount = _orig;
+        window.vijdonNotifyNewOrder = function(count) {
+          FlutterNotify.postMessage(String(count || 1));
+        };
+      })();
+    """);
   }
 
   @override

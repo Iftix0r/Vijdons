@@ -13,6 +13,8 @@ dependencies:
   geolocator: ^14.0.3
   permission_handler: ^12.0.3
   webview_flutter: ^4.10.0
+  flutter_local_notifications: ^18.0.0
+  audioplayers: ^6.1.0
 
 dev_dependencies:
   flutter_test:

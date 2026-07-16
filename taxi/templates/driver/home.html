@@ -208,6 +208,8 @@ async function loadOrders(fb=false) {
       if(nw.length){
         nw.forEach(()=>{ Native.vibrate([60,30,60,30,120]); });
         _known=new Set(d.new_ids);
+        // Flutter ilovasiga bildirishnoma yuborish
+        if(typeof FlutterNotify !== 'undefined') FlutterNotify.postMessage(String(nw.length));
         // Yangi buyurtmani topib modalda ko'rsatish
         const newOrder = (d.orders||[]).find(o=>nw.includes(o.id)) || null;
         showNewOrderModal(nw[0], newOrder);
