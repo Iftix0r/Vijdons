@@ -778,33 +778,39 @@ function _renderSheet(id, o){
     </div>`:''}
 
     <!-- Taximeter (faqat on_way da) -->
-    ${(o.status==='on_way'||o.status==='arrived')?`
+    ${(o.status==='on_way'||o.status==='arrived'||o.status==='completed')?`
     <div style="background:#111;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08)">
-      <div style="padding:10px 14px 6px;display:flex;align-items:center;gap:6px">
-        <div style="width:6px;height:6px;border-radius:50%;background:#AF52DE;box-shadow:0 0 6px #AF52DE"></div>
-        <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,.4);letter-spacing:.5px;text-transform:uppercase">Taximetr</span>
+      <div style="padding:10px 14px 6px;display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="width:6px;height:6px;border-radius:50%;background:#AF52DE;box-shadow:0 0 6px #AF52DE"></div>
+          <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,.4);letter-spacing:.5px;text-transform:uppercase">Taximetr</span>
+        </div>
+        ${o.status==='completed'?'<span style="font-size:11px;color:#34C759;font-weight:600">✓ Yakunlandi</span>':''}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;padding:0 10px 10px">
         <div style="text-align:center;padding:8px 4px">
           <div style="font-size:10px;font-weight:600;color:rgba(255,214,0,.5);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">NARX</div>
-          <div style="font-size:18px;font-weight:700;color:#FFD600;font-variant-numeric:tabular-nums" id="sheet-tmx-price">—</div>
+          <div style="font-size:18px;font-weight:700;color:#FFD600;font-variant-numeric:tabular-nums" id="sheet-tmx-price">${_tmxPriceStr||'0'}</div>
         </div>
         <div style="text-align:center;padding:8px 4px">
           <div style="font-size:10px;font-weight:600;color:rgba(175,82,222,.5);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">VAQT</div>
-          <div style="font-size:18px;font-weight:700;color:#AF52DE;font-variant-numeric:tabular-nums" id="sheet-tmx-time">—</div>
+          <div style="font-size:18px;font-weight:700;color:#AF52DE;font-variant-numeric:tabular-nums" id="sheet-tmx-time">${_tmxTimeStr||'0:00'}</div>
         </div>
         <div style="text-align:center;padding:8px 4px">
           <div style="font-size:10px;font-weight:600;color:rgba(0,122,255,.5);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">KM</div>
-          <div style="font-size:18px;font-weight:700;color:#007AFF;font-variant-numeric:tabular-nums" id="sheet-tmx-dist">—</div>
+          <div style="font-size:18px;font-weight:700;color:#007AFF;font-variant-numeric:tabular-nums" id="sheet-tmx-dist">${_tmxDistKm.toFixed(2)}</div>
         </div>
         <div style="text-align:center;padding:8px 4px">
           <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,.3);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">KM/H</div>
-          <div style="font-size:18px;font-weight:700;color:rgba(255,255,255,.6);font-variant-numeric:tabular-nums" id="sheet-tmx-speed">—</div>
+          <div style="font-size:18px;font-weight:700;color:rgba(255,255,255,.6);font-variant-numeric:tabular-nums" id="sheet-tmx-speed">${_tmxSpeedKmh}</div>
         </div>
       </div>
+      ${o.status==='completed'&&o.price?`
+      <div style="margin:0 10px 10px;padding:10px 12px;background:rgba(52,199,89,.1);border-radius:10px;border:1px solid rgba(52,199,89,.2);display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:12px;color:rgba(52,199,89,.7);font-weight:600">JAMI TO'LOV</span>
+        <span style="font-size:20px;font-weight:700;color:#34C759">${parseInt(o.price).toLocaleString()} so'm</span>
+      </div>`:''}
     </div>`:''}
-
-    <!-- Actions -->
     <div>${btns[o.status]||''}</div>
   `;
 
@@ -813,7 +819,7 @@ function _renderSheet(id, o){
   ov.classList.remove('hidden');
   requestAnimationFrame(()=>{
     sh.style.transform='translateY(0)';
-    if((o.status==='on_way'||o.status==='arrived') && _tmxStartTime) _syncSheetTmx();
+    if((o.status==='on_way'||o.status==='arrived'||o.status==='completed') && _tmxStartTime) _syncSheetTmx();
   });
 }
 
@@ -851,7 +857,18 @@ async function doAction(id,action){
         await loadOrders();
         renderOrdersDOM();
         setTimeout(()=>{ _suppressModal = false; }, 5000);
-      } else if(action==='arrived'||action==='cancel'||action==='complete'){
+        const updated=ORDERS.find(x=>x.id===id||x.id===Number(id));
+        if(updated) _renderSheet(id, updated);
+      } else if(action==='arrived'||action==='complete'){
+        if(action==='complete') tmxStop();
+        _suppressModal = true;
+        _known = new Set();
+        await loadOrders();
+        renderOrdersDOM();
+        setTimeout(()=>{ _suppressModal = false; }, 5000);
+        const updated=ORDERS.find(x=>x.id===id||x.id===Number(id));
+        if(updated) _renderSheet(id, updated);
+      } else if(action==='cancel'){
         tmxStop();
         _suppressModal = true;
         _known = new Set();
