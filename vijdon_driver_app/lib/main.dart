@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 import 'core/theme.dart';
@@ -9,7 +10,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   AndroidYandexMap.useAndroidViewSurface = false;
-  // API key AndroidManifest.xml orqali beriladi, initialize chaqirilmaydi
 
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -31,9 +31,19 @@ class VijdonDriverApp extends StatelessWidget {
     return MaterialApp(
       title: 'Vijdon Driver',
       debugShowCheckedModeBanner: false,
-      theme:     AppTheme.light,
+      theme: AppTheme.light,
       themeMode: ThemeMode.light,
+      // iOS scroll physics globally
+      scrollBehavior: const _IosScrollBehavior(),
       home: const SplashScreen(),
     );
   }
+}
+
+// iOS uslubida scroll — barcha platformada bounce effect
+class _IosScrollBehavior extends ScrollBehavior {
+  const _IosScrollBehavior();
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) =>
+      const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
 }

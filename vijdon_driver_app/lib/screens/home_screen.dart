@@ -222,8 +222,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _callClient(String phone) async {
-    final uri = Uri(scheme: 'tel', path: phone);
-    if (await canLaunchUrl(uri)) await launchUrl(uri);
+    await launchUrl(Uri(scheme: 'tel', path: phone),
+        mode: LaunchMode.externalApplication);
   }
 
   Future<bool> _checkLocationPermission() async {
@@ -2138,8 +2138,10 @@ class ActiveOrderSheet extends StatelessWidget {
                             const SizedBox(height: 2),
                             GestureDetector(
                               onTap: () async {
-                                final uri = Uri(scheme: 'tel', path: order.clientPhone);
-                                if (await canLaunchUrl(uri)) launchUrl(uri);
+                                await launchUrl(
+                                  Uri(scheme: 'tel', path: order.clientPhone),
+                                  mode: LaunchMode.externalApplication,
+                                );
                               },
                               child: Row(
                                 children: [
@@ -2387,8 +2389,10 @@ class ActiveOrderSheet extends StatelessWidget {
                 height: 54,
                 child: ElevatedButton.icon(
                   onPressed: () async {
-                    final uri = Uri(scheme: 'tel', path: order.clientPhone);
-                    if (await canLaunchUrl(uri)) launchUrl(uri);
+                    await launchUrl(
+                      Uri(scheme: 'tel', path: order.clientPhone),
+                      mode: LaunchMode.externalApplication,
+                    );
                   },
                   icon: const Icon(Icons.call_rounded, size: 20),
                   label: Text(

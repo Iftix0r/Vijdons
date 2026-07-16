@@ -815,8 +815,8 @@ class OrderCard extends StatelessWidget {
   }
 
   Future<void> _call(String phone) async {
-    final uri = Uri(scheme: 'tel', path: phone);
-    if (await canLaunchUrl(uri)) await launchUrl(uri);
+    await launchUrl(Uri(scheme: 'tel', path: phone),
+        mode: LaunchMode.externalApplication);
   }
 
   String _timeAgo(String iso) {

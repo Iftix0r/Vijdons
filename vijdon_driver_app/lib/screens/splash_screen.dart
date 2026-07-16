@@ -107,10 +107,21 @@ class _SplashScreenState extends State<SplashScreen>
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.4),
+                            blurRadius: 32, offset: const Offset(0, 10),
+                          ),
+                        ],
                       ),
                       child: const Center(
-                        child: Icon(Icons.local_taxi_rounded,
-                            color: AppColors.textPrimary, size: 52),
+                        child: Text(
+                          'V',
+                          style: TextStyle(
+                            fontSize: 58, fontWeight: FontWeight.w900,
+                            color: Colors.black, letterSpacing: -2, height: 1,
+                          ),
+                        ),
                       ),
                     ),
                   ),
