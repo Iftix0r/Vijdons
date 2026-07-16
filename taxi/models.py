@@ -26,6 +26,11 @@ class Driver(models.Model):
     longitude       = models.FloatField(null=True, blank=True, verbose_name="Uzunlik (Longitude)")
     balance         = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Balans")
     registered_at   = models.DateTimeField(auto_now_add=True, verbose_name="Ro'yxatdan o'tgan vaqt")
+    # ── Destination Mode ───────────────────────────────────────────────────────
+    destination_mode      = models.BooleanField(default=False, verbose_name="Destination mode (uyga yo'nalish)")
+    destination_lat       = models.FloatField(null=True, blank=True, verbose_name="Yo'nalish kenglik")
+    destination_lng       = models.FloatField(null=True, blank=True, verbose_name="Yo'nalish uzunlik")
+    destination_address   = models.CharField(max_length=255, blank=True, default='', verbose_name="Yo'nalish manzil")
 
     def __str__(self):
         return f"{self.full_name} ({self.car_number})"
@@ -38,6 +43,9 @@ class Driver(models.Model):
 class Client(models.Model):
     full_name    = models.CharField(max_length=255, verbose_name="Mijoz ismi", null=True, blank=True)
     phone_number = models.CharField(max_length=20, unique=True, verbose_name="Telefon raqami")
+    rating       = models.DecimalField(max_digits=3, decimal_places=2, default=5.00,
+                                       verbose_name="Reyting (1–5)")
+    trips_count  = models.PositiveIntegerField(default=0, verbose_name="Jami safarlar soni")
 
     def __str__(self):
         return self.full_name or self.phone_number

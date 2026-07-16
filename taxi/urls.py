@@ -52,4 +52,8 @@ urlpatterns = [
     path('api/chat/messages/', api_views.chat_messages,    name='api_chat_messages'),
     path('api/chat/send/',     api_views.chat_send,         name='api_chat_send'),
     path('api/chat/unread/',   api_views.chat_unread_count, name='api_chat_unread'),
+
+    # ── Destination mode ──
+    path('api/driver/destination/',     api_views.destination_mode_set, name='api_destination_set'),
+    path('api/driver/destination/get/', api_views.destination_mode_get, name='api_destination_get'),
 ]

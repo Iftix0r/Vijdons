@@ -201,8 +201,9 @@ def get_tariff(request):
 @driver_required
 def available_orders(request, driver):
     """
-    Faqat bu haydovchiga dispatch qilingan pending buyurtma, umumiy tablodagi buyurtmalar (dispatched_to__isnull=True),
+    Faqat bu haydovchiga dispatch qilingan pending buyurtma, umumiy tablodagi buyurtmalar,
     va o'zining faol qabul qilingan buyurtmalari.
+    Destination mode yoqilgan bo'lsa — faqat yo'nalish bo'yicha buyurtmalar ko'rsatiladi.
     """
     qs = Order.objects.select_related('client', 'driver').filter(
         Q(status='pending', dispatched_to=driver) |
@@ -210,7 +211,29 @@ def available_orders(request, driver):
         Q(driver=driver, status__in=['accepted', 'on_way', 'arrived'])
     ).exclude(
         Q(status='pending', rejected_by=driver)
-    ).order_by('-created_at')
+    )
+
+    # ── Destination mode filtr ──────────────────────────────────────────────
+    if driver.destination_mode and driver.destination_lat and driver.destination_lng:
+        from .utils import haversine
+        RADIUS_KM = 3.0   # yo'nalishdan 3 km radius
+        filtered_ids = []
+        for order in qs.filter(status='pending'):
+            if order.to_lat and order.to_lng:
+                dist = haversine(
+                    order.to_lat, order.to_lng,
+                    driver.destination_lat, driver.destination_lng
+                )
+                if dist is not None and dist <= RADIUS_KM:
+                    filtered_ids.append(order.pk)
+        # Faol buyurtmalarni har doim qo'shib qo'yamiz
+        active_ids = list(
+            qs.filter(driver=driver, status__in=['accepted', 'on_way', 'arrived'])
+            .values_list('pk', flat=True)
+        )
+        qs = qs.filter(pk__in=filtered_ids + active_ids)
+
+    qs = qs.order_by('-created_at')
     return Response(OrderSerializer(qs, many=True, context={'request': request}).data)
 
 
@@ -263,10 +286,18 @@ def _order_action(request, driver, pk, allowed_statuses, new_status):
     order.status = new_status
     order.save(update_fields=update_fields)
 
+    # Mijoz trips_count ni yangilash (yakunlanganda)
+    if new_status == 'completed':
+        try:
+            order.client.trips_count += 1
+            order.client.save(update_fields=['trips_count'])
+        except Exception:
+            pass
+
     # Telegram xabarlari
-    if new_status == 'accepted':  tg_order_accepted(order, driver)
-    elif new_status == 'on_way':  tg_order_on_way(order, driver)
-    elif new_status == 'arrived': tg_order_arrived(order, driver)
+    if new_status == 'accepted':    tg_order_accepted(order, driver)
+    elif new_status == 'on_way':    tg_order_on_way(order, driver)
+    elif new_status == 'arrived':   tg_order_arrived(order, driver)
     elif new_status == 'completed': tg_order_completed(order, driver)
     elif new_status == 'cancelled': tg_order_cancelled(order, driver)
 
@@ -460,3 +491,61 @@ def chat_unread_count(request, driver):
     """O'qilmagan operatordan xabarlar soni."""
     count = ChatMessage.objects.filter(driver=driver, sender=ChatMessage.SENDER_OPERATOR, is_read=False).count()
     return Response({'unread': count})
+
+
+# ── Destination Mode ──────────────────────────────────────────────────────────
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@driver_required
+def destination_mode_set(request, driver):
+    """
+    Destination mode yoqish/o'chirish.
+    Body: { "enabled": true, "lat": 41.2, "lng": 69.2, "address": "Yunusobod..." }
+    O'chirish uchun: { "enabled": false }
+    """
+    enabled = request.data.get('enabled', False)
+    if enabled:
+        lat  = request.data.get('lat')
+        lng  = request.data.get('lng')
+        addr = request.data.get('address', '').strip()
+        if lat is None or lng is None:
+            return Response({'detail': 'lat va lng talab qilinadi.'}, status=400)
+        try:
+            driver.destination_mode    = True
+            driver.destination_lat     = float(lat)
+            driver.destination_lng     = float(lng)
+            driver.destination_address = addr
+            driver.save(update_fields=[
+                'destination_mode', 'destination_lat',
+                'destination_lng', 'destination_address'
+            ])
+        except (ValueError, TypeError):
+            return Response({'detail': "Noto'g'ri koordinatalar."}, status=400)
+    else:
+        driver.destination_mode    = False
+        driver.destination_lat     = None
+        driver.destination_lng     = None
+        driver.destination_address = ''
+        driver.save(update_fields=[
+            'destination_mode', 'destination_lat',
+            'destination_lng', 'destination_address'
+        ])
+
+    return Response({
+        'destination_mode':    driver.destination_mode,
+        'destination_address': driver.destination_address,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@driver_required
+def destination_mode_get(request, driver):
+    """Joriy destination mode holatini qaytaradi."""
+    return Response({
+        'destination_mode':    driver.destination_mode,
+        'destination_lat':     driver.destination_lat,
+        'destination_lng':     driver.destination_lng,
+        'destination_address': driver.destination_address,
+    })

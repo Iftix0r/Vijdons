@@ -52,11 +52,16 @@ class ClientSerializer(serializers.ModelSerializer):
 
 
 class OrderSerializer(serializers.ModelSerializer):
-    client_name  = serializers.CharField(source='client.full_name', read_only=True)
-    client_phone = serializers.CharField(source='client.phone_number', read_only=True)
-    driver_name  = serializers.CharField(source='driver.full_name', read_only=True, allow_null=True)
-    status_label = serializers.CharField(source='get_status_display', read_only=True)
-    seconds_left = serializers.SerializerMethodField(read_only=True)
+    client_name          = serializers.CharField(source='client.full_name', read_only=True)
+    client_phone         = serializers.CharField(source='client.phone_number', read_only=True)
+    driver_name          = serializers.CharField(source='driver.full_name', read_only=True, allow_null=True)
+    status_label         = serializers.CharField(source='get_status_display', read_only=True)
+    seconds_left         = serializers.SerializerMethodField(read_only=True)
+    # Yangi maydonlar
+    client_rating        = serializers.SerializerMethodField(read_only=True)
+    client_trips_count   = serializers.SerializerMethodField(read_only=True)
+    driver_distance_km   = serializers.SerializerMethodField(read_only=True)
+    driver_eta_minutes   = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model  = Order
@@ -66,15 +71,19 @@ class OrderSerializer(serializers.ModelSerializer):
             'payment_type', 'note',
             'status', 'status_label', 'created_at', 'updated_at',
             'seconds_left',
+            'client_rating', 'client_trips_count',
+            'driver_distance_km', 'driver_eta_minutes',
         ]
         read_only_fields = ['created_at', 'updated_at']
 
-    def get_seconds_left(self, instance):
+    def _get_driver(self):
         request = self.context.get('request')
-        driver = None
         if request and hasattr(request.user, 'driver_profile'):
-            driver = request.user.driver_profile
+            return request.user.driver_profile
+        return None
 
+    def get_seconds_left(self, instance):
+        driver = self._get_driver()
         if instance.status == 'pending' and instance.dispatched_to == driver:
             from django.utils import timezone
             from .models import TariffSettings
@@ -85,16 +94,47 @@ class OrderSerializer(serializers.ModelSerializer):
             return tariff.dispatch_timeout
         return None
 
+    def get_client_rating(self, instance):
+        """Mijozning reytingini qaytaradi (faqat pending/dispatch paytida)."""
+        if instance.status in ('pending',):
+            return float(instance.client.rating)
+        return None
+
+    def get_client_trips_count(self, instance):
+        if instance.status in ('pending',):
+            return instance.client.trips_count
+        return None
+
+    def get_driver_distance_km(self, instance):
+        """Haydovchi → mijoz orasidagi masofa (faqat pending buyurtmada)."""
+        if instance.status != 'pending':
+            return None
+        driver = self._get_driver()
+        if not driver or driver.latitude is None or driver.longitude is None:
+            return None
+        if instance.from_lat is None or instance.from_lng is None:
+            return None
+        from .utils import haversine
+        dist = haversine(driver.latitude, driver.longitude,
+                         instance.from_lat, instance.from_lng)
+        return round(dist, 2) if dist is not None else None
+
+    def get_driver_eta_minutes(self, instance):
+        """Taxminiy yetib kelish vaqti (minutda). 30 km/h o'rtacha tezlik."""
+        dist = self.get_driver_distance_km(instance)
+        if dist is None:
+            return None
+        eta = dist / 30 * 60      # 30 km/h → minutlarga
+        return max(1, round(eta))
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        request = self.context.get('request')
-        driver = None
-        if request and hasattr(request.user, 'driver_profile'):
-            driver = request.user.driver_profile
-        
-        # Hide contact details if the order is not accepted by this driver
-        if instance.status == 'pending' or (instance.driver and driver and instance.driver.id != driver.id):
+        driver = self._get_driver()
+
+        # Pending yoki boshqa haydovchi buyurtmasida kontakt yashirish
+        if instance.status == 'pending' or (
+            instance.driver and driver and instance.driver.id != driver.id
+        ):
             data['client_phone'] = '+998 ** *** ** **'
-            data['client_name'] = 'Mijoz'
-            
+            data['client_name']  = 'Mijoz'
         return data

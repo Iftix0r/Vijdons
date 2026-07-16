@@ -40,15 +40,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _chatUnread = 0;
 
   // ── Taximetr holatlar ───────────────────────────────────────────────────────
-  bool   _taxiRunning  = false;   // taximetr ishlayaptimi
-  double _taxiKm       = 0.0;     // bosib o'tilgan km
-  double _taxiFare     = 0.0;     // hisoblangan narx (UZS)
-  double? _taxiPrevLat;           // oldingi koordinata
+  bool   _taxiRunning  = false;
+  double _taxiKm       = 0.0;
+  double _taxiFare     = 0.0;
+  double? _taxiPrevLat;
   double? _taxiPrevLng;
-  Timer?  _taxiTimer;             // 2-soniyalik GPS taymer
-  // taximetr sozlamalari (TariffSettings dan olinadi, tezroq demo uchun default)
+  Timer?  _taxiTimer;
   double _baseFare     = 5000;
   double _farePerKm    = 2000;
+
+  // ── Destination Mode ────────────────────────────────────────────────────────
+  bool   _destMode    = false;
+  String _destAddress = '';
+  double? _destLat;
+  double? _destLng;
+  bool   _settingDest = false;
 
   @override
   void initState() {
@@ -65,23 +71,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         for (var i = 0; i < _orders.length; i++) {
           final o = _orders[i];
           if (o.isPending && o.secondsLeft != null && o.secondsLeft! > 0) {
-            _orders[i] = OrderModel(
-              id: o.id,
-              clientName: o.clientName,
-              clientPhone: o.clientPhone,
-              driverName: o.driverName,
-              fromAddress: o.fromAddress,
-              toAddress: o.toAddress,
-              price: o.price,
-              commission: o.commission,
-              distanceKm: o.distanceKm,
-              status: o.status,
-              statusLabel: o.statusLabel,
-              createdAt: o.createdAt,
-              paymentType: o.paymentType,
-              note: o.note,
-              secondsLeft: o.secondsLeft! - 1,
-            );
+            _orders[i] = o.copyWithSecondsLeft(o.secondsLeft! - 1);
           }
         }
       });
@@ -236,7 +226,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _init() async {
-    await Future.wait([_loadProfile(), _loadOrders(), _loadChatUnread()]);
+    await Future.wait([
+      _loadProfile(),
+      _loadOrders(),
+      _loadChatUnread(),
+      _loadTariff(),
+      _loadDestinationMode(),
+    ]);
   }
 
   Future<void> _loadChatUnread() async {
@@ -244,6 +240,275 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final count = await ApiService.getChatUnreadCount();
       if (mounted) setState(() => _chatUnread = count);
     } catch (_) {}
+  }
+
+  // ── Tariff yuklash ────────────────────────────────────────────────────────
+
+  Future<void> _loadTariff() async {
+    try {
+      final data = await ApiService.getTariff();
+      if (mounted) {
+        setState(() {
+          _baseFare  = double.tryParse(data['base_price']?.toString() ?? '') ?? _baseFare;
+          _farePerKm = double.tryParse(data['price_per_km']?.toString() ?? '') ?? _farePerKm;
+        });
+      }
+    } catch (_) {}
+  }
+
+  // ── Destination mode ──────────────────────────────────────────────────────
+
+  Future<void> _loadDestinationMode() async {
+    try {
+      final data = await ApiService.getDestinationMode();
+      if (mounted) {
+        setState(() {
+          _destMode    = data['destination_mode'] as bool? ?? false;
+          _destAddress = data['destination_address'] as String? ?? '';
+          _destLat     = (data['destination_lat'] as num?)?.toDouble();
+          _destLng     = (data['destination_lng'] as num?)?.toDouble();
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggleDestinationMode() async {
+    if (_settingDest) return;
+
+    if (_destMode) {
+      // O'chirish
+      setState(() => _settingDest = true);
+      try {
+        await ApiService.setDestinationMode(enabled: false);
+        setState(() {
+          _destMode    = false;
+          _destAddress = '';
+          _destLat     = null;
+          _destLng     = null;
+        });
+        _snack("Yo'nalish rejimi o'chirildi", icon: Icons.navigation_outlined);
+        await _loadOrders(silent: true);
+      } catch (e) {
+        _snack(e.toString(), error: true);
+      } finally {
+        if (mounted) setState(() => _settingDest = false);
+      }
+    } else {
+      // Yoqish — hozirgi manzilni yo'nalish sifatida belgilash
+      await _showDestinationSheet();
+    }
+  }
+
+  Future<void> _showDestinationSheet() async {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final addrCtrl = TextEditingController(text: _address ?? '');
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+            decoration: BoxDecoration(
+              color: dark ? AppColors.cardDark : Colors.white,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 12),
+                    width: 36, height: 4,
+                    decoration: BoxDecoration(
+                      color: dark
+                          ? Colors.grey.shade700
+                          : Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                      child: const Icon(Icons.navigation_rounded,
+                          color: AppColors.primary, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Uyga yo'nalish rejimi",
+                            style: TextStyle(
+                              fontSize: 17, fontWeight: FontWeight.w900,
+                              color: dark ? Colors.white : AppColors.textPrimary,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          Text(
+                            'Faqat uy yo\'nalishi bo\'yicha buyurtmalar',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade500),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Manzil input
+                Text(
+                  "YO'NALISH MANZILI",
+                  style: TextStyle(
+                    fontSize: 10, fontWeight: FontWeight.w900,
+                    color: Colors.grey.shade500, letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: addrCtrl,
+                  style: TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w600,
+                    color: dark ? Colors.white : AppColors.textPrimary,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Masalan: Yunusobod, 19-kvartal',
+                    filled: true,
+                    fillColor: dark
+                        ? AppColors.surfaceDark
+                        : const Color(0xFFF2F2F2),
+                    prefixIcon: const Icon(Icons.location_on_rounded,
+                        color: AppColors.danger, size: 20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(
+                          color: AppColors.primary, width: 2),
+                    ),
+                  ),
+                ),
+
+                // Hozirgi manzil tugmasi
+                if (_lat != null) ...[
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: () {
+                      addrCtrl.text = _address ?? '';
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.info.withValues(alpha: 0.07),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: AppColors.info.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.my_location_rounded,
+                              size: 14, color: AppColors.info),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Hozirgi manzilni ishlatish: ${_address ?? ''}',
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.info,
+                                  fontWeight: FontWeight.w700),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+
+                // Yoqish tugmasi
+                SizedBox(
+                  height: 54,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final addr = addrCtrl.text.trim();
+                      if (addr.isEmpty) {
+                        return;
+                      }
+                      Navigator.pop(ctx);
+                      setState(() => _settingDest = true);
+                      try {
+                        // Koordinata: hozirgi joylashuv yoki null
+                        final lat = _lat;
+                        final lng = (await _getCurrentLng());
+                        await ApiService.setDestinationMode(
+                          enabled: true,
+                          lat: lat,
+                          lng: lng,
+                          address: addr,
+                        );
+                        setState(() {
+                          _destMode    = true;
+                          _destAddress = addr;
+                          _destLat     = lat;
+                          _destLng     = lng;
+                        });
+                        _snack("Yo'nalish rejimi yoqildi",
+                            icon: Icons.navigation_rounded);
+                        await _loadOrders(silent: true);
+                      } catch (e) {
+                        _snack(e.toString(), error: true);
+                      } finally {
+                        if (mounted) setState(() => _settingDest = false);
+                      }
+                    },
+                    icon: const Icon(Icons.navigation_rounded, size: 18),
+                    label: const Text("Yo'nalishni belgilash",
+                        style: TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w900)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<double?> _getCurrentLng() async {
+    try {
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      ).timeout(const Duration(seconds: 5));
+      return pos.longitude;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -333,6 +598,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _orderAction(OrderModel order, String action) async {
     HapticFeedback.mediumImpact();
+
+    // ── Reject (rad etish) alohida API ─────────────────────────────────────
+    if (action == 'reject') {
+      try {
+        await ApiService.rejectOrder(order.id);
+        _snack('Buyurtma rad etildi', icon: Icons.close_rounded);
+        await _loadOrders(silent: true);
+      } catch (e) {
+        _snack(e.toString(), error: true);
+      }
+      return;
+    }
+
     final ep = {
       'accept':   AppConstants.acceptOrder(order.id),
       'on_way':   AppConstants.onWayOrder(order.id),
@@ -376,6 +654,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     'arrived':  'Yetib keldingiz 📍',
     'complete': 'Buyurtma yakunlandi 🏁',
     'cancel':   'Buyurtma bekor qilindi',
+    'reject':   'Buyurtma rad etildi',
   }[a] ?? '';
 
   IconData _actionIcon(String a) => const {
@@ -956,7 +1235,85 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
       child: Column(
         children: [
-          // ── Stat kartalar ────────────────────────────────────────────────
+          // ── Destination mode banner ──────────────────────────────────────
+          if (_destMode)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32, height: 32,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: const Icon(Icons.navigation_rounded,
+                          color: AppColors.primary, size: 17),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Yo'nalish rejimi faol",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          Text(
+                            _destAddress.isNotEmpty
+                                ? _destAddress
+                                : 'Belgilangan yo\'nalish',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey.shade500,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: _settingDest ? null : _toggleDestinationMode,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.danger.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                              color: AppColors.danger
+                                  .withValues(alpha: 0.25)),
+                        ),
+                        child: Text(
+                          "O'chirish",
+                          style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.danger),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // ── Stat kartalar ──────────────────────────────────────────────
           Row(
             children: [
               _statusCard(
@@ -969,7 +1326,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               const SizedBox(width: 10),
               _statusCard(
                 Icons.account_balance_wallet_rounded,
-                '${balance.toStringAsFixed(0)} so\'m',
+                "${balance.toStringAsFixed(0)} so'm",
                 balNeg ? 'Qarzdorlik' : 'Balans',
                 balNeg ? AppColors.danger : AppColors.success,
                 dark,
@@ -978,9 +1335,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 10),
 
-          // ── Joylashuv + Tugatish banneri ──────────────────────────────────
+          // ── Joylashuv + Tugatish ──────────────────────────────────────
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: dark ? AppColors.cardDark : Colors.white,
               borderRadius: BorderRadius.circular(18),
@@ -1006,7 +1364,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       const Text(
                         'Ish navbatidasiz',
                         style: TextStyle(
-                          fontWeight: FontWeight.w900, fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
                           color: AppColors.success,
                         ),
                       ),
@@ -1046,14 +1405,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ? const SizedBox(
                         width: 22, height: 22,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: AppColors.danger))
+                            strokeWidth: 2,
+                            color: AppColors.danger))
                     : GestureDetector(
                         onTap: _toggleDuty,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: AppColors.danger.withValues(alpha: 0.08),
+                            color: AppColors.danger
+                                .withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                                 color: AppColors.danger
@@ -1062,7 +1423,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           child: const Text(
                             'Tugatish',
                             style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w900,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
                               color: AppColors.danger,
                             ),
                           ),
@@ -1352,7 +1714,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   );
 
   Widget _ordersLabel(bool dark) => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
+    padding: const EdgeInsets.fromLTRB(20, 16, 16, 10),
     child: Row(
       children: [
         Text(
@@ -1365,7 +1727,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         const Spacer(),
         if (!_loadingOrders && _orders.isNotEmpty)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            margin: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
@@ -1378,6 +1742,59 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   color: AppColors.primary),
             ),
           ),
+        // Destination mode toggle tugmasi
+        GestureDetector(
+          onTap: _settingDest ? null : _toggleDestinationMode,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: _destMode
+                  ? AppColors.primary.withValues(alpha: 0.12)
+                  : (dark
+                      ? AppColors.surfaceDark
+                      : const Color(0xFFF2F2F2)),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _destMode
+                    ? AppColors.primary.withValues(alpha: 0.4)
+                    : (dark
+                        ? AppColors.borderDark
+                        : AppColors.borderLight),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _settingDest
+                    ? const SizedBox(
+                        width: 12, height: 12,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 1.5,
+                            color: AppColors.primary))
+                    : Icon(
+                        Icons.navigation_rounded,
+                        size: 13,
+                        color: _destMode
+                            ? AppColors.primary
+                            : Colors.grey.shade500,
+                      ),
+                const SizedBox(width: 5),
+                Text(
+                  _destMode ? "Yo'nalish" : "Uy yo'nalishi",
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: _destMode
+                        ? AppColors.primary
+                        : Colors.grey.shade500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     ),
   );

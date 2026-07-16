@@ -176,6 +176,43 @@ class ApiService {
     return _decode(r) as Map<String, dynamic>;
   }
 
+  /// Buyurtmani rad etish (reject)
+  static Future<void> rejectOrder(int orderId) async {
+    final r = await _post(AppConstants.rejectOrder(orderId));
+    _decode(r);
+  }
+
+  /// Joriy tariff sozlamalarini olish
+  static Future<Map<String, dynamic>> getTariff() async {
+    final r = await _get(AppConstants.tariff);
+    return _decode(r) as Map<String, dynamic>;
+  }
+
+  // ── Destination Mode ───────────────────────────────────────────────────────
+
+  /// Destination mode yoqish: manzil koordinatalari bilan
+  static Future<Map<String, dynamic>> setDestinationMode({
+    required bool enabled,
+    double? lat,
+    double? lng,
+    String? address,
+  }) async {
+    final body = <String, dynamic>{'enabled': enabled};
+    if (enabled && lat != null && lng != null) {
+      body['lat']     = lat;
+      body['lng']     = lng;
+      body['address'] = address ?? '';
+    }
+    final r = await _post(AppConstants.destinationSet, body: body);
+    return _decode(r) as Map<String, dynamic>;
+  }
+
+  /// Destination mode joriy holatini olish
+  static Future<Map<String, dynamic>> getDestinationMode() async {
+    final r = await _get(AppConstants.destinationGet);
+    return _decode(r) as Map<String, dynamic>;
+  }
+
   // ── Chat ──────────────────────────────────────────────────────────────────────
 
   static Future<List<dynamic>> getChatMessages() async {
