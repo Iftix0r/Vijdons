@@ -2,14 +2,56 @@
 {% block title %}Tarix — Vijdon Driver{% endblock %}
 
 {% block content %}
-<div class="bg-white dark:bg-[#1C1C1E] px-4 pt-3 pb-3 border-b border-gray-100 dark:border-gray-800">
+<div class="bg-white dark:bg-[#1C1C1E] px-4 pt-3 pb-3 border-b border-gray-100 dark:border-gray-800 sticky top-0 z-10 backdrop-blur-xl bg-white/95 dark:bg-[#1C1C1E]/95">
   <h1 class="text-lg font-black">Buyurtmalar tarixi</h1>
-  <p class="text-xs text-gray-400 mt-0.5">So'nggi 50 ta buyurtma</p>
+
+  <!-- Filter tabs -->
+  <div class="flex gap-2 mt-2 overflow-x-auto pb-1" style="scrollbar-width:none">
+    <button onclick="filterOrders('all')" id="f-all"
+            class="filter-btn flex-shrink-0 text-xs font-black px-3 py-1.5 rounded-xl bg-[#1C1C1E] dark:bg-white text-white dark:text-[#1C1C1E] transition-all">
+      Hammasi
+    </button>
+    <button onclick="filterOrders('completed')" id="f-completed"
+            class="filter-btn flex-shrink-0 text-xs font-black px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-[#2C2C2E] text-gray-500 transition-all">
+      ✓ Yakunlangan
+    </button>
+    <button onclick="filterOrders('cancelled')" id="f-cancelled"
+            class="filter-btn flex-shrink-0 text-xs font-black px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-[#2C2C2E] text-gray-500 transition-all">
+      ✕ Bekor qilingan
+    </button>
+  </div>
 </div>
 
-<div class="px-4 py-4 space-y-3">
+<!-- Stats bar -->
+{% if orders %}
+<div class="px-4 py-3 grid grid-cols-3 gap-2">
+  <div class="bg-white dark:bg-[#2C2C2E] rounded-2xl p-3 text-center border border-gray-100 dark:border-gray-800">
+    <div class="text-lg font-black text-green-500">{{ orders|length }}</div>
+    <div class="text-[10px] text-gray-400 font-bold">Jami</div>
+  </div>
+  <div class="bg-white dark:bg-[#2C2C2E] rounded-2xl p-3 text-center border border-gray-100 dark:border-gray-800">
+    <div class="text-lg font-black text-[#FFD600]" id="total-earned">
+      {% with total=0 %}
+        {% for o in orders %}{% if o.status == 'completed' and o.price %}
+          {# calculated in JS #}
+        {% endif %}{% endfor %}
+      {% endwith %}
+      —
+    </div>
+    <div class="text-[10px] text-gray-400 font-bold">Daromad</div>
+  </div>
+  <div class="bg-white dark:bg-[#2C2C2E] rounded-2xl p-3 text-center border border-gray-100 dark:border-gray-800">
+    <div class="text-lg font-black text-blue-500" id="total-km">—</div>
+    <div class="text-[10px] text-gray-400 font-bold">Km</div>
+  </div>
+</div>
+{% endif %}
+
+<div class="px-4 pb-4 space-y-3" id="orders-list">
   {% for order in orders %}
-  <div class="bg-white dark:bg-[#2C2C2E] rounded-3xl p-4 border border-gray-100 dark:border-gray-800">
+  <div class="order-card bg-white dark:bg-[#2C2C2E] rounded-3xl p-4 border border-gray-100 dark:border-gray-800 slide-up"
+       data-status="{{ order.status }}"
+       style="animation-delay: {{ forloop.counter0 }}0ms">
     <div class="flex items-center justify-between mb-2">
       <span class="text-xs font-black px-2.5 py-1 rounded-xl
         {% if order.status == 'completed' %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400
@@ -17,23 +59,75 @@
         {% else %}bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400{% endif %}">
         {{ order.get_status_display }}
       </span>
-      <span class="text-xs text-gray-400">#{{ order.id }} · {{ order.created_at|date:"d.m H:i" }}</span>
+      <span class="text-xs text-gray-400 font-semibold">#{{ order.id }} · {{ order.created_at|date:"d.m H:i" }}</span>
     </div>
-    <div class="text-sm font-semibold text-gray-800 dark:text-white">{{ order.from_address }}</div>
-    {% if order.to_address %}
-    <div class="text-xs text-gray-400 mt-0.5">→ {{ order.to_address }}</div>
-    {% endif %}
-    <div class="flex items-center gap-3 mt-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-      {% if order.price %}<span class="text-sm font-black text-green-600 dark:text-green-400">{{ order.price|floatformat:0 }} so'm</span>{% endif %}
-      {% if order.distance_km %}<span class="text-xs text-gray-400">{{ order.distance_km|floatformat:1 }} km</span>{% endif %}
-      <span class="text-xs text-gray-400 ml-auto">{{ order.client.phone_number }}</span>
+
+    <div class="space-y-1">
+      <div class="flex items-start gap-2">
+        <i class="fas fa-circle text-green-500 text-[8px] mt-1.5 flex-shrink-0"></i>
+        <span class="text-sm font-semibold text-gray-800 dark:text-white leading-tight">{{ order.from_address }}</span>
+      </div>
+      {% if order.to_address %}
+      <div class="flex items-start gap-2">
+        <i class="fas fa-location-dot text-red-500 text-xs mt-0.5 flex-shrink-0"></i>
+        <span class="text-xs text-gray-500 dark:text-gray-400 leading-tight">{{ order.to_address }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+      {% if order.price %}
+      <span class="text-sm font-black {% if order.status == 'completed' %}text-green-600 dark:text-green-400{% else %}text-gray-400 line-through{% endif %}">
+        {{ order.price|floatformat:0 }} so'm
+      </span>
+      {% endif %}
+      {% if order.distance_km %}
+      <span class="text-xs text-gray-400 font-semibold">{{ order.distance_km|floatformat:1 }} km</span>
+      {% endif %}
+      <span class="text-xs {% if order.payment_type == 'cash' %}text-gray-400{% else %}text-blue-400{% endif %} font-semibold ml-auto">
+        {% if order.payment_type == 'cash' %}💵{% else %}💳{% endif %} {{ order.client.phone_number }}
+      </span>
     </div>
   </div>
   {% empty %}
-  <div class="text-center py-20 text-gray-400">
+  <div class="text-center py-20 text-gray-400 fade-in">
     <i class="fas fa-clock-rotate-left text-4xl mb-4 opacity-30"></i>
     <p class="font-semibold">Hali buyurtma yo'q</p>
   </div>
   {% endfor %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Stats
+const cards = document.querySelectorAll('.order-card');
+let earned = 0, km = 0;
+cards.forEach(c => {
+  const priceEl = c.querySelector('.text-green-600, .text-green-400');
+  const kmEl = [...c.querySelectorAll('.text-xs')].find(el => el.textContent.includes('km'));
+  if (c.dataset.status === 'completed') {
+    if (priceEl) earned += parseInt(priceEl.textContent.replace(/\D/g,'')) || 0;
+    if (kmEl) km += parseFloat(kmEl.textContent) || 0;
+  }
+});
+const earnedEl = document.getElementById('total-earned');
+const kmEl = document.getElementById('total-km');
+if (earnedEl) earnedEl.textContent = earned > 0 ? earned.toLocaleString() + ' so\'m' : '—';
+if (kmEl) kmEl.textContent = km > 0 ? km.toFixed(1) + ' km' : '—';
+
+// Filter
+function filterOrders(status) {
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.className = 'filter-btn flex-shrink-0 text-xs font-black px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-[#2C2C2E] text-gray-500 transition-all';
+  });
+  const active = document.getElementById('f-' + status);
+  if (active) active.className = 'filter-btn flex-shrink-0 text-xs font-black px-3 py-1.5 rounded-xl bg-[#1C1C1E] dark:bg-white text-white dark:text-[#1C1C1E] transition-all';
+
+  cards.forEach(c => {
+    const show = status === 'all' || c.dataset.status === status;
+    c.style.display = show ? '' : 'none';
+  });
+}
+</script>
 {% endblock %}
