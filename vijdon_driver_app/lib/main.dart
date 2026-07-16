@@ -10,6 +10,7 @@ const String kBaseUrl = 'https://vijdontaxi.uz/driver/';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService.init();
+  await NotificationService.clearBadge();
   runApp(const VijdonDriverApp());
 }
 
@@ -66,7 +67,11 @@ class _DriverWebViewState extends State<DriverWebView> {
         'FlutterNotify',
         onMessageReceived: (msg) {
           final count = int.tryParse(msg.message) ?? 1;
-          NotificationService.notifyNewOrder(count);
+          if (count == 0) {
+            NotificationService.clearBadge();
+          } else {
+            NotificationService.notifyNewOrder(count);
+          }
         },
       )
       ..setNavigationDelegate(NavigationDelegate(

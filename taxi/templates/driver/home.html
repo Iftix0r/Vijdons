@@ -419,6 +419,8 @@ async function doAction(id,action){
   if(action==='accept') Audio.accept();
   else if(action==='reject'||action==='cancel') Audio.reject();
   else if(action==='complete') Audio.complete();
+  // Buyurtma qabul/rad/bekor bo'lsa badge tozala
+  if(typeof FlutterNotify !== 'undefined') FlutterNotify.postMessage('0');
   try{
     const r=await fetch(`/driver/orders/${id}/${action}/`,{method:'POST',headers:{'X-CSRFToken':getCookie('csrftoken')}});
     const d=await r.json();

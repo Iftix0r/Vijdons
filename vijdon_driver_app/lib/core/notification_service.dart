@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:app_badge_plus/app_badge_plus.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
@@ -21,7 +22,7 @@ class NotificationService {
       );
 
       await _notif.initialize(
-        settings: const InitializationSettings(
+        const InitializationSettings(
           android: androidSettings,
           iOS: iosSettings,
         ),
@@ -53,6 +54,11 @@ class NotificationService {
   static Future<void> notifyNewOrder(int count) async {
     await _playOrderSound();
     await _showNotification(count);
+    await AppBadgePlus.updateBadge(count);
+  }
+
+  static Future<void> clearBadge() async {
+    await AppBadgePlus.updateBadge(0);
   }
 
   static Future<void> _playOrderSound() async {
@@ -114,10 +120,10 @@ class NotificationService {
     );
 
     await _notif.show(
-      id: 1001,
-      title: title,
-      body: body,
-      notificationDetails: NotificationDetails(
+      1001,
+      title,
+      body,
+      NotificationDetails(
         android: androidDetails,
         iOS: iosDetails,
       ),
