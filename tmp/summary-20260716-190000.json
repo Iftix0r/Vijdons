@@ -1,0 +1,4 @@
+{
+  "summary": "Foydalanuvchi /admin Django admin sahifasi dizaynning buzilganligini aytdi (/panel esa to'g'ri ishlayapti). Tekshirganda settings.py da STATIC_ROOT yo'qligi aniqland — faqat STATIC_URL = 'static/' bor edi. Productionda collectstatic ishlamaydi va admin CSS/JS yuklanmaydi. STATIC_ROOT = BASE_DIR / 'staticfiles' qo'shildi, STATIC_URL ham /static/ formatiga o'zgartirildi. Git commit + push bajarildi. Serverda git pull && python3 manage.py collectstatic --noinput bajarish kerak.",
+  "current_status": "settings.py ga STATIC_ROOT qo'shildi va push qilindi (commit: 9e0ac75). Server tomonida collectstatic bajarish kutilmoqda."
+}
