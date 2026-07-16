@@ -80,71 +80,6 @@
 <!-- Content: JS tomonidan to'ldiriladi -->
 <div class="px-4 py-3 space-y-3" id="orders-wrap" style="padding-bottom:16px"></div>
 
-<!-- ── Taximeter Mini Panel ── -->
-<div id="taximeter" class="hidden fixed left-0 right-0 z-[150]"
-     style="bottom:calc(env(safe-area-inset-bottom,34px) + 83px)">
-  <div class="mx-3 rounded-[18px] overflow-hidden"
-       style="background:#111;border:1px solid rgba(255,255,255,.1);box-shadow:0 8px 32px rgba(0,0,0,.5)">
-
-    <!-- Top row: narx + vaqt + masofa -->
-    <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:10px 14px 8px;gap:8px">
-      <!-- Narx -->
-      <div>
-        <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,.35);letter-spacing:.4px;text-transform:uppercase;margin-bottom:2px">NARX</div>
-        <div style="display:flex;align-items:baseline;gap:3px">
-          <span id="tmx-price" style="font-size:24px;font-weight:700;color:#FFD600;letter-spacing:-1px;font-variant-numeric:tabular-nums">0</span>
-          <span style="font-size:11px;color:rgba(255,214,0,.5);font-weight:500">so'm</span>
-        </div>
-        <div id="tmx-fixed-badge" class="hidden" style="font-size:10px;color:#34C759;font-weight:600;margin-top:1px">Belgilangan</div>
-      </div>
-      <!-- Divider dot -->
-      <div style="width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.2)"></div>
-      <!-- Vaqt + Masofa -->
-      <div style="text-align:right">
-        <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px">
-          <div style="text-align:center">
-            <div style="font-size:10px;font-weight:600;color:rgba(175,82,222,.6);letter-spacing:.3px;text-transform:uppercase">VAQT</div>
-            <div id="tmx-time" style="font-size:16px;font-weight:700;color:#AF52DE;font-variant-numeric:tabular-nums">0:00</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-size:10px;font-weight:600;color:rgba(0,122,255,.6);letter-spacing:.3px;text-transform:uppercase">KM</div>
-            <div id="tmx-dist" style="font-size:16px;font-weight:700;color:#007AFF;font-variant-numeric:tabular-nums">0.0</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,.3);letter-spacing:.3px;text-transform:uppercase">KM/H</div>
-            <div id="tmx-speed" style="font-size:16px;font-weight:700;color:rgba(255,255,255,.7);font-variant-numeric:tabular-nums">0</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Route row -->
-    <div style="padding:0 14px 8px;display:flex;align-items:center;gap:6px">
-      <span style="width:6px;height:6px;border-radius:50%;background:#34C759;flex-shrink:0"></span>
-      <span id="tmx-from-txt" style="font-size:12px;color:rgba(255,255,255,.5);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></span>
-      <span id="tmx-order-badge" style="font-size:11px;color:rgba(255,255,255,.25);flex-shrink:0"></span>
-    </div>
-
-    <!-- Action buttons -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid rgba(255,255,255,.08)">
-      <button onclick="tmxArrived()"
-              style="padding:13px;background:rgba(0,122,255,.15);border:none;border-right:1px solid rgba(255,255,255,.08);
-                     font-size:14px;font-weight:600;color:#007AFF;cursor:pointer;
-                     -webkit-tap-highlight-color:transparent;transition:opacity .15s"
-              ontouchstart="this.style.opacity='.6'" ontouchend="this.style.opacity='1'">
-        📍 Yetib keldim
-      </button>
-      <button onclick="tmxCancel()"
-              style="padding:13px;background:rgba(255,59,48,.08);border:none;
-                     font-size:14px;font-weight:600;color:#FF3B30;cursor:pointer;
-                     -webkit-tap-highlight-color:transparent;transition:opacity .15s"
-              ontouchstart="this.style.opacity='.6'" ontouchend="this.style.opacity='1'">
-        ✕ Bekor
-      </button>
-    </div>
-  </div>
-</div>
-
 <style>
 @keyframes pulse-dot {
   0%,100% { opacity:1; transform:scale(1); }
@@ -620,22 +555,6 @@ function tmxStart(orderId, order) {
   _tmxPrevLat = null;
   _tmxPrevLng = null;
 
-  const tmx = document.getElementById('taximeter');
-  tmx.classList.remove('hidden');
-  document.getElementById('orders-wrap').style.paddingBottom = '140px';
-
-  document.getElementById('tmx-order-badge').textContent = '#' + orderId;
-  document.getElementById('tmx-from-txt').textContent = order?.from_address || '';
-
-  const fixedBadge = document.getElementById('tmx-fixed-badge');
-  if (order?.price && parseFloat(order.price) > 0) {
-    fixedBadge.classList.remove('hidden');
-    document.getElementById('tmx-price').textContent = parseInt(order.price).toLocaleString('uz-UZ');
-  } else {
-    fixedBadge.classList.add('hidden');
-    document.getElementById('tmx-price').textContent = TMX_BASE_PRICE.toLocaleString('uz-UZ');
-  }
-
   _tmxInterval = setInterval(_tmxTick, 1000);
   window.addEventListener('vijdon_location', _tmxOnLocation);
   if (navigator.geolocation) {
@@ -720,8 +639,6 @@ function tmxStop() {
     _tmxWatchId = null;
   }
   window.removeEventListener('vijdon_location', _tmxOnLocation);
-  document.getElementById('taximeter').classList.add('hidden');
-  document.getElementById('orders-wrap').style.paddingBottom = '16px';
 }
 
 function tmxArrived() {
