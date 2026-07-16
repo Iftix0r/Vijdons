@@ -1,0 +1,4 @@
+{
+  "summary": "Flutter ilovaga kirganida joylashuv/kamera/suratlar ruxsati so'ralmayotgani hal qilindi. _requestPermissionsAndInit() ga Permission.camera, Permission.photos, Permission.mediaLibrary qo'shildi. AndroidManifest.xml ga READ_EXTERNAL_STORAGE (maxSdkVersion=32) va WRITE_EXTERNAL_STORAGE (maxSdkVersion=29) qo'shildi — Android 12 va pastroq uchun. _showToast unused kodi va _toastOverlay field olib tashlandi. dart analyze: No issues found.",
+  "current_status": "Flutter main.dart toza, ruxsatlar to'liq. flutter build apk --release kerak."
+}
