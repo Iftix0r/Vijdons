@@ -31,11 +31,12 @@
     </div>
     <div class="flex items-center gap-2.5">
       <!-- Balance chip -->
-      <div class="ios-card2 rounded-[10px] px-3 py-2 text-right">
-        <div class="ios-caption2 font-medium" style="color:var(--ios-label3)">Balans</div>
-        <div class="ios-footnote font-semibold {% if driver.balance < 0 %}text-[#FF3B30]{% else %}text-[#FFD600]{% endif %}">
-          {{ driver.balance|floatformat:0 }} so'm
-        </div>
+      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] ios-card2">
+        <i class="fas fa-wallet text-[10px] {% if driver.balance < 0 %}text-[#FF3B30]{% else %}text-[#FFD600]{% endif %}"></i>
+        <span class="ios-footnote font-bold {% if driver.balance < 0 %}text-[#FF3B30]{% else %}text-[#FFD600]{% endif %}" style="letter-spacing:-.2px">
+          {{ driver.balance|floatformat:0 }}
+        </span>
+        <span class="ios-caption2" style="color:var(--ios-label3)">so'm</span>
       </div>
       <!-- Chat -->
       <a href="{% url 'driver:chat' %}" onclick="Native.vibrate()"
@@ -285,7 +286,7 @@ async function loadOrders(fb=false) {
       }
     }
     if(d.reload) location.reload();
-    if(fb) showToast('Yangilandi','','success',1600);
+    if(fb) {}
   } catch(_){}
 }
 
