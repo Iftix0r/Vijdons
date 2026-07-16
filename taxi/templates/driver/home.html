@@ -313,7 +313,104 @@
 
 </div>
 
-<!-- ── Yangi Buyurtma Modal ── -->
+<!-- ── Taximeter Overlay ── -->
+<div id="taximeter" class="fixed inset-0 z-[150] hidden flex flex-col"
+     style="background:linear-gradient(160deg,#0a0a0a 0%,#111 60%,#1a1a0a 100%)">
+
+  <!-- Header -->
+  <div style="padding:calc(env(safe-area-inset-top,47px) + 12px) 20px 0;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:8px;height:8px;border-radius:50%;background:#AF52DE;box-shadow:0 0 8px #AF52DE;animation:pulse-dot 1.2s ease-in-out infinite"></div>
+      <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.5px;text-transform:uppercase">Taximetr</span>
+    </div>
+    <div id="tmx-order-badge" style="font-size:12px;font-weight:600;color:rgba(255,255,255,.35)"></div>
+  </div>
+
+  <!-- Main price display -->
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 24px">
+
+    <!-- Price -->
+    <div style="text-align:center;margin-bottom:8px">
+      <div style="font-size:13px;font-weight:500;color:rgba(255,255,255,.4);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">NARX</div>
+      <div style="display:flex;align-items:baseline;justify-content:center;gap:6px">
+        <span id="tmx-price" style="font-size:68px;font-weight:700;color:#FFD600;letter-spacing:-2px;line-height:1;font-variant-numeric:tabular-nums">0</span>
+        <span style="font-size:20px;font-weight:500;color:rgba(255,214,0,.5)">so'm</span>
+      </div>
+      <div id="tmx-fixed-badge" class="hidden" style="margin-top:6px;display:inline-block;padding:3px 10px;border-radius:20px;background:rgba(52,199,89,.15);color:#34C759;font-size:12px;font-weight:600">Belgilangan narx</div>
+    </div>
+
+    <!-- Stats row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;width:100%;max-width:340px;margin-top:24px">
+      <!-- Distance -->
+      <div style="background:rgba(255,255,255,.06);border-radius:16px;padding:14px 8px;text-align:center;border:1px solid rgba(255,255,255,.08)">
+        <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,.35);letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px">MASOFA</div>
+        <div id="tmx-dist" style="font-size:22px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;line-height:1">0.0</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:3px">km</div>
+      </div>
+      <!-- Time -->
+      <div style="background:rgba(175,82,222,.1);border-radius:16px;padding:14px 8px;text-align:center;border:1px solid rgba(175,82,222,.2)">
+        <div style="font-size:11px;font-weight:600;color:rgba(175,82,222,.7);letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px">VAQT</div>
+        <div id="tmx-time" style="font-size:22px;font-weight:700;color:#AF52DE;font-variant-numeric:tabular-nums;line-height:1">0:00</div>
+        <div style="font-size:11px;color:rgba(175,82,222,.5);margin-top:3px">daqiqa</div>
+      </div>
+      <!-- Speed -->
+      <div style="background:rgba(0,122,255,.08);border-radius:16px;padding:14px 8px;text-align:center;border:1px solid rgba(0,122,255,.15)">
+        <div style="font-size:11px;font-weight:600;color:rgba(0,122,255,.7);letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px">TEZLIK</div>
+        <div id="tmx-speed" style="font-size:22px;font-weight:700;color:#007AFF;font-variant-numeric:tabular-nums;line-height:1">0</div>
+        <div style="font-size:11px;color:rgba(0,122,255,.5);margin-top:3px">km/h</div>
+      </div>
+    </div>
+
+    <!-- Route mini -->
+    <div id="tmx-route" style="margin-top:20px;width:100%;max-width:340px;background:rgba(255,255,255,.05);border-radius:14px;padding:12px 14px;border:1px solid rgba(255,255,255,.08)">
+      <div id="tmx-from" style="font-size:13px;color:rgba(255,255,255,.55);display:flex;align-items:start;gap:8px">
+        <span style="width:7px;height:7px;border-radius:50%;background:#34C759;flex-shrink:0;margin-top:4px;display:inline-block"></span>
+        <span id="tmx-from-txt" style="flex:1;line-height:1.4"></span>
+      </div>
+      <div id="tmx-to" style="font-size:13px;color:rgba(255,255,255,.4);display:flex;align-items:start;gap:8px;margin-top:8px">
+        <i class="fas fa-location-dot" style="font-size:11px;color:#FF3B30;flex-shrink:0;margin-top:4px"></i>
+        <span id="tmx-to-txt" style="flex:1;line-height:1.4"></span>
+      </div>
+    </div>
+
+    <!-- Payment type -->
+    <div id="tmx-payment" style="margin-top:12px;font-size:13px;color:rgba(255,255,255,.35)"></div>
+  </div>
+
+  <!-- Action button -->
+  <div style="padding:0 20px;padding-bottom:calc(env(safe-area-inset-bottom,34px) + 90px)">
+    <button id="tmx-arrived-btn"
+            onclick="tmxArrived()"
+            style="width:100%;padding:18px;border-radius:16px;background:#007AFF;border:none;
+                   font-size:17px;font-weight:600;color:#fff;letter-spacing:-.4px;
+                   cursor:pointer;-webkit-tap-highlight-color:transparent;
+                   box-shadow:0 8px 24px rgba(0,122,255,.35);transition:opacity .15s"
+            ontouchstart="this.style.opacity='.7'" ontouchend="this.style.opacity='1'">
+      📍 Yetib keldim
+    </button>
+    <button onclick="tmxCancel()"
+            style="width:100%;padding:14px;margin-top:10px;border-radius:16px;
+                   background:rgba(255,59,48,.1);border:1px solid rgba(255,59,48,.2);
+                   font-size:15px;font-weight:600;color:#FF3B30;
+                   cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s"
+            ontouchstart="this.style.opacity='.6'" ontouchend="this.style.opacity='1'">
+      Bekor qilish
+    </button>
+  </div>
+</div>
+
+<style>
+@keyframes pulse-dot {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:.4; transform:scale(.7); }
+}
+@keyframes price-pop {
+  0%   { transform:scale(1); }
+  30%  { transform:scale(1.06); }
+  100% { transform:scale(1); }
+}
+.price-updated { animation: price-pop .25s ease-out; }
+</style>
 <div id="new-order-modal" class="fixed inset-0 z-[200] hidden flex items-center justify-center"
      style="background:rgba(0,0,0,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)">
   <div class="ios-card mx-4 w-full max-w-sm anim-scale" style="border-radius:20px;overflow:hidden">
