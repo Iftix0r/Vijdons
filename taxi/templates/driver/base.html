@@ -395,13 +395,16 @@ const Audio = {
   _play(notes) {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      notes.forEach(([t, f, v=0.3, d=0.15]) => {
+      notes.forEach(([t, type, f, v=0.3, d=0.15]) => {
         const o = ctx.createOscillator(), g = ctx.createGain();
         o.connect(g); g.connect(ctx.destination);
-        o.frequency.value = f; o.type = 'sine';
-        g.gain.setValueAtTime(v, ctx.currentTime + t);
-        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + d);
-        o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + d);
+        o.type = type || 'sine';
+        o.frequency.value = f;
+        const st = ctx.currentTime + t;
+        g.gain.setValueAtTime(0, st);
+        g.gain.linearRampToValueAtTime(v, st + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.001, st + d);
+        o.start(st); o.stop(st + d + 0.05);
       });
     } catch(_) {}
   },
@@ -474,11 +477,35 @@ const Audio = {
       window._newOrderCtx = null;
     }
   },
-  accept()   { this._play([[0,.2,523],[.12,.25,659]]); },
-  reject()   { this._play([[0,.3,440],[.15,.3,330]]); },
-  complete() { this._play([[0,.2,659],[.12,.2,784],[.24,.3,1047]]); },
-  offline()  { this._play([[0,.4,220,.4]]); },
-  online()   { this._play([[0,.2,523],[.15,.25,784]]); },
+  accept() {
+    // Yashil — yuqoriga ko'tariluvchi 3 nota
+    this._play([
+      [0,    'sine',   523, 0.35, 0.12],
+      [0.13, 'sine',   659, 0.35, 0.12],
+      [0.26, 'sine',   784, 0.40, 0.22],
+      [0.28, 'sine',  1047, 0.25, 0.18],
+    ]);
+  },
+  reject() {
+    // Qizil — pastga tushuvchi 2 nota
+    this._play([
+      [0,    'sawtooth', 440, 0.30, 0.14],
+      [0.18, 'sawtooth', 330, 0.30, 0.14],
+      [0.36, 'sawtooth', 220, 0.25, 0.22],
+    ]);
+  },
+  complete() {
+    // Oltin — tantanali 4 nota
+    this._play([
+      [0,    'sine',  523, 0.30, 0.10],
+      [0.12, 'sine',  659, 0.30, 0.10],
+      [0.24, 'sine',  784, 0.30, 0.10],
+      [0.36, 'sine', 1047, 0.45, 0.30],
+      [0.38, 'sine', 1319, 0.30, 0.28],
+    ]);
+  },
+  offline()  { this._play([[0,'sawtooth',220,0.30,0.40]]); },
+  online()   { this._play([[0,'sine',523,0.25,0.10],[0.15,'sine',784,0.25,0.18]]); },
 };
 
 // ── Web Push Subscription ────────────────────────────────────────────────────
