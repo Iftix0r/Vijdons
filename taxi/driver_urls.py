@@ -25,6 +25,8 @@ urlpatterns = [
 
     # Yandex-style funksiyalar
     path('orders/<int:pk>/eta/',    driver_views.driver_order_eta,    name='order_eta'),
+    path('orders/<int:pk>/meter/',  driver_views.driver_meter_update, name='order_meter'),
     path('orders/<int:pk>/rate/',   driver_views.driver_order_rate,   name='order_rate'),
     path('surge/',                  driver_views.driver_surge_info,   name='surge_info'),
+    path('sos/',                     driver_views.driver_sos_send,     name='sos_send'),
 ]

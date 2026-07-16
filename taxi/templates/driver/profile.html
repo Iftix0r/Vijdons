@@ -90,6 +90,13 @@
     </div>
   </div>
 
+  <!-- ── SOS ── -->
+  <button onclick="sendSOS()"
+     class="block w-full text-center ios-subhead font-semibold text-white py-4 rounded-[16px] active:opacity-60 transition-opacity anim-up"
+     style="animation-delay:180ms;background:#FF3B30;box-shadow:0 4px 20px rgba(255,59,48,.4)">
+    <i class="fas fa-triangle-exclamation mr-2"></i>SOS — Yordam chaqirish
+  </button>
+
   <!-- ── Logout ── -->
   <a href="{% url 'driver:logout' %}" onclick="Native.vibrate()"
      class="block w-full text-center ios-subhead font-semibold text-[#FF3B30] py-4 ios-card rounded-[16px] active:opacity-60 transition-opacity anim-up"
@@ -104,5 +111,27 @@
 // Sync toggle state
 const tog=document.getElementById('theme-tog');
 if(tog&&document.documentElement.classList.contains('dark')) tog.classList.add('on');
+
+async function sendSOS() {
+  Native.vibrate([100,50,100,50,200]);
+  if (!confirm('SOS signal yuborilsinmi? Operator va Telegram guruhiga xabar ketadi.')) return;
+  let lat = null, lng = null, address = '';
+  try {
+    const pos = await Native.getLocation();
+    lat = pos.lat; lng = pos.lng;
+  } catch(_) {}
+  try {
+    const r = await fetch('{% url "driver:sos_send" %}', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+      body: JSON.stringify({lat, lng, address, note: ''})
+    });
+    const d = await r.json();
+    if (d.ok) showToast('SOS yuborildi!', 'Operator xabardor qilindi', 'error', 4000);
+    else showToast('Xatolik', 'Qayta urinib ko\'ring', 'error');
+  } catch(_) {
+    showToast('Tarmoq xatosi', 'Internet aloqasini tekshiring', 'error');
+  }
+}
 </script>
 {% endblock %}

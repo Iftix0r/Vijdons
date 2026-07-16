@@ -388,6 +388,51 @@ def driver_duty_toggle(request, driver):
     return JsonResponse({'ok': True, 'is_on_duty': driver.is_on_duty})
 
 
+# ── Taxi Meter ───────────────────────────────────────────────────────────────
+
+@driver_login_required
+def driver_meter_update(request, driver, pk):
+    """GPS koordinatalardan real-time masofa va narx hisoblaydi."""
+    order = get_object_or_404(Order, pk=pk, driver=driver)
+    try:
+        lat = float(request.GET.get('lat', 0))
+        lng = float(request.GET.get('lng', 0))
+        elapsed = int(request.GET.get('elapsed', 0))  # sekund
+    except (ValueError, TypeError):
+        return JsonResponse({'ok': False}, status=400)
+
+    from .utils import haversine
+    tariff = TariffSettings.get()
+
+    # Agar buyurtmada narx belgilangan bo'lsa — uni qaytaramiz
+    if order.price:
+        return JsonResponse({
+            'ok': True,
+            'fixed': True,
+            'price': float(order.price),
+            'distance_km': order.distance_km,
+        })
+
+    # GPS asosida masofa hisoblash
+    dist = None
+    if lat and lng and order.from_lat and order.from_lng:
+        dist = haversine(order.from_lat, order.from_lng, lat, lng)
+
+    # Narx hisoblash: base + km * price_per_km + vaqt bonusi (har 1 daqiqa = 200 so'm)
+    price = float(tariff.base_price)
+    if dist:
+        price += dist * float(tariff.price_per_km)
+    price += (elapsed // 60) * 200  # vaqt bonusi
+
+    return JsonResponse({
+        'ok': True,
+        'fixed': False,
+        'price': round(price),
+        'distance_km': round(dist, 2) if dist else 0,
+        'elapsed': elapsed,
+    })
+
+
 # ── ETA: haydovchi qancha vaqtda yetib keladi ─────────────────────────────────
 @driver_login_required
 def driver_order_eta(request, driver, pk):
@@ -439,6 +484,33 @@ def driver_order_rate(request, driver, pk):
             d.rating_count = count
             d.save(update_fields=['rating', 'rating_count'])
     return JsonResponse({'ok': True})
+
+
+# ── SOS ──────────────────────────────────────────────────────────────────────
+
+@require_POST
+@driver_login_required
+def driver_sos_send(request, driver):
+    import json as _json
+    from .models import SosAlert
+    from .utils import tg_sos_alert
+    try:
+        data = _json.loads(request.body)
+    except Exception:
+        data = {}
+    lat     = data.get('lat')
+    lng     = data.get('lng')
+    address = data.get('address', '').strip()
+    note    = data.get('note', '').strip()
+    alert = SosAlert.objects.create(
+        driver=driver,
+        latitude=float(lat) if lat is not None else None,
+        longitude=float(lng) if lng is not None else None,
+        address=address,
+        note=note,
+    )
+    tg_sos_alert(alert)
+    return JsonResponse({'ok': True, 'id': alert.id})
 
 
 # ── Surge: hozirgi narx multiplikatori ───────────────────────────────────────
