@@ -468,6 +468,13 @@ let _busy = false;
     if (document.readyState !== 'loading') tmxStart(onWay.id, onWay);
   }
 
+  // JS boshqaruvga o'tadi — server HTML ni JS bilan almashtiramiz
+  // (shunda keyingi loadOrders chaqiruvlarida DOM yangilanadi)
+  if ({{ driver.is_on_duty|yesno:'true,false' }}) {
+    document.addEventListener('DOMContentLoaded', () => renderOrdersDOM(), { once: true });
+    if (document.readyState !== 'loading') renderOrdersDOM();
+  }
+
   // Reload dan keyin ham yangi buyurtma modalini ko'rsatish
   const pending = sessionStorage.getItem('vijdon_new_order');
   if (pending) {

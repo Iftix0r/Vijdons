@@ -1,4 +1,4 @@
-const CACHE = 'vijdon-v1';
+const CACHE = 'vijdon-v3';
 const PRECACHE = [
   '/driver/home/',
   '/driver/history/',
