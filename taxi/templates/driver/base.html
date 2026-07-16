@@ -405,7 +405,17 @@ const Audio = {
       });
     } catch(_) {}
   },
-  newOrder() { this._play([[0,.28,880],[.15,.22,1046],[.3,.3,1318]]); },
+  newOrder() {
+    try {
+      const a = new window.Audio('/static/driver/sounds/new_order.wav');
+      a.loop = true; a.play().catch(()=>{});
+      window._newOrderAudio = a;
+    } catch(_) {}
+    this._play([[0,.28,880],[.15,.22,1046],[.3,.3,1318]]);
+  },
+  stopNewOrder() {
+    if (window._newOrderAudio) { window._newOrderAudio.pause(); window._newOrderAudio = null; }
+  },
   accept()   { this._play([[0,.2,523],[.12,.25,659]]); },
   reject()   { this._play([[0,.3,440],[.15,.3,330]]); },
   complete() { this._play([[0,.2,659],[.12,.2,784],[.24,.3,1047]]); },

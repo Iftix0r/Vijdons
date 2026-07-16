@@ -159,7 +159,18 @@ def driver_orders_json(request, driver):
         elapsed = (timezone.now() - dispatched.dispatched_at).total_seconds()
         timer_sec = max(0, int(timeout - elapsed))
 
-    return JsonResponse({'reload': True, 'new_ids': ids, 'timer_sec': timer_sec})
+    orders_data = []
+    for o in qs:
+        orders_data.append({
+            'id':           o.id,
+            'from_address': o.from_address,
+            'to_address':   o.to_address,
+            'price':        str(o.price) if o.price else None,
+            'distance_km':  o.distance_km,
+            'payment_type': o.payment_type,
+        })
+
+    return JsonResponse({'reload': True, 'new_ids': ids, 'timer_sec': timer_sec, 'orders': orders_data})
 
 
 # ── Order actions ─────────────────────────────────────────────────────────────

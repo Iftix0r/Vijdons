@@ -133,6 +133,28 @@
 
 </div>
 
+<!-- ── Yangi Buyurtma Modal ── -->
+<div id="new-order-modal" class="fixed inset-0 z-[200] hidden flex items-center justify-center"
+     style="background:rgba(0,0,0,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)">
+  <div class="ios-card mx-4 w-full max-w-sm anim-scale" style="border-radius:20px;overflow:hidden">
+    <!-- Header -->
+    <div class="flex flex-col items-center pt-6 pb-4 px-5" style="background:var(--ios-yellow)">
+      <div class="w-14 h-14 rounded-full bg-black bg-opacity-15 flex items-center justify-center mb-2">
+        <i class="fas fa-bell text-black text-2xl"></i>
+      </div>
+      <div class="ios-title font-bold text-black">Yangi buyurtma!</div>
+      <div id="nom-timer" class="ios-caption font-semibold text-black mt-1 opacity-70">10</div>
+    </div>
+    <!-- Body -->
+    <div class="px-5 py-4 space-y-2" id="nom-body"></div>
+    <!-- Actions -->
+    <div class="px-5 pb-5 space-y-2">
+      <button id="nom-accept" class="ios-btn-primary">✓ Qabul qilish</button>
+      <button id="nom-reject" class="ios-btn-destructive">Rad etish</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── iOS Bottom Sheet ── -->
 <div id="sheet-overlay" class="fixed inset-0 z-[100] hidden">
   <div class="absolute inset-0" style="background:rgba(0,0,0,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)"
@@ -183,7 +205,14 @@ async function loadOrders(fb=false) {
     const d=await r.json();
     if(d.new_ids){
       const nw=d.new_ids.filter(id=>!_known.has(id));
-      if(nw.length){ nw.forEach(()=>{ Native.vibrate([60,30,60,30,120]); Audio.newOrder(); }); showToast('Yangi buyurtma!','Ko\'rish uchun bosing','order'); _known=new Set(d.new_ids); setTimeout(()=>location.reload(),500); return; }
+      if(nw.length){
+        nw.forEach(()=>{ Native.vibrate([60,30,60,30,120]); });
+        _known=new Set(d.new_ids);
+        // Yangi buyurtmani topib modalda ko'rsatish
+        const newOrder = (d.orders||[]).find(o=>nw.includes(o.id)) || null;
+        showNewOrderModal(nw[0], newOrder);
+        return;
+      }
       if(d.new_ids.length!==_known.size){ location.reload(); return; }
     }
     if(d.reload) location.reload();
@@ -191,6 +220,61 @@ async function loadOrders(fb=false) {
   } catch(_){}
 }
 
+// ── Yangi Buyurtma Modal ──────────────────────────────────────────────────────
+let _nomTimer = null;
+let _nomOrderId = null;
+
+function showNewOrderModal(orderId, order) {
+  _nomOrderId = orderId;
+  Audio.newOrder();
+  Native.vibrate([60,30,60,30,120]);
+
+  // Body content
+  const body = document.getElementById('nom-body');
+  if (order) {
+    body.innerHTML = `
+      <div class="ios-card2 rounded-[14px] p-3 space-y-2">
+        <div class="flex items-start gap-2">
+          <div class="w-2 h-2 rounded-full bg-[#34C759] mt-1.5 flex-shrink-0"></div>
+          <span class="ios-subhead font-medium">${order.from_address||''}</span>
+        </div>
+        ${order.to_address?`<div class="flex items-start gap-2">
+          <i class="fas fa-location-dot text-[#FF3B30] text-xs mt-1 flex-shrink-0"></i>
+          <span class="ios-subhead" style="color:var(--ios-label3)">${order.to_address}</span>
+        </div>`:''}
+      </div>
+      <div class="flex items-center justify-between px-1">
+        ${order.price?`<span class="ios-subhead font-semibold text-[#34C759]">${parseInt(order.price).toLocaleString()} so'm</span>`:''}
+        ${order.distance_km?`<span class="ios-caption" style="color:var(--ios-label3)">${parseFloat(order.distance_km).toFixed(1)} km</span>`:''}
+        <span class="ios-caption" style="color:var(--ios-label3)">${order.payment_type==='cash'?'💵 Naqd':'💳 Karta'}</span>
+      </div>`;
+  } else {
+    body.innerHTML = `<p class="ios-subhead text-center" style="color:var(--ios-label3)">#${orderId}</p>`;
+  }
+
+  // Show modal
+  const modal = document.getElementById('new-order-modal');
+  modal.classList.remove('hidden');
+
+  // Countdown 10s
+  let sec = 10;
+  document.getElementById('nom-timer').textContent = sec + 's';
+  _nomTimer = setInterval(() => {
+    sec--;
+    document.getElementById('nom-timer').textContent = sec + 's';
+    if (sec <= 0) closeNewOrderModal(true);
+  }, 1000);
+
+  // Buttons
+  document.getElementById('nom-accept').onclick = () => { closeNewOrderModal(false); doAction(_nomOrderId, 'accept'); };
+  document.getElementById('nom-reject').onclick = () => { closeNewOrderModal(false); doAction(_nomOrderId, 'reject'); };
+}
+
+function closeNewOrderModal(autoClose = false) {
+  clearInterval(_nomTimer);
+  Audio.stopNewOrder();
+  document.getElementById('new-order-modal').classList.add('hidden');
+  if (autoClose) setTimeout(() => location.reload(), 300);
 }
 
 // ── Web Push ─────────────────────────────────────────────────────────────────
