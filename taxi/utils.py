@@ -3,6 +3,40 @@ import urllib.request
 import urllib.parse
 import json
 
+def reverse_geocode_address(lat, lng):
+    """Koordinatadan manzil olish — MapsSettings provider orqali."""
+    try:
+        from taxi.models import MapsSettings
+        maps = MapsSettings.get()
+        if maps.provider == MapsSettings.PROVIDER_YANDEX and maps.api_key:
+            url = (f'https://geocode-maps.yandex.ru/1.x/?apikey={maps.api_key}'
+                   f'&geocode={lng},{lat}&format=json&lang=uz_UZ&results=1')
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode())
+            members = data['response']['GeoObjectCollection']['featureMember']
+            if members:
+                obj = members[0]['GeoObject']
+                name = obj.get('name', '')
+                desc = obj.get('description', '')
+                return f'{name}, {desc}' if name and desc else name or desc
+        else:
+            url = (f'https://nominatim.openstreetmap.org/reverse'
+                   f'?lat={lat}&lon={lng}&format=json&accept-language=uz,ru&zoom=16')
+            req = urllib.request.Request(url, headers={'User-Agent': 'VijdonTaxiDriverApp/1.0'})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode())
+            addr = data.get('address', {})
+            parts = [p for p in [
+                addr.get('road') or addr.get('street') or addr.get('residential'),
+                addr.get('suburb') or addr.get('neighbourhood') or addr.get('village'),
+                addr.get('city') or addr.get('town') or addr.get('county'),
+            ] if p]
+            return ', '.join(parts) or data.get('display_name', '')
+    except Exception:
+        return ''
+
+
 def haversine(lat1, lon1, lat2, lon2):
     if lat1 is None or lon1 is None or lat2 is None or lon2 is None:
         return None

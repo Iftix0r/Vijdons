@@ -141,6 +141,10 @@
                         {{ order.created_at|date:"d/m/Y H:i" }}
                     </td>
                     <td class="px-5 py-3.5 text-right">
+                        <a href="{% url 'taxi:order_detail' order.pk %}" onclick="event.stopPropagation()"
+                           class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-400 hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-blue-900/40 transition-colors mr-1">
+                            <i class="fas fa-eye text-xs"></i>
+                        </a>
                         <!-- Delete button -->
                         <form id="del-order-{{ order.pk }}" action="{% url 'taxi:order_delete' order.pk %}" method="POST" class="inline">
                             {% csrf_token %}

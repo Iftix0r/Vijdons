@@ -209,10 +209,14 @@ def driver_location_update(request, driver):
         return Response({'detail': 'latitude va longitude talab qilinadi.'}, status=400)
     try:
         from django.utils import timezone
+        from .utils import reverse_geocode_address
         driver.latitude  = float(lat)
         driver.longitude = float(lng)
         driver.last_seen = timezone.now()
-        driver.save(update_fields=['latitude', 'longitude', 'last_seen'])
+        address = reverse_geocode_address(float(lat), float(lng))
+        if address:
+            driver.last_address = address
+        driver.save(update_fields=['latitude', 'longitude', 'last_seen', 'last_address'])
         return Response({'detail': 'Lokatsiya yangilandi.', 'latitude': driver.latitude, 'longitude': driver.longitude})
     except (ValueError, TypeError):
         return Response({'detail': "Noto'g'ri koordinatalar."}, status=400)
