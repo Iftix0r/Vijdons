@@ -156,6 +156,9 @@ renderOrdersDOM();
 // ── Auto-refresh: har 2 soniyada ──────────────────────────────────────────
 if(IS_ON_DUTY) setInterval(loadOrders, 2000);
 
+// Flutter native polling dan chaqiriladi
+function onNewOrder() { loadOrders(); }
+
 let _suppressModal = false;
 
 function _updateNavBalance(newBal) {

@@ -204,8 +204,8 @@ def driver_orders_json(request, driver):
 
 # ── Order actions ─────────────────────────────────────────────────────────────
 
-@require_POST
 @driver_login_required
+@require_POST
 def driver_order_action(request, driver, pk, action):
     order = get_object_or_404(Order, pk=pk)
 
@@ -334,8 +334,8 @@ def driver_chat(request, driver):
     })
 
 
-@require_POST
 @driver_login_required
+@require_POST
 def driver_chat_send(request, driver):
     from .utils import send_telegram
     try:
@@ -373,8 +373,8 @@ def driver_profile(request, driver):
     })
 
 
-@require_POST
 @driver_login_required
+@require_POST
 def driver_profile_photo(request, driver):
     photo = request.FILES.get('photo')
     if not photo:
@@ -386,8 +386,8 @@ def driver_profile_photo(request, driver):
     return JsonResponse({'ok': True, 'url': request.build_absolute_uri(driver.photo.url)})
 
 
-@require_POST
 @driver_login_required
+@require_POST
 def driver_profile_password(request, driver):
     old = request.POST.get('old_password', '')
     new = request.POST.get('new_password', '')
@@ -406,8 +406,8 @@ def driver_profile_password(request, driver):
 
 # ── Web Push ─────────────────────────────────────────────────────────────────
 
-@require_POST
 @driver_login_required
+@require_POST
 def driver_push_subscribe(request, driver):
     """Haydovchining push subscription ma'lumotini saqlaydi."""
     try:
@@ -441,8 +441,8 @@ def send_push_to_driver(driver, title, body, url='/driver/home/'):
 
 # ── Sync endpoints (Native bridge) ───────────────────────────────────────────
 
-@require_POST
 @driver_login_required
+@require_POST
 def driver_fcm_sync(request, driver):
     try:
         data = json.loads(request.body)
@@ -455,8 +455,8 @@ def driver_fcm_sync(request, driver):
     return JsonResponse({'ok': True})
 
 
-@require_POST
 @driver_login_required
+@require_POST
 def driver_location_sync(request, driver):
     try:
         data = json.loads(request.body)
@@ -470,8 +470,8 @@ def driver_location_sync(request, driver):
     return JsonResponse({'ok': True})
 
 
-@require_POST
 @driver_login_required
+@require_POST
 def driver_duty_toggle(request, driver):
     tariff = TariffSettings.get()
     # Navbatga kirishda balans yetarlimi tekshirish
@@ -550,8 +550,8 @@ def driver_order_eta(request, driver, pk):
 
 
 # ── Rating: buyurtma yakunida haydovchiga reyting berish ─────────────────────
-@require_POST
 @driver_login_required
+@require_POST
 def driver_order_rate(request, driver, pk):
     """Operator yoki mijoz haydovchiga reyting beradi (1-5)."""
     order = get_object_or_404(Order, pk=pk)
@@ -585,8 +585,8 @@ def driver_order_rate(request, driver, pk):
 
 # ── SOS ──────────────────────────────────────────────────────────────────────
 
-@require_POST
 @driver_login_required
+@require_POST
 def driver_sos_send(request, driver):
     import json as _json
     from .models import SosAlert

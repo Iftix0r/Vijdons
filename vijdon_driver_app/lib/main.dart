@@ -214,11 +214,16 @@ class _DriverWebViewState extends State<DriverWebView>
   Future<void> _pollOrders() async {
     try {
       final uri = Uri.parse('https://vijdontaxi.uz/driver/orders/json/');
-      final resp = await http.get(uri).timeout(const Duration(seconds: 6));
+      final resp = await http.get(uri, headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+      }).timeout(const Duration(seconds: 6));
       if (resp.statusCode != 200) return;
       final data = json.decode(resp.body) as Map<String, dynamic>;
       final ids = (data['new_ids'] as List?)?.map((e) => e as int).toSet() ?? {};
-      if (ids.isEmpty) return;
+      if (ids.isEmpty) {
+        _knownIds.clear();
+        return;
+      }
 
       final newIds = ids.difference(_knownIds);
       _knownIds
@@ -227,9 +232,8 @@ class _DriverWebViewState extends State<DriverWebView>
 
       if (newIds.isNotEmpty) {
         await NotificationService.notifyNewOrder(newIds.length);
-        // WebView ga ham xabar yuboramiz
         _ctrl?.runJavaScript(
-          'if(typeof FlutterNotify!=="undefined")FlutterNotify.postMessage("${newIds.length}");',
+          'if(typeof onNewOrder==="function")onNewOrder();',
         );
       }
     } catch (_) {}

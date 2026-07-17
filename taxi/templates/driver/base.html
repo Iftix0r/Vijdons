@@ -411,53 +411,33 @@ const Audio = {
   newOrder() {
     // WAV fayl
     try {
+      if (window._newOrderAudio) { window._newOrderAudio.pause(); window._newOrderAudio = null; }
       const a = new window.Audio('/static/driver/sounds/new_order.wav');
       a.volume = 1.0;
       a.loop = true;
       const p = a.play();
-      if (p && p.catch) p.catch(()=>{});
+      if (p && p.catch) p.catch(() => {
+        // Autoplay blocked — Web Audio API bilan chalishga urinamiz
+        this._playWebAudio();
+      });
       window._newOrderAudio = a;
-    } catch(_) {}
-    // Web Audio API — kuchli takroriy signal (WAV eshitilmasa ham chaladi)
+    } catch(_) { this._playWebAudio(); }
+  },
+  _playWebAudio() {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       window._newOrderCtx = ctx;
       const pattern = [
-        // 1-to'lqin
-        [0,    1400, 0.5, 0.08],
-        [0.13, 1800, 0.5, 0.08],
-        [0.26, 2200, 0.6, 0.12],
-        [0.5,  1400, 0.5, 0.08],
-        [0.63, 1800, 0.5, 0.08],
-        [0.76, 2200, 0.6, 0.12],
-        [1.0,  1400, 0.5, 0.08],
-        [1.13, 1800, 0.5, 0.08],
-        [1.26, 2200, 0.6, 0.12],
-        // 2-to'lqin
-        [1.55, 900,  0.5, 0.07],
-        [1.66, 1200, 0.5, 0.07],
-        [1.77, 1600, 0.55,0.10],
-        [1.99, 900,  0.5, 0.07],
-        [2.10, 1200, 0.5, 0.07],
-        [2.21, 1600, 0.55,0.10],
-        // 3-to'lqin
-        [2.5,  2000, 0.6, 0.06],
-        [2.62, 2600, 0.6, 0.10],
-        [2.78, 2000, 0.6, 0.06],
-        [2.90, 2600, 0.6, 0.10],
-        [3.06, 2000, 0.6, 0.06],
-        [3.18, 2600, 0.6, 0.10],
-        [3.34, 2000, 0.6, 0.06],
-        [3.46, 2600, 0.6, 0.12],
+        [0, 1400, 0.5, 0.08], [0.13, 1800, 0.5, 0.08], [0.26, 2200, 0.6, 0.12],
+        [0.5, 1400, 0.5, 0.08], [0.63, 1800, 0.5, 0.08], [0.76, 2200, 0.6, 0.12],
+        [1.0, 1400, 0.5, 0.08], [1.13, 1800, 0.5, 0.08], [1.26, 2200, 0.6, 0.12],
       ];
-      const repeat = 3;
-      for (let r = 0; r < repeat; r++) {
+      for (let r = 0; r < 4; r++) {
         pattern.forEach(([t, f, v, d]) => {
           const o = ctx.createOscillator(), g = ctx.createGain();
           o.connect(g); g.connect(ctx.destination);
-          o.type = 'square';
-          o.frequency.value = f;
-          const st = ctx.currentTime + t + r * 3.8;
+          o.type = 'square'; o.frequency.value = f;
+          const st = ctx.currentTime + t + r * 1.6;
           g.gain.setValueAtTime(0, st);
           g.gain.linearRampToValueAtTime(v, st + 0.02);
           g.gain.exponentialRampToValueAtTime(0.001, st + d);
