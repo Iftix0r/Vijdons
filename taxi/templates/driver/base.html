@@ -301,7 +301,7 @@ body { background: var(--ios-bg); color: var(--ios-label); }
     </a>
 
     <!-- Duty toggle -->
-    <button onclick="Native.vibrate();hbgToggleDuty()"
+    <button onclick="hbgToggleDuty()"
             class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60 relative">
       {% if driver.is_on_duty %}
       <div class="duty-ring absolute" style="width:44px;height:44px;top:6px"></div>

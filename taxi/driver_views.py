@@ -572,12 +572,26 @@ def driver_location_sync(request, driver):
 @require_POST
 def driver_duty_toggle(request, driver):
     tariff = TariffSettings.get()
-    # Navbatga kirishda balans yetarlimi tekshirish
-    if not driver.is_on_duty and driver.balance < tariff.commission:
-        return JsonResponse({
-            'ok': False,
-            'error': f"Balans yetarli emas. Kamida {int(tariff.commission):,} so'm bo'lishi kerak."
-        }, status=400)
+    if driver.is_on_duty:
+        # Faol (qabul qilingan/yo'lda/yetib kelgan) buyurtmasi bo'lsa, ish
+        # navbatini to'xtatishga ruxsat bermaymiz — aks holda "off-duty"
+        # bo'lib turib ham safar/taximetr fonda davom etib qolaveradi va
+        # buyurtma holati bilan navbat holati mos kelmay chalkashlik tug'diradi
+        has_active = Order.objects.filter(
+            driver=driver, status__in=['accepted', 'on_way', 'arrived']
+        ).exists()
+        if has_active:
+            return JsonResponse({
+                'ok': False,
+                'error': "Faol buyurtmangiz bor. Avval uni yakunlang yoki bekor qiling.",
+            }, status=400)
+    else:
+        # Navbatga kirishda balans yetarlimi tekshirish
+        if driver.balance < tariff.commission:
+            return JsonResponse({
+                'ok': False,
+                'error': f"Balans yetarli emas. Kamida {int(tariff.commission):,} so'm bo'lishi kerak."
+            }, status=400)
     driver.is_on_duty = not driver.is_on_duty
     driver.save(update_fields=['is_on_duty'])
     return JsonResponse({'ok': True, 'is_on_duty': driver.is_on_duty})
