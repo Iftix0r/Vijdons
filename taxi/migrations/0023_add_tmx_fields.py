@@ -15,6 +15,16 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='order',
+            name='tmx_paused_ms',
+            field=models.BigIntegerField(default=0, verbose_name='Taximetr pauza (ms)'),
+        ),
+        migrations.AddField(
+            model_name='order',
+            name='tmx_start_time',
+            field=models.DateTimeField(null=True, blank=True, verbose_name='Taximetr boshlangan vaqt'),
+        ),
+        migrations.AddField(
+            model_name='order',
             name='tmx_fare',
             field=models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name='Taximetr narxi'),
         ),
