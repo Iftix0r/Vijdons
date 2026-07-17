@@ -384,14 +384,33 @@ def driver_chat_send(request, driver):
 
 @driver_login_required
 def driver_chat_poll(request, driver):
-    """AJAX: yangi xabarlar bormi?"""
     last_id = int(request.GET.get('last_id', 0))
     msgs = ChatMessage.objects.filter(driver=driver, id__gt=last_id).order_by('created_at')
     msgs.filter(sender=ChatMessage.SENDER_OPERATOR).update(is_read=True)
     return JsonResponse({'messages': [
-        {'id': m.id, 'sender': m.sender, 'text': m.text, 'created_at': m.created_at.isoformat()}
+        {
+            'id': m.id, 'sender': m.sender, 'text': m.text,
+            'audio_url': request.build_absolute_uri(m.audio.url) if m.audio else None,
+            'created_at': m.created_at.isoformat()
+        }
         for m in msgs
     ]})
+
+
+@driver_login_required
+@require_POST
+def driver_chat_send_audio(request, driver):
+    from .utils import send_telegram
+    audio = request.FILES.get('audio')
+    if not audio:
+        return JsonResponse({'ok': False}, status=400)
+    msg = ChatMessage.objects.create(driver=driver, sender=ChatMessage.SENDER_DRIVER, audio=audio)
+    send_telegram(f"🎤 <b>{driver.full_name}</b> ({driver.car_number}) ovozli xabar yubordi")
+    return JsonResponse({
+        'ok': True, 'id': msg.id,
+        'audio_url': request.build_absolute_uri(msg.audio.url),
+        'created_at': msg.created_at.isoformat()
+    })
 
 
 # ── Profile ───────────────────────────────────────────────────────────────────

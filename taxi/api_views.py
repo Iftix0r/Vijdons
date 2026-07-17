@@ -496,16 +496,19 @@ def reverse_geocode(request):
 @permission_classes([IsAuthenticated])
 @driver_required
 def chat_messages(request, driver):
-    """Haydovchining barcha xabarlari + o'qilmagan operatordan xabarlarni o'qildi deb belgilash."""
     ChatMessage.objects.filter(driver=driver, sender=ChatMessage.SENDER_OPERATOR, is_read=False).update(is_read=True)
     msgs = ChatMessage.objects.filter(driver=driver).order_by('created_at')[:100]
-    data = [{
-        'id':         m.id,
-        'sender':     m.sender,
-        'text':       m.text,
-        'is_read':    m.is_read,
-        'created_at': m.created_at.isoformat(),
-    } for m in msgs]
+    data = []
+    for m in msgs:
+        item = {
+            'id':         m.id,
+            'sender':     m.sender,
+            'text':       m.text,
+            'is_read':    m.is_read,
+            'created_at': m.created_at.isoformat(),
+            'audio_url':  request.build_absolute_uri(m.audio.url) if m.audio else None,
+        }
+        data.append(item)
     return Response({'messages': data})
 
 
@@ -513,18 +516,25 @@ def chat_messages(request, driver):
 @permission_classes([IsAuthenticated])
 @driver_required
 def chat_send(request, driver):
-    """Haydovchidan operator ga xabar."""
-    text = request.data.get('text', '').strip()
-    if not text:
-        return Response({'detail': 'text maydoni talab qilinadi.'}, status=400)
+    text  = request.data.get('text', '').strip()
+    audio = request.FILES.get('audio')
+    if not text and not audio:
+        return Response({'detail': 'text yoki audio talab qilinadi.'}, status=400)
     msg = ChatMessage.objects.create(
         driver=driver,
         sender=ChatMessage.SENDER_DRIVER,
         text=text,
+        audio=audio or None,
     )
-    # Telegram ga ham yuborish
-    send_telegram(f"💬 <b>{driver.full_name}</b> ({driver.car_number}):\n{text}")
-    return Response({'id': msg.id, 'sender': msg.sender, 'text': msg.text, 'created_at': msg.created_at.isoformat()})
+    if text:
+        send_telegram(f"💬 <b>{driver.full_name}</b> ({driver.car_number}):\n{text}")
+    elif audio:
+        send_telegram(f"🎤 <b>{driver.full_name}</b> ({driver.car_number}) ovozli xabar yubordi")
+    return Response({
+        'id': msg.id, 'sender': msg.sender, 'text': msg.text,
+        'audio_url': request.build_absolute_uri(msg.audio.url) if msg.audio else None,
+        'created_at': msg.created_at.isoformat()
+    })
 
 
 @api_view(['GET'])

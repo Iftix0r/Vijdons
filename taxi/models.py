@@ -122,7 +122,8 @@ class ChatMessage(models.Model):
 
     driver     = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='messages', verbose_name='Haydovchi')
     sender     = models.CharField(max_length=10, choices=SENDER_CHOICES, verbose_name='Kimdan')
-    text       = models.TextField(verbose_name='Xabar')
+    text       = models.TextField(blank=True, default='', verbose_name='Xabar')
+    audio      = models.FileField(upload_to='chat_audio/', blank=True, null=True, verbose_name='Audio xabar')
     is_read    = models.BooleanField(default=False, verbose_name="O'qildi")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Vaqt')
 

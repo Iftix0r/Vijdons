@@ -318,6 +318,15 @@ body { background: var(--ios-bg); color: var(--ios-label); }
       <span class="ios-caption2 {% if active_tab == 'history' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Tarix</span>
     </a>
 
+    <a href="{% url 'driver:chat' %}" onclick="Native.vibrate()"
+       class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60 relative">
+      <i class="fas fa-comments text-[24px] {% if active_tab == 'chat' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+      {% if chat_unread > 0 %}
+      <span class="ios-badge absolute top-1 right-2" style="font-size:10px;min-width:16px;height:16px">{{ chat_unread }}</span>
+      {% endif %}
+      <span class="ios-caption2 {% if active_tab == 'chat' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Chat</span>
+    </a>
+
   </div>
 </div>
 

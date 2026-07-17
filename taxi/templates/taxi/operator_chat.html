@@ -9,7 +9,7 @@
     </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-5" style="height: 620px;">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5" style="height:620px;">
 
     <!-- Haydovchilar ro'yxati -->
     <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col overflow-hidden">
@@ -37,7 +37,11 @@
                     <p class="text-xs text-gray-400 truncate mt-0.5">
                         {% if item.last_msg %}
                             {% if item.last_msg.sender == 'operator' %}<span class="text-blue-400">Siz: </span>{% endif %}
-                            {{ item.last_msg.text|truncatechars:30 }}
+                            {% if item.last_msg.audio %}
+                            <span class="text-purple-500"><i class="fas fa-microphone text-[9px]"></i> Ovozli xabar</span>
+                            {% else %}
+                            {{ item.last_msg.text|truncatechars:28 }}
+                            {% endif %}
                         {% else %}
                             <span class="italic">Xabar yo'q</span>
                         {% endif %}
@@ -63,7 +67,7 @@
                 <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white dark:border-gray-800"></span>
                 {% endif %}
             </div>
-            <div>
+            <div class="flex-1">
                 <p class="font-bold text-gray-900 dark:text-white text-sm">{{ selected_driver.full_name }}</p>
                 <p class="text-xs text-gray-400">{{ selected_driver.car_model }} · {{ selected_driver.car_number }}
                     {% if selected_driver.is_on_duty %}<span class="text-emerald-500 font-semibold ml-1">● Online</span>{% endif %}
@@ -76,7 +80,23 @@
             {% for msg in messages %}
             <div class="flex {% if msg.sender == 'operator' %}justify-end{% else %}justify-start{% endif %}">
                 <div class="max-w-[75%] {% if msg.sender == 'operator' %}bg-yellow-500 text-white rounded-2xl rounded-br-sm{% else %}bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-2xl rounded-bl-sm{% endif %} px-4 py-2.5 shadow-sm">
+                    {% if msg.audio %}
+                    <div class="flex items-center gap-2 min-w-[180px]">
+                        <button onclick="toggleAudio(this)" data-src="{{ msg.audio.url }}"
+                                class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
+                                {% if msg.sender == 'operator' %}bg-yellow-400 hover:bg-yellow-300{% else %}bg-gray-200 dark:bg-gray-700 hover:bg-gray-300{% endif %} transition-colors">
+                            <i class="fas fa-play text-xs {% if msg.sender == 'operator' %}text-white{% else %}text-gray-600 dark:text-gray-300{% endif %}"></i>
+                        </button>
+                        <div class="flex-1">
+                            <div class="h-1 rounded-full {% if msg.sender == 'operator' %}bg-yellow-300{% else %}bg-gray-300 dark:bg-gray-600{% endif %} relative overflow-hidden">
+                                <div class="audio-progress h-full rounded-full {% if msg.sender == 'operator' %}bg-white{% else %}bg-yellow-500{% endif %} w-0 transition-all duration-100"></div>
+                            </div>
+                            <span class="audio-duration text-[10px] {% if msg.sender == 'operator' %}text-yellow-100{% else %}text-gray-400{% endif %} mt-0.5 block">🎤 Ovozli xabar</span>
+                        </div>
+                    </div>
+                    {% else %}
                     <p class="text-sm font-medium leading-relaxed">{{ msg.text }}</p>
+                    {% endif %}
                     <p class="text-[10px] mt-1 {% if msg.sender == 'operator' %}text-yellow-100{% else %}text-gray-400{% endif %} text-right">
                         {{ msg.created_at|date:"H:i" }}
                         {% if msg.sender == 'operator' and msg.is_read %}<i class="fas fa-check-double ml-1"></i>{% endif %}
@@ -96,11 +116,29 @@
 
         <!-- Xabar yuborish -->
         <div class="px-4 py-3 border-t border-gray-100 dark:border-gray-800 flex-shrink-0">
-            <form method="POST" class="flex gap-2">
+            <!-- Audio recording indicator -->
+            <div id="rec-indicator" class="hidden mb-2 flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800/40">
+                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                <span class="text-xs font-semibold text-red-600 dark:text-red-400">Yozilmoqda... <span id="rec-timer">0:00</span></span>
+                <button type="button" onclick="cancelRecording()" class="ml-auto text-xs text-red-400 hover:text-red-600">
+                    <i class="fas fa-times"></i> Bekor
+                </button>
+            </div>
+
+            <form method="POST" id="chat-form" enctype="multipart/form-data" class="flex gap-2">
                 {% csrf_token %}
-                <input type="text" name="text" id="msg-input" placeholder="Xabar yozing..." autocomplete="off" required
+                <input type="hidden" name="audio" id="audio-input-hidden">
+                <input type="text" name="text" id="msg-input" placeholder="Xabar yozing..." autocomplete="off"
                        class="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
-                <button type="submit"
+
+                <!-- Mikrofon tugmasi -->
+                <button type="button" id="mic-btn" onmousedown="startRecording()" onmouseup="stopRecording()" ontouchstart="startRecording(event)" ontouchend="stopRecording(event)"
+                        class="w-11 h-11 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 hover:bg-purple-200 transition-all flex items-center justify-center flex-shrink-0 select-none"
+                        title="Bosib turing — ovozli xabar">
+                    <i class="fas fa-microphone text-sm"></i>
+                </button>
+
+                <button type="submit" id="send-btn"
                         class="px-4 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded-xl font-bold text-sm transition-all hover:-translate-y-0.5 shadow-sm shadow-yellow-200 dark:shadow-none">
                     <i class="fas fa-paper-plane"></i>
                 </button>
@@ -108,12 +146,9 @@
         </div>
 
         {% else %}
-        <!-- Haydovchi tanlanmagan -->
         <div class="flex-1 flex items-center justify-center">
             <div class="text-center text-gray-400 px-8">
-                <div class="w-20 h-20 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-4xl mx-auto mb-4">
-                    💬
-                </div>
+                <div class="w-20 h-20 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-4xl mx-auto mb-4">💬</div>
                 <p class="font-bold text-gray-600 dark:text-gray-300 text-lg">Haydovchi tanlang</p>
                 <p class="text-sm mt-1">Chap tomondagi ro'yxatdan haydovchini tanlang</p>
             </div>
@@ -125,26 +160,128 @@
 
 {% block extra_js %}
 <script>
-    // Xabarlar pastiga scroll
-    const container = document.getElementById('msg-container');
-    if (container) container.scrollTop = container.scrollHeight;
+const container = document.getElementById('msg-container');
+if (container) container.scrollTop = container.scrollHeight;
 
-    // Har 5 sekundda yangi xabarlarni tekshirish
-    {% if selected_driver %}
-    setInterval(function() {
-        fetch(window.location.href)
-            .then(r => r.text())
-            .then(html => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const newContainer = doc.getElementById('msg-container');
-                if (newContainer && container) {
-                    const wasAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
-                    container.innerHTML = newContainer.innerHTML;
-                    if (wasAtBottom) container.scrollTop = container.scrollHeight;
-                }
-            }).catch(() => {});
-    }, 5000);
-    {% endif %}
+// ── Audio playback ──
+let _currentAudio = null;
+function toggleAudio(btn) {
+    const src = btn.dataset.src;
+    const wrap = btn.closest('.flex.items-center');
+    const progress = wrap.querySelector('.audio-progress');
+    const durLabel = wrap.querySelector('.audio-duration');
+    const icon = btn.querySelector('i');
+
+    if (_currentAudio && !_currentAudio.paused) {
+        _currentAudio.pause();
+        icon.className = icon.className.replace('fa-pause', 'fa-play');
+        return;
+    }
+    if (_currentAudio) { _currentAudio.pause(); }
+
+    _currentAudio = new Audio(src);
+    _currentAudio.play();
+    icon.className = icon.className.replace('fa-play', 'fa-pause');
+
+    _currentAudio.addEventListener('timeupdate', function() {
+        const pct = (_currentAudio.currentTime / (_currentAudio.duration || 1)) * 100;
+        progress.style.width = pct + '%';
+        const s = Math.floor(_currentAudio.currentTime);
+        durLabel.textContent = Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+    });
+    _currentAudio.addEventListener('ended', function() {
+        icon.className = icon.className.replace('fa-pause', 'fa-play');
+        progress.style.width = '0%';
+        durLabel.textContent = '🎤 Ovozli xabar';
+    });
+}
+
+// ── Audio recording ──
+let _mediaRecorder = null;
+let _audioChunks   = [];
+let _recTimer      = null;
+let _recSeconds    = 0;
+
+async function startRecording(e) {
+    if (e) e.preventDefault();
+    if (_mediaRecorder) return;
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        _audioChunks = [];
+        _mediaRecorder = new MediaRecorder(stream);
+        _mediaRecorder.ondataavailable = e => _audioChunks.push(e.data);
+        _mediaRecorder.start();
+
+        document.getElementById('rec-indicator').classList.remove('hidden');
+        document.getElementById('msg-input').disabled = true;
+        document.getElementById('mic-btn').classList.add('bg-red-500', 'text-white');
+        document.getElementById('mic-btn').classList.remove('bg-purple-100', 'text-purple-600');
+
+        _recSeconds = 0;
+        _recTimer = setInterval(() => {
+            _recSeconds++;
+            const m = Math.floor(_recSeconds/60), s = _recSeconds%60;
+            document.getElementById('rec-timer').textContent = m + ':' + String(s).padStart(2,'0');
+        }, 1000);
+    } catch(err) {
+        alert('Mikrofonga ruxsat berilmagan!');
+    }
+}
+
+function stopRecording(e) {
+    if (e) e.preventDefault();
+    if (!_mediaRecorder) return;
+    _mediaRecorder.onstop = () => {
+        const blob = new Blob(_audioChunks, { type: 'audio/webm' });
+        submitAudio(blob);
+        _mediaRecorder.stream.getTracks().forEach(t => t.stop());
+        _mediaRecorder = null;
+    };
+    _mediaRecorder.stop();
+    clearInterval(_recTimer);
+    document.getElementById('rec-indicator').classList.add('hidden');
+    document.getElementById('msg-input').disabled = false;
+    document.getElementById('mic-btn').classList.remove('bg-red-500', 'text-white');
+    document.getElementById('mic-btn').classList.add('bg-purple-100', 'text-purple-600');
+}
+
+function cancelRecording() {
+    if (_mediaRecorder) {
+        _mediaRecorder.stream.getTracks().forEach(t => t.stop());
+        _mediaRecorder = null;
+    }
+    clearInterval(_recTimer);
+    _audioChunks = [];
+    document.getElementById('rec-indicator').classList.add('hidden');
+    document.getElementById('msg-input').disabled = false;
+    document.getElementById('mic-btn').classList.remove('bg-red-500', 'text-white');
+    document.getElementById('mic-btn').classList.add('bg-purple-100', 'text-purple-600');
+}
+
+function submitAudio(blob) {
+    const form = document.getElementById('chat-form');
+    const fd = new FormData(form);
+    fd.delete('text');
+    fd.append('audio', blob, 'voice.webm');
+    fetch(window.location.href, { method: 'POST', body: fd })
+        .then(() => location.reload());
+}
+
+// ── Auto refresh ──
+{% if selected_driver %}
+setInterval(function() {
+    fetch(window.location.href)
+        .then(r => r.text())
+        .then(html => {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const newC = doc.getElementById('msg-container');
+            if (newC && container) {
+                const atBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 60;
+                container.innerHTML = newC.innerHTML;
+                if (atBottom) container.scrollTop = container.scrollHeight;
+            }
+        }).catch(() => {});
+}, 5000);
+{% endif %}
 </script>
 {% endblock %}

@@ -697,12 +697,19 @@ def operator_chat(request):
             messages = ChatMessage.objects.filter(driver=selected_driver).order_by('created_at')
 
     if request.method == 'POST' and selected_driver:
-        text = request.POST.get('text', '').strip()
-        if text:
+        text  = request.POST.get('text', '').strip()
+        audio = request.FILES.get('audio')
+        if text or audio:
             ChatMessage.objects.create(
-                driver=selected_driver, sender=ChatMessage.SENDER_OPERATOR, text=text
+                driver=selected_driver,
+                sender=ChatMessage.SENDER_OPERATOR,
+                text=text,
+                audio=audio or None,
             )
-            _send_fcm_to_driver(selected_driver, '💬 Operator', text)
+            if text:
+                _send_fcm_to_driver(selected_driver, '💬 Operator', text)
+            elif audio:
+                _send_fcm_to_driver(selected_driver, '🎤 Operator', 'Ovozli xabar')
         return redirect(f"{request.path}?driver_id={selected_id}")
 
     return render(request, 'taxi/operator_chat.html', {
