@@ -383,14 +383,16 @@ def driver_list(request):
 
 
 def client_list(request):
-    q  = request.GET.get('q', '').strip()
+    q      = request.GET.get('q', '').strip()
+    filter_ = request.GET.get('filter', '').strip()
     qs = Client.objects.all()
     if q:
-        qs = qs.filter(
-            Q(full_name__icontains=q) |
-            Q(phone_number__icontains=q)
-        )
-    return render(request, 'taxi/client_list.html', {'clients': qs, 'q': q})
+        qs = qs.filter(Q(full_name__icontains=q) | Q(phone_number__icontains=q))
+    if filter_ == 'blocked':
+        qs = qs.filter(is_blocked=True)
+    elif filter_ == 'active':
+        qs = qs.filter(is_blocked=False)
+    return render(request, 'taxi/client_list.html', {'clients': qs, 'q': q, 'filter': filter_})
 
 
 # ── Tariff Settings ────────────────────────────────────────────────────────────

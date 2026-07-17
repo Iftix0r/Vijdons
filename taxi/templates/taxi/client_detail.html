@@ -1,0 +1,174 @@
+{% extends 'taxi/base.html' %}
+{% block title %}{{ client.full_name|default:client.phone_number }} — Mijoz{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="flex flex-wrap justify-between items-center gap-4 mb-5">
+    <div class="flex items-center gap-3">
+        <a href="{% url 'taxi:client_list' %}" class="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+            <i class="fas fa-arrow-left text-sm"></i>
+        </a>
+        <div>
+            <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white">{{ client.full_name|default:"Nomsiz Mijoz" }}</h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Mijoz profili</p>
+        </div>
+    </div>
+    <div class="flex items-center gap-2">
+        <form action="{% url 'taxi:client_block_toggle' client.pk %}" method="POST" class="inline">
+            {% csrf_token %}
+            <button type="submit"
+                    class="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl transition-colors
+                    {% if client.is_blocked %}bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200{% else %}bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 hover:bg-orange-200{% endif %}">
+                <i class="fas {% if client.is_blocked %}fa-lock-open{% else %}fa-ban{% endif %}"></i>
+                {% if client.is_blocked %}Blokdan chiqarish{% else %}Bloklash{% endif %}
+            </button>
+        </form>
+        <button onclick="openOrderForClient('{{ client.phone_number }}', '{{ client.full_name|default:'' }}')"
+                class="flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold rounded-xl transition-colors">
+            <i class="fas fa-plus"></i> Buyurtma
+        </button>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+    <!-- Chap: profil kartasi -->
+    <div class="lg:col-span-1 space-y-4">
+        <!-- Asosiy ma'lumot -->
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+            <div class="flex flex-col items-center text-center mb-5">
+                <div class="w-16 h-16 rounded-2xl {% if client.is_blocked %}bg-red-100 dark:bg-red-900/40 text-red-500{% else %}bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600{% endif %} flex items-center justify-center text-2xl font-extrabold mb-3">
+                    {{ client.full_name|default:client.phone_number|slice:":1"|upper }}
+                </div>
+                <div class="font-bold text-gray-900 dark:text-white text-lg">{{ client.full_name|default:"Nomsiz Mijoz" }}</div>
+                <a href="tel:{{ client.phone_number }}" class="text-sm font-mono text-emerald-600 dark:text-emerald-400 mt-1 hover:underline">
+                    {{ client.phone_number }}
+                </a>
+                <div class="mt-2">
+                    {% if client.is_blocked %}
+                    <span class="inline-flex items-center gap-1.5 text-xs font-bold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-3 py-1 rounded-full">
+                        <i class="fas fa-ban text-[9px]"></i> Bloklangan
+                    </span>
+                    {% else %}
+                    <span class="inline-flex items-center gap-1.5 text-xs font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-3 py-1 rounded-full">
+                        <i class="fas fa-circle text-[7px]"></i> Faol
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="space-y-2.5 text-sm">
+                <div class="flex justify-between items-center py-2 border-b border-gray-50 dark:border-gray-800">
+                    <span class="text-gray-400 text-xs">Reyting</span>
+                    <span class="font-bold text-amber-500 flex items-center gap-1"><i class="fas fa-star text-xs"></i>{{ client.rating }}</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-50 dark:border-gray-800">
+                    <span class="text-gray-400 text-xs">Jami safarlar</span>
+                    <span class="font-bold text-gray-900 dark:text-white">{{ client.trips_count }}</span>
+                </div>
+                <div class="flex justify-between items-center py-2">
+                    <span class="text-gray-400 text-xs">ID</span>
+                    <span class="font-mono text-xs text-gray-500">#{{ client.pk }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistika -->
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+            <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Statistika</div>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 text-center">
+                    <div class="text-xl font-extrabold text-blue-600 dark:text-blue-400">{{ stats.total|default:0 }}</div>
+                    <div class="text-[10px] text-blue-500 font-semibold mt-0.5">Jami</div>
+                </div>
+                <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-3 text-center">
+                    <div class="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{{ stats.completed|default:0 }}</div>
+                    <div class="text-[10px] text-emerald-500 font-semibold mt-0.5">Yakunlangan</div>
+                </div>
+                <div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-3 text-center">
+                    <div class="text-xl font-extrabold text-red-500 dark:text-red-400">{{ stats.cancelled|default:0 }}</div>
+                    <div class="text-[10px] text-red-400 font-semibold mt-0.5">Bekor</div>
+                </div>
+                <div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl p-3 text-center">
+                    <div class="text-lg font-extrabold text-yellow-600 dark:text-yellow-400">{{ stats.total_spent|default:0|floatformat:0 }}</div>
+                    <div class="text-[10px] text-yellow-500 font-semibold mt-0.5">UZS sarflagan</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- O'ng: buyurtmalar tarixi -->
+    <div class="lg:col-span-2">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                <div class="font-bold text-gray-900 dark:text-white text-sm">Buyurtmalar tarixi</div>
+                <span class="text-xs text-gray-400">{{ orders|length }} ta</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                            <th class="px-5 py-3">#</th>
+                            <th class="px-5 py-3">Manzil</th>
+                            <th class="px-5 py-3">Haydovchi</th>
+                            <th class="px-5 py-3">Narx</th>
+                            <th class="px-5 py-3">Holat</th>
+                            <th class="px-5 py-3">Vaqt</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-50 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
+                        {% for order in orders %}
+                        <tr class="hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-colors cursor-pointer" onclick="window.location='{% url 'taxi:order_detail' order.pk %}'">
+                            <td class="px-5 py-3 text-xs font-bold text-gray-500">#{{ order.id }}</td>
+                            <td class="px-5 py-3">
+                                <div class="text-xs font-semibold text-gray-800 dark:text-white truncate max-w-[160px]">{{ order.from_address }}</div>
+                                {% if order.to_address %}
+                                <div class="text-[10px] text-gray-400 truncate max-w-[160px]">→ {{ order.to_address }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-5 py-3 text-xs text-gray-500">
+                                {% if order.driver %}{{ order.driver.full_name }}{% else %}<span class="text-gray-300">—</span>{% endif %}
+                            </td>
+                            <td class="px-5 py-3">
+                                {% if order.price %}
+                                <span class="text-xs font-bold text-emerald-600">{{ order.price|floatformat:0 }}</span>
+                                {% else %}<span class="text-gray-300 text-xs">—</span>{% endif %}
+                            </td>
+                            <td class="px-5 py-3">
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full
+                                    {% if order.status == 'completed' %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400
+                                    {% elif order.status == 'cancelled' %}bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400
+                                    {% elif order.status == 'pending' %}bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400
+                                    {% else %}bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400{% endif %}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="px-5 py-3 text-[10px] text-gray-400 whitespace-nowrap">{{ order.created_at|date:"d.m.y H:i" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-10 text-gray-400 text-xs">
+                                <i class="fas fa-route text-2xl block mb-2 opacity-30"></i>
+                                Hali buyurtma yo'q
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openOrderForClient(phone, name) {
+    openModal('orderModal');
+    setTimeout(function() {
+        var ph = document.querySelector('#orderModal input[name="phone_number"]');
+        var nm = document.querySelector('#orderModal input[name="customer_name"]');
+        if (ph) ph.value = phone;
+        if (nm && name) nm.value = name;
+    }, 100);
+}
+</script>
+{% endblock %}

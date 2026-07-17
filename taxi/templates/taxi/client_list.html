@@ -15,7 +15,7 @@
     </button>
 </div>
 
-<!-- Search -->
+<!-- Search + filter -->
 <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm px-5 py-4 mb-5">
     <form method="get" class="flex flex-wrap gap-3">
         <div class="flex items-center bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 flex-1 min-w-[200px] focus-within:ring-2 focus-within:ring-emerald-400 transition-all">
@@ -23,13 +23,16 @@
             <input type="text" name="q" value="{{ q }}" placeholder="Ism yoki telefon raqami..."
                    class="bg-transparent border-none outline-none ml-2 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 w-full">
         </div>
-        <button type="submit"
-                class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl transition-colors">
+        <select name="filter" class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+            <option value="" {% if not filter %}selected{% endif %}>Barchasi</option>
+            <option value="blocked" {% if filter == 'blocked' %}selected{% endif %}>🚫 Bloklangan</option>
+            <option value="active" {% if filter == 'active' %}selected{% endif %}>✅ Faol</option>
+        </select>
+        <button type="submit" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl transition-colors">
             <i class="fas fa-search mr-1"></i> Qidirish
         </button>
-        {% if q %}
-        <a href="{% url 'taxi:client_list' %}"
-           class="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-semibold rounded-xl transition-colors">
+        {% if q or filter %}
+        <a href="{% url 'taxi:client_list' %}" class="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-semibold rounded-xl transition-colors">
             <i class="fas fa-times mr-1"></i> Tozalash
         </a>
         {% endif %}
@@ -42,66 +45,102 @@
         <table class="w-full text-sm">
             <thead>
                 <tr class="text-left text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
-                    <th class="px-6 py-3.5">#</th>
-                    <th class="px-6 py-3.5">Mijoz ismi</th>
-                    <th class="px-6 py-3.5">Telefon raqami</th>
-                    <th class="px-6 py-3.5">Buyurtmalar</th>
-                    <th class="px-6 py-3.5 text-right">Amal</th>
+                    <th class="px-5 py-3.5">#</th>
+                    <th class="px-5 py-3.5">Mijoz</th>
+                    <th class="px-5 py-3.5">Telefon</th>
+                    <th class="px-5 py-3.5">Buyurtmalar</th>
+                    <th class="px-5 py-3.5">Reyting</th>
+                    <th class="px-5 py-3.5">Holat</th>
+                    <th class="px-5 py-3.5 text-right">Amallar</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-50 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
                 {% for client in clients %}
-                <tr class="hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-colors group">
-                    <td class="px-6 py-3.5 text-gray-400 text-xs">{{ forloop.counter }}</td>
-                    <td class="px-6 py-3.5">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full {% if client.is_blocked %}bg-red-100 dark:bg-red-900/40 text-red-500{% else %}bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400{% endif %} flex items-center justify-center text-xs font-bold flex-shrink-0">
+                <tr class="hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-colors group {% if client.is_blocked %}opacity-60{% endif %}">
+                    <td class="px-5 py-3.5 text-gray-400 text-xs">{{ forloop.counter }}</td>
+
+                    <!-- Mijoz ismi -->
+                    <td class="px-5 py-3.5">
+                        <a href="{% url 'taxi:client_detail' client.pk %}" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                            <div class="w-9 h-9 rounded-xl {% if client.is_blocked %}bg-red-100 dark:bg-red-900/40 text-red-500{% else %}bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400{% endif %} flex items-center justify-center text-sm font-bold flex-shrink-0">
                                 {{ client.full_name|default:client.phone_number|slice:":1"|upper }}
                             </div>
                             <div>
-                                <span class="font-semibold text-gray-900 dark:text-white text-xs">{{ client.full_name|default:"Nomsiz Mijoz" }}</span>
-                                {% if client.is_blocked %}
-                                <span class="ml-1.5 inline-flex items-center gap-1 text-[10px] font-bold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded-full">
-                                    <i class="fas fa-ban text-[8px]"></i> Bloklangan
-                                </span>
-                                {% endif %}
+                                <div class="font-semibold text-gray-900 dark:text-white text-xs">{{ client.full_name|default:"Nomsiz Mijoz" }}</div>
+                                <div class="text-[10px] text-gray-400">ID: {{ client.pk }}</div>
                             </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-3.5">
-                        <a href="tel:{{ client.phone_number }}" class="text-xs font-mono text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
-                            {{ client.phone_number }}
                         </a>
                     </td>
-                    <td class="px-6 py-3.5">
+
+                    <!-- Telefon -->
+                    <td class="px-5 py-3.5">
+                        <a href="tel:{{ client.phone_number }}" class="text-xs font-mono text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1">
+                            <i class="fas fa-phone text-[9px] text-gray-400"></i>{{ client.phone_number }}
+                        </a>
+                    </td>
+
+                    <!-- Buyurtmalar -->
+                    <td class="px-5 py-3.5">
                         <a href="{% url 'taxi:order_list' %}?q={{ client.phone_number }}"
                            class="inline-flex items-center gap-1.5 text-xs bg-gray-100 dark:bg-gray-800 hover:bg-yellow-100 hover:text-yellow-700 dark:hover:bg-yellow-900/20 dark:hover:text-yellow-400 text-gray-500 dark:text-gray-400 px-2.5 py-1 rounded-full transition-colors font-semibold">
-                            <i class="fas fa-route text-[10px]"></i>
-                            {{ client.orders.count }} ta
+                            <i class="fas fa-route text-[10px]"></i>{{ client.orders.count }} ta
                         </a>
                     </td>
-                    <td class="px-6 py-3.5 text-right">
-                        <form id="block-client-{{ client.pk }}" action="{% url 'taxi:client_block_toggle' client.pk %}" method="POST" class="inline">
-                            {% csrf_token %}
-                        </form>
-                        <form id="del-client-{{ client.pk }}" action="{% url 'taxi:client_delete' client.pk %}" method="POST" class="inline">
-                            {% csrf_token %}
-                        </form>
-                        <button type="button" onclick="document.getElementById('block-client-{{ client.pk }}').submit()"
-                                title="{% if client.is_blocked %}Blokdan chiqarish{% else %}Bloklash{% endif %}"
-                                class="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors mr-1
-                                {% if client.is_blocked %}bg-green-50 dark:bg-green-900/20 text-green-500 hover:bg-green-100{% else %}bg-orange-50 dark:bg-orange-900/20 text-orange-400 hover:bg-orange-100 hover:text-orange-600{% endif %}">
-                            <i class="fas {% if client.is_blocked %}fa-lock-open{% else %}fa-ban{% endif %} text-xs"></i>
-                        </button>
-                        <button type="button" onclick="confirmDelete('del-client-{{ client.pk }}')"
-                                class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/40 dark:hover:text-red-400 transition-colors">
-                            <i class="fas fa-trash-can text-xs"></i>
-                        </button>
+
+                    <!-- Reyting -->
+                    <td class="px-5 py-3.5">
+                        <span class="inline-flex items-center gap-1 text-xs font-bold text-amber-500">
+                            <i class="fas fa-star text-[10px]"></i>{{ client.rating }}
+                        </span>
+                    </td>
+
+                    <!-- Holat -->
+                    <td class="px-5 py-3.5">
+                        {% if client.is_blocked %}
+                        <span class="inline-flex items-center gap-1 text-[10px] font-bold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-1 rounded-full">
+                            <i class="fas fa-ban text-[8px]"></i> Bloklangan
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2 py-1 rounded-full">
+                            <i class="fas fa-circle text-[6px]"></i> Faol
+                        </span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Amallar -->
+                    <td class="px-5 py-3.5 text-right">
+                        <form id="block-client-{{ client.pk }}" action="{% url 'taxi:client_block_toggle' client.pk %}" method="POST" class="hidden">{% csrf_token %}</form>
+                        <form id="del-client-{{ client.pk }}" action="{% url 'taxi:client_delete' client.pk %}" method="POST" class="hidden">{% csrf_token %}</form>
+
+                        <div class="flex items-center justify-end gap-1">
+                            <!-- Ko'rish -->
+                            <a href="{% url 'taxi:client_detail' client.pk %}"
+                               class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-400 hover:bg-blue-100 hover:text-blue-600 transition-colors" title="Batafsil">
+                                <i class="fas fa-eye text-xs"></i>
+                            </a>
+                            <!-- Yangi buyurtma -->
+                            <button type="button" onclick="openOrderForClient('{{ client.phone_number }}', '{{ client.full_name|default:'' }}')"
+                                    class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-500 hover:bg-yellow-100 hover:text-yellow-600 transition-colors" title="Yangi buyurtma">
+                                <i class="fas fa-plus text-xs"></i>
+                            </button>
+                            <!-- Blok/Ochish -->
+                            <button type="button" onclick="document.getElementById('block-client-{{ client.pk }}').submit()"
+                                    title="{% if client.is_blocked %}Blokdan chiqarish{% else %}Bloklash{% endif %}"
+                                    class="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors
+                                    {% if client.is_blocked %}bg-green-50 dark:bg-green-900/20 text-green-500 hover:bg-green-100{% else %}bg-orange-50 dark:bg-orange-900/20 text-orange-400 hover:bg-orange-100 hover:text-orange-600{% endif %}">
+                                <i class="fas {% if client.is_blocked %}fa-lock-open{% else %}fa-ban{% endif %} text-xs"></i>
+                            </button>
+                            <!-- O'chirish -->
+                            <button type="button" onclick="confirmDelete('del-client-{{ client.pk }}')"
+                                    class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors" title="O'chirish">
+                                <i class="fas fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" class="text-center py-14">
+                    <td colspan="7" class="text-center py-14">
                         <div class="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-300 dark:text-gray-600 text-2xl mx-auto mb-3">
                             <i class="fas fa-users"></i>
                         </div>
@@ -114,4 +153,16 @@
         </table>
     </div>
 </div>
+
+<script>
+function openOrderForClient(phone, name) {
+    openModal('orderModal');
+    setTimeout(function() {
+        var ph = document.querySelector('#orderModal input[name="phone_number"]');
+        var nm = document.querySelector('#orderModal input[name="customer_name"]');
+        if (ph) ph.value = phone;
+        if (nm && name) nm.value = name;
+    }, 100);
+}
+</script>
 {% endblock %}
