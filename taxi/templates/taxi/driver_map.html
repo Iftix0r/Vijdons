@@ -211,7 +211,8 @@
         var pts = Object.values(driversData).map(function(d){ return [d.latitude, d.longitude]; });
         if (!pts.length) return;
         if (pts.length === 1) { vmap.setCenter(pts[0], 14); return; }
-        vmap.setBounds(ymaps.util.bounds.fromPoints(pts), { checkZoomRange: true, zoomMargin: 60 });
+        var bounds = vmap.geoObjects.getBounds();
+        if (bounds) vmap.setBounds(bounds, { checkZoomRange: true, zoomMargin: 60 });
     };
 
     // Search
