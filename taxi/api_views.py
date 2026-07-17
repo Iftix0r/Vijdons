@@ -187,9 +187,11 @@ def driver_location_update(request, driver):
     if lat is None or lng is None:
         return Response({'detail': 'latitude va longitude talab qilinadi.'}, status=400)
     try:
+        from django.utils import timezone
         driver.latitude  = float(lat)
         driver.longitude = float(lng)
-        driver.save(update_fields=['latitude', 'longitude'])
+        driver.last_seen = timezone.now()
+        driver.save(update_fields=['latitude', 'longitude', 'last_seen'])
         return Response({'detail': 'Lokatsiya yangilandi.', 'latitude': driver.latitude, 'longitude': driver.longitude})
     except (ValueError, TypeError):
         return Response({'detail': "Noto'g'ri koordinatalar."}, status=400)

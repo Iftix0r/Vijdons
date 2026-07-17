@@ -35,6 +35,7 @@ class Driver(models.Model):
     destination_lng       = models.FloatField(null=True, blank=True, verbose_name="Yo'nalish uzunlik")
     destination_address   = models.CharField(max_length=255, blank=True, default='', verbose_name="Yo'nalish manzil")
     photo                 = models.ImageField(upload_to='driver_photos/', blank=True, null=True, verbose_name="Profil rasmi")
+    last_seen             = models.DateTimeField(null=True, blank=True, verbose_name="So'nggi faollik")
 
     def __str__(self):
         return f"{self.full_name} ({self.car_number})"
