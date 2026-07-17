@@ -9,7 +9,7 @@
         </h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Real-vaqtdagi joylashuv kuzatuvi.</p>
     </div>
-    <div id="live-indicator" class="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 py-1.5 px-3 rounded-lg text-xs font-bold border border-emerald-100 dark:border-emerald-800/40">
+    <div class="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 py-1.5 px-3 rounded-lg text-xs font-bold border border-emerald-100 dark:border-emerald-800/40">
         <span class="relative flex h-2 w-2">
             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -35,21 +35,22 @@
     <!-- Xarita -->
     <div class="lg:col-span-3 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden relative" style="height:600px;">
         <div id="vmap" style="width:100%;height:100%;"></div>
-        <div class="absolute bottom-4 left-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md py-2 px-3 rounded-xl border border-gray-200 dark:border-gray-800 shadow text-xs font-semibold z-10 flex items-center gap-2">
-            <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
-            <span class="text-gray-700 dark:text-gray-300">Faol haydovchi</span>
-        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+{% if yandex_api_key %}
+<script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_api_key }}&lang=uz_UZ" type="text/javascript"></script>
+{% else %}
+<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
+{% endif %}
 <script>
 (function () {
     var vmap = null;
     var marks = {};
     var centered = false;
-    var selected = null;
+    var driversData = {};
 
     function boot() {
         vmap = new ymaps.Map('vmap', {
@@ -67,25 +68,26 @@
             .then(function(data){
                 var drivers = data.drivers || [];
                 document.getElementById('driver-count').innerText = drivers.length;
-
-                var noMsg = document.getElementById('no-drivers');
-                noMsg.style.display = drivers.length ? 'none' : 'block';
+                document.getElementById('no-drivers').style.display = drivers.length ? 'none' : 'block';
 
                 var seen = {};
                 drivers.forEach(function(d) {
                     seen[d.id] = true;
+                    driversData[d.id] = d;
                     var coords = [d.latitude, d.longitude];
 
-                    if (!centered) {
+                    if (!centered && drivers.length > 0) {
                         centered = true;
                         vmap.setCenter(coords, 13);
                     }
 
-                    var balloon = '<div style="font-family:sans-serif;padding:4px">'
-                        + '<b>' + d.full_name + '</b><br>'
-                        + d.car_model + ' — ' + d.car_number + '<br>'
-                        + d.phone_number + '<br>'
-                        + '<span style="color:#10b981">' + parseInt(d.balance).toLocaleString() + ' UZS</span>'
+                    var balloon = '<div style="font-family:sans-serif;min-width:180px;padding:4px">'
+                        + (d.photo_url ? '<img src="' + d.photo_url + '" style="width:48px;height:48px;border-radius:8px;object-fit:cover;float:left;margin-right:8px">' : '')
+                        + '<b style="font-size:13px">' + d.full_name + '</b><br>'
+                        + '<span style="color:#6b7280;font-size:11px">' + d.car_model + ' · ' + d.car_number + '</span><br>'
+                        + '<a href="tel:' + d.phone_number + '" style="color:#3b82f6;font-size:11px">' + d.phone_number + '</a><br>'
+                        + (d.last_address ? '<span style="color:#6b7280;font-size:10px">📍 ' + d.last_address + '</span><br>' : '')
+                        + '<span style="color:#10b981;font-weight:bold;font-size:12px">' + parseInt(d.balance).toLocaleString() + ' UZS</span>'
                         + '</div>';
 
                     if (marks[d.id]) {
@@ -94,7 +96,7 @@
                     } else {
                         var pm = new ymaps.Placemark(coords, {
                             balloonContentBody: balloon,
-                            hintContent: d.full_name
+                            hintContent: d.full_name + ' · ' + d.car_number
                         }, {
                             preset: 'islands#emeraldAutoIcon'
                         });
@@ -108,13 +110,18 @@
                         card = document.createElement('button');
                         card.id = 'dc-' + d.id;
                         card.className = 'w-full text-left p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-gray-800 transition flex items-center gap-3 border border-transparent';
-                        card.addEventListener('click', (function(id, c){ return function(){ focus(id, c); }; })(d.id, coords));
+                        card.addEventListener('click', function(){ focus(this.dataset.driverId); });
+                        card.dataset.driverId = d.id;
                         document.getElementById('driver-list').appendChild(card);
                     }
-                    card.innerHTML = '<div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0"><i class="fas fa-car"></i></div>'
+                    var avatar = d.photo_url
+                        ? '<img src="' + d.photo_url + '" class="w-10 h-10 rounded-xl object-cover flex-shrink-0">'
+                        : '<div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0 font-bold text-sm">' + d.full_name.charAt(0).toUpperCase() + '</div>';
+                    card.innerHTML = avatar
                         + '<div class="flex-1 min-w-0">'
-                        + '<div class="font-bold text-xs truncate">' + d.full_name + '</div>'
+                        + '<div class="font-bold text-xs truncate text-gray-900 dark:text-white">' + d.full_name + '</div>'
                         + '<div class="text-[10px] text-gray-400 truncate">' + d.car_model + ' · ' + d.car_number + '</div>'
+                        + (d.last_address ? '<div class="text-[10px] text-gray-400 truncate">📍 ' + d.last_address + '</div>' : '')
                         + '<div class="text-[10px] text-emerald-600 font-semibold">' + parseInt(d.balance).toLocaleString() + ' UZS</div>'
                         + '</div>';
                 });
@@ -124,6 +131,7 @@
                     if (!seen[id]) {
                         vmap.geoObjects.remove(marks[id]);
                         delete marks[id];
+                        delete driversData[id];
                         var c = document.getElementById('dc-' + id);
                         if (c) c.remove();
                     }
@@ -132,19 +140,20 @@
             .catch(function(e){ console.error('locations error:', e); });
     }
 
-    function focus(id, coords) {
-        selected = id;
+    function focus(id) {
+        var d = driversData[id];
+        if (!d) return;
         document.querySelectorAll('[id^="dc-"]').forEach(function(el){
             el.classList.toggle('border-emerald-500', el.id === 'dc-' + id);
             el.classList.toggle('bg-emerald-50', el.id === 'dc-' + id);
+            el.classList.toggle('dark:bg-emerald-900/20', el.id === 'dc-' + id);
         });
-        if (vmap && coords) {
-            vmap.setCenter(coords, 15, { duration: 600 });
-            if (marks[id]) marks[id].balloon.open();
+        if (vmap && marks[id]) {
+            vmap.setCenter([d.latitude, d.longitude], 15, { duration: 600 });
+            marks[id].balloon.open();
         }
     }
 
-    // ymaps tayyor bo'lishini kutish
     var t = setInterval(function(){
         if (typeof ymaps !== 'undefined' && typeof ymaps.Map === 'function') {
             clearInterval(t);

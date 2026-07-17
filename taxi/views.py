@@ -585,12 +585,17 @@ def sos_count(request):
 
 
 def driver_map(request):
+    from taxi.models import MapsSettings
     drivers = Driver.objects.filter(
         is_active=True,
         is_on_duty=True,
         approval_status=Driver.APPROVAL_APPROVED
     )
-    return render(request, 'taxi/driver_map.html', {'drivers': drivers})
+    maps = MapsSettings.get()
+    return render(request, 'taxi/driver_map.html', {
+        'drivers': drivers,
+        'yandex_api_key': maps.yandex_mapkit_key,
+    })
 
 
 def active_drivers_locations(request):
@@ -612,6 +617,8 @@ def active_drivers_locations(request):
             'latitude': d.latitude,
             'longitude': d.longitude,
             'balance': str(d.balance),
+            'last_address': d.last_address or '',
+            'photo_url': d.photo.url if d.photo else '',
         })
     return JsonResponse({'drivers': data})
 
