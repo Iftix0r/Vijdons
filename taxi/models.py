@@ -25,6 +25,10 @@ class Driver(models.Model):
     latitude        = models.FloatField(null=True, blank=True, verbose_name="Kenglik (Latitude)")
     longitude       = models.FloatField(null=True, blank=True, verbose_name="Uzunlik (Longitude)")
     balance         = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Balans")
+    rating          = models.DecimalField(max_digits=3, decimal_places=2, default=5.0, verbose_name="Reyting (1–5)")
+    trips_count     = models.PositiveIntegerField(default=0, verbose_name="Jami safarlar soni")
+    rating_count    = models.PositiveIntegerField(default=0, verbose_name="Reytinglar soni")
+    push_subscription = models.TextField(null=True, blank=True, verbose_name="Web Push Subscription")
     registered_at   = models.DateTimeField(auto_now_add=True, verbose_name="Ro'yxatdan o'tgan vaqt")
     # ── Destination Mode ───────────────────────────────────────────────────────
     destination_mode      = models.BooleanField(default=False, verbose_name="Destination mode (uyga yo'nalish)")
@@ -87,6 +91,7 @@ class Order(models.Model):
     to_lng       = models.FloatField(null=True, blank=True, verbose_name="Qayerga Uzunlik (Lng)")
     distance_km  = models.FloatField(null=True, blank=True, verbose_name="Masofa (km)")
     tmx_dist_km  = models.FloatField(null=True, blank=True, default=0, verbose_name="Taximetr masofa (km)")
+    client_rating = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name="Mijoz reytingi (1-5)")
     price        = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Narxi")
     commission   = models.DecimalField(max_digits=10, decimal_places=2, default=1000, verbose_name="Komissiya")
     payment_type  = models.CharField(max_length=10, choices=PAYMENT_CHOICES, default=PAYMENT_CASH, verbose_name="To'lov turi")
