@@ -158,6 +158,25 @@
 
         /* toast */
         #toast { transition: opacity .3s, bottom .3s; }
+
+        /* ── Eye care filter ── */
+        body.eyecare {
+            filter: sepia(25%) saturate(90%) brightness(98%) hue-rotate(-5deg);
+        }
+        body.eyecare::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 200, 80, 0.06);
+            pointer-events: none;
+            z-index: 9999;
+            mix-blend-mode: multiply;
+        }
+        #eyecare-toggle.active {
+            background: rgba(251,191,36,0.2) !important;
+            color: #f59e0b !important;
+            box-shadow: 0 0 0 2px rgba(251,191,36,0.35);
+        }
     </style>
 </head>
 <body class="bg-slate-50 dark:bg-gray-950 text-gray-800 dark:text-gray-200 antialiased flex h-screen overflow-hidden transition-colors duration-300">
@@ -258,10 +277,16 @@
         <!-- right actions -->
         <div class="flex items-center gap-3">
             <!-- theme toggle -->
-            <button id="theme-toggle" title="Temani o'zgartirish"
-                    class="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-yellow-500 transition-colors">
+            <button id="theme-toggle" title="Qorong'u/Yorug' rejim"
+                    class="w-9 h-9 rounded-xl bg-gray-100/80 dark:bg-gray-800/80 backdrop-blur flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-yellow-500 transition-colors">
                 <i id="icon-moon" class="fas fa-moon text-sm"></i>
                 <i id="icon-sun"  class="fas fa-sun  text-sm hidden"></i>
+            </button>
+
+            <!-- eye care toggle -->
+            <button id="eyecare-toggle" title="Ko'z himoyasi (sariq filtr)" onclick="toggleEyeCare()"
+                    class="w-9 h-9 rounded-xl bg-gray-100/80 dark:bg-gray-800/80 backdrop-blur flex items-center justify-center text-gray-400 hover:text-amber-500 transition-colors">
+                <i class="fas fa-eye text-sm"></i>
             </button>
 
             <!-- mobile menu toggle -->
@@ -553,6 +578,18 @@
         applyTheme(dark);
         localStorage.setItem('theme', dark ? 'dark' : 'light');
     });
+
+    // ── Eye Care ──
+    function toggleEyeCare() {
+        const on = !document.body.classList.contains('eyecare');
+        document.body.classList.toggle('eyecare', on);
+        document.getElementById('eyecare-toggle').classList.toggle('active', on);
+        localStorage.setItem('eyecare', on ? '1' : '0');
+    }
+    if (localStorage.getItem('eyecare') === '1') {
+        document.body.classList.add('eyecare');
+        document.getElementById('eyecare-toggle').classList.add('active');
+    }
 
     // ── Modals ──
     function openModal(id) {
