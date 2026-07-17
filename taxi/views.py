@@ -425,6 +425,7 @@ def client_list(request):
 
 @login_required(login_url='taxi:panel_login')
 def bot_settings(request):
+    from django.conf import settings as django_settings
     bot = BotSettings.get()
     if request.method == 'POST':
         bot.bot_token = request.POST.get('bot_token', '').strip()
@@ -447,12 +448,17 @@ def bot_settings(request):
         bot.notify_duty_changed    = 'notify_duty_changed'    in request.POST
         bot.notify_balance_changed = 'notify_balance_changed' in request.POST
         bot.save()
+        # SITE_URL ni settings ga yozish
+        site_url = request.POST.get('site_url', '').strip()
+        if site_url:
+            django_settings.SITE_URL = site_url
         # Test xabar yuborish
         if 'test' in request.POST and bot.bot_token and bot.group_id:
             from .utils import send_telegram
             send_telegram('✅ <b>VijdonTaxi bot ulanishi muvaffaqiyatli!</b>\nBu test xabari.')
         return redirect('taxi:bot_settings')
-    return render(request, 'taxi/bot_settings.html', {'bot': bot})
+    site_url = getattr(django_settings, 'SITE_URL', '')
+    return render(request, 'taxi/bot_settings.html', {'bot': bot, 'site_url': site_url})
 
 
 # ── Telegram Client Bot Webhook ───────────────────────────────────────────────
@@ -631,6 +637,86 @@ def sos_resolve(request, pk):
 def sos_count(request):
     count = SosAlert.objects.filter(status=SosAlert.STATUS_NEW).count()
     return JsonResponse({'count': count})
+
+
+@csrf_exempt
+def operator_bot_webhook(request):
+    """Operator bot webhook — guruhdan callback_query qayta ishlash."""
+    import json as _json
+    if request.method != 'POST':
+        from django.http import HttpResponse
+        return HttpResponse('ok')
+    try:
+        data = _json.loads(request.body)
+    except Exception:
+        from django.http import HttpResponse
+        return HttpResponse('ok')
+
+    # Faqat callback_query ni qayta ishlaymiz
+    cb = data.get('callback_query')
+    if not cb:
+        from django.http import HttpResponse
+        return HttpResponse('ok')
+
+    cb_id   = cb['id']
+    cb_data = cb.get('data', '')
+
+    from .models import BotSettings
+    bot = BotSettings.get()
+    token = bot.bot_token.strip()
+    if not token:
+        from django.http import HttpResponse
+        return HttpResponse('ok')
+
+    def _answer(text):
+        import urllib.request, urllib.parse
+        payload = urllib.parse.urlencode({'callback_query_id': cb_id, 'text': text}).encode()
+        try:
+            urllib.request.urlopen(
+                f'https://api.telegram.org/bot{token}/answerCallbackQuery',
+                data=payload, timeout=5
+            )
+        except Exception:
+            pass
+
+    # callback_data formatlar: order_<id>, driver_<id>
+    if cb_data.startswith('order_'):
+        _answer(f"Buyurtma #{cb_data.split('_')[1]} — admin panelda ko'ring")
+    elif cb_data.startswith('driver_'):
+        _answer(f"Haydovchi #{cb_data.split('_')[1]} — admin panelda ko'ring")
+    else:
+        _answer('OK')
+
+    from django.http import HttpResponse
+    return HttpResponse('ok')
+
+
+def operator_bot_set_webhook(request):
+    """Operator bot webhook URL ni Telegram ga o'rnatish."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': 'POST talab qilinadi'})
+    from .models import BotSettings
+    from django.conf import settings as django_settings
+    bot = BotSettings.get()
+    token = bot.bot_token.strip()
+    if not token:
+        return JsonResponse({'ok': False, 'message': 'Bot token kiritilmagan'})
+    webhook_url = f"{request.scheme}://{request.get_host()}/panel/bot/operator-webhook/"
+    import urllib.request, urllib.parse
+    try:
+        data = urllib.parse.urlencode({'url': webhook_url}).encode()
+        req = urllib.request.Request(
+            f'https://api.telegram.org/bot{token}/setWebhook',
+            data=data,
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            import json as _json
+            result = _json.loads(resp.read().decode())
+        if result.get('ok'):
+            return JsonResponse({'ok': True, 'message': f'Webhook o\'rnatildi: {webhook_url}'})
+        return JsonResponse({'ok': False, 'message': result.get('description', 'Xatolik')})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'message': str(e)})
 
 
 @login_required(login_url='taxi:panel_login')

@@ -45,8 +45,10 @@ urlpatterns = [
 
     path('api/client/lookup/', api_views.client_last_order_api, name='api_client_lookup'),
 
-    # ── Telegram Client Bot Webhook ──
+    # ── Telegram Bot Webhooks ──
     path('bot/client-webhook/', views.client_bot_webhook, name='client_bot_webhook'),
+    path('bot/operator-webhook/', views.operator_bot_webhook, name='operator_bot_webhook'),
+    path('bot/set-webhook/', views.operator_bot_set_webhook, name='operator_bot_set_webhook'),
 
     # ── Mobile API ──
     path('api/driver/register/',  api_views.driver_register,    name='api_driver_register'),

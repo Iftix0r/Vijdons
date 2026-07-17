@@ -141,6 +141,9 @@ MEDIA_ROOT = BASE_DIR / 'media'
 TELEGRAM_BOT_TOKEN = ''   # @BotFather dan olingan token
 TELEGRAM_GROUP_ID  = ''   # Operatorlar guruhi chat_id
 
+# Admin panel URL (Telegram inline tugmalar uchun)
+SITE_URL = 'https://vijdontaxi.uz'  # o'z domeningizga o'zgartiring
+
 # Web Push (VAPID)
 VAPID_PUBLIC_KEY  = 'BLgc9UVdWIvPZqoVrGTc3ukeDgdz7Ag9E-QTwlS-mIMZJPJn1dNYJSwEHJCr57WZRt2ZQnwS-Dd6XscYCVjv1FA'
 VAPID_PRIVATE_KEY = '-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgACpyjx8C5aZMitgM\nIpfNE/vY0vD00tUf8fZrqi91sYKhRANCAAS4HPVFXViLz2aqFaxk3N7pHg4Hc+wI\nPRPkE8JUvpiDGSTyZ9XTWCUsBByQq+e1mUbdmUJ8Evg3el7HGAlY79RQ\n-----END PRIVATE KEY-----'
