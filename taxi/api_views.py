@@ -157,8 +157,13 @@ def driver_photo_upload(request, driver):
 @permission_classes([IsAuthenticated])
 @driver_required
 def driver_duty_toggle(request, driver):
+    from django.utils import timezone
     driver.is_on_duty = not driver.is_on_duty
-    driver.save(update_fields=['is_on_duty'])
+    update_fields = ['is_on_duty']
+    if driver.is_on_duty:
+        driver.last_seen = timezone.now()
+        update_fields.append('last_seen')
+    driver.save(update_fields=update_fields)
     action = DriverActivityLog.ACTION_DUTY_ON if driver.is_on_duty else DriverActivityLog.ACTION_DUTY_OFF
     _log(driver, action, request=request)
     tg_duty_changed(driver, driver.is_on_duty)
