@@ -235,9 +235,9 @@ function renderOrdersDOM() {
             <div class="ios-subhead font-semibold">${DRIVER_CAR}</div>
             <div class="ios-caption font-mono tracking-wider mt-0.5" style="color:var(--ios-label3)">${DRIVER_CAR_NUM}</div>
           </div>
-          <a href="{% url 'driver:profile' %}" class="ios-caption font-medium text-[#007AFF]">Tahrirlash</a>
+          <a href="/driver/profile/" class="ios-caption font-medium text-[#007AFF]">Tahrirlash</a>
         </div>
-        <a href="{% url 'driver:history' %}" class="ios-card rounded-[16px] p-4 flex items-center gap-3 active:opacity-70 transition-opacity">
+        <a href="/driver/history/" class="ios-card rounded-[16px] p-4 flex items-center gap-3 active:opacity-70 transition-opacity">
           <div class="w-11 h-11 rounded-[12px] bg-[rgba(255,214,0,.12)] flex items-center justify-center flex-shrink-0">
             <i class="fas fa-clock-rotate-left text-[#FFD600] text-lg"></i>
           </div>
@@ -324,7 +324,7 @@ function _startTimers() {
       if(sec <= 0) { clearInterval(_timerIntervals[o.id]); loadOrders(); }
     }, 1000);
   });
-}─
+}
 let _py=0;
 const _mc=document.getElementById('main-content');
 _mc.addEventListener('touchstart',e=>{ if(_mc.scrollTop===0) _py=e.touches[0].clientY; },{passive:true});
@@ -562,9 +562,6 @@ const TMX_BASE_PRICE  = {{ tariff_base_price }};
 const TMX_PER_KM      = {{ tariff_per_km }};
 
 let _tmxActive    = false;
-let _tmxPaused    = false;
-let _tmxPauseStart= null;
-let _tmxTotalPaused = 0; // ms
 let _tmxOrderId   = null;
 let _tmxOrder     = null;
 let _tmxStartTime = null;
@@ -590,19 +587,16 @@ function _haversine(lat1, lng1, lat2, lng2) {
 
 function tmxStart(orderId, order) {
   if (_tmxActive) return;
-  _tmxActive    = true;
-  _tmxPaused    = false;
-  _tmxPauseStart= null;
-  _tmxTotalPaused = 0;
-  _tmxOrderId   = orderId;
-  _tmxOrder     = order;
+  _tmxActive  = true;
+  _tmxOrderId = orderId;
+  _tmxOrder   = order;
   _tmxStartTime = Date.now();
-  _tmxDistKm    = 0;
-  _tmxPrevLat   = null;
-  _tmxPrevLng   = null;
-  _tmxPriceStr  = TMX_BASE_PRICE.toLocaleString('uz-UZ');
-  _tmxTimeStr   = '0:00';
-  _tmxSpeedKmh  = 0;
+  _tmxDistKm  = 0;
+  _tmxPrevLat = null;
+  _tmxPrevLng = null;
+  _tmxPriceStr = TMX_BASE_PRICE.toLocaleString('uz-UZ');
+  _tmxTimeStr  = '0:00';
+  _tmxSpeedKmh = 0;
   if (order?.price && parseFloat(order.price) > 0)
     _tmxPriceStr = parseInt(order.price).toLocaleString('uz-UZ');
 
@@ -617,32 +611,11 @@ function tmxStart(orderId, order) {
   }
 }
 
-function tmxPause() {
-  if (!_tmxActive || _tmxPaused) return;
-  _tmxPaused    = true;
-  _tmxPauseStart= Date.now();
-  _tmxPrevLat   = null;
-  _tmxPrevLng   = null;
-  Native.vibrate();
-  _syncSheetTmx();
-}
-
-function tmxResume() {
-  if (!_tmxActive || !_tmxPaused) return;
-  if (_tmxPauseStart) _tmxTotalPaused += Date.now() - _tmxPauseStart;
-  _tmxPaused    = false;
-  _tmxPauseStart= null;
-  _tmxPrevLat   = null;
-  _tmxPrevLng   = null;
-  Native.vibrate();
-  _syncSheetTmx();
-}
-
 function _tmxOnLocation(e) {
   const lat = e.detail?.lat;
   const lng = e.detail?.lng;
   const spd = e.detail?.speed;
-  if (!lat || !lng || !_tmxActive || _tmxPaused) return;
+  if (!lat || !lng || !_tmxActive) return;
 
   if (spd != null && spd >= 0) _tmxSpeedKmh = Math.round(spd * 3.6);
 
@@ -667,20 +640,11 @@ function _syncSheetTmx() {
   if(t) t.textContent = _tmxTimeStr  || '0:00';
   if(d) d.textContent = _tmxDistKm.toFixed(2);
   if(s) s.textContent = _tmxSpeedKmh;
-  // Pause tugmasini yangilash
-  const btn = document.getElementById('sheet-tmx-pause-btn');
-  const lbl = document.getElementById('sheet-tmx-pause-lbl');
-  const bar = document.getElementById('sheet-tmx-bar');
-  if(btn) btn.style.background = _tmxPaused ? 'rgba(52,199,89,.2)' : 'rgba(255,149,0,.2)';
-  if(lbl) lbl.textContent = _tmxPaused ? '▶ Davom ettirish' : '⏸ To\'xtatish';
-  if(lbl) lbl.style.color = _tmxPaused ? '#34C759' : '#FF9500';
-  if(bar) bar.style.background = _tmxPaused ? '#FF9500' : '#AF52DE';
 }
 
 function _tmxTick() {
   if (!_tmxActive || !_tmxStartTime) return;
-  const paused = _tmxPaused && _tmxPauseStart ? _tmxTotalPaused + (Date.now() - _tmxPauseStart) : _tmxTotalPaused;
-  const elapsed = Math.max(0, Math.floor((Date.now() - _tmxStartTime - paused) / 1000));
+  const elapsed = Math.floor((Date.now() - _tmxStartTime) / 1000);
   const min = Math.floor(elapsed / 60);
   const sec = elapsed % 60;
   _tmxTimeStr = min + ':' + String(sec).padStart(2, '0');
@@ -699,11 +663,9 @@ function _tmxUpdatePrice() {
 }
 
 function tmxStop() {
-  _tmxActive    = false;
-  _tmxPaused    = false;
-  _tmxPauseStart= null;
+  _tmxActive = false;
   clearInterval(_tmxInterval);
-  _tmxInterval  = null;
+  _tmxInterval = null;
   if (_tmxWatchId !== null) {
     navigator.geolocation?.clearWatch(_tmxWatchId);
     _tmxWatchId = null;
@@ -855,8 +817,8 @@ function _renderSheet(id, o){
     <div style="background:#111;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08)">
       <div style="padding:10px 14px 6px;display:flex;align-items:center;justify-content:space-between">
         <div style="display:flex;align-items:center;gap:6px">
-          <div id="sheet-tmx-bar" style="width:6px;height:6px;border-radius:50%;background:${_tmxPaused?'#FF9500':'#AF52DE'};box-shadow:0 0 6px #AF52DE"></div>
-          <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,.4);letter-spacing:.5px;text-transform:uppercase">${_tmxPaused?'TO\'XTATILDI':'Taximetr'}</span>
+          <div style="width:6px;height:6px;border-radius:50%;background:#AF52DE;box-shadow:0 0 6px #AF52DE"></div>
+          <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,.4);letter-spacing:.5px;text-transform:uppercase">Taximetr</span>
         </div>
         ${o.status==='completed'?'<span style="font-size:11px;color:#34C759;font-weight:600">✓ Yakunlandi</span>':''}
       </div>
@@ -878,19 +840,6 @@ function _renderSheet(id, o){
           <div style="font-size:18px;font-weight:700;color:rgba(255,255,255,.6);font-variant-numeric:tabular-nums" id="sheet-tmx-speed">${_tmxSpeedKmh}</div>
         </div>
       </div>
-      ${o.status==='on_way'?`
-      <div style="margin:0 10px 10px">
-        <button id="sheet-tmx-pause-btn" onclick="_tmxPaused?tmxResume():tmxPause()"
-                style="width:100%;padding:10px;border-radius:10px;border:none;cursor:pointer;
-                       background:${_tmxPaused?'rgba(52,199,89,.2)':'rgba(255,149,0,.2)'};
-                       -webkit-tap-highlight-color:transparent;transition:opacity .15s"
-                ontouchstart="this.style.opacity='.6'" ontouchend="this.style.opacity='1'">
-          <span id="sheet-tmx-pause-lbl" style="font-size:13px;font-weight:700;color:${_tmxPaused?'#34C759':'#FF9500'}">
-            ${_tmxPaused?'▶ Davom ettirish':'⏸ To\'xtatish (yolovchi tushdi)'}
-          </span>
-        </button>
-        ${_tmxPaused?'<div style="margin-top:6px;padding:8px 10px;background:rgba(255,149,0,.08);border-radius:8px;border:1px solid rgba(255,149,0,.2);font-size:11px;color:rgba(255,149,0,.8);font-weight:600;text-align:center">⏸ Narx hisoblanmayapti — yolovchi do\'kon/uyda</div>':''}
-      </div>`:''}
       ${o.status==='completed'&&o.price?`
       <div style="margin:0 10px 10px;padding:10px 12px;background:rgba(52,199,89,.1);border-radius:10px;border:1px solid rgba(52,199,89,.2);display:flex;align-items:center;justify-content:space-between">
         <span style="font-size:12px;color:rgba(52,199,89,.7);font-weight:600">JAMI TO'LOV</span>

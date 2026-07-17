@@ -86,6 +86,7 @@ class Order(models.Model):
     to_lat       = models.FloatField(null=True, blank=True, verbose_name="Qayerga Kenglik (Lat)")
     to_lng       = models.FloatField(null=True, blank=True, verbose_name="Qayerga Uzunlik (Lng)")
     distance_km  = models.FloatField(null=True, blank=True, verbose_name="Masofa (km)")
+    tmx_dist_km  = models.FloatField(null=True, blank=True, default=0, verbose_name="Taximetr masofa (km)")
     price        = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Narxi")
     commission   = models.DecimalField(max_digits=10, decimal_places=2, default=1000, verbose_name="Komissiya")
     payment_type  = models.CharField(max_length=10, choices=PAYMENT_CHOICES, default=PAYMENT_CASH, verbose_name="To'lov turi")
