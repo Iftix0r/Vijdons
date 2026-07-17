@@ -48,6 +48,7 @@
        data-status="{{ order.status }}"
        data-price="{% if order.price %}{{ order.price }}{% else %}0{% endif %}"
        data-km="{% if order.distance_km %}{{ order.distance_km }}{% else %}0{% endif %}"
+       data-tmx-km="{% if order.tmx_dist_km %}{{ order.tmx_dist_km }}{% else %}0{% endif %}"
        data-id="{{ order.id }}"
        data-from="{{ order.from_address|escapejs }}"
        data-to="{{ order.to_address|escapejs }}"
@@ -151,6 +152,7 @@ function openDetail(el) {
   const d = el.dataset;
   const price = parseFloat(d.price)||0;
   const km = parseFloat(d.km)||0;
+  const tmxKm = parseFloat(d.tmxKm)||0;
   const commission = parseFloat(d.commission)||0;
   const color = statusColor[d.status]||'#8E8E93';
   const id = parseInt(d.id);
@@ -173,6 +175,39 @@ function openDetail(el) {
 
   // YAKUNLANDI maydoni — completed uchun vaqt, boshqalar uchun status
   const durationVal = d.duration || (d.status === 'cancelled' ? 'Bekor' : d.status === 'completed' ? '—' : 'Jarayonda');
+
+  // Taximetr bloki — on_way, arrived, completed uchun
+  const showTmx = d.status === 'on_way' || d.status === 'arrived' || d.status === 'completed';
+  // Taximetr narxi: on_way/arrived uchun hisoblangan narx yoki saqlangan price
+  const tmxPrice = price > 0 ? Math.round(price).toLocaleString() : '—';
+  const tmxDistDisplay = tmxKm > 0 ? tmxKm.toFixed(2) : (km > 0 ? km.toFixed(2) : '0.00');
+  const tmxWidget = showTmx ? `
+    <div style="background:#111;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08)">
+      <div style="padding:10px 14px 6px;display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="width:6px;height:6px;border-radius:50%;background:#AF52DE;box-shadow:0 0 6px #AF52DE"></div>
+          <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,.4);letter-spacing:.5px;text-transform:uppercase">Taximetr</span>
+        </div>
+        ${d.status==='completed'?'<span style="font-size:11px;color:#34C759;font-weight:600">✓ Yakunlandi</span>':
+          d.status==='on_way'?'<span style="font-size:11px;color:#AF52DE;font-weight:600">● Ishlayapti</span>':
+          '<span style="font-size:11px;color:#34C759;font-weight:600">📍 Yetib keldi</span>'}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;padding:0 10px 10px">
+        <div style="text-align:center;padding:8px 4px">
+          <div style="font-size:10px;font-weight:600;color:rgba(255,214,0,.5);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">NARX</div>
+          <div style="font-size:18px;font-weight:700;color:#FFD600;font-variant-numeric:tabular-nums">${tmxPrice} so'm</div>
+        </div>
+        <div style="text-align:center;padding:8px 4px">
+          <div style="font-size:10px;font-weight:600;color:rgba(0,122,255,.5);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">BOSIB O'TILDI</div>
+          <div style="font-size:18px;font-weight:700;color:#007AFF;font-variant-numeric:tabular-nums">${tmxDistDisplay} km</div>
+        </div>
+      </div>
+      ${d.status==='completed'&&price>0?`
+      <div style="margin:0 10px 10px;padding:10px 12px;background:rgba(52,199,89,.1);border-radius:10px;border:1px solid rgba(52,199,89,.2);display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:12px;color:rgba(52,199,89,.7);font-weight:600">JAMI TO'LOV</span>
+        <span style="font-size:20px;font-weight:700;color:#34C759">${Math.round(price).toLocaleString()} so'm</span>
+      </div>`:''}
+    </div>` : '';
 
   document.getElementById('sheet-body').innerHTML = `
     <div class="flex items-center justify-between">
@@ -219,7 +254,7 @@ function openDetail(el) {
       </div>
       <div class="ios-card2 rounded-[12px] p-3 text-center">
         <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">MASOFA</div>
-        <div class="ios-footnote font-bold">${km>0?km.toFixed(1)+' km':'—'}</div>
+        <div class="ios-footnote font-bold">${km>0?km.toFixed(1)+' km':(tmxKm>0?tmxKm.toFixed(1)+' km':'—')}</div>
       </div>
       <div class="ios-card2 rounded-[12px] p-3 text-center">
         <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">KOMISSIYA</div>
@@ -236,6 +271,8 @@ function openDetail(el) {
       <i class="fas fa-note-sticky text-[#FF9500] mt-0.5 flex-shrink-0"></i>
       <span class="ios-subhead" style="color:var(--ios-label2)">${d.note}</span>
     </div>` : ''}
+
+    ${tmxWidget}
 
     ${activeActions[d.status] || ''}
   `;
@@ -269,8 +306,14 @@ async function doHistoryAction(id, action) {
 
 function closeDetail() {
   const sh = document.getElementById('sheet');
+  const ov = document.getElementById('sheet-overlay');
   sh.style.transform = 'translateY(100%)';
-  setTimeout(() => document.getElementById('sheet-overlay').classList.add('hidden'), 380);
+  // Overlay pointer-events ni darhol o'chiramiz
+  ov.style.pointerEvents = 'none';
+  setTimeout(() => {
+    ov.classList.add('hidden');
+    ov.style.pointerEvents = '';
+  }, 380);
 }
 </script>
 {% endblock %}

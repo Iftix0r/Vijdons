@@ -777,14 +777,15 @@ function openOrder(id){
   Native.vibrate();
   const numId = Number(id);
   let o = ORDERS.find(x => x.id === numId);
+  // Taximetr aktiv va ORDERS da yo'q bo'lsa — saqlangan buyurtmadan foydalanamiz
   if(!o && _tmxActive && _tmxOrderId === numId && _tmxOrder) {
-    // Taximetr aktiv, ORDERS yangilanmagan — saqlangan buyurtmadan foydalanamiz
     o = _tmxOrder;
   }
+  // Hali ham topilmasa — serverdan yuklab ochamiz
   if(!o) {
-    // Buyurtma hali yuklanmagan — yuklab, keyin sheet ochamiz
     loadOrders().then(() => {
-      const fresh = ORDERS.find(x => x.id === numId);
+      let fresh = ORDERS.find(x => x.id === numId);
+      if(!fresh && _tmxOrder) fresh = _tmxOrder;
       if(fresh) _renderSheet(numId, fresh);
     });
     return;
@@ -941,16 +942,24 @@ function _renderSheet(id, o){
   ov.classList.remove('hidden');
   requestAnimationFrame(()=>{
     sh.style.transform='translateY(0)';
-    if(o.status==='on_way'||o.status==='arrived'||o.status==='completed') {
-      setTimeout(() => _syncSheetTmx(o), 50);
+    if(o.status==='on_way'||o.status==='arrived') {
+      // Darhol va keyin ham yangilaymiz (taximetr ishlayotgan bo'lsa)
+      _syncSheetTmx(o);
+      setTimeout(() => _syncSheetTmx(o), 100);
     }
   });
 }
 
 function closeSheet(){
   const sh=document.getElementById('sheet');
+  const ov=document.getElementById('sheet-overlay');
   sh.style.transform='translateY(100%)';
-  setTimeout(()=>document.getElementById('sheet-overlay').classList.add('hidden'),380);
+  // Overlay pointer-events ni darhol o'chiramiz — animatsiya tugashini kutmasdan
+  ov.style.pointerEvents='none';
+  setTimeout(()=>{
+    ov.classList.add('hidden');
+    ov.style.pointerEvents='';
+  },380);
 }
 
 async function doAction(id,action){
