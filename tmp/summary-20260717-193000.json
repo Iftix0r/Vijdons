@@ -1,0 +1,4 @@
+{
+  "summary": "Foydalanuvchi 'soz boldimi hozir' deb so'radi — oxirgi o'zgarishlar to'g'ri ekanini verify qildim. home.html da _tmxTick() sessionStorage ga yozishi (vijdon_tmx_{id}) va history.html da openDetail() sessionStorage dan o'qishi to'g'ri joyida ekanini kod orqali tasdiqdladim. Server lokal muhitda psycopg2 yo'q bo'lgani uchun Django check ishlamadi, lekin JS mantiq to'g'ri. sessionStorage Flutter WebView da bir xil kontekstda ishlaydi — home.html yozadi, history.html o'qiydi.",
+  "current_status": "Barcha o'zgarishlar production serverda deploy qilinishini kutmoqda. Kod sintaktik jihatdan to'g'ri va mantiqan ishlashi kerak."
+}

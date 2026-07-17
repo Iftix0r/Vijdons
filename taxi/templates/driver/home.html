@@ -149,15 +149,29 @@ renderOrdersDOM();
 
 // on_way yoki arrived buyurtma bo'lsa taximeter ochiladi va sheet ko'rsatiladi
 (function(){
+  _resetSheetOverlay();
   const active = ORDERS.find(o => o.status === 'on_way' || o.status === 'arrived');
   if(active) {
     tmxStart(active.id, active);
-    // Sahifaga qayta kirganda sheetni avtomatik ochish — DOM tayyor bo'lganini kutamiz
-    requestAnimationFrame(() => {
-      setTimeout(() => _renderSheet(active.id, active), 200);
-    });
+    // Foydalanuvchi sheetni yopgan bo'lsa avtomatik ochmaymiz — buyurtma bosilishi bloklanmasin
+    const dismissed = sessionStorage.getItem('vijdon_sheet_closed_' + active.id);
+    if (!dismissed) {
+      requestAnimationFrame(() => {
+        setTimeout(() => _renderSheet(active.id, active), 200);
+      });
+    }
   }
 })();
+
+window.addEventListener('pageshow', e => {
+  if (e.persisted) {
+    _resetSheetOverlay();
+    const active = ORDERS.find(o => o.status === 'on_way' || o.status === 'arrived');
+    if (active && !sessionStorage.getItem('vijdon_sheet_closed_' + active.id)) {
+      tmxStart(active.id, active);
+    }
+  }
+});
 
 // ── Auto-refresh: har 3 soniyada (faol buyurtma bo'lsa), aks holda 5 soniyada ──
 let _pollInterval = null;
@@ -651,27 +665,60 @@ function _haversine(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
+function _resetSheetOverlay() {
+  const ov = document.getElementById('sheet-overlay');
+  const sh = document.getElementById('sheet');
+  if (!ov || !sh) return;
+  ov.classList.add('hidden');
+  ov.style.pointerEvents = 'none';
+  sh.style.transform = 'translateY(100%)';
+}
+
+function _tmxPersist() {
+  if (!_tmxOrderId) return;
+  sessionStorage.setItem('vijdon_tmx_' + _tmxOrderId, JSON.stringify({
+    price: _tmxPriceStr,
+    dist:  _tmxDistKm,
+    time:  _tmxTimeStr,
+  }));
+}
+
 function tmxStart(orderId, order) {
-  if (_tmxActive) return;
+  if (_tmxActive && _tmxOrderId === orderId) return;
+  if (_tmxActive) tmxStop();
   _tmxActive  = true;
   _tmxOrderId = orderId;
   _tmxPrevLat = null;
   _tmxPrevLng = null;
   _tmxSpeedKmh = 0;
 
-  // Serverdan kelgan tmx_dist_km bilan tiklash
   _tmxOrder     = order;
   _tmxStartTime = Date.now();
   _tmxDistKm    = (order?.tmx_dist_km && parseFloat(order.tmx_dist_km) > 0)
                     ? parseFloat(order.tmx_dist_km) : 0;
-  if (order?.price && parseFloat(order.price) > 0) {
-    _tmxPriceStr = parseInt(order.price).toLocaleString('uz-UZ');
-  } else {
-    const p = Math.round(TMX_BASE_PRICE + _tmxDistKm * TMX_PER_KM);
-    _tmxPriceStr = p.toLocaleString('uz-UZ');
-  }
-  _tmxTimeStr = '0:00';
 
+  // sessionStorage dan tiklash (tarix sahifasidan qaytganda)
+  try {
+    const raw = sessionStorage.getItem('vijdon_tmx_' + orderId);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved.dist > 0) _tmxDistKm = parseFloat(saved.dist);
+      if (saved.price) _tmxPriceStr = saved.price;
+      if (saved.time) _tmxTimeStr = saved.time;
+    }
+  } catch(_) {}
+
+  if (!(_tmxPriceStr && _tmxPriceStr !== '0')) {
+    if (order?.price && parseFloat(order.price) > 0) {
+      _tmxPriceStr = parseInt(order.price).toLocaleString('uz-UZ');
+    } else {
+      const p = Math.round(TMX_BASE_PRICE + _tmxDistKm * TMX_PER_KM);
+      _tmxPriceStr = p.toLocaleString('uz-UZ');
+    }
+  }
+  if (!_tmxTimeStr || _tmxTimeStr === '0:00') _tmxTimeStr = '0:00';
+
+  _tmxPersist();
   _tmxInterval = setInterval(_tmxTick, 1000);
   window.addEventListener('vijdon_location', _tmxOnLocation);
   if (navigator.geolocation) {

@@ -294,7 +294,7 @@ body { background: var(--ios-bg); color: var(--ios-label); }
   <div class="flex items-center justify-around px-2 pt-2"
        style="padding-bottom:env(safe-area-inset-bottom,34px)">
 
-    <a href="{% url 'driver:home' %}" onclick="Native.vibrate()"
+    <a href="{% url 'driver:home' %}" onclick="Native.vibrate(); dismissAllSheets()"
        class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60">
       <i class="fas fa-car-side text-[24px] {% if active_tab == 'home' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
       <span class="ios-caption2 {% if active_tab == 'home' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Asosiy</span>
@@ -312,7 +312,7 @@ body { background: var(--ios-bg); color: var(--ios-label); }
       </span>
     </button>
 
-    <a href="{% url 'driver:history' %}" onclick="Native.vibrate()"
+    <a href="{% url 'driver:history' %}" onclick="Native.vibrate(); dismissAllSheets()"
        class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60">
       <i class="fas fa-clock-rotate-left text-[24px] {% if active_tab == 'history' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
       <span class="ios-caption2 {% if active_tab == 'history' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Tarix</span>
@@ -332,6 +332,21 @@ body { background: var(--ios-bg); color: var(--ios-label); }
 
 
 <script>
+// Sahifalar orasida navigatsiyada sheet overlay qolib ketmasligi uchun
+function dismissAllSheets() {
+  document.querySelectorAll('#sheet-overlay').forEach(ov => {
+    ov.classList.add('hidden');
+    ov.style.pointerEvents = 'none';
+  });
+  document.querySelectorAll('#sheet').forEach(sh => {
+    sh.style.transform = 'translateY(100%)';
+  });
+}
+window.addEventListener('pagehide', dismissAllSheets);
+window.addEventListener('pageshow', e => {
+  if (e.persisted) dismissAllSheets();
+});
+
 // ── Native Bridge ─────────────────────────────────────────────────────────────
 const Native = {
   isApp: typeof NativeBridge !== 'undefined',

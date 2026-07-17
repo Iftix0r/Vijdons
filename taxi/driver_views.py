@@ -346,6 +346,7 @@ def driver_history(request, driver):
         total_earned=Sum('price', filter=DQ(status='completed')),
         completed=Count('id', filter=DQ(status='completed')),
     )
+    _tariff = TariffSettings.get()
     return render(request, 'driver/history.html', {
         'driver':         driver,
         'orders':         orders,
@@ -354,6 +355,8 @@ def driver_history(request, driver):
         'chat_unread':    _chat_unread(driver),
         'period':         period,
         'period_choices': [('all','Barchasi'),('today','Bugun'),('week','7 kun'),('month','30 kun')],
+        'tariff_base_price': int(_tariff.base_price),
+        'tariff_per_km': int(_tariff.price_per_km),
     })
 
 
