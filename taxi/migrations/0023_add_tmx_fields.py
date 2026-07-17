@@ -23,14 +23,4 @@ class Migration(migrations.Migration):
             name='tmx_start_time',
             field=models.DateTimeField(null=True, blank=True, verbose_name='Taximetr boshlangan vaqt'),
         ),
-        migrations.AddField(
-            model_name='order',
-            name='tmx_fare',
-            field=models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name='Taximetr narxi'),
-        ),
-        migrations.AddField(
-            model_name='order',
-            name='tmx_duration',
-            field=models.PositiveIntegerField(null=True, blank=True, verbose_name='Taximetr vaqti (sekund)'),
-        ),
     ]
