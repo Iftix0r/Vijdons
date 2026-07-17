@@ -368,18 +368,8 @@ const Native = {
   callPhone(phone) { window.location.href='tel:'+phone; }
 };
 
-// ── Dark mode ─────────────────────────────────────────────────────────────────
-const _dark = localStorage.getItem('theme')==='dark' ||
-  (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme:dark)').matches);
-document.documentElement.classList.toggle('dark', _dark);
-
-function toggleTheme() {
-  const d = !document.documentElement.classList.contains('dark');
-  document.documentElement.classList.toggle('dark', d);
-  localStorage.setItem('theme', d?'dark':'light');
-  const tog = document.getElementById('theme-tog');
-  if (tog) tog.classList.toggle('on', d);
-}
+// ── Dark mode — haydovchi saytida doimiy yoqilgan, tizim sozlamasiga bog'liq emas ──
+document.documentElement.classList.add('dark');
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 let _tt;
