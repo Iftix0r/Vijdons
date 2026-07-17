@@ -75,12 +75,9 @@
 
     function boot() {
         vmap = new ymaps.Map('vmap', {
-            center: [41.3, 63.0],
-            zoom: 6,
+            center: [41.3, 69.24],
+            zoom: 12,
             controls: ['zoomControl', 'fullscreenControl', 'typeSelector', 'trafficControl']
-        }, {
-            restrictMapArea: [[37.1, 55.9], [45.6, 73.2]],
-            minZoom: 6
         });
         tick();
         setInterval(tick, 8000);
@@ -214,8 +211,7 @@
         var pts = Object.values(driversData).map(function(d){ return [d.latitude, d.longitude]; });
         if (!pts.length) return;
         if (pts.length === 1) { vmap.setCenter(pts[0], 14); return; }
-        var bounds = vmap.geoObjects.getBounds();
-        if (bounds) vmap.setBounds(bounds, { checkZoomRange: true, zoomMargin: 60 });
+        vmap.setBounds(ymaps.util.bounds.fromPoints(pts), { checkZoomRange: true, zoomMargin: 60 });
     };
 
     // Search
