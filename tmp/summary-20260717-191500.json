@@ -1,0 +1,4 @@
+{
+  "summary": "Tarix sahifasida on_way buyurtma sheetida NARX/MASOFA '—' va taximetr 0 ko'rinishi muammosi hal qilindi. Sabab: history.html alohida sahifa bo'lib, home.html JS taximetr o'zgaruvchilariga kirish imkoni yo'q edi. Yechim: home.html _tmxTick() funksiyasida har soniyada sessionStorage ga 'vijdon_tmx_{orderId}' kalit bilan {price, dist, time} saqlaydi. history.html openDetail() faol buyurtma (on_way/arrived) uchun sessionStorage dan liveTmx o'qiydi va displayPrice/displayDist/displayTime o'zgaruvchilari orqali sheet da haqiqiy qiymatlarni ko'rsatadi. Taximetr widget ham VAQT ustunini liveTmx mavjud bo'lganda ko'rsatadi.",
+  "current_status": "home.html va history.html fayllari yangilandi. sessionStorage orqali taximetr ma'lumotlari sahifalar orasida uzatiladi. NARX, MASOFA, VAQT endi to'g'ri ko'rinadi."
+}

@@ -157,6 +157,22 @@ function openDetail(el) {
   const color = statusColor[d.status]||'#8E8E93';
   const id = parseInt(d.id);
 
+  // Faol buyurtma uchun sessionStorage dan live taximetr qiymatlarini olamiz
+  let liveTmx = null;
+  if (d.status === 'on_way' || d.status === 'arrived') {
+    try {
+      const raw = sessionStorage.getItem('vijdon_tmx_' + id);
+      if (raw) liveTmx = JSON.parse(raw);
+    } catch(_) {}
+  }
+
+  // Narx: live > server price > 0
+  const displayPrice = liveTmx ? liveTmx.price : (price > 0 ? Math.round(price).toLocaleString() : null);
+  // Masofa: live > tmxKm > km
+  const displayDist = liveTmx ? parseFloat(liveTmx.dist).toFixed(2)
+                              : (tmxKm > 0 ? tmxKm.toFixed(2) : (km > 0 ? km.toFixed(2) : '0.00'));
+  const displayTime = liveTmx ? liveTmx.time : null;
+
   // Faol buyurtmalar uchun action tugmalari
   const activeActions = {
     accepted: `<div class="space-y-2 mt-1">
@@ -178,9 +194,9 @@ function openDetail(el) {
 
   // Taximetr bloki — on_way, arrived, completed uchun
   const showTmx = d.status === 'on_way' || d.status === 'arrived' || d.status === 'completed';
-  // Taximetr narxi: on_way/arrived uchun hisoblangan narx yoki saqlangan price
-  const tmxPrice = price > 0 ? Math.round(price).toLocaleString() : '—';
-  const tmxDistDisplay = tmxKm > 0 ? tmxKm.toFixed(2) : (km > 0 ? km.toFixed(2) : '0.00');
+  // Taximetr narxi: live > server price
+  const tmxPrice = displayPrice || '—';
+  const tmxDistDisplay = displayDist;
   const tmxWidget = showTmx ? `
     <div style="background:#111;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08)">
       <div style="padding:10px 14px 6px;display:flex;align-items:center;justify-content:space-between">
@@ -192,11 +208,15 @@ function openDetail(el) {
           d.status==='on_way'?'<span style="font-size:11px;color:#AF52DE;font-weight:600">● Ishlayapti</span>':
           '<span style="font-size:11px;color:#34C759;font-weight:600">📍 Yetib keldi</span>'}
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;padding:0 10px 10px">
+      <div style="display:grid;grid-template-columns:${displayTime ? '1fr 1fr 1fr' : '1fr 1fr'};gap:0;padding:0 10px 10px">
         <div style="text-align:center;padding:8px 4px">
           <div style="font-size:10px;font-weight:600;color:rgba(255,214,0,.5);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">NARX</div>
           <div style="font-size:18px;font-weight:700;color:#FFD600;font-variant-numeric:tabular-nums">${tmxPrice} so'm</div>
         </div>
+        ${displayTime ? `<div style="text-align:center;padding:8px 4px">
+          <div style="font-size:10px;font-weight:600;color:rgba(175,82,222,.5);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">VAQT</div>
+          <div style="font-size:18px;font-weight:700;color:#AF52DE;font-variant-numeric:tabular-nums">${displayTime}</div>
+        </div>` : ''}
         <div style="text-align:center;padding:8px 4px">
           <div style="font-size:10px;font-weight:600;color:rgba(0,122,255,.5);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">BOSIB O'TILDI</div>
           <div style="font-size:18px;font-weight:700;color:#007AFF;font-variant-numeric:tabular-nums">${tmxDistDisplay} km</div>
@@ -250,11 +270,11 @@ function openDetail(el) {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div class="ios-card2 rounded-[12px] p-3 text-center">
         <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">NARX</div>
-        <div class="ios-footnote font-bold" style="color:${d.status==='completed'?'#34C759':d.status==='cancelled'?'var(--ios-label3)':'var(--ios-label)'}">${price>0?Math.round(price).toLocaleString()+" so'm":'—'}</div>
+        <div class="ios-footnote font-bold" style="color:${d.status==='completed'?'#34C759':d.status==='cancelled'?'var(--ios-label3)':'var(--ios-label)'}">${displayPrice ? displayPrice + " so'm" : '—'}</div>
       </div>
       <div class="ios-card2 rounded-[12px] p-3 text-center">
         <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">MASOFA</div>
-        <div class="ios-footnote font-bold">${km>0?km.toFixed(1)+' km':(tmxKm>0?tmxKm.toFixed(1)+' km':'—')}</div>
+        <div class="ios-footnote font-bold">${parseFloat(displayDist) > 0 ? parseFloat(displayDist).toFixed(1) + ' km' : '—'}</div>
       </div>
       <div class="ios-card2 rounded-[12px] p-3 text-center">
         <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">KOMISSIYA</div>

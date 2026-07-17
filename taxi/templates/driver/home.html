@@ -724,6 +724,14 @@ function _tmxTick() {
   _tmxUpdatePrice();
   _syncSheetTmx();
   _tmxSave();
+  // Taximetr qiymatlarini sessionStorage ga saqlaymiz — history.html ularni o'qiydi
+  if (_tmxOrderId) {
+    sessionStorage.setItem('vijdon_tmx_' + _tmxOrderId, JSON.stringify({
+      price: _tmxPriceStr,
+      dist:  _tmxDistKm,
+      time:  _tmxTimeStr,
+    }));
+  }
 }
 
 function _tmxUpdatePrice() {
