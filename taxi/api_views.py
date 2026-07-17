@@ -235,7 +235,6 @@ def get_tariff(request):
 def available_orders(request, driver):
     _auto_offline_check(driver)
     qs = Order.objects.select_related('client', 'driver').filter(
-    qs = Order.objects.select_related('client', 'driver').filter(
         Q(status='pending', dispatched_to=driver) |
         Q(status='pending', dispatched_to__isnull=True) |
         Q(driver=driver, status__in=['accepted', 'on_way', 'arrived'])
