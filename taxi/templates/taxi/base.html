@@ -587,13 +587,22 @@
                 if (d.unread > 0) {
                     badge.textContent = d.unread;
                     badge.classList.remove('hidden');
+                    badge.classList.add('pulse-dot');
+                    // Brauzer tab title
+                    document.title = '(' + d.unread + ') ' + document.title.replace(/^\(\d+\) /, '');
                 } else {
                     badge.classList.add('hidden');
+                    document.title = document.title.replace(/^\(\d+\) /, '');
                 }
             }).catch(() => {});
     }
     updateChatBadge();
-    setInterval(updateChatBadge, 15000);
+    setInterval(updateChatBadge, 5000);
+    // Tab ga qaytganda darhol yangilash
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) updateChatBadge();
+    });
+    window.addEventListener('focus', updateChatBadge);
 
     // ── SOS badge ──
     function updateSosBadge() {
