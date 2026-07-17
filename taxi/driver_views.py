@@ -706,8 +706,8 @@ def driver_group_chat_list(request, driver):
         {
             'id': m.id,
             'driver_id': m.driver_id,
-            'driver_name': m.driver.full_name,
-            'car_number': m.driver.car_number,
+            'driver_name': m.display_name,
+            'car_number': m.display_sub,
             'text': m.text,
             'audio_url': request.build_absolute_uri(m.audio.url) if m.audio else None,
             'created_at': m.created_at.isoformat(),

@@ -185,12 +185,12 @@
         {% for msg in group_messages %}
         <div class="flex justify-start">
             <div class="max-w-[75%]">
-                <p class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mb-1 ml-1">
-                    {{ msg.driver.full_name }} &middot; {{ msg.driver.car_number }}
+                <p class="text-[11px] font-bold {% if not msg.driver %}text-blue-500{% else %}text-emerald-600 dark:text-emerald-400{% endif %} mb-1 ml-1">
+                    {{ msg.display_name }}{% if msg.display_sub %} &middot; {{ msg.display_sub }}{% endif %}
                 </p>
-                <div class="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-2xl rounded-bl-sm px-4 py-2.5 shadow-sm">
+                <div class="{% if not msg.driver %}bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30{% else %}bg-gray-100 dark:bg-gray-800{% endif %} text-gray-800 dark:text-gray-200 rounded-2xl rounded-bl-sm px-4 py-2.5 shadow-sm">
                     {% if msg.audio %}
-                    <div class="flex items-center gap-2 min-w-[180px]">
+                    <div class="flex items-center gap-2 min-width-[180px]">
                         <button onclick="toggleAudio(this)" data-src="{{ msg.audio.url }}"
                                 class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 flex items-center justify-center flex-shrink-0 transition-colors">
                             <i class="fas fa-play text-xs text-gray-600 dark:text-gray-300"></i>
@@ -218,6 +218,18 @@
         </div>
         {% endfor %}
     </div>
+    <!-- Guruh input -->
+    <div class="px-4 py-3 border-t border-gray-100 dark:border-gray-800 flex-shrink-0">
+        <form method="POST" class="flex gap-2">
+            {% csrf_token %}
+            <input type="text" name="group_text" placeholder="Guruhga yozing..." autocomplete="off"
+                   class="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 dark:text-white transition">
+            <button type="submit"
+                    class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold text-sm transition-all shadow-sm">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </form>
+    </div>
 </div>
 {% endblock %}
 
@@ -235,7 +247,13 @@ function showTab(tab) {
         ? 'px-4 py-2 rounded-xl text-sm font-bold transition-all bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
         : 'px-4 py-2 rounded-xl text-sm font-bold transition-all bg-emerald-500 text-white shadow-sm';
     if (!isOp) { const g = document.getElementById('gr-container'); if(g) g.scrollTop = g.scrollHeight; }
+    localStorage.setItem('chatTab', tab);
 }
+// Sahifa yuklanganda oxirgi tab ni tiklash
+(function(){
+    const saved = location.hash === '#group' ? 'group' : (localStorage.getItem('chatTab') || 'operator');
+    if (saved === 'group') showTab('group');
+})();
 
 const container = document.getElementById('msg-container');
 if (container) container.scrollTop = container.scrollHeight;

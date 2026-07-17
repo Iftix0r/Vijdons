@@ -696,6 +696,12 @@ def operator_chat(request):
             ).update(is_read=True)
             messages = ChatMessage.objects.filter(driver=selected_driver).order_by('created_at')
 
+    if request.method == 'POST' and request.POST.get('group_text'):
+        text = request.POST.get('group_text', '').strip()
+        if text:
+            GroupMessage.objects.create(driver=None, sender_name='Operator', text=text)
+        return redirect(request.path + ('?driver_id=' + selected_id if selected_id else '') + '#group')
+
     if request.method == 'POST' and selected_driver:
         text  = request.POST.get('text', '').strip()
         audio = request.FILES.get('audio')

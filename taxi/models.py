@@ -298,13 +298,26 @@ class DriverActivityLog(models.Model):
 
 class GroupMessage(models.Model):
     """Barcha haydovchilar uchun umumiy guruh chati."""
-    driver     = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='group_messages', verbose_name='Haydovchi')
-    text       = models.TextField(blank=True, default='', verbose_name='Xabar')
-    audio      = models.FileField(upload_to='group_audio/', blank=True, null=True, verbose_name='Audio xabar')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Vaqt')
+    driver      = models.ForeignKey(Driver, on_delete=models.CASCADE, null=True, blank=True, related_name='group_messages', verbose_name='Haydovchi')
+    sender_name = models.CharField(max_length=100, blank=True, default='', verbose_name='Yuboruvchi ismi')
+    text        = models.TextField(blank=True, default='', verbose_name='Xabar')
+    audio       = models.FileField(upload_to='group_audio/', blank=True, null=True, verbose_name='Audio xabar')
+    created_at  = models.DateTimeField(auto_now_add=True, verbose_name='Vaqt')
+
+    @property
+    def display_name(self):
+        if self.driver:
+            return self.driver.full_name
+        return self.sender_name or 'Operator'
+
+    @property
+    def display_sub(self):
+        if self.driver:
+            return self.driver.car_number
+        return ''
 
     def __str__(self):
-        return f"{self.driver.full_name}: {self.text[:40]}"
+        return f"{self.display_name}: {self.text[:40]}"
 
     class Meta:
         verbose_name = 'Guruh xabari'
