@@ -154,6 +154,7 @@ def driver_home(request, driver):
             'is_dispatched': o.dispatched_to_id == driver.id,
             'timer_sec':    timer_sec,
             'tmx_dist_km':  o.tmx_dist_km or 0,
+            'tmx_start_time': o.tmx_start_time.isoformat() if o.tmx_start_time else None,
         })
 
     _tariff = TariffSettings.get()
@@ -220,6 +221,7 @@ def driver_orders_json(request, driver):
             'is_dispatched': o.dispatched_to_id == driver.id,
             'timer_sec':     timer_sec,
             'tmx_dist_km':   o.tmx_dist_km or 0,
+            'tmx_start_time': o.tmx_start_time.isoformat() if o.tmx_start_time else None,
         })
 
     ids = [o['id'] for o in orders_data]
@@ -283,6 +285,13 @@ def driver_order_action(request, driver, pk, action):
 
     order.status = new_status
     update_fields = ['status', 'updated_at']
+
+    # Taximetr boshlangan haqiqiy vaqtini saqlaymiz — ilova qayta ochilganda ham
+    # o'tgan vaqt to'g'ri hisoblansin (frontendda Date.now() qayta boshlanib ketmasin)
+    if new_status == 'on_way' and not order.tmx_start_time:
+        from django.utils import timezone
+        order.tmx_start_time = timezone.now()
+        update_fields.append('tmx_start_time')
 
     # Taximeter ma'lumotlarini saqlash (arrived, complete)
     try:

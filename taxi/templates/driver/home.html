@@ -643,14 +643,34 @@ let _tmxSaveTimer = null;
 function _tmxSave() {
   if (!_tmxOrderId) return;
   clearTimeout(_tmxSaveTimer);
-  _tmxSaveTimer = setTimeout(() => {
+  _tmxSaveTimer = setTimeout(_tmxFlushNow, 2000);
+}
+
+// Ilova fonga o'tganda/yopilganda darhol yuboramiz — 2s debounce tugashini kutmasdan,
+// aks holda oxirgi bir necha soniyalik masofa/narx bazaga yozilmay qolib,
+// ilova qayta ochilganda taximetr orqaga tortiladi
+function _tmxFlushNow() {
+  clearTimeout(_tmxSaveTimer);
+  if (!_tmxOrderId) return;
+  const body = `dist_km=${_tmxDistKm.toFixed(3)}&price=${parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,''))||0}&csrfmiddlewaretoken=${encodeURIComponent(getCookie('csrftoken')||'')}`;
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon(
+      `/driver/orders/${_tmxOrderId}/meter/`,
+      new Blob([body], { type: 'application/x-www-form-urlencoded' })
+    );
+  } else {
     fetch(`/driver/orders/${_tmxOrderId}/meter/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': getCookie('csrftoken') },
-      body: `dist_km=${_tmxDistKm.toFixed(3)}&price=${parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,''))||0}`,
+      body,
+      keepalive: true,
     }).catch(() => {});
-  }, 2000);
+  }
 }
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && _tmxActive) _tmxFlushNow();
+});
+window.addEventListener('pagehide', () => { if (_tmxActive) _tmxFlushNow(); });
 
 function _tmxClear() {}
 
@@ -693,30 +713,30 @@ function tmxStart(orderId, order) {
   _tmxSpeedKmh = 0;
 
   _tmxOrder     = order;
-  _tmxStartTime = Date.now();
+  // Haqiqiy boshlanish vaqti — serverdan (ilova qayta ochilganda ham to'g'ri hisoblansin)
+  _tmxStartTime = order?.tmx_start_time ? new Date(order.tmx_start_time).getTime() : Date.now();
   _tmxDistKm    = (order?.tmx_dist_km && parseFloat(order.tmx_dist_km) > 0)
                     ? parseFloat(order.tmx_dist_km) : 0;
+  _tmxPriceStr  = '0';
+  _tmxTimeStr   = '0:00';
 
-  // sessionStorage dan tiklash (tarix sahifasidan qaytganda)
+  // sessionStorage dan tiklash (shu sessiya ichida sahifa yangilansa) — masofa uchun,
+  // narx va vaqt har doim formuladan qayta hisoblanadi (pastda)
   try {
     const raw = sessionStorage.getItem('vijdon_tmx_' + orderId);
     if (raw) {
       const saved = JSON.parse(raw);
-      if (saved.dist > 0) _tmxDistKm = parseFloat(saved.dist);
-      if (saved.price) _tmxPriceStr = saved.price;
-      if (saved.time) _tmxTimeStr = saved.time;
+      if (saved.dist > 0 && saved.dist > _tmxDistKm) _tmxDistKm = parseFloat(saved.dist);
     }
   } catch(_) {}
 
-  if (!(_tmxPriceStr && _tmxPriceStr !== '0')) {
-    if (order?.price && parseFloat(order.price) > 0) {
-      _tmxPriceStr = parseInt(order.price).toLocaleString('uz-UZ');
-    } else {
-      const p = Math.round(TMX_BASE_PRICE + _tmxDistKm * TMX_PER_KM);
-      _tmxPriceStr = p.toLocaleString('uz-UZ');
-    }
+  // Narx va vaqt doim joriy masofa/vaqtdan hisoblanadi — bazadagi eski price
+  // qiymatini "belgilangan narx" deb noto'g'ri qabul qilib, taximetrni muzlatib qo'ymaslik uchun
+  _tmxPriceStr = Math.round(TMX_BASE_PRICE + _tmxDistKm * TMX_PER_KM).toLocaleString('uz-UZ');
+  if (_tmxStartTime) {
+    const elapsed = Math.max(0, Math.floor((Date.now() - _tmxStartTime) / 1000));
+    _tmxTimeStr = Math.floor(elapsed / 60) + ':' + String(elapsed % 60).padStart(2, '0');
   }
-  if (!_tmxTimeStr || _tmxTimeStr === '0:00') _tmxTimeStr = '0:00';
 
   _tmxPersist();
   _tmxInterval = setInterval(_tmxTick, 1000);
@@ -783,10 +803,6 @@ function _tmxTick() {
 
 function _tmxUpdatePrice() {
   if (!_tmxActive) return;
-  if (_tmxOrder?.price && parseFloat(_tmxOrder.price) > 0) {
-    _tmxPriceStr = parseInt(_tmxOrder.price).toLocaleString('uz-UZ');
-    return;
-  }
   const price = Math.round(TMX_BASE_PRICE + _tmxDistKm * TMX_PER_KM);
   _tmxPriceStr = price.toLocaleString('uz-UZ');
 }
