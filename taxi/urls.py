@@ -43,6 +43,8 @@ urlpatterns = [
     path('orders/export/csv/', views.orders_export_csv, name='orders_export_csv'),
     path('statistics/', views.statistics, name='statistics'),
 
+    path('api/client/lookup/', api_views.client_last_order_api, name='api_client_lookup'),
+
     # ── Telegram Client Bot Webhook ──
     path('bot/client-webhook/', views.client_bot_webhook, name='client_bot_webhook'),
 

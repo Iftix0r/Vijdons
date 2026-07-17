@@ -636,3 +636,26 @@ def sos_my(request, driver):
         'created_at': a.created_at.isoformat(),
     } for a in alerts]
     return Response(data)
+
+
+from django.http import JsonResponse as DjJsonResponse
+from .models import Client, Order
+
+def client_last_order_api(request):
+    phone = request.GET.get('phone', '').strip()
+    if not phone:
+        return DjJsonResponse({'found': False})
+    try:
+        client = Client.objects.get(phone_number=phone)
+    except Client.DoesNotExist:
+        return DjJsonResponse({'found': False})
+    last = Order.objects.filter(client=client).order_by('-created_at').first()
+    if not last:
+        return DjJsonResponse({'found': True, 'name': client.full_name or '', 'from_address': '', 'from_lat': '', 'from_lng': ''})
+    return DjJsonResponse({
+        'found': True,
+        'name': client.full_name or '',
+        'from_address': last.from_address,
+        'from_lat': last.from_lat or '',
+        'from_lng': last.from_lng or '',
+    })
