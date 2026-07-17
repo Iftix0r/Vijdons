@@ -641,7 +641,56 @@
     }
     updateSosCount();
     setInterval(updateSosCount, 20000);
+
+    // ── Keyboard Shortcuts ──
+    const shortcutToast = document.getElementById('shortcut-toast');
+    function showToast(msg) {
+        shortcutToast.textContent = msg;
+        shortcutToast.classList.remove('opacity-0', 'translate-y-2');
+        shortcutToast.classList.add('opacity-100', 'translate-y-0');
+        clearTimeout(shortcutToast._t);
+        shortcutToast._t = setTimeout(() => {
+            shortcutToast.classList.add('opacity-0', 'translate-y-2');
+            shortcutToast.classList.remove('opacity-100', 'translate-y-0');
+        }, 2000);
+    }
+    document.addEventListener('keydown', function(e) {
+        if (!e.ctrlKey) return;
+        const tag = document.activeElement.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        const shortcuts = {
+            'b': { modal: 'orderModal',  label: '🚖 Yangi buyurtma' },
+            'x': { modal: 'driverModal', label: '🧑 Yangi haydovchi' },
+            'm': { modal: 'clientModal', label: '👤 Yangi mijoz' },
+        };
+        const key = e.key.toLowerCase();
+        if (shortcuts[key]) {
+            e.preventDefault();
+            openModal(shortcuts[key].modal);
+            showToast(shortcuts[key].label);
+        }
+        if (key === 'escape') {
+            document.querySelectorAll('.modal-wrap:not(.hidden-modal)').forEach(m => closeModal(m.id));
+        }
+    });
 </script>
+
+<!-- Shortcut toast -->
+<div id="shortcut-toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] bg-gray-900 dark:bg-gray-700 text-white text-sm font-semibold px-5 py-2.5 rounded-2xl shadow-xl opacity-0 translate-y-2 transition-all duration-300 pointer-events-none"></div>
+
+<!-- Shortcut help -->
+<div class="fixed bottom-6 right-6 z-[9998] group">
+    <button class="w-9 h-9 rounded-full bg-gray-800 dark:bg-gray-700 text-white text-xs shadow-lg flex items-center justify-center hover:bg-gray-700 transition">
+        <i class="fas fa-keyboard"></i>
+    </button>
+    <div class="absolute bottom-11 right-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl p-4 w-56 hidden group-hover:block text-xs text-gray-700 dark:text-gray-300 space-y-2">
+        <div class="font-bold text-gray-900 dark:text-white mb-2 text-sm">Tezkor tugmalar</div>
+        <div class="flex justify-between"><span>Yangi buyurtma</span><kbd class="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded font-mono">Ctrl+B</kbd></div>
+        <div class="flex justify-between"><span>Yangi haydovchi</span><kbd class="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded font-mono">Ctrl+X</kbd></div>
+        <div class="flex justify-between"><span>Yangi mijoz</span><kbd class="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded font-mono">Ctrl+M</kbd></div>
+        <div class="flex justify-between"><span>Yopish</span><kbd class="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded font-mono">Esc</kbd></div>
+    </div>
+</div>
 {% block extra_js %}{% endblock %}
 </body>
 </html>
