@@ -259,10 +259,15 @@ def panel_dashboard(request):
     from decimal import Decimal
 
     today = timezone.now().date()
+    online_threshold = timezone.now() - timezone.timedelta(minutes=2)
     orders = Order.objects.select_related('client', 'driver').order_by('-created_at')[:10]
     pending_drivers = Driver.objects.filter(approval_status=Driver.APPROVAL_PENDING).order_by('-registered_at')
     on_duty_drivers = Driver.objects.filter(
         is_active=True, is_on_duty=True, approval_status=Driver.APPROVAL_APPROVED
+    ).count()
+    online_drivers = Driver.objects.filter(
+        is_active=True, approval_status=Driver.APPROVAL_APPROVED,
+        last_seen__gte=online_threshold
     ).count()
 
     completed_qs = Order.objects.filter(status='completed')
@@ -289,6 +294,7 @@ def panel_dashboard(request):
         'total_orders':         Order.objects.count(),
         'total_drivers':        Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED).count(),
         'on_duty_drivers':      on_duty_drivers,
+        'online_drivers':       online_drivers,
         'total_clients':        Client.objects.count(),
         'pending_orders':       Order.objects.filter(status='pending').count(),
         'completed_orders':     completed_qs.count(),

@@ -106,6 +106,16 @@
         </div>
         <p class="text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1">Faol haydovchilar</p>
         <h3 class="text-3xl font-extrabold text-gray-900 dark:text-white relative z-10">{{ total_drivers }}</h3>
+        <div class="flex items-center gap-3 mt-1">
+            <span class="text-[11px] font-semibold text-emerald-500 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot inline-block"></span>
+                {{ online_drivers }} online
+            </span>
+            <span class="text-[11px] font-semibold text-blue-400 flex items-center gap-1">
+                <i class="fas fa-circle text-[8px]"></i>
+                {{ on_duty_drivers }} navbatda
+            </span>
+        </div>
     </div>
 
     <!-- Clients -->
