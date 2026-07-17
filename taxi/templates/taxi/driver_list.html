@@ -214,7 +214,7 @@
                                     {% endif %}
                                 {% endif %}
                                 {% if driver.latitude and driver.longitude %}
-                                <a href="https://www.google.com/maps?q={{ driver.latitude }},{{ driver.longitude }}" target="_blank"
+                                <a href="https://www.google.com/maps?q={{ driver.latitude|floatdot }},{{ driver.longitude|floatdot }}" target="_blank"
                                    class="text-[10px] text-blue-500 hover:text-blue-700 flex items-center gap-0.5 mt-0.5">
                                     <i class="fas fa-location-dot text-[9px]"></i>
                                     {% if driver.last_address %}{{ driver.last_address|truncatechars:35 }}{% else %}{{ driver.latitude|floatformat:4 }}, {{ driver.longitude|floatformat:4 }}{% endif %}

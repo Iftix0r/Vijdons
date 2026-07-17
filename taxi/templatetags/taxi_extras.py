@@ -14,7 +14,12 @@ def seconds_since(dt):
     return int((timezone.now() - dt).total_seconds())
 
 @register.filter
-def div(value, arg):
+def floatdot(value):
+    """Float ni har doim nuqta bilan qaytaradi (URL uchun)."""
+    try:
+        return str(float(value)).replace(',', '.')
+    except (ValueError, TypeError):
+        return value
     try:
         return int(value) // int(arg)
     except (ValueError, ZeroDivisionError):
