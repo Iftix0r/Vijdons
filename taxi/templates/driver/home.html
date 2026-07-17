@@ -617,6 +617,40 @@ let _tmxPriceStr  = '0';
 let _tmxTimeStr   = '0:00';
 let _tmxSpeedKmh  = 0;
 
+// localStorage kalit
+const TMX_LS = 'vijdon_tmx';
+
+function _tmxSave() {
+  if (!_tmxOrderId) return;
+  localStorage.setItem(TMX_LS, JSON.stringify({
+    orderId:   _tmxOrderId,
+    startTime: _tmxStartTime,
+    distKm:    _tmxDistKm,
+    priceStr:  _tmxPriceStr,
+    timeStr:   _tmxTimeStr,
+    order:     _tmxOrder,
+  }));
+}
+
+function _tmxRestore(orderId) {
+  try {
+    const s = localStorage.getItem(TMX_LS);
+    if (!s) return false;
+    const d = JSON.parse(s);
+    if (d.orderId !== orderId) return false;
+    _tmxStartTime = d.startTime;
+    _tmxDistKm    = d.distKm   || 0;
+    _tmxPriceStr  = d.priceStr || '0';
+    _tmxTimeStr   = d.timeStr  || '0:00';
+    if (d.order) _tmxOrder = d.order;
+    return true;
+  } catch(_) { return false; }
+}
+
+function _tmxClear() {
+  localStorage.removeItem(TMX_LS);
+}
+
 // Haversine masofa (km)
 function _haversine(lat1, lng1, lat2, lng2) {
   const R = 6371;
@@ -632,16 +666,23 @@ function tmxStart(orderId, order) {
   if (_tmxActive) return;
   _tmxActive  = true;
   _tmxOrderId = orderId;
-  _tmxOrder   = order;
-  _tmxStartTime = Date.now();
-  _tmxDistKm  = 0;
   _tmxPrevLat = null;
   _tmxPrevLng = null;
-  _tmxPriceStr = TMX_BASE_PRICE.toLocaleString('uz-UZ');
-  _tmxTimeStr  = '0:00';
   _tmxSpeedKmh = 0;
-  if (order?.price && parseFloat(order.price) > 0)
-    _tmxPriceStr = parseInt(order.price).toLocaleString('uz-UZ');
+
+  // Oldingi sessiyadan tiklash
+  if (!_tmxRestore(orderId)) {
+    _tmxStartTime = Date.now();
+    _tmxDistKm    = 0;
+    _tmxPriceStr  = TMX_BASE_PRICE.toLocaleString('uz-UZ');
+    _tmxTimeStr   = '0:00';
+    _tmxOrder = order;
+    if (order?.price && parseFloat(order.price) > 0)
+      _tmxPriceStr = parseInt(order.price).toLocaleString('uz-UZ');
+  } else {
+    // Restore bo'ldi — agar yangi order kelgan bo'lsa ustiga yozamiz
+    if (order) _tmxOrder = order;
+  }
 
   _tmxInterval = setInterval(_tmxTick, 1000);
   window.addEventListener('vijdon_location', _tmxOnLocation);
@@ -664,10 +705,11 @@ function _tmxOnLocation(e) {
 
   if (_tmxPrevLat !== null) {
     const d = _haversine(_tmxPrevLat, _tmxPrevLng, lat, lng);
-    if (d > 0.005 && d < 1.0) {
+    if (d > 0.005 && d < 2.0) {
       _tmxDistKm += d;
       _tmxUpdatePrice();
       _syncSheetTmx();
+      _tmxSave();
     }
   }
   _tmxPrevLat = lat;
@@ -693,6 +735,7 @@ function _tmxTick() {
   _tmxTimeStr = min + ':' + String(sec).padStart(2, '0');
   _tmxUpdatePrice();
   _syncSheetTmx();
+  _tmxSave();
 }
 
 function _tmxUpdatePrice() {
@@ -714,6 +757,7 @@ function tmxStop() {
     _tmxWatchId = null;
   }
   window.removeEventListener('vijdon_location', _tmxOnLocation);
+  _tmxClear();
 }
 
 function tmxArrived() {
@@ -743,9 +787,14 @@ function openTelegram(phone) {
 
 function openOrder(id){
   Native.vibrate();
-  const o = ORDERS.find(x => x.id === id || x.id === Number(id));
+  const numId = Number(id);
+  let o = ORDERS.find(x => x.id === numId);
+  if(!o && _tmxActive && _tmxOrderId === numId && _tmxOrder) {
+    // Taximetr aktiv, ORDERS yangilanmagan — saqlangan buyurtmadan foydalanamiz
+    o = _tmxOrder;
+  }
   if(!o) { loadOrders(); return; }
-  _renderSheet(id, o);
+  _renderSheet(numId, o);
 }
 
 function _renderSheet(id, o){
