@@ -233,18 +233,9 @@
                             </span>
                             {% endif %}
                         {% else %}
-                        <form action="{% url 'taxi:driver_toggle_active' driver.pk %}" method="POST" class="inline">
-                            {% csrf_token %}
-                            <button type="submit"
-                                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all hover:opacity-80
-                                           {% if driver.is_active %}bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800/40{% else %}bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700{% endif %}">
-                                {% if driver.is_active %}
-                                <i class="fas fa-circle-check text-[9px]"></i> Faol
-                                {% else %}
-                                <i class="fas fa-circle text-[9px]"></i> Nofaol
-                                {% endif %}
-                            </button>
-                        </form>
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500 border border-gray-200 dark:border-gray-700">
+                            <i class="fas fa-circle text-[9px]"></i> Kirilmagan
+                        </span>
                         {% endif %}
                         {% endif %}
                     </td>
