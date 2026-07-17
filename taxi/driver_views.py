@@ -291,7 +291,7 @@ def driver_order_action(request, driver, pk, action):
         if tmx_dist and float(tmx_dist) > 0:
             order.distance_km = round(float(tmx_dist), 2)
             update_fields.append('distance_km')
-        if tmx_price and float(tmx_price) > 0 and not order.price:
+        if tmx_price and float(tmx_price) > 0:
             order.price = round(float(tmx_price), 2)
             update_fields.append('price')
     except Exception:
@@ -561,10 +561,10 @@ def driver_meter_update(request, driver, pk):
 
     update_fields = ['tmx_dist_km', 'updated_at']
     order.tmx_dist_km = round(dist_km, 2)
-    if dist_km > 0 and not order.distance_km:
+    if dist_km > 0:
         order.distance_km = round(dist_km, 2)
         update_fields.append('distance_km')
-    if price > 0 and not order.price:
+    if price > 0:
         from decimal import Decimal
         order.price = Decimal(str(round(price)))
         update_fields.append('price')
