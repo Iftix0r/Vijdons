@@ -75,9 +75,11 @@
 
     function boot() {
         vmap = new ymaps.Map('vmap', {
-            center: [41.3, 69.24],
-            zoom: 12,
+            center: [41.3, 63.0],
+            zoom: 6,
             controls: ['zoomControl', 'fullscreenControl', 'typeSelector', 'trafficControl']
+        }, {
+            restrictMapArea: [[37.1, 55.9], [45.6, 73.2]]
         });
         tick();
         setInterval(tick, 8000);
