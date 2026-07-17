@@ -153,17 +153,28 @@ renderOrdersDOM();
   if(onWay) tmxStart(onWay.id, onWay);
 })();
 
-// ── Auto-refresh: har 2 soniyada ──────────────────────────────────────────
+// ── Auto-refresh: har 3 soniyada (faol buyurtma bo'lsa), aks holda 5 soniyada ──
 let _pollInterval = null;
-function _startPolling(ms) {
+function _startPolling() {
   if (_pollInterval) clearInterval(_pollInterval);
-  _pollInterval = setInterval(loadOrders, ms);
+  const hasActive = ORDERS.some(o => o.status === 'accepted' || o.status === 'on_way' || o.status === 'arrived');
+  const ms = hasActive ? 3000 : 5000;
+  _pollInterval = setInterval(() => {
+    loadOrders();
+    // Har polldan keyin intervalini qayta hisoblash
+    _startPolling();
+  }, ms);
 }
 if(IS_ON_DUTY) {
-  _startPolling(2000);
+  _startPolling();
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') _startPolling(10000);
-    else _startPolling(2000);
+    if (document.visibilityState === 'hidden') {
+      if (_pollInterval) clearInterval(_pollInterval);
+      _pollInterval = setInterval(loadOrders, 10000);
+    } else {
+      loadOrders();
+      _startPolling();
+    }
   });
 }
 
@@ -204,6 +215,16 @@ async function loadOrders() {
 
     const removed = [..._known].filter(id => !serverIds.has(id));
     if(removed.length) {
+      // Faol buyurtma (accepted/on_way/arrived) o'chirilgan bo'lsa — haydovchiga xabar
+      const removedActive = removed.filter(id => {
+        const o = ORDERS.find(x => x.id === id);
+        return o && (o.status === 'accepted' || o.status === 'on_way' || o.status === 'arrived');
+      });
+      if (removedActive.length) {
+        tmxStop();
+        showToast('Buyurtma bekor qilindi', 'Operator tomonidan bekor qilindi', 'error', 5000);
+        Native.vibrate([100, 50, 100]);
+      }
       _known = serverIds;
       if(!_tmxActive) renderOrdersDOM();
       return;

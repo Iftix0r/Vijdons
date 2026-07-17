@@ -135,6 +135,15 @@ def order_update_status(request, pk):
         if driver_id:
             order.driver = Driver.objects.filter(pk=driver_id).first()
         order.save()
+        # Haydovchiga FCM yuborish — buyurtma bekor qilinsa yoki yakunlansa
+        if new_status in ('cancelled', 'completed') and order.driver:
+            from .utils import send_fcm
+            send_fcm(
+                order.driver.fcm_token,
+                title='Buyurtma holati o\'zgardi',
+                body=f'Buyurtma #{order.id} — {order.get_status_display()}',
+                data={'type': 'order_update', 'order_id': str(order.id), 'status': new_status},
+            )
     return redirect(request.META.get('HTTP_REFERER', 'taxi:order_list'))
 
 
@@ -156,7 +165,7 @@ def driver_create(request):
         car_model    = request.POST.get('car_model', '').strip()
         car_number   = request.POST.get('car_number', '').strip()
         if full_name and phone_number:
-            Driver.objects.create(
+            driver = Driver.objects.create(
                 full_name=full_name,
                 phone_number=phone_number,
                 car_model=car_model,
@@ -164,6 +173,7 @@ def driver_create(request):
                 approval_status=Driver.APPROVAL_APPROVED,
                 is_active=True,
             )
+            tg_driver_registered(driver)
     return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
 
 

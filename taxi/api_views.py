@@ -249,6 +249,8 @@ def available_orders(request, driver):
         Q(driver=driver, status__in=['accepted', 'on_way', 'arrived'])
     ).exclude(
         Q(status='pending', rejected_by=driver)
+    ).exclude(
+        status__in=['cancelled', 'completed']
     )
 
     # ── Destination mode filtr ──────────────────────────────────────────────

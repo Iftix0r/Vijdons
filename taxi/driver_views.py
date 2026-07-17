@@ -110,6 +110,8 @@ def driver_home(request, driver):
         Q(driver=driver, status__in=['accepted', 'on_way', 'arrived'])
     ).exclude(
         Q(status='pending', rejected_by=driver)
+    ).exclude(
+        status__in=['cancelled', 'completed']
     ).order_by('-created_at')
 
     # Destination mode: faqat yo'nalish atrofidagi buyurtmalar
@@ -189,7 +191,11 @@ def driver_orders_json(request, driver):
         Q(status='pending', dispatched_to=driver) |
         Q(status='pending', dispatched_to__isnull=True) |
         Q(driver=driver, status__in=['accepted', 'on_way', 'arrived'])
-    ).exclude(Q(status='pending', rejected_by=driver)).order_by('-created_at')
+    ).exclude(
+        Q(status='pending', rejected_by=driver)
+    ).exclude(
+        status__in=['cancelled', 'completed']
+    ).order_by('-created_at')
 
     orders_data = []
     for o in qs:

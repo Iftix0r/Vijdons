@@ -88,8 +88,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _nextRefreshIn = 30 - (t.tick % 30);
       });
 
-      // Orqa fonda esa navbatchilikda har 2 sekundda, off-duty bo'lsa har 30 sekundda yuklaymiz
-      final orderInterval = onDuty ? 2 : 30;
+      // Orqa fonda esa navbatchilikda har 3 sekundda, off-duty bo'lsa har 30 sekundda yuklaymiz
+      final hasActive = _orders.any((o) => o.isActive);
+      final orderInterval = onDuty ? (hasActive ? 3 : 5) : 30;
       if (t.tick % orderInterval == 0) {
         _loadOrders(silent: true);
       }
@@ -592,16 +593,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (mounted) {
         final orders = list.map((e) => OrderModel.fromJson(e)).toList();
 
+        // ── Operator tomonidan o'chirilgan yoki bekor qilingan faol buyurtmalarni aniqlash ──
+        if (!_firstLoad) {
+          for (final prev in _orders) {
+            if (prev.isActive) {
+              final stillExists = orders.any((o) => o.id == prev.id);
+              if (!stillExists) {
+                _snack(
+                  'Buyurtma #${prev.id} operator tomonidan bekor qilindi',
+                  error: true,
+                  icon: Icons.cancel_rounded,
+                );
+                _stopTaximeter();
+              }
+            }
+          }
+        }
+
         // ── Faol buyurtmalar (isActive) doim tepada, pending lar keyin ──
         orders.sort((a, b) {
           int priority(OrderModel o) {
-            if (o.isActive) return 0;  // accepted/on_way/arrived → tepa
-            if (o.isPending) return 1; // pending → o'rta
-            return 2;                  // boshqalar → past
+            if (o.isActive) return 0;
+            if (o.isPending) return 1;
+            return 2;
           }
           final pd = priority(a) - priority(b);
           if (pd != 0) return pd;
-          // Bir xil prioritet bo'lsa — yangirog'i tepada
           return b.createdAt.compareTo(a.createdAt);
         });
 
@@ -627,8 +644,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
         setState(() {
           _orders = orders;
-          // Faqat pending buyurtmalar asosiy ekranda ko'rsatiladi
-          // isActive buyurtmalar Tarix ekraniga o'tadi
           _activeOrderCount = orders.where((o) => o.isActive).length;
           _loadingOrders = false;
         });
