@@ -977,21 +977,27 @@ async function doAction(id,action){
       } else if(action==='arrived'||action==='complete'){
         if(action==='complete') {
           tmxStop();
-          // Statistikani JS da yangilaymiz
           TODAY_TRIPS++;
           DRIVER_TRIPS++;
           const earnedPrice = parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,'')) || 0;
           TODAY_EARNED += earnedPrice;
-          // Navbar balance ni yangilaymiz
           _updateNavBalance(d.new_balance);
+          // complete dan keyin sheet yopiladi, qayta ochilmaydi
+          _suppressModal = true;
+          _known = new Set();
+          await loadOrders();
+          renderOrdersDOM();
+          setTimeout(()=>{ _suppressModal = false; }, 5000);
+        } else {
+          // arrived: sheet yangilanadi
+          _suppressModal = true;
+          _known = new Set();
+          await loadOrders();
+          renderOrdersDOM();
+          setTimeout(()=>{ _suppressModal = false; }, 5000);
+          const updated=ORDERS.find(x=>x.id===id||x.id===Number(id));
+          if(updated) _renderSheet(id, updated);
         }
-        _suppressModal = true;
-        _known = new Set();
-        await loadOrders();
-        renderOrdersDOM();
-        setTimeout(()=>{ _suppressModal = false; }, 5000);
-        const updated=ORDERS.find(x=>x.id===id||x.id===Number(id));
-        if(updated) _renderSheet(id, updated);
       } else if(action==='cancel'){
         tmxStop();
         _suppressModal = true;
