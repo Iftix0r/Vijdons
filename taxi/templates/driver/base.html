@@ -779,6 +779,32 @@ function tmxStop() {
     })
     .catch(() => {});
 })();
+
+// ── Wake Lock (barcha sahifalarda umumiy) ──────────────────────────────────────
+// Avval faqat Home sahifasida bor edi — Tarix/Chat/Profilga o'tilganda ekran
+// qulflanib qolib, JS taymerlari (jumladan taximetr) sekinlashib "qotib-qotib"
+// ishlab qolardi. Endi bu yerda — qaysi sahifada bo'lishidan qat'i nazar ishlaydi.
+const IS_ON_DUTY_GLOBAL = {{ driver.is_on_duty|yesno:'true,false' }};
+let _wakeLock = null;
+
+async function requestWakeLock() {
+  if (!(IS_ON_DUTY_GLOBAL || _tmxActive)) return;
+  if (!('wakeLock' in navigator)) return;
+  if (_wakeLock) return;
+  try {
+    _wakeLock = await navigator.wakeLock.request('screen');
+    _wakeLock.addEventListener('release', () => { _wakeLock = null; });
+  } catch(_) {}
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') requestWakeLock();
+  if (document.visibilityState === 'hidden') Audio.stopNewOrder();
+});
+if (IS_ON_DUTY_GLOBAL) requestWakeLock();
+// Ba'zi qurilmalarda/WebView versiyalarida wake lock kutilmaganda (visibilitychange
+// va 'release' hodisasisiz) bo'shab qolishi mumkin — shuning uchun har 15 soniyada
+// zararsiz tarzda qayta so'raymiz (agar allaqachon faol bo'lsa, hech narsa qilmaydi)
+setInterval(requestWakeLock, 15000);
 </script>
 {% block extra_js %}{% endblock %}
 </body>

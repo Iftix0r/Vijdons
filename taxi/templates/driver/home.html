@@ -500,25 +500,11 @@ async function initPush(){
 }
 {% if driver.is_on_duty %}initPush();{% endif %}
 
-// ── Wake Lock ─────────────────────────────────────────────────────────────────
-let _wakeLock = null;
-async function requestWakeLock() {
-  if (!('wakeLock' in navigator)) return;
-  try {
-    _wakeLock = await navigator.wakeLock.request('screen');
-    _wakeLock.addEventListener('release', () => {
-      _wakeLock = null;
-      if (document.visibilityState === 'visible' && {{ driver.is_on_duty|yesno:'true,false' }}) requestWakeLock();
-    });
-  } catch(_) {}
-}
+// Ekranni yoniq tutish (Wake Lock) endi base.html'ga ko'chirildi — barcha
+// sahifalarda (shu jumladan Tarix/Chat/Profil) ishlashi uchun.
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && {{ driver.is_on_duty|yesno:'true,false' }}) {
-    requestWakeLock();
-  }
   if (document.visibilityState === 'hidden') Audio.stopNewOrder();
 });
-{% if driver.is_on_duty %}requestWakeLock();{% endif %}
 
 // ── Haydovchi manzilini navbar'da ko'rsatish ─────────────────────────────────
 {% if driver.is_on_duty %}

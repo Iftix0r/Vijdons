@@ -311,6 +311,28 @@ def driver_order_action(request, driver, pk, action):
     except Exception:
         pass
 
+    # Zaxira hisoblash: haydovchi "Yo'lga chiqdim"ni bosmay, to'g'ridan-to'g'ri
+    # "Yakunlash"ni bossa (accepted -> completed), taximetr umuman ishlamagan
+    # bo'ladi va yuqoridagi tmx qiymatlari bo'sh keladi. Bunday holda buyurtma
+    # narxsiz/masofasiz abadiy "—" bo'lib qolib ketmasligi uchun, tarif asosida
+    # hisoblab qo'yamiz (xuddi mobil API'dagi order_complete kabi).
+    if new_status == 'completed':
+        if order.distance_km is None and order.from_lat and order.from_lng and order.to_lat and order.to_lng:
+            from .utils import haversine
+            calc_dist = haversine(order.from_lat, order.from_lng, order.to_lat, order.to_lng)
+            if calc_dist:
+                order.distance_km = round(calc_dist, 2)
+                if 'distance_km' not in update_fields:
+                    update_fields.append('distance_km')
+        if order.price is None:
+            tariff = TariffSettings.get()
+            order.price = (
+                tariff.calc_price(order.distance_km)
+                if order.distance_km is not None else tariff.base_price
+            )
+            if 'price' not in update_fields:
+                update_fields.append('price')
+
     order.save(update_fields=update_fields)
 
     if new_status == 'completed':
