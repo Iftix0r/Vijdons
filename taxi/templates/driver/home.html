@@ -147,10 +147,14 @@ let _known = new Set(ORDERS.map(o => o.id));
 // Sahifa yuklanishi bilan darhol DOM ni render qilamiz
 renderOrdersDOM();
 
-// on_way buyurtma bo'lsa taximeter ochiladi
+// on_way yoki arrived buyurtma bo'lsa taximeter ochiladi va sheet ko'rsatiladi
 (function(){
-  const onWay = ORDERS.find(o => o.status === 'on_way');
-  if(onWay) tmxStart(onWay.id, onWay);
+  const active = ORDERS.find(o => o.status === 'on_way' || o.status === 'arrived');
+  if(active) {
+    tmxStart(active.id, active);
+    // Sahifaga qayta kirganda sheetni avtomatik ochish
+    setTimeout(() => _renderSheet(active.id, active), 100);
+  }
 })();
 
 // ── Auto-refresh: har 3 soniyada (faol buyurtma bo'lsa), aks holda 5 soniyada ──
@@ -698,14 +702,14 @@ function _tmxOnLocation(e) {
   _tmxPrevLng = lng;
 }
 
-function _syncSheetTmx() {
+function _syncSheetTmx(order) {
   const p = document.getElementById('sheet-tmx-price');
   const t = document.getElementById('sheet-tmx-time');
   const d = document.getElementById('sheet-tmx-dist');
   const s = document.getElementById('sheet-tmx-speed');
-  if(p) p.textContent = _tmxPriceStr || '0';
+  if(p) p.textContent = (_tmxActive ? _tmxPriceStr : (order?.price ? parseInt(order.price).toLocaleString('uz-UZ') : _tmxPriceStr)) || '0';
   if(t) t.textContent = _tmxTimeStr  || '0:00';
-  if(d) d.textContent = _tmxDistKm.toFixed(2);
+  if(d) d.textContent = (_tmxActive ? _tmxDistKm : (order?.tmx_dist_km || _tmxDistKm || 0)).toFixed ? parseFloat(_tmxActive ? _tmxDistKm : (order?.tmx_dist_km || _tmxDistKm || 0)).toFixed(2) : '0.00';
   if(s) s.textContent = _tmxSpeedKmh;
 }
 
@@ -928,7 +932,9 @@ function _renderSheet(id, o){
   ov.classList.remove('hidden');
   requestAnimationFrame(()=>{
     sh.style.transform='translateY(0)';
-    if((o.status==='on_way'||o.status==='arrived'||o.status==='completed') && _tmxStartTime) _syncSheetTmx();
+    if(o.status==='on_way'||o.status==='arrived'||o.status==='completed') {
+      setTimeout(() => _syncSheetTmx(o), 50);
+    }
   });
 }
 
