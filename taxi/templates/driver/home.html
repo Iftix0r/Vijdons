@@ -617,39 +617,22 @@ let _tmxPriceStr  = '0';
 let _tmxTimeStr   = '0:00';
 let _tmxSpeedKmh  = 0;
 
-// localStorage kalit
-const TMX_LS = 'vijdon_tmx';
+// Serverga taximetr ma'lumotlarini saqlash
+let _tmxSaveTimer = null;
 
 function _tmxSave() {
   if (!_tmxOrderId) return;
-  localStorage.setItem(TMX_LS, JSON.stringify({
-    orderId:   _tmxOrderId,
-    startTime: _tmxStartTime,
-    distKm:    _tmxDistKm,
-    priceStr:  _tmxPriceStr,
-    timeStr:   _tmxTimeStr,
-    order:     _tmxOrder,
-  }));
+  clearTimeout(_tmxSaveTimer);
+  _tmxSaveTimer = setTimeout(() => {
+    fetch(`/driver/orders/${_tmxOrderId}/meter/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': getCookie('csrftoken') },
+      body: `dist_km=${_tmxDistKm.toFixed(3)}&price=${parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,''))||0}`,
+    }).catch(() => {});
+  }, 2000);
 }
 
-function _tmxRestore(orderId) {
-  try {
-    const s = localStorage.getItem(TMX_LS);
-    if (!s) return false;
-    const d = JSON.parse(s);
-    if (d.orderId !== orderId) return false;
-    _tmxStartTime = d.startTime;
-    _tmxDistKm    = d.distKm   || 0;
-    _tmxPriceStr  = d.priceStr || '0';
-    _tmxTimeStr   = d.timeStr  || '0:00';
-    if (d.order) _tmxOrder = d.order;
-    return true;
-  } catch(_) { return false; }
-}
-
-function _tmxClear() {
-  localStorage.removeItem(TMX_LS);
-}
+function _tmxClear() {}
 
 // Haversine masofa (km)
 function _haversine(lat1, lng1, lat2, lng2) {
@@ -670,19 +653,18 @@ function tmxStart(orderId, order) {
   _tmxPrevLng = null;
   _tmxSpeedKmh = 0;
 
-  // Oldingi sessiyadan tiklash
-  if (!_tmxRestore(orderId)) {
-    _tmxStartTime = Date.now();
-    _tmxDistKm    = 0;
-    _tmxPriceStr  = TMX_BASE_PRICE.toLocaleString('uz-UZ');
-    _tmxTimeStr   = '0:00';
-    _tmxOrder = order;
-    if (order?.price && parseFloat(order.price) > 0)
-      _tmxPriceStr = parseInt(order.price).toLocaleString('uz-UZ');
+  // Serverdan kelgan tmx_dist_km bilan tiklash
+  _tmxOrder     = order;
+  _tmxStartTime = Date.now();
+  _tmxDistKm    = (order?.tmx_dist_km && parseFloat(order.tmx_dist_km) > 0)
+                    ? parseFloat(order.tmx_dist_km) : 0;
+  if (order?.price && parseFloat(order.price) > 0) {
+    _tmxPriceStr = parseInt(order.price).toLocaleString('uz-UZ');
   } else {
-    // Restore bo'ldi — agar yangi order kelgan bo'lsa ustiga yozamiz
-    if (order) _tmxOrder = order;
+    const p = Math.round(TMX_BASE_PRICE + _tmxDistKm * TMX_PER_KM);
+    _tmxPriceStr = p.toLocaleString('uz-UZ');
   }
+  _tmxTimeStr = '0:00';
 
   _tmxInterval = setInterval(_tmxTick, 1000);
   window.addEventListener('vijdon_location', _tmxOnLocation);

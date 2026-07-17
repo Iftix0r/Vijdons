@@ -153,6 +153,7 @@ def driver_home(request, driver):
             'commission':   str(o.commission) if o.commission else None,
             'is_dispatched': o.dispatched_to_id == driver.id,
             'timer_sec':    timer_sec,
+            'tmx_dist_km':  o.tmx_dist_km or 0,
         })
 
     _tariff = TariffSettings.get()
@@ -218,6 +219,7 @@ def driver_orders_json(request, driver):
             'commission':    str(o.commission) if o.commission else None,
             'is_dispatched': o.dispatched_to_id == driver.id,
             'timer_sec':     timer_sec,
+            'tmx_dist_km':   o.tmx_dist_km or 0,
         })
 
     ids = [o['id'] for o in orders_data]
@@ -546,44 +548,29 @@ def driver_duty_toggle(request, driver):
 
 @driver_login_required
 def driver_meter_update(request, driver, pk):
-    """GPS koordinatalardan real-time masofa va narx hisoblaydi."""
+    """Taximetr ma'lumotlarini DBga saqlaydi va qaytaradi."""
     order = get_object_or_404(Order, pk=pk, driver=driver)
     try:
-        lat = float(request.GET.get('lat', 0))
-        lng = float(request.GET.get('lng', 0))
-        elapsed = int(request.GET.get('elapsed', 0))  # sekund
+        dist_km = float(request.POST.get('dist_km') or request.GET.get('dist_km') or 0)
+        price   = float(request.POST.get('price')   or request.GET.get('price')   or 0)
     except (ValueError, TypeError):
         return JsonResponse({'ok': False}, status=400)
 
-    from .utils import haversine
-    tariff = TariffSettings.get()
-
-    # Agar buyurtmada narx belgilangan bo'lsa — uni qaytaramiz
-    if order.price:
-        return JsonResponse({
-            'ok': True,
-            'fixed': True,
-            'price': float(order.price),
-            'distance_km': order.distance_km,
-        })
-
-    # GPS asosida masofa hisoblash
-    dist = None
-    if lat and lng and order.from_lat and order.from_lng:
-        dist = haversine(order.from_lat, order.from_lng, lat, lng)
-
-    # Narx hisoblash: base + km * price_per_km + vaqt bonusi (har 1 daqiqa = 200 so'm)
-    price = float(tariff.base_price)
-    if dist:
-        price += dist * float(tariff.price_per_km)
-    price += (elapsed // 60) * 200  # vaqt bonusi
+    update_fields = ['tmx_dist_km', 'updated_at']
+    order.tmx_dist_km = round(dist_km, 2)
+    if dist_km > 0 and not order.distance_km:
+        order.distance_km = round(dist_km, 2)
+        update_fields.append('distance_km')
+    if price > 0 and not order.price:
+        from decimal import Decimal
+        order.price = Decimal(str(round(price)))
+        update_fields.append('price')
+    order.save(update_fields=update_fields)
 
     return JsonResponse({
         'ok': True,
-        'fixed': False,
-        'price': round(price),
-        'distance_km': round(dist, 2) if dist else 0,
-        'elapsed': elapsed,
+        'dist_km': order.tmx_dist_km,
+        'price':   float(order.price) if order.price else price,
     })
 
 
