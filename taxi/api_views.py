@@ -177,6 +177,22 @@ def driver_fcm_update(request, driver):
     return Response({'detail': 'FCM token yangilandi.'})
 
 
+AUTO_OFFLINE_MINUTES = 10  # GPS kelmasa shu daqiqadan keyin navbatdan chiqarish
+
+
+def _auto_offline_check(driver):
+    """last_seen dan AUTO_OFFLINE_MINUTES o'tsa is_on_duty=False qiladi."""
+    if not driver.is_on_duty or not driver.last_seen:
+        return
+    from django.utils import timezone
+    elapsed = (timezone.now() - driver.last_seen).total_seconds()
+    if elapsed > AUTO_OFFLINE_MINUTES * 60:
+        driver.is_on_duty = False
+        driver.save(update_fields=['is_on_duty'])
+        _log(driver, DriverActivityLog.ACTION_DUTY_OFF, detail='Auto offline (GPS kelmadi)')
+        tg_duty_changed(driver, False)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @driver_required
@@ -217,11 +233,8 @@ def get_tariff(request):
 @permission_classes([IsAuthenticated])
 @driver_required
 def available_orders(request, driver):
-    """
-    Faqat bu haydovchiga dispatch qilingan pending buyurtma, umumiy tablodagi buyurtmalar,
-    va o'zining faol qabul qilingan buyurtmalari.
-    Destination mode yoqilgan bo'lsa — faqat yo'nalish bo'yicha buyurtmalar ko'rsatiladi.
-    """
+    _auto_offline_check(driver)
+    qs = Order.objects.select_related('client', 'driver').filter(
     qs = Order.objects.select_related('client', 'driver').filter(
         Q(status='pending', dispatched_to=driver) |
         Q(status='pending', dispatched_to__isnull=True) |
