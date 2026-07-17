@@ -458,7 +458,31 @@ def bot_settings(request):
             send_telegram('✅ <b>VijdonTaxi bot ulanishi muvaffaqiyatli!</b>\nBu test xabari.')
         return redirect('taxi:bot_settings')
     site_url = getattr(django_settings, 'SITE_URL', '')
-    return render(request, 'taxi/bot_settings.html', {'bot': bot, 'site_url': site_url})
+    order_notifs = [
+        ('notify_new_order',  'Yangi buyurtma',          '🚨', bot.notify_new_order),
+        ('notify_dispatched', 'Buyurtma yuborildi',       '📡', bot.notify_dispatched),
+        ('notify_accepted',   'Buyurtma qabul qilindi',   '✅', bot.notify_accepted),
+        ('notify_on_way',     "Haydovchi yo'lda",         '🚗', bot.notify_on_way),
+        ('notify_arrived',    'Haydovchi yetib keldi',    '📍', bot.notify_arrived),
+        ('notify_completed',  'Buyurtma yakunlandi',      '🏁', bot.notify_completed),
+        ('notify_cancelled',  'Buyurtma bekor qilindi',   '❌', bot.notify_cancelled),
+        ('notify_rejected',   'Buyurtma rad etildi',      '🔄', bot.notify_rejected),
+    ]
+    driver_notifs = [
+        ('notify_driver_register', "Yangi haydovchi ro'yxatdan o'tdi", '🆕', bot.notify_driver_register),
+        ('notify_driver_approved', 'Haydovchi tasdiqlandi',             '✅', bot.notify_driver_approved),
+        ('notify_driver_rejected', 'Haydovchi rad etildi',              '🚫', bot.notify_driver_rejected),
+        ('notify_driver_blocked',  'Haydovchi bloklandi/ochildi',       '🔒', bot.notify_driver_blocked),
+        ('notify_driver_login',    'Haydovchi kirdi (login)',           '🔑', bot.notify_driver_login),
+        ('notify_duty_changed',    "Navbat holati o'zgardi",            '🟢', bot.notify_duty_changed),
+        ('notify_balance_changed', "Balans o'zgardi",                   '💰', bot.notify_balance_changed),
+    ]
+    return render(request, 'taxi/bot_settings.html', {
+        'bot': bot,
+        'site_url': site_url,
+        'order_notifs': order_notifs,
+        'driver_notifs': driver_notifs,
+    })
 
 
 # ── Telegram Client Bot Webhook ───────────────────────────────────────────────
