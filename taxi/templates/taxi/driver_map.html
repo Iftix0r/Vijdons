@@ -79,7 +79,8 @@
             zoom: 6,
             controls: ['zoomControl', 'fullscreenControl', 'typeSelector', 'trafficControl']
         }, {
-            restrictMapArea: [[37.1, 55.9], [45.6, 73.2]]
+            restrictMapArea: [[37.1, 55.9], [45.6, 73.2]],
+            minZoom: 6
         });
         tick();
         setInterval(tick, 8000);
