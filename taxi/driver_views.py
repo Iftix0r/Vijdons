@@ -103,13 +103,29 @@ def _mask_phone(phone):
 @driver_login_required
 def driver_home(request, driver):
     from django.db.models import Q
-    orders = Order.objects.select_related('client', 'driver').filter(
+    from .utils import haversine
+    base_qs = Order.objects.select_related('client', 'driver').filter(
         Q(status='pending', dispatched_to=driver) |
         Q(status='pending', dispatched_to__isnull=True) |
         Q(driver=driver, status__in=['accepted', 'on_way', 'arrived'])
     ).exclude(
         Q(status='pending', rejected_by=driver)
     ).order_by('-created_at')
+
+    # Destination mode: faqat yo'nalish atrofidagi buyurtmalar
+    if driver.destination_mode and driver.destination_lat and driver.destination_lng:
+        filtered = []
+        for o in base_qs:
+            if o.status != 'pending':
+                filtered.append(o)
+                continue
+            if o.to_lat and o.to_lng:
+                d = haversine(o.to_lat, o.to_lng, driver.destination_lat, driver.destination_lng)
+                if d is not None and d <= 5:  # 5 km radius
+                    filtered.append(o)
+        orders = filtered
+    else:
+        orders = list(base_qs)
 
     orders_data = []
     for o in orders:
@@ -303,17 +319,33 @@ def driver_order_action(request, driver, pk, action):
 @driver_login_required
 def driver_history(request, driver):
     from django.db.models import Sum, Count, Q as DQ
-    orders = Order.objects.filter(driver=driver).order_by('-created_at')[:50]
-    stats = orders.aggregate(
+    from django.utils import timezone
+    import datetime
+
+    period = request.GET.get('period', 'all')  # all, today, week, month
+    qs = Order.objects.filter(driver=driver)
+
+    now = timezone.now()
+    if period == 'today':
+        qs = qs.filter(created_at__date=now.date())
+    elif period == 'week':
+        qs = qs.filter(created_at__gte=now - datetime.timedelta(days=7))
+    elif period == 'month':
+        qs = qs.filter(created_at__gte=now - datetime.timedelta(days=30))
+
+    orders = qs.order_by('-created_at')[:100]
+    stats = qs.aggregate(
         total_earned=Sum('price', filter=DQ(status='completed')),
         completed=Count('id', filter=DQ(status='completed')),
     )
     return render(request, 'driver/history.html', {
-        'driver':      driver,
-        'orders':      orders,
-        'total_earned': stats['total_earned'] or 0,
-        'active_tab':  'history',
-        'chat_unread': _chat_unread(driver),
+        'driver':         driver,
+        'orders':         orders,
+        'total_earned':   stats['total_earned'] or 0,
+        'active_tab':     'history',
+        'chat_unread':    _chat_unread(driver),
+        'period':         period,
+        'period_choices': [('all','Barchasi'),('today','Bugun'),('week','7 kun'),('month','30 kun')],
     })
 
 
@@ -610,7 +642,33 @@ def driver_sos_send(request, driver):
     return JsonResponse({'ok': True, 'id': alert.id})
 
 
-# ── Surge: hozirgi narx multiplikatori ───────────────────────────────────────
+# ── Destination Mode ────────────────────────────────────────────────────────
+
+@driver_login_required
+@require_POST
+def driver_destination(request, driver):
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'ok': False}, status=400)
+    if data.get('clear'):
+        driver.destination_mode = False
+        driver.destination_lat = None
+        driver.destination_lng = None
+        driver.destination_address = ''
+        driver.save(update_fields=['destination_mode', 'destination_lat', 'destination_lng', 'destination_address'])
+        return JsonResponse({'ok': True, 'active': False})
+    lat = data.get('lat')
+    lng = data.get('lng')
+    address = data.get('address', '').strip()
+    if not lat or not lng:
+        return JsonResponse({'ok': False, 'error': 'Koordinata kerak'}, status=400)
+    driver.destination_mode = True
+    driver.destination_lat = float(lat)
+    driver.destination_lng = float(lng)
+    driver.destination_address = address
+    driver.save(update_fields=['destination_mode', 'destination_lat', 'destination_lng', 'destination_address'])
+    return JsonResponse({'ok': True, 'active': True})
 @driver_login_required
 def driver_surge_info(request, driver):
     """Hozirgi surge (narx oshishi) ma'lumotini qaytaradi."""

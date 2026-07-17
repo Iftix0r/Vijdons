@@ -1,0 +1,24 @@
+{% extends "admin/index.html" %}
+{% block content %}
+{% if dashboard_stats %}
+<style>
+.vj-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:24px}
+.vj-card{background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.08);text-align:center}
+.vj-card .num{font-size:28px;font-weight:700;line-height:1.1}
+.vj-card .lbl{font-size:12px;color:#666;margin-top:4px}
+.vj-green{color:#34C759}.vj-red{color:#FF3B30}.vj-yellow{color:#FF9500}.vj-blue{color:#007AFF}
+</style>
+<h2 style="margin-bottom:12px">📊 Bugungi statistika</h2>
+<div class="vj-stats">
+  <div class="vj-card"><div class="num vj-blue">{{ dashboard_stats.today_orders }}</div><div class="lbl">Bugun buyurtmalar</div></div>
+  <div class="vj-card"><div class="num vj-green">{{ dashboard_stats.today_completed }}</div><div class="lbl">Yakunlangan</div></div>
+  <div class="vj-card"><div class="num vj-red">{{ dashboard_stats.today_cancelled }}</div><div class="lbl">Bekor qilindi</div></div>
+  <div class="vj-card"><div class="num vj-yellow">{{ dashboard_stats.today_earned|floatformat:0 }}</div><div class="lbl">Daromad (so'm)</div></div>
+  <div class="vj-card"><div class="num vj-green">{{ dashboard_stats.active_drivers }}</div><div class="lbl">Faol haydovchilar</div></div>
+  <div class="vj-card"><div class="num">{{ dashboard_stats.total_drivers }}</div><div class="lbl">Jami haydovchilar</div></div>
+  <div class="vj-card"><div class="num vj-yellow">{{ dashboard_stats.pending_orders }}</div><div class="lbl">Kutilayotgan</div></div>
+  <div class="vj-card"><div class="num vj-blue">{{ dashboard_stats.active_orders }}</div><div class="lbl">Jarayondagi</div></div>
+</div>
+{% endif %}
+{{ block.super }}
+{% endblock %}

@@ -31,4 +31,5 @@ urlpatterns = [
     path('orders/<int:pk>/rate/',   driver_views.driver_order_rate,   name='order_rate'),
     path('surge/',                  driver_views.driver_surge_info,   name='surge_info'),
     path('sos/',                     driver_views.driver_sos_send,     name='sos_send'),
+    path('destination/',             driver_views.driver_destination,  name='destination'),
 ]

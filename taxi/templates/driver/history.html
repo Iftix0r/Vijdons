@@ -4,11 +4,20 @@
 
 <div class="ios-navbar sticky top-0 z-20 px-4 pt-3 pb-3">
   <div class="ios-large-title font-bold mb-2">Tarix</div>
-  <!-- iOS Segmented Control -->
-  <div class="flex gap-1 p-1 rounded-[10px]" style="background:var(--ios-fill)">
+  <!-- Status filter -->
+  <div class="flex gap-1 p-1 rounded-[10px] mb-2" style="background:var(--ios-fill)">
     <button onclick="filter('all')"       id="f-all"       class="seg-btn flex-1 ios-caption2 font-semibold py-1.5 rounded-[8px] transition-all">Hammasi</button>
     <button onclick="filter('completed')" id="f-completed" class="seg-btn flex-1 ios-caption2 font-semibold py-1.5 rounded-[8px] transition-all" style="color:var(--ios-label3)">Yakunlangan</button>
     <button onclick="filter('cancelled')" id="f-cancelled" class="seg-btn flex-1 ios-caption2 font-semibold py-1.5 rounded-[8px] transition-all" style="color:var(--ios-label3)">Bekor</button>
+  </div>
+  <!-- Davr filter -->
+  <div class="flex gap-1.5 overflow-x-auto pb-1" style="scrollbar-width:none">
+    {% for p,lbl in period_choices %}
+    <a href="?period={{ p }}" class="flex-shrink-0 ios-caption2 font-semibold px-3 py-1.5 rounded-[8px] transition-all"
+       style="{% if period == p %}background:var(--ios-yellow);color:#000{% else %}background:var(--ios-fill);color:var(--ios-label3){% endif %}">
+      {{ lbl }}
+    </a>
+    {% endfor %}
   </div>
 </div>
 

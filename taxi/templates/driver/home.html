@@ -154,7 +154,18 @@ renderOrdersDOM();
 })();
 
 // ── Auto-refresh: har 2 soniyada ──────────────────────────────────────────
-if(IS_ON_DUTY) setInterval(loadOrders, 2000);
+let _pollInterval = null;
+function _startPolling(ms) {
+  if (_pollInterval) clearInterval(_pollInterval);
+  _pollInterval = setInterval(loadOrders, ms);
+}
+if(IS_ON_DUTY) {
+  _startPolling(2000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') _startPolling(10000);
+    else _startPolling(2000);
+  });
+}
 
 // Flutter native polling dan chaqiriladi
 function onNewOrder() { loadOrders(); }
@@ -456,7 +467,6 @@ async function requestWakeLock() {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && {{ driver.is_on_duty|yesno:'true,false' }}) {
     requestWakeLock();
-    loadOrders();
   }
   if (document.visibilityState === 'hidden') Audio.stopNewOrder();
 });

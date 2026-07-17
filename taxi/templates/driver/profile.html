@@ -84,6 +84,23 @@
     </div>
   </div>
 
+  <!-- ── Destination Mode ── -->
+  <div class="ios-group anim-up" style="animation-delay:150ms">
+    <div class="ios-row gap-3" onclick="toggleDestination()">
+      <div class="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0"
+           style="background:rgba(52,199,89,.12)">
+        <i class="fas fa-route text-[#34C759] text-sm"></i>
+      </div>
+      <div class="flex-1">
+        <div class="ios-subhead font-medium">Yo'nalish rejimi</div>
+        <div class="ios-caption mt-0.5" id="dest-sub" style="color:var(--ios-label3)">
+          {% if driver.destination_mode and driver.destination_address %}{{ driver.destination_address }}{% else %}O'chirilgan{% endif %}
+        </div>
+      </div>
+      <div class="ios-toggle {% if driver.destination_mode %}on{% endif %}" id="dest-tog"></div>
+    </div>
+  </div>
+
   <!-- ── Settings ── -->
   <div class="ios-group anim-up" style="animation-delay:160ms">
     <!-- Dark mode -->
@@ -147,6 +164,59 @@
 <script>
 const tog=document.getElementById('theme-tog');
 if(tog&&document.documentElement.classList.contains('dark')) tog.classList.add('on');
+
+let _destActive = {{ driver.destination_mode|yesno:'true,false' }};
+
+async function toggleDestination() {
+  Native.vibrate();
+  if (_destActive) {
+    // O'chirish
+    const r = await fetch('{% url "driver:destination" %}', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+      body: JSON.stringify({clear: true})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      _destActive = false;
+      document.getElementById('dest-tog').classList.remove('on');
+      document.getElementById('dest-sub').textContent = "O'chirilgan";
+      showToast("Yo'nalish rejimi o'chirildi", '', 'info', 2000);
+    }
+    return;
+  }
+  // Yoqish — GPS olish
+  showToast('GPS aniqlanmoqda...', '', 'info', 4000);
+  let lat, lng;
+  try {
+    const pos = await Native.getLocation();
+    lat = pos.lat; lng = pos.lng;
+  } catch(_) {
+    showToast('GPS topilmadi', "Joylashuvni yoqing", 'error'); return;
+  }
+  // Reverse geocode
+  let address = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  try {
+    const rg = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=uz&zoom=14`);
+    const dg = await rg.json();
+    const a = dg.address || {};
+    const street = a.road || a.suburb || a.city_district || '';
+    const city = a.city || a.town || a.village || '';
+    if (street || city) address = [street, city].filter(Boolean).join(', ');
+  } catch(_) {}
+  const r = await fetch('{% url "driver:destination" %}', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify({lat, lng, address})
+  });
+  const d = await r.json();
+  if (d.ok) {
+    _destActive = true;
+    document.getElementById('dest-tog').classList.add('on');
+    document.getElementById('dest-sub').textContent = address;
+    showToast("Yo'nalish rejimi yoqildi", address, 'success', 3000);
+  }
+}
 
 async function uploadPhoto(input) {
   const file = input.files[0]; if (!file) return;

@@ -1,10 +1,38 @@
 from django.contrib import admin
+from django.db.models import Sum, Count, Q
+from django.utils import timezone
+from django.utils.html import format_html
 from .models import Driver, Client, Order, DriverActivityLog
+
+
+class DashboardAdmin(admin.AdminSite):
+    site_header = 'Vijdon Taxi'
+    site_title  = 'Vijdon Admin'
+    index_title = 'Boshqaruv paneli'
+
+    def index(self, request, extra_context=None):
+        today = timezone.now().date()
+        stats = {
+            'today_orders':    Order.objects.filter(created_at__date=today).count(),
+            'today_completed': Order.objects.filter(created_at__date=today, status='completed').count(),
+            'today_cancelled': Order.objects.filter(created_at__date=today, status='cancelled').count(),
+            'today_earned':    Order.objects.filter(created_at__date=today, status='completed').aggregate(s=Sum('price'))['s'] or 0,
+            'active_drivers':  Driver.objects.filter(is_on_duty=True).count(),
+            'total_drivers':   Driver.objects.filter(approval_status='approved').count(),
+            'pending_orders':  Order.objects.filter(status='pending').count(),
+            'active_orders':   Order.objects.filter(status__in=['accepted','on_way','arrived']).count(),
+        }
+        extra_context = extra_context or {}
+        extra_context['dashboard_stats'] = stats
+        return super().index(request, extra_context)
+
+
+admin_site = DashboardAdmin(name='admin')
 
 
 @admin.register(Driver)
 class DriverAdmin(admin.ModelAdmin):
-    list_display  = ('photo_thumb', 'full_name', 'phone_number', 'car_model', 'car_number', 'approval_status', 'is_active', 'is_on_duty', 'registered_at')
+    list_display  = ('photo_thumb', 'full_name', 'phone_number', 'car_model', 'car_number', 'balance_display', 'approval_status', 'is_active', 'is_on_duty', 'registered_at')
     search_fields = ('full_name', 'phone_number', 'car_number')
     list_filter   = ('is_active', 'approval_status', 'is_on_duty')
     list_editable = ('approval_status', 'is_active')
@@ -12,11 +40,15 @@ class DriverAdmin(admin.ModelAdmin):
     actions = ['approve_drivers', 'reject_drivers']
 
     def photo_thumb(self, obj):
-        from django.utils.html import format_html
         if obj.photo:
             return format_html('<img src="{}" style="width:40px;height:40px;object-fit:cover;border-radius:50%">', obj.photo.url)
         return '—'
     photo_thumb.short_description = 'Rasm'
+
+    def balance_display(self, obj):
+        color = '#FF3B30' if obj.balance < 0 else '#34C759'
+        return format_html('<b style="color:{}">{:,} so\'m</b>', color, int(obj.balance))
+    balance_display.short_description = 'Balans'
 
     @admin.action(description='Tanlangan haydovchilarni tasdiqlash')
     def approve_drivers(self, request, queryset):
