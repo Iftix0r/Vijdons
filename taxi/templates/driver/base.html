@@ -223,16 +223,35 @@ body { background: var(--ios-bg); color: var(--ios-label); }
   border-radius: 12px;
 }
 
-/* ── iOS Sheet ── */
+/* ── iOS Sheet — shaffof "material" fon (Apple bottom sheet uslubi) ── */
 .ios-sheet {
-  border-radius: 12px 12px 0 0;
-  background: var(--ios-card);
+  border-radius: 20px 20px 0 0;
+  background: rgba(255,255,255,.75);
+  backdrop-filter: saturate(180%) blur(28px);
+  -webkit-backdrop-filter: saturate(180%) blur(28px);
+  box-shadow: 0 -8px 40px rgba(0,0,0,.14);
+}
+.dark .ios-sheet {
+  background: rgba(28,28,30,.78);
+  box-shadow: 0 -8px 40px rgba(0,0,0,.5);
 }
 .ios-sheet-handle {
   width: 36px; height: 5px;
   background: var(--ios-sep);
   border-radius: 3px;
   margin: 8px auto 0;
+}
+
+/* ── iOS Alert card — suzuvchi ogohlantirish/modal uchun material fon ── */
+.ios-alert {
+  background: rgba(255,255,255,.78);
+  backdrop-filter: saturate(180%) blur(28px);
+  -webkit-backdrop-filter: saturate(180%) blur(28px);
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+}
+.dark .ios-alert {
+  background: rgba(28,28,30,.8);
+  box-shadow: 0 20px 60px rgba(0,0,0,.6);
 }
 
 /* ── Status pills ── */
@@ -260,8 +279,8 @@ body { background: var(--ios-bg); color: var(--ios-label); }
 <div id="toast" class="fixed left-4 right-4 z-[400] hidden"
      style="top:calc(env(safe-area-inset-top,47px) + 8px)">
   <div id="toast-inner"
-       class="ios-card flex items-center gap-3 px-4 py-3.5 shadow-2xl"
-       style="border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+       class="ios-alert flex items-center gap-3 px-4 py-3.5"
+       style="border-radius:14px">
     <div id="toast-icon-wrap"
          class="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0">
       <i id="toast-icon" class="text-lg"></i>

@@ -114,7 +114,7 @@
 
 <!-- Bottom Sheet -->
 <div id="sheet-overlay" class="fixed inset-0 z-[100] hidden">
-  <div class="absolute inset-0" style="background:rgba(0,0,0,.5);backdrop-filter:blur(4px)" onclick="closeDetail()"></div>
+  <div class="absolute inset-0" style="background:rgba(0,0,0,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)" onclick="closeDetail()"></div>
   <div id="sheet" class="ios-sheet absolute bottom-0 left-0 right-0 max-h-[92vh] overflow-y-auto"
        style="transform:translateY(100%);transition:transform .38s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom,34px)">
     <div class="ios-sheet-handle"></div>
