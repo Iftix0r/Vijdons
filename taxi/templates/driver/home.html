@@ -264,32 +264,21 @@ renderOrdersDOM();
   window.addEventListener('resize', () => setThumb(leftFor(onDuty), false));
 })();
 
-// on_way yoki arrived buyurtma bo'lsa taximeter ochiladi va sheet ko'rsatiladi
+// on_way yoki arrived buyurtma bo'lsa taximetr fonda ishga tushadi — lekin
+// Asosiy sahifada tafsilot oynasi ENDI avtomatik OCHILMAYDI. Buyurtmani
+// ko'rish/boshqarish (Yo'lga chiqdim/Yetib keldim/Bekor qilish/Yakunlash)
+// faqat Tarix bo'limi orqali amalga oshiriladi.
 (function(){
   _resetSheetOverlay();
   const active = ORDERS.find(o => o.status === 'on_way' || o.status === 'arrived');
-  if(active) {
-    tmxStart(active.id, active);
-    // Foydalanuvchi sheetni yopgan bo'lsa, xuddi shu holat (status) uchun avtomatik
-    // qayta ochmaymiz — aks holda Asosiy sahifaga har safar kirganda (to'liq qayta
-    // yuklanish) tafsilotlar qayta-qayta ochilib qolardi. Status o'zgarsa (masalan
-    // on_way'dan arrived'ga) esa yangi bosqich haqida yana xabar beriladi.
-    const dismissed = sessionStorage.getItem('vijdon_sheet_closed_' + active.id + '_' + active.status);
-    if (!dismissed) {
-      requestAnimationFrame(() => {
-        setTimeout(() => _renderSheet(active.id, active), 200);
-      });
-    }
-  }
+  if(active) tmxStart(active.id, active);
 })();
 
 window.addEventListener('pageshow', e => {
   if (e.persisted) {
     _resetSheetOverlay();
     const active = ORDERS.find(o => o.status === 'on_way' || o.status === 'arrived');
-    if (active && !sessionStorage.getItem('vijdon_sheet_closed_' + active.id + '_' + active.status)) {
-      tmxStart(active.id, active);
-    }
+    if (active) tmxStart(active.id, active);
   }
 });
 
@@ -787,12 +776,7 @@ function openOrder(id){
   _renderSheet(numId, o);
 }
 
-let _currentSheetOrderId = null;
-let _currentSheetStatus  = null;
-
 function _renderSheet(id, o){
-  _currentSheetOrderId = id;
-  _currentSheetStatus  = o?.status || null;
   const pill={
     pending: 'pill-yellow', accepted:'pill-blue', on_way:'pill-purple', arrived:'pill-green'
   };
@@ -950,12 +934,6 @@ function _renderSheet(id, o){
 }
 
 function closeSheet(){
-  // Foydalanuvchi shu buyurtmani/holatni ko'rib, yopgan — Asosiy sahifaga
-  // qayta kirganda (to'liq qayta yuklanish) xuddi shu holat uchun avtomatik
-  // qayta ochilmasin
-  if (_currentSheetOrderId != null && _currentSheetStatus) {
-    sessionStorage.setItem('vijdon_sheet_closed_' + _currentSheetOrderId + '_' + _currentSheetStatus, '1');
-  }
   const sh=document.getElementById('sheet');
   const ov=document.getElementById('sheet-overlay');
   sh.style.transform='translateY(100%)';
@@ -995,8 +973,8 @@ async function doAction(id,action){
         await loadOrders();
         renderOrdersDOM();
         setTimeout(()=>{ _suppressModal = false; }, 5000);
-        const updated=ORDERS.find(x=>x.id===id||x.id===Number(id));
-        if(updated) _renderSheet(id, updated);
+        // Sheet qayta ochilmaydi — buyurtmani davom ettirish (Yetib keldim/
+        // Yakunlash/Bekor qilish) endi faqat Tarix bo'limi orqali amalga oshiriladi.
       } else if(action==='arrived'||action==='complete'){
         if(action==='complete') {
           tmxStop();
@@ -1012,14 +990,12 @@ async function doAction(id,action){
           renderOrdersDOM();
           setTimeout(()=>{ _suppressModal = false; }, 5000);
         } else {
-          // arrived: sheet yangilanadi
+          // arrived: sheet qayta ochilmaydi — davomi Tarix orqali
           _suppressModal = true;
           _known = new Set();
           await loadOrders();
           renderOrdersDOM();
           setTimeout(()=>{ _suppressModal = false; }, 5000);
-          const updated=ORDERS.find(x=>x.id===id||x.id===Number(id));
-          if(updated) _renderSheet(id, updated);
         }
       } else if(action==='cancel'){
         tmxStop();
@@ -1040,7 +1016,8 @@ async function doAction(id,action){
           setTimeout(()=>Native.callPhone(updated.client_phone),900);
         }
         _updateNavBalance(d.new_balance);
-        if(updated) _renderSheet(id, updated);
+        // Sheet qayta ochilmaydi — buyurtma endi Asosiy ro'yxatida ko'rinmaydi,
+        // davomi (Yo'lga chiqdim va h.k.) faqat Tarix bo'limida.
       } else {
         _suppressModal = true;
         _known = new Set();
