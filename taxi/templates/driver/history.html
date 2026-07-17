@@ -123,8 +123,8 @@
 </div>
 
 <script>
-const TMX_BASE_PRICE = {{ tariff_base_price|default:0 }};
-const TMX_PER_KM      = {{ tariff_per_km|default:0 }};
+// TMX_BASE_PRICE/TMX_PER_KM va taximetr yadrosi (tmxStart va h.k.) base.html'da
+// e'lon qilingan — barcha sahifalarda (shu jumladan shu yerda) umumiy ishlaydi.
 const items=[...document.querySelectorAll('.order-item')];
 
 function calcStats(vis){
@@ -160,30 +160,23 @@ function openDetail(el) {
   const color = statusColor[d.status]||'#8E8E93';
   const id = parseInt(d.id);
 
-  // Faol buyurtma uchun sessionStorage dan live taximetr qiymatlarini olamiz
-  let liveTmx = null;
-  if (d.status === 'on_way' || d.status === 'arrived') {
-    try {
-      const raw = sessionStorage.getItem('vijdon_tmx_' + id);
-      if (raw) liveTmx = JSON.parse(raw);
-    } catch(_) {}
-  }
-
   const isActiveMeter = d.status === 'on_way' || d.status === 'arrived';
+  // base.html'da har doim ishlayotgan umumiy taximetr aynan shu buyurtmani kuzatayaptimi?
+  const isThisRunning = isActiveMeter && _tmxActive && _tmxOrderId === id;
 
-  // Masofa: live > tmxKm > km
-  const displayDist = liveTmx ? parseFloat(liveTmx.dist).toFixed(2)
-                              : (tmxKm > 0 ? tmxKm.toFixed(2) : (km > 0 ? km.toFixed(2) : '0.00'));
+  // Masofa: jonli (base.html'dagi umumiy taximetr) > server tmxKm > server km
+  const displayDist = isThisRunning ? _tmxDistKm.toFixed(2)
+                    : (tmxKm > 0 ? tmxKm.toFixed(2) : (km > 0 ? km.toFixed(2) : '0.00'));
 
-  // Narx: live > server price > (faol buyurtma uchun) tarif formulasidan hisoblangan bazaviy narx
+  // Narx: jonli > server price > (faol buyurtma uchun) tarif formulasidan hisoblangan bazaviy narx
   // Serverga hali birorta ham taximetr ma'lumoti yetib bormagan bo'lsa ham (masalan darhol
   // Tarixga o'tilgan bo'lsa), "—" o'rniga kamida bazaviy narxni ko'rsatamiz
-  const displayPrice = liveTmx ? liveTmx.price
+  const displayPrice = isThisRunning ? _tmxPriceStr
     : (price > 0 ? Math.round(price).toLocaleString()
     : (isActiveMeter ? Math.round(TMX_BASE_PRICE + parseFloat(displayDist) * TMX_PER_KM).toLocaleString() : null));
 
-  // Vaqt: live (sessionStorage) > serverdagi tmx_start_time asosida hisoblangan real vaqt
-  let displayTime = liveTmx ? liveTmx.time : null;
+  // Vaqt: jonli > serverdagi tmx_start_time asosida hisoblangan real vaqt
+  let displayTime = isThisRunning ? _tmxTimeStr : null;
   if (!displayTime && isActiveMeter && d.tmxStart) {
     const elapsed = Math.max(0, Math.floor((Date.now() - new Date(d.tmxStart).getTime()) / 1000));
     displayTime = Math.floor(elapsed / 60) + ':' + String(elapsed % 60).padStart(2, '0');
@@ -227,15 +220,15 @@ function openDetail(el) {
       <div style="display:grid;grid-template-columns:${displayTime ? '1fr 1fr 1fr' : '1fr 1fr'};gap:0;padding:0 10px 10px">
         <div style="text-align:center;padding:8px 4px">
           <div style="font-size:10px;font-weight:600;color:rgba(255,214,0,.5);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">NARX</div>
-          <div style="font-size:18px;font-weight:700;color:#FFD600;font-variant-numeric:tabular-nums">${tmxPrice} so'm</div>
+          <div style="font-size:18px;font-weight:700;color:#FFD600;font-variant-numeric:tabular-nums"><span ${isThisRunning ? 'id="sheet-tmx-price"' : ''}>${tmxPrice}</span> so'm</div>
         </div>
         ${displayTime ? `<div style="text-align:center;padding:8px 4px">
           <div style="font-size:10px;font-weight:600;color:rgba(175,82,222,.5);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">VAQT</div>
-          <div style="font-size:18px;font-weight:700;color:#AF52DE;font-variant-numeric:tabular-nums">${displayTime}</div>
+          <div ${isThisRunning ? 'id="sheet-tmx-time"' : ''} style="font-size:18px;font-weight:700;color:#AF52DE;font-variant-numeric:tabular-nums">${displayTime}</div>
         </div>` : ''}
         <div style="text-align:center;padding:8px 4px">
           <div style="font-size:10px;font-weight:600;color:rgba(0,122,255,.5);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">BOSIB O'TILDI</div>
-          <div style="font-size:18px;font-weight:700;color:#007AFF;font-variant-numeric:tabular-nums">${tmxDistDisplay} km</div>
+          <div style="font-size:18px;font-weight:700;color:#007AFF;font-variant-numeric:tabular-nums"><span ${isThisRunning ? 'id="sheet-tmx-dist"' : ''}>${tmxDistDisplay}</span> km</div>
         </div>
       </div>
       ${d.status==='completed'&&price>0?`

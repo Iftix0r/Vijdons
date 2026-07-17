@@ -561,6 +561,224 @@ function getCookie(n) {
   return v?v[2]:'';
 }
 document.addEventListener('DOMContentLoaded', ()=>{ Native.getLocation().catch(()=>{}); });
+
+// ── TAXIMETER (barcha sahifalarda umumiy) ──────────────────────────────────────
+// Bu yerga (base.html) ko'chirilgan — aks holda Home'dan Tarix/Chat/Profilga
+// o'tilganda sahifa to'liq qayta yuklangani uchun (SPA emas) taximetr JS holati
+// butunlay o'chib qolar, GPS orqali masofa hisoblash to'xtab qolardi.
+const TMX_BASE_PRICE  = {{ tariff_base_price|default:0 }};
+const TMX_PER_KM      = {{ tariff_per_km|default:0 }};
+
+let _tmxActive    = false;
+let _tmxOrderId   = null;
+let _tmxOrder     = null;
+let _tmxStartTime = null;
+let _tmxInterval  = null;
+let _tmxDistKm    = 0;
+let _tmxPrevLat   = null;
+let _tmxPrevLng   = null;
+let _tmxWatchId   = null;
+let _tmxPriceStr  = '0';
+let _tmxTimeStr   = '0:00';
+let _tmxSpeedKmh  = 0;
+
+// Serverga taximetr ma'lumotlarini saqlash
+let _tmxSaveTimer = null;
+
+function _tmxSave() {
+  if (!_tmxOrderId) return;
+  clearTimeout(_tmxSaveTimer);
+  _tmxSaveTimer = setTimeout(_tmxFlushNow, 2000);
+}
+
+// Ilova fonga o'tganda/yopilganda darhol yuboramiz — 2s debounce tugashini kutmasdan,
+// aks holda oxirgi bir necha soniyalik masofa/narx bazaga yozilmay qolib,
+// ilova qayta ochilganda taximetr orqaga tortiladi
+function _tmxFlushNow() {
+  clearTimeout(_tmxSaveTimer);
+  if (!_tmxOrderId) return;
+  const body = `dist_km=${_tmxDistKm.toFixed(3)}&price=${parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,''))||0}&csrfmiddlewaretoken=${encodeURIComponent(getCookie('csrftoken')||'')}`;
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon(
+      `/driver/orders/${_tmxOrderId}/meter/`,
+      new Blob([body], { type: 'application/x-www-form-urlencoded' })
+    );
+  } else {
+    fetch(`/driver/orders/${_tmxOrderId}/meter/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': getCookie('csrftoken') },
+      body,
+      keepalive: true,
+    }).catch(() => {});
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && _tmxActive) _tmxFlushNow();
+});
+window.addEventListener('pagehide', () => { if (_tmxActive) _tmxFlushNow(); });
+
+function _tmxClear() {}
+
+// Haversine masofa (km)
+function _haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 +
+            Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+            Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function _resetSheetOverlay() {
+  const ov = document.getElementById('sheet-overlay');
+  const sh = document.getElementById('sheet');
+  if (!ov || !sh) return;
+  ov.classList.add('hidden');
+  ov.style.pointerEvents = 'none';
+  sh.style.transform = 'translateY(100%)';
+}
+
+function _tmxPersist() {
+  if (!_tmxOrderId) return;
+  sessionStorage.setItem('vijdon_tmx_' + _tmxOrderId, JSON.stringify({
+    price: _tmxPriceStr,
+    dist:  _tmxDistKm,
+    time:  _tmxTimeStr,
+  }));
+}
+
+function tmxStart(orderId, order) {
+  if (_tmxActive && _tmxOrderId === orderId) return;
+  if (_tmxActive) tmxStop();
+  _tmxActive  = true;
+  _tmxOrderId = orderId;
+  _tmxPrevLat = null;
+  _tmxPrevLng = null;
+  _tmxSpeedKmh = 0;
+
+  _tmxOrder     = order;
+  // Haqiqiy boshlanish vaqti — serverdan (ilova qayta ochilganda ham to'g'ri hisoblansin)
+  _tmxStartTime = order?.tmx_start_time ? new Date(order.tmx_start_time).getTime() : Date.now();
+  _tmxDistKm    = (order?.tmx_dist_km && parseFloat(order.tmx_dist_km) > 0)
+                    ? parseFloat(order.tmx_dist_km) : 0;
+  _tmxPriceStr  = '0';
+  _tmxTimeStr   = '0:00';
+
+  // sessionStorage dan tiklash (shu sessiya ichida sahifa yangilansa) — masofa uchun,
+  // narx va vaqt har doim formuladan qayta hisoblanadi (pastda)
+  try {
+    const raw = sessionStorage.getItem('vijdon_tmx_' + orderId);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved.dist > 0 && saved.dist > _tmxDistKm) _tmxDistKm = parseFloat(saved.dist);
+    }
+  } catch(_) {}
+
+  // Narx va vaqt doim joriy masofa/vaqtdan hisoblanadi — bazadagi eski price
+  // qiymatini "belgilangan narx" deb noto'g'ri qabul qilib, taximetrni muzlatib qo'ymaslik uchun
+  _tmxPriceStr = Math.round(TMX_BASE_PRICE + _tmxDistKm * TMX_PER_KM).toLocaleString('uz-UZ');
+  if (_tmxStartTime) {
+    const elapsed = Math.max(0, Math.floor((Date.now() - _tmxStartTime) / 1000));
+    _tmxTimeStr = Math.floor(elapsed / 60) + ':' + String(elapsed % 60).padStart(2, '0');
+  }
+
+  _tmxPersist();
+  _tmxInterval = setInterval(_tmxTick, 1000);
+  window.addEventListener('vijdon_location', _tmxOnLocation);
+  if (navigator.geolocation) {
+    _tmxWatchId = navigator.geolocation.watchPosition(
+      pos => _tmxOnLocation({ detail: { lat: pos.coords.latitude, lng: pos.coords.longitude, speed: pos.coords.speed } }),
+      () => {},
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 3000 }
+    );
+  }
+}
+
+function _tmxOnLocation(e) {
+  const lat = e.detail?.lat;
+  const lng = e.detail?.lng;
+  const spd = e.detail?.speed;
+  if (!lat || !lng || !_tmxActive) return;
+
+  if (spd != null && spd >= 0) _tmxSpeedKmh = Math.round(spd * 3.6);
+
+  if (_tmxPrevLat !== null) {
+    const d = _haversine(_tmxPrevLat, _tmxPrevLng, lat, lng);
+    if (d > 0.005 && d < 2.0) {
+      _tmxDistKm += d;
+      _tmxUpdatePrice();
+      _syncSheetTmx();
+      _tmxSave();
+    }
+  }
+  _tmxPrevLat = lat;
+  _tmxPrevLng = lng;
+}
+
+function _syncSheetTmx(order) {
+  const p = document.getElementById('sheet-tmx-price');
+  const t = document.getElementById('sheet-tmx-time');
+  const d = document.getElementById('sheet-tmx-dist');
+  const s = document.getElementById('sheet-tmx-speed');
+  if(p) p.textContent = (_tmxActive ? _tmxPriceStr : (order?.price ? parseInt(order.price).toLocaleString('uz-UZ') : _tmxPriceStr)) || '0';
+  if(t) t.textContent = _tmxTimeStr  || '0:00';
+  if(d) d.textContent = (_tmxActive ? _tmxDistKm : (order?.tmx_dist_km || _tmxDistKm || 0)).toFixed ? parseFloat(_tmxActive ? _tmxDistKm : (order?.tmx_dist_km || _tmxDistKm || 0)).toFixed(2) : '0.00';
+  if(s) s.textContent = _tmxSpeedKmh;
+}
+
+function _tmxTick() {
+  if (!_tmxActive || !_tmxStartTime) return;
+  const elapsed = Math.floor((Date.now() - _tmxStartTime) / 1000);
+  const min = Math.floor(elapsed / 60);
+  const sec = elapsed % 60;
+  _tmxTimeStr = min + ':' + String(sec).padStart(2, '0');
+  _tmxUpdatePrice();
+  _syncSheetTmx();
+  _tmxSave();
+  // Taximetr qiymatlarini sessionStorage ga saqlaymiz — history.html ularni o'qiydi
+  if (_tmxOrderId) {
+    sessionStorage.setItem('vijdon_tmx_' + _tmxOrderId, JSON.stringify({
+      price: _tmxPriceStr,
+      dist:  _tmxDistKm,
+      time:  _tmxTimeStr,
+    }));
+  }
+}
+
+function _tmxUpdatePrice() {
+  if (!_tmxActive) return;
+  const price = Math.round(TMX_BASE_PRICE + _tmxDistKm * TMX_PER_KM);
+  _tmxPriceStr = price.toLocaleString('uz-UZ');
+}
+
+function tmxStop() {
+  _tmxActive = false;
+  clearInterval(_tmxInterval);
+  _tmxInterval = null;
+  if (_tmxWatchId !== null) {
+    navigator.geolocation?.clearWatch(_tmxWatchId);
+    _tmxWatchId = null;
+  }
+  window.removeEventListener('vijdon_location', _tmxOnLocation);
+  _tmxClear();
+}
+
+// Har qanday sahifada (Home, Tarix, Chat, Profil) faol (on_way/arrived) buyurtma
+// bo'lsa, taximetrni shu yerda tiklaymiz. Home sahifasi buni o'zi ham darhol
+// (oldindan yuklangan ma'lumot bilan, tarmoqqa so'rov yubormasdan) qiladi —
+// tmxStart() ichidagi tekshiruv tufayli bu yerdagi so'rov ular uchun shunchaki
+// zararsiz takroriy urinish, boshqa sahifalar uchun esa yagona manba bo'ladi.
+(function(){
+  fetch('{% url "driver:orders_json" %}', {cache:'no-store'})
+    .then(r => r.json())
+    .then(d => {
+      if (!d.orders) return;
+      const active = d.orders.find(o => o.status === 'on_way' || o.status === 'arrived');
+      if (active) tmxStart(active.id, active);
+    })
+    .catch(() => {});
+})();
 </script>
 {% block extra_js %}{% endblock %}
 </body>
