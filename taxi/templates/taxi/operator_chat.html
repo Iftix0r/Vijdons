@@ -7,9 +7,21 @@
         <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">💬 Vijdon Chat</h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Haydovchilar bilan muloqot.</p>
     </div>
+    <!-- Tab tugmalari -->
+    <div class="flex gap-2">
+        <button id="btn-operator" onclick="showTab('operator')"
+            class="px-4 py-2 rounded-xl text-sm font-bold transition-all bg-yellow-500 text-white shadow-sm">
+            <i class="fas fa-headset mr-1"></i>Operator Chat
+        </button>
+        <button id="btn-group" onclick="showTab('group')"
+            class="px-4 py-2 rounded-xl text-sm font-bold transition-all bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+            <i class="fas fa-users mr-1"></i>Guruh Chat
+        </button>
+    </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-5" style="height:620px;">
+<!-- ══════════ OPERATOR TAB ══════════ -->
+<div id="tab-operator" class="grid grid-cols-1 lg:grid-cols-3 gap-5" style="height:620px;">
 
     <!-- Haydovchilar ro'yxati -->
     <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col overflow-hidden">
@@ -156,10 +168,75 @@
         {% endif %}
     </div>
 </div>
+<!-- end tab-operator -->
+
+<!-- ══════════ GURUH TAB ══════════ -->
+<div id="tab-group" style="display:none;height:620px" class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col overflow-hidden">
+    <div class="px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex items-center gap-3 flex-shrink-0">
+        <div class="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-users text-white text-sm"></i>
+        </div>
+        <div>
+            <p class="font-bold text-gray-900 dark:text-white text-sm">Haydovchilar guruhi</p>
+            <p class="text-xs text-gray-400">Barcha haydovchilar umumiy chati (faqat o'qish)</p>
+        </div>
+    </div>
+    <div id="gr-container" class="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+        {% for msg in group_messages %}
+        <div class="flex justify-start">
+            <div class="max-w-[75%]">
+                <p class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mb-1 ml-1">
+                    {{ msg.driver.full_name }} &middot; {{ msg.driver.car_number }}
+                </p>
+                <div class="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-2xl rounded-bl-sm px-4 py-2.5 shadow-sm">
+                    {% if msg.audio %}
+                    <div class="flex items-center gap-2 min-w-[180px]">
+                        <button onclick="toggleAudio(this)" data-src="{{ msg.audio.url }}"
+                                class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 flex items-center justify-center flex-shrink-0 transition-colors">
+                            <i class="fas fa-play text-xs text-gray-600 dark:text-gray-300"></i>
+                        </button>
+                        <div class="flex-1">
+                            <div class="h-1 rounded-full bg-gray-300 dark:bg-gray-600 overflow-hidden">
+                                <div class="audio-progress h-full rounded-full bg-emerald-500 w-0 transition-all duration-100"></div>
+                            </div>
+                            <span class="audio-duration text-[10px] text-gray-400 mt-0.5 block">🎤 Ovozli xabar</span>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-sm font-medium leading-relaxed">{{ msg.text }}</p>
+                    {% endif %}
+                    <p class="text-[10px] mt-1 text-gray-400 text-right">{{ msg.created_at|date:"H:i" }}</p>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="flex items-center justify-center h-full">
+            <div class="text-center text-gray-400">
+                <i class="fas fa-users text-4xl mb-3 block opacity-30"></i>
+                <p class="text-sm font-semibold">Guruhda hali xabar yo'q</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+// ── Tab switch ────────────────────────────────────────────────────────────────
+function showTab(tab) {
+    const isOp = tab === 'operator';
+    document.getElementById('tab-operator').style.display = isOp ? '' : 'none';
+    document.getElementById('tab-group').style.display    = isOp ? 'none' : 'flex';
+    document.getElementById('btn-operator').className = isOp
+        ? 'px-4 py-2 rounded-xl text-sm font-bold transition-all bg-yellow-500 text-white shadow-sm'
+        : 'px-4 py-2 rounded-xl text-sm font-bold transition-all bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300';
+    document.getElementById('btn-group').className = isOp
+        ? 'px-4 py-2 rounded-xl text-sm font-bold transition-all bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
+        : 'px-4 py-2 rounded-xl text-sm font-bold transition-all bg-emerald-500 text-white shadow-sm';
+    if (!isOp) { const g = document.getElementById('gr-container'); if(g) g.scrollTop = g.scrollHeight; }
+}
+
 const container = document.getElementById('msg-container');
 if (container) container.scrollTop = container.scrollHeight;
 

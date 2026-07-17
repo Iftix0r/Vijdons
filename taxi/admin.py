@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from django.utils.html import format_html
-from .models import Driver, Client, Order, DriverActivityLog
+from .models import Driver, Client, Order, DriverActivityLog, GroupMessage
 
 
 class DashboardAdmin(admin.AdminSite):
@@ -88,4 +88,20 @@ class DriverActivityLogAdmin(admin.ModelAdmin):
     list_filter   = ('action', 'created_at')
     search_fields = ('driver__full_name', 'ip_address', 'detail')
     readonly_fields = ('driver', 'action', 'detail', 'ip_address', 'user_agent', 'created_at')
+
+
+@admin.register(GroupMessage)
+class GroupMessageAdmin(admin.ModelAdmin):
+    list_display  = ('driver', 'short_text', 'has_audio', 'created_at')
+    list_filter   = ('created_at',)
+    search_fields = ('driver__full_name', 'driver__car_number', 'text')
+    readonly_fields = ('driver', 'text', 'audio', 'created_at')
+
+    def short_text(self, obj):
+        return obj.text[:60] or '🎤 Ovozli xabar'
+    short_text.short_description = 'Xabar'
+
+    def has_audio(self, obj):
+        return format_html('<span style="color:#34C759">🎤 Ha</span>') if obj.audio else '—'
+    has_audio.short_description = 'Audio'
 

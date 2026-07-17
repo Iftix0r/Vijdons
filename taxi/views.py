@@ -4,7 +4,7 @@ from django.http import JsonResponse, HttpResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, SosAlert, BalanceLog
+from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, SosAlert, BalanceLog, GroupMessage
 from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed
 import csv
 
@@ -717,6 +717,7 @@ def operator_chat(request):
         'selected_driver': selected_driver,
         'messages':        messages,
         'selected_id':     selected_id,
+        'group_messages':  GroupMessage.objects.select_related('driver').order_by('created_at')[:200],
     })
 
 
