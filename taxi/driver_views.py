@@ -294,12 +294,17 @@ def driver_order_action(request, driver, pk, action):
         update_fields.append('tmx_start_time')
 
     # Taximeter ma'lumotlarini saqlash (arrived, complete)
+    # distance_km va tmx_dist_km har doim birga yangilanadi — aks holda
+    # davriy /meter/ autosave ulgurmagan holatlarda (masalan darhol Tarixga
+    # o'tilsa) ikkala maydon bir-biridan uzilib, biri eski/0 bo'lib qolardi.
     try:
         tmx_dist = request.POST.get('tmx_dist_km')
         tmx_price = request.POST.get('tmx_price')
         if tmx_dist and float(tmx_dist) > 0:
             order.distance_km = round(float(tmx_dist), 2)
+            order.tmx_dist_km = round(float(tmx_dist), 2)
             update_fields.append('distance_km')
+            update_fields.append('tmx_dist_km')
         if tmx_price and float(tmx_price) > 0:
             order.price = round(float(tmx_price), 2)
             update_fields.append('price')
