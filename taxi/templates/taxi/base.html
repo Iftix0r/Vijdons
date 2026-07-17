@@ -24,42 +24,137 @@
     <style>
         * { font-family: 'Outfit', sans-serif; }
 
-        /* Sidebar active / hover */
-        .nav-link { transition: all .25s; border-left: 3px solid transparent; }
-        .nav-link:hover  { background: linear-gradient(90deg,#f0fdf4,transparent); color:#16a34a; border-left-color:#22c55e; }
-        .nav-link.active { background: linear-gradient(90deg,#dcfce7,transparent); color:#15803d; border-left-color:#22c55e; font-weight:700; }
-        .dark .nav-link:hover  { background: linear-gradient(90deg,rgba(34,197,94,.12),transparent); color:#4ade80; }
-        .dark .nav-link.active { background: linear-gradient(90deg,rgba(34,197,94,.18),transparent); color:#86efac; }
-
-        /* Mobile sidebar */
-        #sidebar { transition: transform .3s ease; }
-        @media (max-width: 768px) {
-            #sidebar { position: fixed; top:0; left:0; height:100%; z-index:40; transform: translateX(-100%); }
-            #sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,.15); }
-            #sidebar-overlay { display: none; position: fixed; inset:0; background: rgba(0,0,0,.4); z-index:39; }
-            #sidebar-overlay.open { display: block; }
+        /* ── iOS-style background ── */
+        body {
+            background: #f2f2f7;
+            background-image:
+                radial-gradient(ellipse at 20% 10%, rgba(134,239,172,.18) 0%, transparent 55%),
+                radial-gradient(ellipse at 80% 80%, rgba(167,243,208,.12) 0%, transparent 55%);
+        }
+        .dark body, body.dark {
+            background: #0f1117;
+            background-image:
+                radial-gradient(ellipse at 20% 10%, rgba(34,197,94,.07) 0%, transparent 55%),
+                radial-gradient(ellipse at 80% 80%, rgba(16,185,129,.05) 0%, transparent 55%);
         }
 
-        /* scrollbar */
-        ::-webkit-scrollbar { width:5px; height:5px; }
+        /* ── Sidebar glass ── */
+        #sidebar {
+            background: rgba(255,255,255,0.72);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border-right: 1px solid rgba(255,255,255,0.5);
+            transition: transform .3s ease;
+        }
+        .dark #sidebar {
+            background: rgba(17,24,39,0.75);
+            border-right: 1px solid rgba(255,255,255,0.06);
+        }
+
+        /* ── Nav links ── */
+        .nav-link {
+            transition: all .2s;
+            border-radius: 12px;
+            border-left: none;
+            margin: 1px 0;
+        }
+        .nav-link:hover {
+            background: rgba(34,197,94,0.10);
+            color: #16a34a;
+        }
+        .nav-link.active {
+            background: rgba(34,197,94,0.15);
+            color: #15803d;
+            font-weight: 700;
+            box-shadow: inset 0 0 0 1px rgba(34,197,94,0.2);
+        }
+        .dark .nav-link:hover  { background: rgba(34,197,94,0.12); color:#4ade80; }
+        .dark .nav-link.active { background: rgba(34,197,94,0.18); color:#86efac; box-shadow: inset 0 0 0 1px rgba(34,197,94,0.15); }
+
+        /* ── Mobile sidebar ── */
+        @media (max-width: 768px) {
+            #sidebar { position:fixed; top:0; left:0; height:100%; z-index:40; transform:translateX(-100%); }
+            #sidebar.open { transform:translateX(0); box-shadow:8px 0 32px rgba(0,0,0,.12); }
+            #sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.3); backdrop-filter:blur(4px); z-index:39; }
+            #sidebar-overlay.open { display:block; }
+        }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width:4px; height:4px; }
         ::-webkit-scrollbar-track { background:transparent; }
-        ::-webkit-scrollbar-thumb { background:#e2e8f0; border-radius:8px; }
-        ::-webkit-scrollbar-thumb:hover { background:#94a3b8; }
-        .dark ::-webkit-scrollbar-thumb { background:#374151; }
+        ::-webkit-scrollbar-thumb { background:rgba(0,0,0,.12); border-radius:8px; }
+        ::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,.22); }
+        .dark ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.1); }
 
-        /* glass header */
-        .glass { background:rgba(255,255,255,.8); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
-        .dark .glass { background:rgba(17,24,39,.8); }
+        /* ── Glass header ── */
+        .glass {
+            background: rgba(242,242,247,0.80);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-bottom: 1px solid rgba(255,255,255,0.6);
+        }
+        .dark .glass {
+            background: rgba(15,17,23,0.80);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
 
-        /* modal transition */
+        /* ── Cards glass ── */
+        .bg-white {
+            background: rgba(255,255,255,0.80) !important;
+            backdrop-filter: blur(16px) saturate(160%);
+            -webkit-backdrop-filter: blur(16px) saturate(160%);
+        }
+        .dark .bg-white, .dark .dark\:bg-gray-900 {
+            background: rgba(17,24,39,0.75) !important;
+            backdrop-filter: blur(16px) saturate(160%);
+            -webkit-backdrop-filter: blur(16px) saturate(160%);
+        }
+
+        /* ── Modal glass ── */
         .modal-wrap { transition: opacity .25s, visibility .25s; }
         .modal-wrap.hidden-modal { opacity:0; visibility:hidden; pointer-events:none; }
-        .modal-wrap.hidden-modal .modal-box { transform: scale(.95) translateY(8px); }
-        .modal-box { transition: transform .25s; transform: scale(1) translateY(0); }
+        .modal-wrap.hidden-modal .modal-box { transform: scale(.96) translateY(10px); }
+        .modal-box {
+            transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+            transform: scale(1) translateY(0);
+            background: rgba(255,255,255,0.88) !important;
+            backdrop-filter: blur(32px) saturate(200%);
+            -webkit-backdrop-filter: blur(32px) saturate(200%);
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+        .dark .modal-box {
+            background: rgba(17,24,39,0.88) !important;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
 
-        /* badge pulse */
+        /* ── Table rows ── */
+        tbody tr { transition: background .15s; }
+
+        /* ── Buttons spring ── */
+        button, a { -webkit-tap-highlight-color: transparent; }
+        .btn-spring { transition: transform .15s cubic-bezier(.34,1.56,.64,1), box-shadow .15s; }
+        .btn-spring:active { transform: scale(.94); }
+
+        /* ── Badge pulse ── */
         @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.4} }
         .pulse-dot { animation: pulse-dot 1.4s ease-in-out infinite; }
+
+        /* ── Sidebar logo glow ── */
+        .logo-glow {
+            box-shadow: 0 4px 20px rgba(34,197,94,0.35);
+        }
+
+        /* ── Page fade-in ── */
+        main > * { animation: fadeUp .3s ease both; }
+        @keyframes fadeUp {
+            from { opacity:0; transform:translateY(10px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+
+        /* ── Input focus glow ── */
+        input:focus, select:focus, textarea:focus {
+            box-shadow: 0 0 0 3px rgba(34,197,94,0.15);
+        }
 
         /* toast */
         #toast { transition: opacity .3s, bottom .3s; }
@@ -68,10 +163,10 @@
 <body class="bg-slate-50 dark:bg-gray-950 text-gray-800 dark:text-gray-200 antialiased flex h-screen overflow-hidden transition-colors duration-300">
 
 <!-- ══════════ SIDEBAR ══════════ -->
-<aside id="sidebar" class="w-64 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 flex-shrink-0 flex flex-col z-30 transition-all duration-300">
+<aside id="sidebar" class="w-64 flex-shrink-0 flex flex-col z-30">
     <!-- logo -->
-    <div class="h-16 flex items-center gap-3 px-5 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shadow-lg shadow-green-200/60 dark:shadow-none">
+    <div class="h-16 flex items-center gap-3 px-5 border-b border-white/50 dark:border-white/5 flex-shrink-0">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center logo-glow">
             <i class="fas fa-taxi text-white text-base"></i>
         </div>
         <span class="font-extrabold text-lg tracking-tight text-gray-900 dark:text-white">Vijdon<span class="text-green-500">Taxi</span></span>
@@ -136,7 +231,7 @@
     </nav>
 
     <!-- user -->
-    <div class="px-4 py-4 border-t border-gray-100 dark:border-gray-800 flex items-center gap-3">
+    <div class="px-4 py-4 border-t border-white/50 dark:border-white/5 flex items-center gap-3">
         <img src="https://ui-avatars.com/api/?name=Admin&background=f59e0b&color=fff&bold=true" alt="Admin"
              class="w-9 h-9 rounded-full ring-2 ring-yellow-300 dark:ring-yellow-700">
         <div class="flex-1 min-w-0">
@@ -149,7 +244,7 @@
 </aside>
 
 <!-- ══════════ MAIN ══════════ -->
-<div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+<div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-transparent">
 
     <!-- top header -->
     <header class="glass h-16 flex-shrink-0 flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-800 z-20">
