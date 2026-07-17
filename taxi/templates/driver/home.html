@@ -152,8 +152,10 @@ renderOrdersDOM();
   const active = ORDERS.find(o => o.status === 'on_way' || o.status === 'arrived');
   if(active) {
     tmxStart(active.id, active);
-    // Sahifaga qayta kirganda sheetni avtomatik ochish
-    setTimeout(() => _renderSheet(active.id, active), 100);
+    // Sahifaga qayta kirganda sheetni avtomatik ochish — DOM tayyor bo'lganini kutamiz
+    requestAnimationFrame(() => {
+      setTimeout(() => _renderSheet(active.id, active), 200);
+    });
   }
 })();
 
@@ -779,7 +781,14 @@ function openOrder(id){
     // Taximetr aktiv, ORDERS yangilanmagan — saqlangan buyurtmadan foydalanamiz
     o = _tmxOrder;
   }
-  if(!o) { loadOrders(); return; }
+  if(!o) {
+    // Buyurtma hali yuklanmagan — yuklab, keyin sheet ochamiz
+    loadOrders().then(() => {
+      const fresh = ORDERS.find(x => x.id === numId);
+      if(fresh) _renderSheet(numId, fresh);
+    });
+    return;
+  }
   _renderSheet(numId, o);
 }
 

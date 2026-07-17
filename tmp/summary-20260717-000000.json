@@ -1,0 +1,4 @@
+{
+  "summary": "Foydalanuvchi WebView (Django template) saytidagi ikkita xatoni tuzatishni so'radi. 1) home.html: faol buyurtma (`on_way/arrived`) sahifaga qayta kirganda sheet avtomatik ochilmaydi va `openOrder()` buyurtmani topmasdan `loadOrders()` chaqirib qaytib ketar edi — endi `loadOrders().then(...)` bilan sheet ochiladi, `requestAnimationFrame+200ms` bilan sahifa yuklanganda sheet ishonchli ochiladi. 2) history.html: `data-price` faqat `completed` statusida to'ldirilgan edi — endi barcha statuslar uchun narx ko'rsatiladi; `openDetail()` faol buyurtmalar (`accepted/on_way/arrived`) uchun action tugmalarini ko'rsatadi va `doHistoryAction()` funksiyasi qo'shildi; YAKUNLANDI maydoni status bo'yicha matnli qiymat ko'rsatadi.",
+  "current_status": "Ikkala web template xatosi tuzatildi: home.html va history.html fayllari yangilandi. Flutter ilova kodi o'zgartirilmadi (foydalanuvchi WebView saytini aytganini aniqlashtirdi)."
+}

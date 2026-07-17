@@ -46,7 +46,7 @@
   {% for order in orders %}
   <div class="order-item ios-card rounded-[16px] anim-up cursor-pointer active:opacity-70 transition-opacity"
        data-status="{{ order.status }}"
-       data-price="{% if order.status == 'completed' and order.price %}{{ order.price }}{% else %}0{% endif %}"
+       data-price="{% if order.price %}{{ order.price }}{% else %}0{% endif %}"
        data-km="{% if order.distance_km %}{{ order.distance_km }}{% else %}0{% endif %}"
        data-id="{{ order.id }}"
        data-from="{{ order.from_address|escapejs }}"
@@ -153,6 +153,26 @@ function openDetail(el) {
   const km = parseFloat(d.km)||0;
   const commission = parseFloat(d.commission)||0;
   const color = statusColor[d.status]||'#8E8E93';
+  const id = parseInt(d.id);
+
+  // Faol buyurtmalar uchun action tugmalari
+  const activeActions = {
+    accepted: `<div class="space-y-2 mt-1">
+      <button onclick="doHistoryAction(${id},'on_way')" style="width:100%;padding:14px;border-radius:14px;background:#AF52DE;color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer">🚗 Yo'lga chiqdim</button>
+      <button onclick="doHistoryAction(${id},'cancel')" style="width:100%;padding:12px;border-radius:14px;background:rgba(255,59,48,.1);color:#FF3B30;font-size:14px;font-weight:700;border:1px solid rgba(255,59,48,.2);cursor:pointer">Bekor qilish</button>
+    </div>`,
+    on_way: `<div class="space-y-2 mt-1">
+      <button onclick="doHistoryAction(${id},'arrived')" style="width:100%;padding:14px;border-radius:14px;background:#007AFF;color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer">📍 Yetib keldim</button>
+      <button onclick="doHistoryAction(${id},'cancel')" style="width:100%;padding:12px;border-radius:14px;background:rgba(255,59,48,.1);color:#FF3B30;font-size:14px;font-weight:700;border:1px solid rgba(255,59,48,.2);cursor:pointer">Bekor qilish</button>
+    </div>`,
+    arrived: `<div class="space-y-2 mt-1">
+      <button onclick="doHistoryAction(${id},'complete')" style="width:100%;padding:14px;border-radius:14px;background:#34C759;color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer">🏁 Yakunlash</button>
+      <button onclick="doHistoryAction(${id},'cancel')" style="width:100%;padding:12px;border-radius:14px;background:rgba(255,59,48,.1);color:#FF3B30;font-size:14px;font-weight:700;border:1px solid rgba(255,59,48,.2);cursor:pointer">Bekor qilish</button>
+    </div>`,
+  };
+
+  // YAKUNLANDI maydoni — completed uchun vaqt, boshqalar uchun status
+  const durationVal = d.duration || (d.status === 'cancelled' ? 'Bekor' : d.status === 'completed' ? '—' : 'Jarayonda');
 
   document.getElementById('sheet-body').innerHTML = `
     <div class="flex items-center justify-between">
@@ -207,7 +227,7 @@ function openDetail(el) {
       </div>
       <div class="ios-card2 rounded-[12px] p-3 text-center">
         <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">YAKUNLANDI</div>
-        <div class="ios-footnote font-bold">${d.duration||'—'}</div>
+        <div class="ios-footnote font-bold">${durationVal}</div>
       </div>
     </div>
 
@@ -216,12 +236,35 @@ function openDetail(el) {
       <i class="fas fa-note-sticky text-[#FF9500] mt-0.5 flex-shrink-0"></i>
       <span class="ios-subhead" style="color:var(--ios-label2)">${d.note}</span>
     </div>` : ''}
+
+    ${activeActions[d.status] || ''}
   `;
 
   const ov = document.getElementById('sheet-overlay');
   const sh = document.getElementById('sheet');
   ov.classList.remove('hidden');
   requestAnimationFrame(() => { sh.style.transform = 'translateY(0)'; });
+}
+
+async function doHistoryAction(id, action) {
+  closeDetail();
+  try {
+    const fd = new FormData();
+    const r = await fetch(`/driver/orders/${id}/${action}/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      body: fd,
+    });
+    const data = await r.json();
+    if (data.ok) {
+      // Sahifani qayta yuklash — yangi status bilan ko'rsatish
+      window.location.reload();
+    } else {
+      alert(data.error || "Xatolik yuz berdi");
+    }
+  } catch(_) {
+    alert("Tarmoq xatosi");
+  }
 }
 
 function closeDetail() {
