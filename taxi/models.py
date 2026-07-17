@@ -296,6 +296,22 @@ class DriverActivityLog(models.Model):
 
 
 
+class GroupMessage(models.Model):
+    """Barcha haydovchilar uchun umumiy guruh chati."""
+    driver     = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='group_messages', verbose_name='Haydovchi')
+    text       = models.TextField(blank=True, default='', verbose_name='Xabar')
+    audio      = models.FileField(upload_to='group_audio/', blank=True, null=True, verbose_name='Audio xabar')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Vaqt')
+
+    def __str__(self):
+        return f"{self.driver.full_name}: {self.text[:40]}"
+
+    class Meta:
+        verbose_name = 'Guruh xabari'
+        verbose_name_plural = 'Guruh xabarlari'
+        ordering = ['created_at']
+
+
 class BalanceLog(models.Model):
     ACTION_ADD    = 'add'
     ACTION_DEDUCT = 'deduct'

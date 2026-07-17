@@ -12,7 +12,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .models import Driver, Order, ChatMessage, TariffSettings, DriverActivityLog
+from .models import Driver, Order, ChatMessage, GroupMessage, TariffSettings, DriverActivityLog
 from .utils import tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected
 
 
@@ -694,3 +694,59 @@ def driver_surge_info(request, driver):
     from .utils import get_surge_multiplier
     multiplier, reason = get_surge_multiplier()
     return JsonResponse({'ok': True, 'multiplier': multiplier, 'reason': reason})
+
+
+# ── Group Chat ────────────────────────────────────────────────────────────────
+
+@driver_login_required
+def driver_group_chat_list(request, driver):
+    last_id = int(request.GET.get('last_id', 0))
+    msgs = GroupMessage.objects.select_related('driver').filter(id__gt=last_id).order_by('created_at')[:100]
+    return JsonResponse({'messages': [
+        {
+            'id': m.id,
+            'driver_id': m.driver_id,
+            'driver_name': m.driver.full_name,
+            'car_number': m.driver.car_number,
+            'text': m.text,
+            'audio_url': request.build_absolute_uri(m.audio.url) if m.audio else None,
+            'created_at': m.created_at.isoformat(),
+        }
+        for m in msgs
+    ]})
+
+
+@driver_login_required
+@require_POST
+def driver_group_chat_send(request, driver):
+    try:
+        data = json.loads(request.body)
+        text = data.get('text', '').strip()
+    except Exception:
+        text = request.POST.get('text', '').strip()
+    if not text:
+        return JsonResponse({'ok': False}, status=400)
+    msg = GroupMessage.objects.create(driver=driver, text=text)
+    return JsonResponse({
+        'ok': True, 'id': msg.id,
+        'driver_id': driver.id, 'driver_name': driver.full_name,
+        'car_number': driver.car_number,
+        'text': msg.text, 'audio_url': None,
+        'created_at': msg.created_at.isoformat(),
+    })
+
+
+@driver_login_required
+@require_POST
+def driver_group_chat_send_audio(request, driver):
+    audio = request.FILES.get('audio')
+    if not audio:
+        return JsonResponse({'ok': False}, status=400)
+    msg = GroupMessage.objects.create(driver=driver, audio=audio)
+    return JsonResponse({
+        'ok': True, 'id': msg.id,
+        'driver_id': driver.id, 'driver_name': driver.full_name,
+        'car_number': driver.car_number,
+        'text': '', 'audio_url': request.build_absolute_uri(msg.audio.url),
+        'created_at': msg.created_at.isoformat(),
+    })
