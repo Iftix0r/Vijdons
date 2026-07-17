@@ -33,4 +33,8 @@ urlpatterns = [
     path('surge/',                  driver_views.driver_surge_info,   name='surge_info'),
     path('sos/',                     driver_views.driver_sos_send,     name='sos_send'),
     path('destination/',             driver_views.driver_destination,  name='destination'),
+
+    path('group-chat/',             driver_views.driver_group_chat_list,       name='group_chat_list'),
+    path('group-chat/send/',        driver_views.driver_group_chat_send,       name='group_chat_send'),
+    path('group-chat/send-audio/',  driver_views.driver_group_chat_send_audio, name='group_chat_send_audio'),
 ]

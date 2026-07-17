@@ -3,32 +3,42 @@
 
 {% block content %}
 
-<div class="ios-navbar sticky top-0 z-20 px-4 pt-3 pb-3 flex items-center gap-3">
-  <div class="w-10 h-10 rounded-full bg-[#007AFF] flex items-center justify-center flex-shrink-0">
-    <i class="fas fa-headset text-white text-base"></i>
+<!-- Navbar + Tabs -->
+<div class="sticky top-0 z-20" style="background:var(--ios-card);border-bottom:.5px solid var(--ios-sep)">
+  <div class="px-4 pt-3 pb-2 flex items-center gap-3">
+    <div class="w-9 h-9 rounded-full bg-[#007AFF] flex items-center justify-center flex-shrink-0">
+      <i class="fas fa-comments text-white text-sm"></i>
+    </div>
+    <div class="ios-title font-semibold">Chat</div>
   </div>
-  <div>
-    <div class="ios-title font-semibold">Operator</div>
-    <div class="ios-caption2 text-[#34C759]">● Onlayn</div>
+  <!-- Tabs -->
+  <div style="display:flex;padding:0 16px 10px;gap:8px">
+    <button id="tab-op" onclick="switchTab('operator')"
+      style="flex:1;padding:8px 0;border-radius:12px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;background:#007AFF;color:#fff">
+      <i class="fas fa-headset" style="margin-right:5px"></i>Operator
+    </button>
+    <button id="tab-gr" onclick="switchTab('group')"
+      style="flex:1;padding:8px 0;border-radius:12px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;background:var(--ios-fill);color:var(--ios-label)">
+      <i class="fas fa-users" style="margin-right:5px"></i>Guruh
+    </button>
   </div>
 </div>
 
-<div id="chat-wrap" style="display:flex;flex-direction:column;height:calc(100dvh - 120px);position:relative">
+<!-- ═══════════════ OPERATOR TAB ═══════════════ -->
+<div id="pane-operator" style="display:flex;flex-direction:column;height:calc(100dvh - 130px)">
 
-  <!-- Messages -->
-  <div id="messages" style="flex:1;overflow-y:auto;padding:12px 16px 8px;display:flex;flex-direction:column;gap:8px">
+  <div id="op-messages" style="flex:1;overflow-y:auto;padding:12px 16px 8px;display:flex;flex-direction:column;gap:8px">
     {% for msg in messages %}
     <div class="flex {% if msg.sender == 'driver' %}justify-end{% else %}justify-start{% endif %} anim-fade">
       <div class="max-w-[78%] px-4 py-2.5 ios-subhead leading-snug
         {% if msg.sender == 'driver' %}rounded-[18px] rounded-br-[4px] text-black
         {% else %}rounded-[18px] rounded-bl-[4px]{% endif %}"
         style="{% if msg.sender == 'driver' %}background:#FFD600{% else %}background:var(--ios-card);color:var(--ios-label){% endif %}">
-
         {% if msg.audio %}
         <div class="flex items-center gap-2" style="min-width:160px">
-          <button class="audio-play-btn w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
+          <button class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
                   data-src="{{ msg.audio.url }}"
-                  style="{% if msg.sender == 'driver' %}background:rgba(0,0,0,.15){% else %}background:rgba(0,122,255,.15){% endif %}"
+                  style="{% if msg.sender == 'driver' %}background:rgba(0,0,0,.15){% else %}background:rgba(0,122,255,.15){% endif %};border:none;cursor:pointer"
                   onclick="toggleAudio(this)">
             <i class="fas fa-play text-xs" style="{% if msg.sender == 'driver' %}color:#000{% else %}color:#007AFF{% endif %}"></i>
           </button>
@@ -42,7 +52,6 @@
         {% else %}
         {{ msg.text }}
         {% endif %}
-
         <div class="ios-caption2 mt-1 {% if msg.sender == 'driver' %}text-black/40{% endif %}"
              style="{% if msg.sender != 'driver' %}color:var(--ios-label3){% endif %}">
           {{ msg.created_at|date:"H:i" }}
@@ -50,9 +59,9 @@
       </div>
     </div>
     {% empty %}
-    <div class="text-center py-16 anim-fade" id="empty-state">
+    <div class="text-center py-16 anim-fade" id="op-empty">
       <div class="w-16 h-16 rounded-full bg-[#007AFF]/10 flex items-center justify-center mx-auto mb-4">
-        <i class="fas fa-message text-[#007AFF] text-2xl"></i>
+        <i class="fas fa-headset text-[#007AFF] text-2xl"></i>
       </div>
       <p class="ios-title font-semibold">Operator bilan chat</p>
       <p class="ios-subhead mt-1" style="color:var(--ios-label3)">Savollaringizni yuboring</p>
@@ -60,267 +69,388 @@
     {% endfor %}
   </div>
 
-  <!-- Recording indicator -->
-  <div id="rec-bar" style="display:none;padding:8px 16px;background:rgba(255,59,48,.1);border-top:.5px solid rgba(255,59,48,.3)">
+  <!-- Op recording bar -->
+  <div id="op-rec-bar" style="display:none;padding:8px 16px;background:rgba(255,59,48,.1);border-top:.5px solid rgba(255,59,48,.3)">
     <div style="display:flex;align-items:center;gap:8px">
       <span style="width:8px;height:8px;border-radius:50%;background:#FF3B30;animation:pulse-ring 1s ease-out infinite;display:inline-block"></span>
-      <span class="ios-footnote font-semibold" style="color:#FF3B30">Yozilmoqda... <span id="rec-time">0:00</span></span>
-      <button onclick="cancelRec()" style="margin-left:auto;color:#FF3B30;font-size:13px;font-weight:600">Bekor</button>
+      <span class="ios-footnote font-semibold" style="color:#FF3B30">Yozilmoqda... <span id="op-rec-time">0:00</span></span>
+      <button onclick="cancelRec('op')" style="margin-left:auto;color:#FF3B30;font-size:13px;font-weight:600;background:none;border:none;cursor:pointer">Bekor</button>
     </div>
   </div>
 
-  <!-- Input bar -->
-  <div id="input-bar"
-       style="flex-shrink:0;padding:10px 12px;border-top:.5px solid var(--ios-sep);
-              background:var(--ios-card);backdrop-filter:saturate(180%) blur(20px);
-              -webkit-backdrop-filter:saturate(180%) blur(20px)">
+  <!-- Op input -->
+  <div style="flex-shrink:0;padding:10px 12px;border-top:.5px solid var(--ios-sep);background:var(--ios-card)">
     <div style="display:flex;align-items:center;gap:8px">
-      <input type="text" id="msg-in" placeholder="Xabar yozing..."
-             maxlength="500" autocomplete="off"
-             style="flex:1;background:var(--ios-fill);border:none;outline:none;
-                    border-radius:22px;padding:10px 16px;font-size:16px;
-                    color:var(--ios-label);min-width:0"
-             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg();}">
-
-      <!-- Mikrofon — bosib tur -->
-      <button id="mic-btn"
-              onmousedown="startRec()" onmouseup="stopRec()"
-              ontouchstart="startRec(event)" ontouchend="stopRec(event)"
-              style="width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;
-                     background:rgba(175,82,222,.15);display:flex;align-items:center;
-                     justify-content:center;flex-shrink:0;transition:all .15s;
-                     -webkit-tap-highlight-color:transparent;user-select:none">
+      <input type="text" id="op-msg-in" placeholder="Xabar yozing..." maxlength="500" autocomplete="off"
+             style="flex:1;background:var(--ios-fill);border:none;outline:none;border-radius:22px;padding:10px 16px;font-size:16px;color:var(--ios-label);min-width:0"
+             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendOpMsg();}">
+      <button id="op-mic-btn"
+              onmousedown="startRec('op')" onmouseup="stopRec('op')"
+              ontouchstart="startRec('op',event)" ontouchend="stopRec('op',event)"
+              style="width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;background:rgba(175,82,222,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent;user-select:none">
         <i class="fas fa-microphone" style="color:#AF52DE;font-size:16px"></i>
       </button>
-
-      <button id="send-btn" onclick="sendMsg()"
-              style="width:36px;height:36px;border-radius:50%;background:#007AFF;border:none;
-                     display:flex;align-items:center;justify-content:center;flex-shrink:0;
-                     cursor:pointer;transition:opacity .15s;-webkit-tap-highlight-color:transparent"
-              ontouchstart="this.style.opacity='.6'" ontouchend="this.style.opacity='1'">
+      <button onclick="sendOpMsg()"
+              style="width:36px;height:36px;border-radius:50%;background:#007AFF;border:none;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;-webkit-tap-highlight-color:transparent">
         <i class="fas fa-arrow-up" style="color:#fff;font-size:14px"></i>
       </button>
     </div>
   </div>
+</div>
 
+<!-- ═══════════════ GURUH TAB ═══════════════ -->
+<div id="pane-group" style="display:none;flex-direction:column;height:calc(100dvh - 130px)">
+
+  <div id="gr-messages" style="flex:1;overflow-y:auto;padding:12px 16px 8px;display:flex;flex-direction:column;gap:8px">
+    <div class="text-center py-16 anim-fade" id="gr-empty">
+      <div class="w-16 h-16 rounded-full bg-[#34C759]/10 flex items-center justify-center mx-auto mb-4">
+        <i class="fas fa-users text-[#34C759] text-2xl"></i>
+      </div>
+      <p class="ios-title font-semibold">Haydovchilar guruhi</p>
+      <p class="ios-subhead mt-1" style="color:var(--ios-label3)">Barcha haydovchilar bilan muloqot</p>
+    </div>
+  </div>
+
+  <!-- Group recording bar -->
+  <div id="gr-rec-bar" style="display:none;padding:8px 16px;background:rgba(255,59,48,.1);border-top:.5px solid rgba(255,59,48,.3)">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="width:8px;height:8px;border-radius:50%;background:#FF3B30;animation:pulse-ring 1s ease-out infinite;display:inline-block"></span>
+      <span class="ios-footnote font-semibold" style="color:#FF3B30">Yozilmoqda... <span id="gr-rec-time">0:00</span></span>
+      <button onclick="cancelRec('gr')" style="margin-left:auto;color:#FF3B30;font-size:13px;font-weight:600;background:none;border:none;cursor:pointer">Bekor</button>
+    </div>
+  </div>
+
+  <!-- Group input -->
+  <div style="flex-shrink:0;padding:10px 12px;border-top:.5px solid var(--ios-sep);background:var(--ios-card)">
+    <div style="display:flex;align-items:center;gap:8px">
+      <input type="text" id="gr-msg-in" placeholder="Guruhga yozing..." maxlength="500" autocomplete="off"
+             style="flex:1;background:var(--ios-fill);border:none;outline:none;border-radius:22px;padding:10px 16px;font-size:16px;color:var(--ios-label);min-width:0"
+             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendGrMsg();}">
+      <button id="gr-mic-btn"
+              onmousedown="startRec('gr')" onmouseup="stopRec('gr')"
+              ontouchstart="startRec('gr',event)" ontouchend="stopRec('gr',event)"
+              style="width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;background:rgba(52,199,89,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent;user-select:none">
+        <i class="fas fa-microphone" style="color:#34C759;font-size:16px"></i>
+      </button>
+      <button onclick="sendGrMsg()"
+              style="width:36px;height:36px;border-radius:50%;background:#34C759;border:none;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;-webkit-tap-highlight-color:transparent">
+        <i class="fas fa-arrow-up" style="color:#fff;font-size:14px"></i>
+      </button>
+    </div>
+  </div>
 </div>
 
 {% endblock %}
 
 {% block extra_js %}
 <script>
-let lastId = {{ last_msg_id|default:0 }};
+const MY_DRIVER_ID = {{ driver.id }};
+const MY_NAME      = "{{ driver.full_name|escapejs }}";
+
+// ── Tab switch ────────────────────────────────────────────────────────────────
+let activeTab = 'operator';
+function switchTab(tab) {
+  activeTab = tab;
+  const isOp = tab === 'operator';
+  document.getElementById('pane-operator').style.display = isOp ? 'flex' : 'none';
+  document.getElementById('pane-group').style.display    = isOp ? 'none' : 'flex';
+  document.getElementById('tab-op').style.background = isOp ? '#007AFF' : 'var(--ios-fill)';
+  document.getElementById('tab-op').style.color      = isOp ? '#fff' : 'var(--ios-label)';
+  document.getElementById('tab-gr').style.background = isOp ? 'var(--ios-fill)' : '#34C759';
+  document.getElementById('tab-gr').style.color      = isOp ? 'var(--ios-label)' : '#fff';
+  if (tab === 'group' && grLastId === 0) loadGroupMessages();
+  setTimeout(() => scrollBottom(tab), 50);
+}
 
 // ── Scroll ────────────────────────────────────────────────────────────────────
-function scrollBottom(smooth=true) {
-  const el = document.getElementById('messages');
-  el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'instant' });
+function scrollBottom(tab, smooth=true) {
+  const el = document.getElementById(tab === 'operator' ? 'op-messages' : 'gr-messages');
+  if (el) el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'instant' });
 }
-scrollBottom(false);
+scrollBottom('operator', false);
 
 // ── Keyboard layout ───────────────────────────────────────────────────────────
 function adjustLayout() {
   const vv = window.visualViewport;
   if (!vv) return;
-  const wrap = document.getElementById('chat-wrap');
-  const navH = document.querySelector('.ios-navbar')?.offsetHeight || 56;
-  wrap.style.height = Math.max(vv.height - navH, 200) + 'px';
-  scrollBottom(false);
+  const navH = 130;
+  const h = Math.max(vv.height - navH, 200) + 'px';
+  document.getElementById('pane-operator').style.height = h;
+  document.getElementById('pane-group').style.height    = h;
+  scrollBottom(activeTab, false);
 }
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', adjustLayout);
   window.visualViewport.addEventListener('scroll', adjustLayout);
 }
 window.addEventListener('load', adjustLayout);
-document.getElementById('msg-in').addEventListener('focus', () => setTimeout(() => { adjustLayout(); scrollBottom(true); }, 100));
-document.getElementById('msg-in').addEventListener('blur',  () => setTimeout(adjustLayout, 100));
+['op-msg-in','gr-msg-in'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('focus', () => setTimeout(() => { adjustLayout(); scrollBottom(activeTab); }, 100));
+  el.addEventListener('blur',  () => setTimeout(adjustLayout, 100));
+});
 
 // ── Audio playback ────────────────────────────────────────────────────────────
 let _curAudio = null;
 function toggleAudio(btn) {
-  const src = btn.dataset.src;
-  const wrap = btn.closest('.flex.items-center');
+  const src  = btn.dataset.src;
+  const wrap = btn.closest('.flex.items-center') || btn.parentElement;
   const prog = wrap.querySelector('.audio-progress');
   const dur  = wrap.querySelector('.audio-dur');
   const icon = btn.querySelector('i');
-
-  if (_curAudio && !_curAudio.paused) {
-    _curAudio.pause();
-    icon.className = 'fas fa-play text-xs';
-    return;
-  }
+  if (_curAudio && !_curAudio.paused) { _curAudio.pause(); icon.className='fas fa-play text-xs'; return; }
   if (_curAudio) _curAudio.pause();
   _curAudio = new Audio(src);
   _curAudio.play();
   icon.className = 'fas fa-pause text-xs';
   _curAudio.addEventListener('timeupdate', () => {
-    const pct = (_curAudio.currentTime / (_curAudio.duration || 1)) * 100;
-    prog.style.width = pct + '%';
+    if (prog) prog.style.width = (_curAudio.currentTime / (_curAudio.duration||1)*100) + '%';
     const s = Math.floor(_curAudio.currentTime);
-    dur.textContent = Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+    if (dur) dur.textContent = Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
   });
   _curAudio.addEventListener('ended', () => {
     icon.className = 'fas fa-play text-xs';
-    prog.style.width = '0%';
-    dur.textContent = '🎤 Ovozli xabar';
+    if (prog) prog.style.width = '0%';
+    if (dur)  dur.textContent  = '🎤 Ovozli xabar';
   });
 }
 
-// ── Text send ─────────────────────────────────────────────────────────────────
-async function sendMsg() {
-  const inp  = document.getElementById('msg-in');
+// ══════════════════════════════════════════════════════════════════════════════
+// OPERATOR CHAT
+// ══════════════════════════════════════════════════════════════════════════════
+let opLastId = {{ last_msg_id|default:0 }};
+
+async function sendOpMsg() {
+  const inp  = document.getElementById('op-msg-in');
   const text = inp.value.trim();
   if (!text) return;
   inp.value = '';
   Native.vibrate(10);
-  appendMsg({ sender: 'driver', text, created_at: new Date().toISOString(), audio_url: null });
+  appendOpMsg({ sender:'driver', text, created_at:new Date().toISOString(), audio_url:null });
   try {
     const r = await fetch('{% url "driver:chat_send" %}', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-      body: JSON.stringify({ text }),
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+      body:JSON.stringify({text}),
     });
     const d = await r.json();
-    if (d.id) lastId = d.id;
+    if (d.id) opLastId = d.id;
   } catch(_) {}
 }
 
-// ── Recording ─────────────────────────────────────────────────────────────────
-let _mr = null, _chunks = [], _recInt = null, _recSec = 0;
+function appendOpMsg(msg) {
+  const wrap  = document.getElementById('op-messages');
+  const empty = document.getElementById('op-empty');
+  if (empty) empty.remove();
+  const isD = msg.sender === 'driver';
+  const time = new Date(msg.created_at).toLocaleTimeString('uz',{hour:'2-digit',minute:'2-digit'});
+  const div  = document.createElement('div');
+  div.className = `flex ${isD?'justify-end':'justify-start'} anim-fade`;
+  let content = msg.audio_url ? audioBubble(msg.audio_url, isD) : escHtml(msg.text);
+  div.innerHTML = `<div class="max-w-[78%] px-4 py-2.5 ios-subhead leading-snug
+    ${isD?'rounded-[18px] rounded-br-[4px] text-black':'rounded-[18px] rounded-bl-[4px]'}"
+    style="${isD?'background:#FFD600':'background:var(--ios-card);color:var(--ios-label)'}">
+    ${content}
+    <div class="ios-caption2 mt-1" style="${isD?'color:rgba(0,0,0,.4)':'color:var(--ios-label3)'}">${time}</div>
+  </div>`;
+  wrap.appendChild(div);
+  scrollBottom('operator');
+}
 
-async function startRec(e) {
-  if (e) e.preventDefault();
-  if (_mr) return;
+// Operator polling
+setInterval(async () => {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    _chunks = [];
-    _mr = new MediaRecorder(stream);
-    _mr.ondataavailable = ev => _chunks.push(ev.data);
-    _mr.start();
-    document.getElementById('rec-bar').style.display = 'block';
-    document.getElementById('msg-in').disabled = true;
-    document.getElementById('mic-btn').style.background = 'rgba(255,59,48,.2)';
-    document.getElementById('mic-btn').querySelector('i').style.color = '#FF3B30';
-    _recSec = 0;
-    _recInt = setInterval(() => {
-      _recSec++;
-      document.getElementById('rec-time').textContent =
-        Math.floor(_recSec/60) + ':' + String(_recSec%60).padStart(2,'0');
+    const r = await fetch(`{% url "driver:chat_poll" %}?last_id=${opLastId}`);
+    const d = await r.json();
+    d.messages.forEach(m => {
+      if (m.id > opLastId) {
+        opLastId = m.id;
+        if (m.sender !== 'driver') {
+          appendOpMsg(m);
+          Native.vibrate([40,20,40]);
+          showToast('Operator', m.audio_url ? '🎤 Ovozli xabar' : m.text.slice(0,60), 'info', 4000);
+        }
+      }
+    });
+  } catch(_) {}
+}, 3000);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// GURUH CHAT
+// ══════════════════════════════════════════════════════════════════════════════
+let grLastId = 0;
+
+async function loadGroupMessages() {
+  try {
+    const r = await fetch('{% url "driver:group_chat_list" %}?last_id=0');
+    const d = await r.json();
+    d.messages.forEach(m => appendGrMsg(m, false));
+    if (d.messages.length) grLastId = d.messages[d.messages.length-1].id;
+    scrollBottom('group', false);
+  } catch(_) {}
+}
+
+async function sendGrMsg() {
+  const inp  = document.getElementById('gr-msg-in');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = '';
+  Native.vibrate(10);
+  try {
+    const r = await fetch('{% url "driver:group_chat_send" %}', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+      body:JSON.stringify({text}),
+    });
+    const d = await r.json();
+    if (d.id) { grLastId = d.id; appendGrMsg(d, true); }
+  } catch(_) {}
+}
+
+function appendGrMsg(msg, scroll=true) {
+  const wrap  = document.getElementById('gr-messages');
+  const empty = document.getElementById('gr-empty');
+  if (empty) empty.remove();
+  const isMe = msg.driver_id === MY_DRIVER_ID;
+  const time = new Date(msg.created_at).toLocaleTimeString('uz',{hour:'2-digit',minute:'2-digit'});
+  const div  = document.createElement('div');
+  div.className = `flex ${isMe?'justify-end':'justify-start'} anim-fade`;
+
+  const nameLine = isMe ? '' : `<div style="font-size:11px;font-weight:800;color:#34C759;margin-bottom:3px">${escHtml(msg.driver_name)} · ${escHtml(msg.car_number||'')}</div>`;
+  let content = msg.audio_url ? audioBubble(msg.audio_url, isMe) : escHtml(msg.text);
+
+  div.innerHTML = `<div class="max-w-[78%] px-4 py-2.5 ios-subhead leading-snug
+    ${isMe?'rounded-[18px] rounded-br-[4px] text-black':'rounded-[18px] rounded-bl-[4px]'}"
+    style="${isMe?'background:#FFD600':'background:var(--ios-card);color:var(--ios-label)'}">
+    ${nameLine}${content}
+    <div class="ios-caption2 mt-1" style="${isMe?'color:rgba(0,0,0,.4)':'color:var(--ios-label3)'}">${time}</div>
+  </div>`;
+  wrap.appendChild(div);
+  if (scroll) scrollBottom('group');
+}
+
+// Group polling
+setInterval(async () => {
+  if (activeTab !== 'group' && grLastId === 0) return;
+  try {
+    const r = await fetch(`{% url "driver:group_chat_list" %}?last_id=${grLastId}`);
+    const d = await r.json();
+    d.messages.forEach(m => {
+      if (m.id > grLastId) {
+        grLastId = m.id;
+        if (m.driver_id !== MY_DRIVER_ID) {
+          appendGrMsg(m);
+          Native.vibrate([30,15,30]);
+          if (activeTab !== 'group') showToast(m.driver_name, m.audio_url ? '🎤 Ovozli xabar' : m.text.slice(0,60), 'info', 3000);
+        }
+      }
+    });
+  } catch(_) {}
+}, 4000);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RECORDING (shared)
+// ══════════════════════════════════════════════════════════════════════════════
+const _rec = { op: { mr:null, chunks:[], int:null, sec:0 }, gr: { mr:null, chunks:[], int:null, sec:0 } };
+
+async function startRec(tab, e) {
+  if (e) e.preventDefault();
+  const s = _rec[tab];
+  if (s.mr) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    s.chunks = [];
+    s.mr = new MediaRecorder(stream);
+    s.mr.ondataavailable = ev => s.chunks.push(ev.data);
+    s.mr.start();
+    document.getElementById(`${tab}-rec-bar`).style.display = 'block';
+    document.getElementById(`${tab}-msg-in`).disabled = true;
+    const mic = document.getElementById(`${tab}-mic-btn`);
+    mic.style.background = 'rgba(255,59,48,.2)';
+    mic.querySelector('i').style.color = '#FF3B30';
+    s.sec = 0;
+    s.int = setInterval(() => {
+      s.sec++;
+      document.getElementById(`${tab}-rec-time`).textContent =
+        Math.floor(s.sec/60)+':'+String(s.sec%60).padStart(2,'0');
     }, 1000);
   } catch(_) {
     showToast('Ruxsat kerak', 'Mikrofonga ruxsat bering', 'error', 3000);
   }
 }
 
-function stopRec(e) {
+function stopRec(tab, e) {
   if (e) e.preventDefault();
-  if (!_mr) return;
-  _mr.onstop = () => {
-    const blob = new Blob(_chunks, { type: 'audio/webm' });
-    sendAudio(blob);
-    _mr.stream.getTracks().forEach(t => t.stop());
-    _mr = null;
+  const s = _rec[tab];
+  if (!s.mr) return;
+  s.mr.onstop = () => {
+    const blob = new Blob(s.chunks, {type:'audio/webm'});
+    sendAudio(tab, blob);
+    s.mr.stream.getTracks().forEach(t => t.stop());
+    s.mr = null;
   };
-  _mr.stop();
-  _resetRecUI();
+  s.mr.stop();
+  _resetRecUI(tab);
 }
 
-function cancelRec() {
-  if (_mr) { _mr.stream.getTracks().forEach(t => t.stop()); _mr = null; }
-  _chunks = [];
-  _resetRecUI();
+function cancelRec(tab) {
+  const s = _rec[tab];
+  if (s.mr) { s.mr.stream.getTracks().forEach(t => t.stop()); s.mr = null; }
+  s.chunks = [];
+  _resetRecUI(tab);
 }
 
-function _resetRecUI() {
-  clearInterval(_recInt);
-  document.getElementById('rec-bar').style.display = 'none';
-  document.getElementById('msg-in').disabled = false;
-  document.getElementById('mic-btn').style.background = 'rgba(175,82,222,.15)';
-  document.getElementById('mic-btn').querySelector('i').style.color = '#AF52DE';
+function _resetRecUI(tab) {
+  const s = _rec[tab];
+  clearInterval(s.int);
+  document.getElementById(`${tab}-rec-bar`).style.display = 'none';
+  document.getElementById(`${tab}-msg-in`).disabled = false;
+  const mic = document.getElementById(`${tab}-mic-btn`);
+  if (tab === 'op') { mic.style.background='rgba(175,82,222,.15)'; mic.querySelector('i').style.color='#AF52DE'; }
+  else              { mic.style.background='rgba(52,199,89,.15)';  mic.querySelector('i').style.color='#34C759'; }
 }
 
-async function sendAudio(blob) {
+async function sendAudio(tab, blob) {
   Native.vibrate(10);
   const fd = new FormData();
   fd.append('audio', blob, 'voice.webm');
   fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+  const url = tab === 'op' ? '{% url "driver:chat_send_audio" %}' : '{% url "driver:group_chat_send_audio" %}';
   try {
-    const r = await fetch('{% url "driver:chat_send_audio" %}', { method: 'POST', body: fd });
+    const r = await fetch(url, {method:'POST', body:fd});
     const d = await r.json();
     if (d.id) {
-      lastId = d.id;
-      appendMsg({ sender: 'driver', text: '', created_at: new Date().toISOString(), audio_url: d.audio_url });
+      if (tab === 'op') {
+        opLastId = d.id;
+        appendOpMsg({sender:'driver', text:'', created_at:new Date().toISOString(), audio_url:d.audio_url});
+      } else {
+        grLastId = d.id;
+        appendGrMsg(d, true);
+      }
     }
   } catch(_) {
     showToast('Xatolik', 'Audio yuborilmadi', 'error', 3000);
   }
 }
 
-// ── Append bubble ─────────────────────────────────────────────────────────────
-function appendMsg(msg) {
-  const wrap = document.getElementById('messages');
-  const empty = document.getElementById('empty-state');
-  if (empty) empty.remove();
-  const isD = msg.sender === 'driver';
-  const time = new Date(msg.created_at).toLocaleTimeString('uz', { hour:'2-digit', minute:'2-digit' });
-  const div  = document.createElement('div');
-  div.className = `flex ${isD ? 'justify-end' : 'justify-start'} anim-fade`;
-
-  let content = '';
-  if (msg.audio_url) {
-    content = `
-      <div class="flex items-center gap-2" style="min-width:160px">
-        <button class="audio-play-btn w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                data-src="${msg.audio_url}" onclick="toggleAudio(this)"
-                style="${isD ? 'background:rgba(0,0,0,.15)' : 'background:rgba(0,122,255,.15)'}">
-          <i class="fas fa-play text-xs" style="${isD ? 'color:#000' : 'color:#007AFF'}"></i>
-        </button>
-        <div style="flex:1">
-          <div style="height:3px;border-radius:2px;background:rgba(0,0,0,.15);overflow:hidden">
-            <div class="audio-progress" style="height:100%;width:0%;border-radius:2px;background:${isD ? 'rgba(0,0,0,.4)' : '#007AFF'};transition:width .1s"></div>
-          </div>
-          <div class="audio-dur ios-caption2 mt-1" style="${isD ? 'color:rgba(0,0,0,.5)' : 'color:var(--ios-label3)'}">🎤 Ovozli xabar</div>
-        </div>
-      </div>`;
-  } else {
-    content = escHtml(msg.text);
-  }
-
-  div.innerHTML = `
-    <div class="max-w-[78%] px-4 py-2.5 ios-subhead leading-snug
-      ${isD ? 'rounded-[18px] rounded-br-[4px] text-black' : 'rounded-[18px] rounded-bl-[4px]'}"
-      style="${isD ? 'background:#FFD600' : 'background:var(--ios-card);color:var(--ios-label)'}">
-      ${content}
-      <div class="ios-caption2 mt-1" style="${isD ? 'color:rgba(0,0,0,.4)' : 'color:var(--ios-label3)'}">${time}</div>
-    </div>`;
-  wrap.appendChild(div);
-  scrollBottom(true);
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function audioBubble(src, isMe) {
+  return `<div class="flex items-center gap-2" style="min-width:160px">
+    <button data-src="${src}" onclick="toggleAudio(this)"
+      style="width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;${isMe?'background:rgba(0,0,0,.15)':'background:rgba(0,122,255,.15)'}">
+      <i class="fas fa-play text-xs" style="${isMe?'color:#000':'color:#007AFF'}"></i>
+    </button>
+    <div style="flex:1">
+      <div style="height:3px;border-radius:2px;background:rgba(0,0,0,.15);overflow:hidden">
+        <div class="audio-progress" style="height:100%;width:0%;border-radius:2px;background:${isMe?'rgba(0,0,0,.4)':'#007AFF'};transition:width .1s"></div>
+      </div>
+      <div class="audio-dur ios-caption2 mt-1" style="${isMe?'color:rgba(0,0,0,.5)':'color:var(--ios-label3)'}">🎤 Ovozli xabar</div>
+    </div>
+  </div>`;
 }
 
 function escHtml(t) {
-  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
-
-// ── Polling ───────────────────────────────────────────────────────────────────
-setInterval(async () => {
-  try {
-    const r = await fetch(`{% url "driver:chat_poll" %}?last_id=${lastId}`);
-    const d = await r.json();
-    d.messages.forEach(m => {
-      if (m.id > lastId) {
-        lastId = m.id;
-        if (m.sender !== 'driver') {
-          appendMsg(m);
-          Native.vibrate([40, 20, 40]);
-          if (m.audio_url) {
-            showToast('Operator', '🎤 Ovozli xabar', 'info', 4000);
-          } else {
-            showToast('Operator', m.text.slice(0, 60), 'info', 4000);
-          }
-        }
-      }
-    });
-  } catch(_) {}
-}, 3000);
 </script>
 {% endblock %}
