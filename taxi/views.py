@@ -47,7 +47,8 @@ def client_detail(request, pk):
 
 def order_create(request):
     if request.method == 'POST':
-        phone_number = request.POST.get('phone_number', '').strip()
+        phone_number  = request.POST.get('phone_number', '').strip()
+        customer_name = request.POST.get('customer_name', '').strip()
         from_address = request.POST.get('from_address', '').strip()
         to_address   = request.POST.get('to_address', '').strip()
         driver_id    = request.POST.get('driver_id') or None
@@ -60,6 +61,9 @@ def order_create(request):
         if phone_number and from_address:
             tariff = TariffSettings.get()
             client, _ = Client.objects.get_or_create(phone_number=phone_number)
+            if customer_name and not client.full_name:
+                client.full_name = customer_name
+                client.save(update_fields=['full_name'])
             driver = Driver.objects.filter(pk=driver_id).first() if driver_id else None
 
             f_lat = float(from_lat) if from_lat else None
