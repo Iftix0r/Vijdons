@@ -15,11 +15,13 @@ def seconds_since(dt):
 
 @register.filter
 def floatdot(value):
-    """Float ni har doim nuqta bilan qaytaradi (URL uchun)."""
     try:
         return str(float(value)).replace(',', '.')
     except (ValueError, TypeError):
         return value
+
+@register.filter
+def div(value, arg):
     try:
         return int(value) // int(arg)
     except (ValueError, ZeroDivisionError):
