@@ -243,16 +243,6 @@ body { background: var(--ios-bg); color: var(--ios-label); }
 .dark .pill-yellow { color:#FFD600; }
 .dark .pill-green  { color:var(--ios-green); }
 
-/* ── Duty button ── */
-.duty-ring::before {
-  content:'';
-  position:absolute;
-  inset:-8px;
-  border-radius:50%;
-  border:2px solid currentColor;
-  opacity:.3;
-  animation: pulse-ring 2s ease-out infinite;
-}
 </style>
 </head>
 <body>
@@ -299,18 +289,6 @@ body { background: var(--ios-bg); color: var(--ios-label); }
       <i class="fas fa-car-side text-[24px] {% if active_tab == 'home' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
       <span class="ios-caption2 {% if active_tab == 'home' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Asosiy</span>
     </a>
-
-    <!-- Duty toggle -->
-    <button onclick="hbgToggleDuty()"
-            class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60 relative">
-      {% if driver.is_on_duty %}
-      <div class="duty-ring absolute" style="width:44px;height:44px;top:6px"></div>
-      {% endif %}
-      <i class="fas fa-power-off text-[24px] {% if driver.is_on_duty %}text-[#FF3B30]{% else %}text-[#34C759]{% endif %}"></i>
-      <span class="ios-caption2 {% if driver.is_on_duty %}text-[#FF3B30]{% else %}text-[#34C759]{% endif %} font-semibold">
-        {% if driver.is_on_duty %}Stop{% else %}Start{% endif %}
-      </span>
-    </button>
 
     <a href="{% url 'driver:history' %}" onclick="Native.vibrate(); dismissAllSheets()"
        class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60">
@@ -541,8 +519,12 @@ window.addEventListener('vijdon_location', e=>{
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 let _hbgBusy = false;
+// Ish navbatini almashtiradi. true/false qaytaradi — chaqiruvchi (masalan
+// Asosiy sahifadagi swipe boshqaruvi) muvaffaqiyatsiz bo'lsa UI'ni orqaga
+// qaytarishi (masalan tugmani joyiga qaytarish) uchun buni tekshira oladi.
 async function hbgToggleDuty() {
-  if (_hbgBusy) return; _hbgBusy = true; Native.vibrate();
+  if (_hbgBusy) return false;
+  _hbgBusy = true;
   try {
     const r = await fetch('{% url "driver:duty_toggle" %}', { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
     const d = await r.json();
@@ -551,10 +533,14 @@ async function hbgToggleDuty() {
       sessionStorage.removeItem('vijdon_lat');
       sessionStorage.removeItem('vijdon_lng');
       location.reload();
+      return true;
     }
-    else showToast('Xatolik', d.error || "Qayta urinib ko'ring", 'error', 4000);
-  } catch(_) { showToast('Xatolik', "Qayta urinib ko'ring", 'error'); }
-  finally { _hbgBusy = false; }
+    showToast('Xatolik', d.error || "Qayta urinib ko'ring", 'error', 4000);
+    return false;
+  } catch(_) {
+    showToast('Xatolik', "Qayta urinib ko'ring", 'error');
+    return false;
+  } finally { _hbgBusy = false; }
 }
 function getCookie(n) {
   const v = document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)');

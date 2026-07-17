@@ -57,6 +57,21 @@
   </div>
 </div>
 
+<!-- Liniyaga chiqish/chiqish — swipe boshqaruvi -->
+<div class="px-4 pt-3">
+  <div id="duty-swipe" data-on-duty="{{ driver.is_on_duty|yesno:'1,0' }}"
+       class="relative select-none" style="height:58px;border-radius:29px;overflow:hidden;touch-action:none">
+    <div id="duty-swipe-label" class="absolute inset-0 flex items-center justify-center gap-2">
+      <span id="duty-swipe-chev" class="flex items-center" style="font-size:12px"></span>
+      <span id="duty-swipe-text" class="ios-subhead font-semibold"></span>
+    </div>
+    <div id="duty-swipe-thumb" class="absolute top-[5px] left-[5px] rounded-full flex items-center justify-center"
+         style="width:48px;height:48px;box-shadow:0 3px 10px rgba(0,0,0,.25)">
+      <i id="duty-swipe-icon" class="text-white text-lg"></i>
+    </div>
+  </div>
+</div>
+
 <!-- Pull-to-refresh -->
 <div id="ptr" class="flex items-center justify-center gap-2 overflow-hidden"
      style="height:0;opacity:0;transition:height .18s ease,opacity .18s ease;color:var(--ios-label3)">
@@ -65,16 +80,36 @@
 </div>
 
 <style>
-@keyframes radar-ring{0%{transform:scale(.55);opacity:.7}100%{transform:scale(2.6);opacity:0}}
-.radar-ring{position:absolute;inset:0;border-radius:50%;border:2px solid #FFD600;animation:radar-ring 2.4s ease-out infinite}
-.radar-ring:nth-child(2){animation-delay:.8s}.radar-ring:nth-child(3){animation-delay:1.6s}
-@keyframes radar-sweep{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-.radar-sweep{position:absolute;inset:0;border-radius:50%;animation:radar-sweep 2s linear infinite;background:conic-gradient(from 0deg,rgba(255,214,0,.45) 0deg,transparent 90deg)}
 @keyframes dot-blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
 .dot-blink{animation:dot-blink 1.4s ease-in-out infinite}
 .dot-blink:nth-child(2){animation-delay:.2s}.dot-blink:nth-child(3){animation-delay:.4s}
 @keyframes wave-shadow{0%,100%{box-shadow:0 8px 32px rgba(255,214,0,.18)}50%{box-shadow:0 12px 48px rgba(255,214,0,.42)}}
 .radar-core{animation:wave-shadow 2s ease-in-out infinite}
+
+/* ── Qidiruv: ekran chetlari bo'ylab aylanadigan chiziq ── */
+@property --scan-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes screen-scan-spin { to { --scan-angle: 360deg; } }
+.screen-scan {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  padding: 3px;
+  pointer-events: none;
+  background: conic-gradient(from var(--scan-angle),
+    transparent 0deg, transparent 300deg,
+    rgba(255,214,0,.55) 336deg, #FFD600 351deg, rgba(255,214,0,.55) 356deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  animation: screen-scan-spin 3.2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .screen-scan { animation: none; display: none; }
+}
 </style>
 
 <!-- Content: JS tomonidan to'ldiriladi -->
@@ -146,6 +181,88 @@ let _known = new Set(ORDERS.map(o => o.id));
 
 // Sahifa yuklanishi bilan darhol DOM ni render qilamiz
 renderOrdersDOM();
+
+// ── Liniyaga chiqish/chiqish — swipe boshqaruvi ────────────────────────────────
+// Oflayn: "Liniyaga chiqish" — tugmani CHAPGA suring. Ish navbatida:
+// "Liniyadan chiqish" — tugmani ORQAGA (o'ngga) suring.
+(function(){
+  const track = document.getElementById('duty-swipe');
+  if (!track) return;
+  const thumb = document.getElementById('duty-swipe-thumb');
+  const label = document.getElementById('duty-swipe-label');
+  const textEl = document.getElementById('duty-swipe-text');
+  const chevEl = document.getElementById('duty-swipe-chev');
+  const icon   = document.getElementById('duty-swipe-icon');
+
+  const THUMB = 48, PAD = 5;
+  let onDuty  = track.dataset.onDuty === '1';
+  let dragging = false, startX = 0, startLeft = 0, curLeft = 0;
+
+  function trackW() { return track.clientWidth; }
+  function minLeft() { return PAD; }
+  function maxLeft() { return trackW() - THUMB - PAD; }
+  function leftFor(state) { return state ? maxLeft() : minLeft(); }
+
+  function setThumb(left, animate) {
+    thumb.style.transition = animate
+      ? 'left .28s cubic-bezier(.34,1.56,.64,1), background-color .2s'
+      : 'none';
+    thumb.style.left = left + 'px';
+  }
+
+  function paint(state, animate) {
+    onDuty = state;
+    curLeft = leftFor(state);
+    setThumb(curLeft, animate);
+    thumb.style.background = state ? '#FF3B30' : '#34C759';
+    icon.className = state ? 'fas fa-power-off text-white text-lg' : 'fas fa-play text-white text-lg';
+    textEl.textContent = state ? 'Liniyadan chiqish' : 'Liniyaga chiqish';
+    textEl.style.color = state ? '#FF3B30' : '#34C759';
+    track.style.background = state ? 'rgba(255,59,48,.10)' : 'rgba(52,199,89,.10)';
+    // Yo'nalishni ko'rsatuvchi strelkalar: oflaynda chapga, navbatda o'ngga
+    chevEl.innerHTML = state
+      ? '<i class="fas fa-chevron-right" style="color:#FF3B30;opacity:.45"></i><i class="fas fa-chevron-right" style="color:#FF3B30;opacity:.8;margin-left:-7px"></i>'
+      : '<i class="fas fa-chevron-left" style="color:#34C759;opacity:.8;margin-right:-7px"></i><i class="fas fa-chevron-left" style="color:#34C759;opacity:.45"></i>';
+  }
+  paint(onDuty, false);
+
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  function onDown(e) {
+    if (_hbgBusy) return;
+    dragging = true;
+    startX = e.clientX;
+    startLeft = leftFor(onDuty);
+    setThumb(startLeft, false);
+    thumb.setPointerCapture(e.pointerId);
+    Native.vibrate();
+  }
+  function onMoveEv(e) {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    curLeft = clamp(startLeft + dx, minLeft(), maxLeft());
+    setThumb(curLeft, false);
+  }
+  async function onUpEv() {
+    if (!dragging) return;
+    dragging = false;
+    const mid = (minLeft() + maxLeft()) / 2;
+    // Oflaynda o'ngga (>mid) — navbatga chiqish; navbatda chapga (<mid) — chiqish
+    const crossed = onDuty ? (curLeft < mid) : (curLeft > mid);
+    if (!crossed) { paint(onDuty, true); return; }
+
+    const nextState = !onDuty;
+    paint(nextState, true); // optimistik — muvaffaqiyatli bo'lsa location.reload() bo'ladi
+    const ok = await hbgToggleDuty();
+    if (!ok) paint(!nextState, true); // muvaffaqiyatsiz — joyiga qaytaramiz
+  }
+
+  thumb.addEventListener('pointerdown', onDown);
+  thumb.addEventListener('pointermove', onMoveEv);
+  thumb.addEventListener('pointerup', onUpEv);
+  thumb.addEventListener('pointercancel', onUpEv);
+  window.addEventListener('resize', () => setThumb(leftFor(onDuty), false));
+})();
 
 // on_way yoki arrived buyurtma bo'lsa taximeter ochiladi va sheet ko'rsatiladi
 (function(){
@@ -316,12 +433,12 @@ function renderOrdersDOM() {
 
   if(!ORDERS.length) {
     // Start bosilganda ham statistika ko'rinib turadi, pastida esa
-    // "Buyurtma qidirilmoqda" animatsiyasi qo'shimcha ko'rsatiladi.
+    // "Buyurtma qidirilmoqda" holati qo'shimcha ko'rsatiladi — endi butun
+    // ekran cheti bo'ylab aylanadigan chiziq bilan (radar o'rniga).
     wrap.innerHTML = statsHtml + `
+      <div class="screen-scan"></div>
       <div class="flex flex-col items-center pt-6 pb-6 gap-6 anim-fade">
         <div class="relative flex items-center justify-center" style="width:160px;height:160px">
-          <div class="radar-ring"></div><div class="radar-ring"></div><div class="radar-ring"></div>
-          <div class="absolute inset-0 rounded-full overflow-hidden"><div class="radar-sweep"></div></div>
           <div class="radar-core relative z-10 w-[72px] h-[72px] rounded-full bg-[#FFD600] flex items-center justify-center" style="border:3px solid rgba(255,214,0,.3)">
             <i class="fas fa-taxi text-black text-[26px]"></i>
           </div>
