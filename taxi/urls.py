@@ -4,6 +4,10 @@ from . import views, api_views
 app_name = 'taxi'
 
 urlpatterns = [
+    # ── Auth ──
+    path('login/', views.panel_login, name='panel_login'),
+    path('logout/', views.panel_logout, name='panel_logout'),
+
     # ── Web panel ──
     path('', views.panel_dashboard, name='panel_dashboard'),
 
@@ -33,6 +37,11 @@ urlpatterns = [
     path('clients/<int:pk>/', views.client_detail, name='client_detail'),
     path('clients/<int:pk>/delete/', views.client_delete, name='client_delete'),
     path('clients/<int:pk>/block/', views.client_block_toggle, name='client_block_toggle'),
+
+    path('drivers/<int:pk>/edit/', views.driver_edit, name='driver_edit'),
+    path('orders/<int:pk>/edit-price/', views.order_edit_price, name='order_edit_price'),
+    path('orders/export/csv/', views.orders_export_csv, name='orders_export_csv'),
+    path('statistics/', views.statistics, name='statistics'),
 
     # ── Telegram Client Bot Webhook ──
     path('bot/client-webhook/', views.client_bot_webhook, name='client_bot_webhook'),

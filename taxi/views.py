@@ -18,6 +18,7 @@ def _get_client_ip(request):
 
 # ── Order ──────────────────────────────────────────────────────────────────────
 
+@login_required(login_url='taxi:panel_login')
 def order_detail(request, pk):
     order = get_object_or_404(
         Order.objects.select_related('client', 'driver', 'dispatched_to')
@@ -32,6 +33,7 @@ def order_detail(request, pk):
     })
 
 
+@login_required(login_url='taxi:panel_login')
 def client_detail(request, pk):
     from django.db.models import Sum, Count
     client = get_object_or_404(Client, pk=pk)
@@ -49,6 +51,7 @@ def client_detail(request, pk):
     })
 
 
+@login_required(login_url='taxi:panel_login')
 def order_create(request):
     if request.method == 'POST':
         phone_number  = request.POST.get('phone_number', '').strip()
@@ -121,6 +124,7 @@ def order_create(request):
     return redirect(request.META.get('HTTP_REFERER', 'taxi:panel_dashboard'))
 
 
+@login_required(login_url='taxi:panel_login')
 def order_update_status(request, pk):
     order = get_object_or_404(Order, pk=pk)
     if request.method == 'POST':
@@ -134,6 +138,7 @@ def order_update_status(request, pk):
     return redirect(request.META.get('HTTP_REFERER', 'taxi:order_list'))
 
 
+@login_required(login_url='taxi:panel_login')
 def order_delete(request, pk):
     order = get_object_or_404(Order, pk=pk)
     if request.method == 'POST':
@@ -143,6 +148,7 @@ def order_delete(request, pk):
 
 # ── Driver ─────────────────────────────────────────────────────────────────────
 
+@login_required(login_url='taxi:panel_login')
 def driver_create(request):
     if request.method == 'POST':
         full_name    = request.POST.get('full_name', '').strip()
@@ -161,6 +167,7 @@ def driver_create(request):
     return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
 
 
+@login_required(login_url='taxi:panel_login')
 def driver_delete(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == 'POST':
@@ -171,6 +178,7 @@ def driver_delete(request, pk):
     return redirect('taxi:driver_list')
 
 
+@login_required(login_url='taxi:panel_login')
 def driver_toggle_active(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == 'POST':
@@ -187,6 +195,7 @@ def driver_toggle_active(request, pk):
     return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
 
 
+@login_required(login_url='taxi:panel_login')
 def driver_approve(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == 'POST':
@@ -206,6 +215,7 @@ def driver_approve(request, pk):
     return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
 
 
+@login_required(login_url='taxi:panel_login')
 def driver_recharge(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == 'POST':
@@ -221,6 +231,10 @@ def driver_recharge(request, pk):
                 driver.balance += amount
                 detail = f"+{amount} UZS (admin qo'shdi)"
             driver.save(update_fields=['balance'])
+            BalanceLog.objects.create(
+                driver=driver, action=action, amount=amount,
+                balance_after=driver.balance, note=request.POST.get('note', '')
+            )
             DriverActivityLog.objects.create(driver=driver, action=DriverActivityLog.ACTION_BALANCE, detail=detail,
                 ip_address=_get_client_ip(request), user_agent=request.META.get('HTTP_USER_AGENT', ''))
             tg_balance_changed(driver, amount, action)
@@ -231,6 +245,7 @@ def driver_recharge(request, pk):
 
 # ── Driver Detail ─────────────────────────────────────────────────────────────
 
+@login_required(login_url='taxi:panel_login')
 def driver_detail(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     logs   = driver.activity_logs.all()[:100]
@@ -244,6 +259,7 @@ def driver_detail(request, pk):
 
 # ── Client ─────────────────────────────────────────────────────────────────────
 
+@login_required(login_url='taxi:panel_login')
 def client_create(request):
     if request.method == 'POST':
         full_name    = request.POST.get('full_name', '').strip()
@@ -256,6 +272,7 @@ def client_create(request):
     return redirect(request.META.get('HTTP_REFERER', 'taxi:client_list'))
 
 
+@login_required(login_url='taxi:panel_login')
 def client_delete(request, pk):
     client = get_object_or_404(Client, pk=pk)
     if request.method == 'POST':
@@ -263,6 +280,7 @@ def client_delete(request, pk):
     return redirect('taxi:client_list')
 
 
+@login_required(login_url='taxi:panel_login')
 def client_block_toggle(request, pk):
     client = get_object_or_404(Client, pk=pk)
     if request.method == 'POST':
@@ -273,6 +291,7 @@ def client_block_toggle(request, pk):
 
 # ── Pages ──────────────────────────────────────────────────────────────────────
 
+@login_required(login_url='taxi:panel_login')
 def panel_dashboard(request):
     from django.utils import timezone
     from django.db.models import Sum, Avg, Count
@@ -334,6 +353,7 @@ def panel_dashboard(request):
     return render(request, 'taxi/panel.html', context)
 
 
+@login_required(login_url='taxi:panel_login')
 def order_list(request):
     qs = Order.objects.select_related('client', 'driver').order_by('-created_at')
     q      = request.GET.get('q', '').strip()
@@ -358,6 +378,7 @@ def order_list(request):
     return render(request, 'taxi/order_list.html', context)
 
 
+@login_required(login_url='taxi:panel_login')
 def driver_list(request):
     q   = request.GET.get('q', '').strip()
     tab = request.GET.get('tab', 'approved')
@@ -386,6 +407,7 @@ def driver_list(request):
     })
 
 
+@login_required(login_url='taxi:panel_login')
 def client_list(request):
     q      = request.GET.get('q', '').strip()
     filter_ = request.GET.get('filter', '').strip()
@@ -401,6 +423,7 @@ def client_list(request):
 
 # ── Tariff Settings ────────────────────────────────────────────────────────────
 
+@login_required(login_url='taxi:panel_login')
 def bot_settings(request):
     bot = BotSettings.get()
     if request.method == 'POST':
@@ -545,6 +568,7 @@ def client_bot_webhook(request):
     return HttpResponse('ok')
 
 
+@login_required(login_url='taxi:panel_login')
 def maps_settings(request):
     maps = MapsSettings.get()
     if request.method == 'POST':
@@ -557,6 +581,7 @@ def maps_settings(request):
     return render(request, 'taxi/maps_settings.html', {'maps': maps})
 
 
+@login_required(login_url='taxi:panel_login')
 def tariff_settings(request):
     tariff = TariffSettings.get()
     if request.method == 'POST':
@@ -577,6 +602,7 @@ def tariff_settings(request):
 
 # ── SOS ──────────────────────────────────────────────────────────────────────────────
 
+@login_required(login_url='taxi:panel_login')
 def sos_list(request):
     qs = SosAlert.objects.select_related('driver').order_by('-created_at')
     status_filter = request.GET.get('status', '')
@@ -589,6 +615,7 @@ def sos_list(request):
     })
 
 
+@login_required(login_url='taxi:panel_login')
 def sos_resolve(request, pk):
     alert = get_object_or_404(SosAlert, pk=pk)
     if request.method == 'POST':
@@ -606,6 +633,7 @@ def sos_count(request):
     return JsonResponse({'count': count})
 
 
+@login_required(login_url='taxi:panel_login')
 def driver_map(request):
     from taxi.models import MapsSettings
     drivers = Driver.objects.filter(
@@ -620,6 +648,7 @@ def driver_map(request):
     })
 
 
+@login_required(login_url='taxi:panel_login')
 def active_drivers_locations(request):
     drivers = Driver.objects.filter(
         is_active=True,
@@ -647,6 +676,7 @@ def active_drivers_locations(request):
 
 # ── Operator Chat ──────────────────────────────────────────────────────────────────
 
+@login_required(login_url='taxi:panel_login')
 def operator_chat(request):
     drivers = Driver.objects.filter(approval_status=Driver.APPROVAL_APPROVED).order_by('full_name')
     driver_data = []
@@ -709,3 +739,131 @@ def _send_fcm_to_driver(driver, title, body):
         urllib.request.urlopen(req, timeout=5)
     except Exception:
         pass
+
+
+# ── Login / Logout ─────────────────────────────────────────────────────────────
+
+def panel_login(request):
+    if request.user.is_authenticated:
+        return redirect('taxi:panel_dashboard')
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+        user = authenticate(request, username=username, password=password)
+        if user and user.is_staff:
+            login(request, user)
+            return redirect(request.GET.get('next', 'taxi:panel_dashboard'))
+        messages.error(request, "Login yoki parol noto'g'ri!")
+    return render(request, 'taxi/login.html')
+
+
+def panel_logout(request):
+    logout(request)
+    return redirect('taxi:panel_login')
+
+
+# ── Driver Edit ────────────────────────────────────────────────────────────────
+
+@login_required(login_url='taxi:panel_login')
+def driver_edit(request, pk):
+    driver = get_object_or_404(Driver, pk=pk)
+    if request.method == 'POST':
+        driver.full_name    = request.POST.get('full_name', driver.full_name).strip()
+        driver.phone_number = request.POST.get('phone_number', driver.phone_number).strip()
+        driver.car_model    = request.POST.get('car_model', driver.car_model).strip()
+        driver.car_number   = request.POST.get('car_number', driver.car_number).strip()
+        driver.save(update_fields=['full_name', 'phone_number', 'car_model', 'car_number'])
+        messages.success(request, "Haydovchi ma'lumotlari yangilandi.")
+    return redirect('taxi:driver_detail', pk=pk)
+
+
+# ── Order price edit ───────────────────────────────────────────────────────────
+
+@login_required(login_url='taxi:panel_login')
+def order_edit_price(request, pk):
+    order = get_object_or_404(Order, pk=pk)
+    if request.method == 'POST':
+        from decimal import Decimal, InvalidOperation
+        try:
+            order.price = Decimal(request.POST.get('price', ''))
+            order.save(update_fields=['price'])
+        except (InvalidOperation, TypeError):
+            pass
+    return redirect('taxi:order_detail', pk=pk)
+
+
+# ── Orders CSV export ──────────────────────────────────────────────────────────
+
+@login_required(login_url='taxi:panel_login')
+def orders_export_csv(request):
+    qs = Order.objects.select_related('client', 'driver').order_by('-created_at')
+    date_from = request.GET.get('date_from')
+    date_to   = request.GET.get('date_to')
+    status    = request.GET.get('status')
+    if date_from:
+        qs = qs.filter(created_at__date__gte=date_from)
+    if date_to:
+        qs = qs.filter(created_at__date__lte=date_to)
+    if status:
+        qs = qs.filter(status=status)
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="orders.csv"'
+    response.write('\ufeff')
+    writer = csv.writer(response)
+    writer.writerow(['#', 'Mijoz', 'Telefon', 'Qayerdan', 'Qayerga', 'Haydovchi', 'Narx', "To'lov", 'Holat', 'Vaqt'])
+    for o in qs:
+        writer.writerow([
+            o.id, o.client.full_name or '', o.client.phone_number,
+            o.from_address, o.to_address,
+            o.driver.full_name if o.driver else '',
+            o.price or '', o.get_payment_type_display(),
+            o.get_status_display(), o.created_at.strftime('%d.%m.%Y %H:%M'),
+        ])
+    return response
+
+
+# ── Statistics ─────────────────────────────────────────────────────────────────
+
+@login_required(login_url='taxi:panel_login')
+def statistics(request):
+    from django.utils import timezone
+    from django.db.models import Sum, Count, Avg
+    from datetime import timedelta
+    from decimal import Decimal
+
+    today  = timezone.now().date()
+    period = request.GET.get('period', 'week')
+    days   = 30 if period == 'month' else (365 if period == 'year' else 7)
+
+    labels, revenues, counts = [], [], []
+    for i in range(days - 1, -1, -1):
+        day = today - timedelta(days=i)
+        day_qs = Order.objects.filter(created_at__date=day)
+        labels.append(day.strftime('%d/%m'))
+        revenues.append(float(day_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or 0))
+        counts.append(day_qs.count())
+
+    top_drivers = Driver.objects.annotate(
+        completed=Count('orders', filter=Q(orders__status='completed')),
+        earned=Sum('orders__price', filter=Q(orders__status='completed'))
+    ).filter(completed__gt=0).order_by('-completed')[:10]
+
+    top_clients = Client.objects.annotate(
+        total=Count('orders'),
+        spent=Sum('orders__price', filter=Q(orders__status='completed'))
+    ).filter(total__gt=0).order_by('-total')[:10]
+
+    total_revenue = Order.objects.filter(status='completed').aggregate(s=Sum('price'))['s'] or Decimal('0')
+    avg_price     = Order.objects.filter(status='completed').aggregate(a=Avg('price'))['a'] or Decimal('0')
+
+    return render(request, 'taxi/statistics.html', {
+        'period': period, 'labels': labels, 'revenues': revenues, 'counts': counts,
+        'top_drivers': top_drivers, 'top_clients': top_clients,
+        'total_revenue': total_revenue, 'avg_price': avg_price,
+        'total_orders': Order.objects.count(),
+        'completed_orders': Order.objects.filter(status='completed').count(),
+        'cancelled_orders': Order.objects.filter(status='cancelled').count(),
+        'total_drivers': Driver.objects.filter(approval_status='approved').count(),
+        'total_clients': Client.objects.count(),
+        'blocked_clients': Client.objects.filter(is_blocked=True).count(),
+    })

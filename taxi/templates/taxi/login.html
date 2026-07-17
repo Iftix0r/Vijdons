@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="uz" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kirish — Vijdon Taxi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body class="h-full bg-gradient-to-br from-slate-900 via-gray-900 to-slate-800 flex items-center justify-center p-4">
+<div class="w-full max-w-sm">
+    <div class="text-center mb-8">
+        <div class="w-16 h-16 rounded-2xl bg-yellow-500 flex items-center justify-center text-white text-2xl font-black mx-auto mb-4 shadow-lg shadow-yellow-500/30">
+            🚖
+        </div>
+        <h1 class="text-2xl font-extrabold text-white">Vijdon Taxi</h1>
+        <p class="text-gray-400 text-sm mt-1">Boshqaruv paneli</p>
+    </div>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="mb-4 px-4 py-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-sm font-semibold flex items-center gap-2">
+        <i class="fas fa-exclamation-circle"></i> {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 shadow-2xl">
+        <form method="POST">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                    <i class="fas fa-user mr-1"></i>Login
+                </label>
+                <input type="text" name="username" required autofocus
+                       class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition"
+                       placeholder="admin">
+            </div>
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                    <i class="fas fa-lock mr-1"></i>Parol
+                </label>
+                <input type="password" name="password" required
+                       class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition"
+                       placeholder="••••••••">
+            </div>
+            <button type="submit"
+                    class="w-full py-3 bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-extrabold rounded-xl transition-all hover:-translate-y-0.5 shadow-lg shadow-yellow-500/30 text-sm">
+                <i class="fas fa-right-to-bracket mr-2"></i>Kirish
+            </button>
+        </form>
+    </div>
+    <p class="text-center text-gray-600 text-xs mt-6">Vijdon Taxi © {% now "Y" %}</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,147 @@
+{% extends 'taxi/base.html' %}
+{% block title %}Statistika — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-center gap-4 mb-5">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white">Statistika</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Tizim tahlili va hisobotlar</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="?period=week"  class="px-4 py-2 rounded-xl text-sm font-semibold transition {% if period == 'week' %}bg-yellow-500 text-white{% else %}bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50{% endif %}">7 kun</a>
+        <a href="?period=month" class="px-4 py-2 rounded-xl text-sm font-semibold transition {% if period == 'month' %}bg-yellow-500 text-white{% else %}bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50{% endif %}">30 kun</a>
+        <a href="?period=year"  class="px-4 py-2 rounded-xl text-sm font-semibold transition {% if period == 'year' %}bg-yellow-500 text-white{% else %}bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50{% endif %}">1 yil</a>
+    </div>
+</div>
+
+<!-- Umumiy kartalar -->
+<div class="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-5">
+    {% for item in stat_cards %}{% endfor %}
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm text-center">
+        <div class="text-2xl font-extrabold text-yellow-500">{{ total_orders }}</div>
+        <div class="text-xs text-gray-400 mt-1">Jami buyurtma</div>
+    </div>
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm text-center">
+        <div class="text-2xl font-extrabold text-emerald-500">{{ completed_orders }}</div>
+        <div class="text-xs text-gray-400 mt-1">Yakunlangan</div>
+    </div>
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm text-center">
+        <div class="text-2xl font-extrabold text-red-500">{{ cancelled_orders }}</div>
+        <div class="text-xs text-gray-400 mt-1">Bekor qilindi</div>
+    </div>
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm text-center">
+        <div class="text-2xl font-extrabold text-blue-500">{{ total_drivers }}</div>
+        <div class="text-xs text-gray-400 mt-1">Haydovchilar</div>
+    </div>
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm text-center">
+        <div class="text-2xl font-extrabold text-purple-500">{{ total_clients }}</div>
+        <div class="text-xs text-gray-400 mt-1">Mijozlar</div>
+    </div>
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm text-center">
+        <div class="text-2xl font-extrabold text-green-500">{{ total_revenue|floatformat:0 }}</div>
+        <div class="text-xs text-gray-400 mt-1">UZS daromad</div>
+    </div>
+</div>
+
+<!-- Grafik -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+        <div class="font-bold text-gray-900 dark:text-white text-sm mb-4">Daromad (UZS)</div>
+        <canvas id="revenueChart" height="120"></canvas>
+    </div>
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+        <div class="font-bold text-gray-900 dark:text-white text-sm mb-4">Buyurtmalar soni</div>
+        <canvas id="countChart" height="120"></canvas>
+    </div>
+</div>
+
+<!-- Top haydovchilar va mijozlar -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <!-- Top haydovchilar -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800 font-bold text-gray-900 dark:text-white text-sm">
+            🏆 Top haydovchilar
+        </div>
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-xs uppercase text-gray-400 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                    <th class="px-5 py-3 text-left">#</th>
+                    <th class="px-5 py-3 text-left">Haydovchi</th>
+                    <th class="px-5 py-3 text-right">Safarlar</th>
+                    <th class="px-5 py-3 text-right">Daromad</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50 dark:divide-gray-800">
+                {% for d in top_drivers %}
+                <tr class="hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-colors">
+                    <td class="px-5 py-3 text-gray-400 text-xs font-bold">{{ forloop.counter }}</td>
+                    <td class="px-5 py-3">
+                        <a href="{% url 'taxi:driver_detail' d.pk %}" class="font-semibold text-gray-800 dark:text-white text-xs hover:text-blue-600 transition-colors">{{ d.full_name }}</a>
+                        <div class="text-[10px] text-gray-400">{{ d.car_number }}</div>
+                    </td>
+                    <td class="px-5 py-3 text-right font-bold text-emerald-600 text-xs">{{ d.completed }}</td>
+                    <td class="px-5 py-3 text-right text-xs text-gray-600 dark:text-gray-300">{{ d.earned|floatformat:0|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center py-8 text-gray-400 text-xs">Ma'lumot yo'q</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Top mijozlar -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800 font-bold text-gray-900 dark:text-white text-sm">
+            👤 Top mijozlar
+        </div>
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-xs uppercase text-gray-400 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                    <th class="px-5 py-3 text-left">#</th>
+                    <th class="px-5 py-3 text-left">Mijoz</th>
+                    <th class="px-5 py-3 text-right">Buyurtma</th>
+                    <th class="px-5 py-3 text-right">Sarflagan</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50 dark:divide-gray-800">
+                {% for c in top_clients %}
+                <tr class="hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-colors">
+                    <td class="px-5 py-3 text-gray-400 text-xs font-bold">{{ forloop.counter }}</td>
+                    <td class="px-5 py-3">
+                        <a href="{% url 'taxi:client_detail' c.pk %}" class="font-semibold text-gray-800 dark:text-white text-xs hover:text-emerald-600 transition-colors">{{ c.full_name|default:"Nomsiz" }}</a>
+                        <div class="text-[10px] text-gray-400 font-mono">{{ c.phone_number }}</div>
+                    </td>
+                    <td class="px-5 py-3 text-right font-bold text-blue-600 text-xs">{{ c.total }}</td>
+                    <td class="px-5 py-3 text-right text-xs text-gray-600 dark:text-gray-300">{{ c.spent|floatformat:0|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center py-8 text-gray-400 text-xs">Ma'lumot yo'q</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+const labels   = {{ labels|safe }};
+const revenues = {{ revenues|safe }};
+const counts   = {{ counts|safe }};
+const isDark   = document.documentElement.classList.contains('dark');
+const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+const textColor = isDark ? '#9ca3af' : '#6b7280';
+
+new Chart(document.getElementById('revenueChart'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data: revenues, backgroundColor: 'rgba(234,179,8,0.7)', borderRadius: 6, borderSkipped: false }] },
+    options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor } }, y: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor } } } }
+});
+new Chart(document.getElementById('countChart'), {
+    type: 'line',
+    data: { labels, datasets: [{ data: counts, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.4, fill: true, pointRadius: 3 }] },
+    options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor } }, y: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor } } } }
+});
+</script>
+{% endblock %}
