@@ -295,6 +295,28 @@ class DriverActivityLog(models.Model):
 
 
 
+class BalanceLog(models.Model):
+    ACTION_ADD    = 'add'
+    ACTION_DEDUCT = 'deduct'
+    ACTION_CHOICES = (
+        (ACTION_ADD,    'Qo\'shildi'),
+        (ACTION_DEDUCT, 'Ayirildi'),
+    )
+    driver     = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='balance_logs', verbose_name='Haydovchi')
+    action     = models.CharField(max_length=10, choices=ACTION_CHOICES)
+    amount     = models.DecimalField(max_digits=12, decimal_places=2)
+    balance_after = models.DecimalField(max_digits=12, decimal_places=2)
+    note       = models.CharField(max_length=255, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Balans tarixi'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.driver.full_name} {self.action} {self.amount}"
+
+
 class TariffSettings(models.Model):
     """Singleton: admin paneldan narx sozlamalari."""
     base_price    = models.DecimalField(max_digits=10, decimal_places=2, default=5000, verbose_name="Boshlang'ich narx (UZS)", help_text="Har bir buyurtma uchun minimal narx")
