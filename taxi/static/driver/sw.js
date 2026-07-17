@@ -1,50 +1,29 @@
-// Barcha keshlarni tozalaymiz — sahifa har doim serverdan yuklanadi
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))
-      .then(() => self.clients.claim())
-  );
-});
-// Fetch: hech narsani keshlamaymiz, har doim network
-
-// Push notification — OVOZLI va kuchli
-self.addEventListener('push', e => {
+self.addEventListener('push', function(e) {
   let data = {};
-  try { data = e.data ? e.data.json() : {}; } catch(_) {}
+  try { data = e.data.json(); } catch(_) { data = {title: 'Vijdon Driver', body: e.data ? e.data.text() : ''}; }
 
-  const title = data.title || '🚖 Yangi buyurtma!';
-  const body  = data.body  || 'Yaqin atrofda buyurtma kutmoqda';
+  const title = data.title || 'Vijdon Driver';
+  const body  = data.body  || 'Yangi buyurtma keldi!';
   const url   = data.url   || '/driver/home/';
 
-  const opts = {
-    body:    body,
-    icon:    '/static/driver/sounds/../icon-192.png',
-    badge:   '/static/driver/sounds/../icon-192.png',
-    tag:     'new-order',
-    renotify: true,
-    requireInteraction: true,         // foydalanuvchi yopmagunicha turadi
-    vibrate:  [200, 100, 200, 100, 400, 100, 600],
-    sound:   '/static/driver/sounds/new_order.wav',
-    data:    { url: url },
-    actions: [
-      { action: 'open',    title: '✅ Ko\'rish' },
-      { action: 'dismiss', title: '❌ Yopish'   },
-    ],
-  };
-
   e.waitUntil(
-    self.registration.showNotification(title, opts)
+    self.registration.showNotification(title, {
+      body:    body,
+      icon:    '/static/driver/icon-192.png',
+      badge:   '/static/driver/icon-72.png',
+      vibrate: [100, 50, 100, 50, 200],
+      data:    { url },
+      tag:     'vijdon-order',
+      renotify: true,
+    })
   );
 });
 
-self.addEventListener('notificationclick', e => {
+self.addEventListener('notificationclick', function(e) {
   e.notification.close();
-  if (e.action === 'dismiss') return;
-  const url = (e.notification.data && e.notification.data.url) || '/driver/home/';
+  const url = e.notification.data?.url || '/driver/home/';
   e.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-      // Agar sahifa allaqachon ochiq bo'lsa — focusga olamiz
+    clients.matchAll({type: 'window', includeUncontrolled: true}).then(list => {
       for (const c of list) {
         if (c.url.includes('/driver/') && 'focus' in c) return c.focus();
       }
@@ -52,3 +31,6 @@ self.addEventListener('notificationclick', e => {
     })
   );
 });
+
+self.addEventListener('install',  () => self.skipWaiting());
+self.addEventListener('activate', e => e.waitUntil(clients.claim()));

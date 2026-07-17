@@ -160,49 +160,46 @@ def driver_home(request, driver):
         'driver_balance_int': int(driver.balance),
         'today_earned': int(today_stats['earned'] or 0),
         'today_trips': today_stats['trips'] or 0,
+        'VAPID_PUBLIC_KEY': getattr(__import__('django.conf', fromlist=['settings']).settings, 'VAPID_PUBLIC_KEY', ''),
     })
 
 
 @driver_login_required
 def driver_orders_json(request, driver):
-    """AJAX: buyurtmalar o'zgardimi tekshirish."""
+    """AJAX: buyurtmalar ro'yxati + yangi pending ID lar."""
     from django.db.models import Q
     from django.utils import timezone
     qs = Order.objects.select_related('client').filter(
         Q(status='pending', dispatched_to=driver) |
         Q(status='pending', dispatched_to__isnull=True) |
         Q(driver=driver, status__in=['accepted', 'on_way', 'arrived'])
-    ).exclude(Q(status='pending', rejected_by=driver))
-    ids = list(qs.values_list('id', flat=True))
-
-    # Dispatch timer: dispatched_to=driver bo'lgan pending buyurtmaga qancha vaqt qoldi
-    timer_sec = None
-    dispatched = qs.filter(status='pending', dispatched_to=driver).first()
-    if dispatched and dispatched.dispatched_at:
-        from taxi.models import TariffSettings
-        timeout = TariffSettings.get().dispatch_timeout
-        elapsed = (timezone.now() - dispatched.dispatched_at).total_seconds()
-        timer_sec = max(0, int(timeout - elapsed))
+    ).exclude(Q(status='pending', rejected_by=driver)).order_by('-created_at')
 
     orders_data = []
     for o in qs:
+        timer_sec = None
+        if o.status == 'pending' and o.dispatched_to_id == driver.id and o.dispatched_at:
+            timeout = TariffSettings.get().dispatch_timeout
+            elapsed = (timezone.now() - o.dispatched_at).total_seconds()
+            timer_sec = max(0, int(timeout - elapsed))
         orders_data.append({
-            'id':           o.id,
-            'status':       o.status,
-            'from_address': o.from_address,
-            'to_address':   o.to_address,
-            'client_name':  o.client.full_name or 'Mijoz',
-            'client_phone': o.client.phone_number if o.status != 'pending' else _mask_phone(o.client.phone_number),
-            'price':        str(o.price) if o.price else None,
-            'distance_km':  o.distance_km,
-            'payment_type': o.payment_type,
-            'note':         o.note or '',
-            'commission':   str(o.commission) if o.commission else None,
+            'id':            o.id,
+            'status':        o.status,
+            'from_address':  o.from_address,
+            'to_address':    o.to_address,
+            'client_name':   o.client.full_name or 'Mijoz',
+            'client_phone':  o.client.phone_number if o.status != 'pending' else _mask_phone(o.client.phone_number),
+            'price':         str(o.price) if o.price else None,
+            'distance_km':   o.distance_km,
+            'payment_type':  o.payment_type,
+            'note':          o.note or '',
+            'commission':    str(o.commission) if o.commission else None,
             'is_dispatched': o.dispatched_to_id == driver.id,
-            'timer_sec':    timer_sec if o.dispatched_to_id == driver.id else None,
+            'timer_sec':     timer_sec,
         })
 
-    return JsonResponse({'new_ids': ids, 'timer_sec': timer_sec, 'orders': orders_data})
+    ids = [o['id'] for o in orders_data]
+    return JsonResponse({'new_ids': ids, 'orders': orders_data})
 
 
 # ── Order actions ─────────────────────────────────────────────────────────────

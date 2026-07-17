@@ -176,14 +176,17 @@ async function loadOrders() {
     if(d.orders) ORDERS = d.orders;
 
     const added = d.new_ids.filter(id => !_known.has(id));
-    if(added.length) {
+    if(added.length && !_suppressModal) {
       _known = serverIds;
       renderOrdersDOM();
       Native.vibrate([60,30,60,30,120]);
       if(typeof FlutterNotify !== 'undefined') FlutterNotify.postMessage(String(added.length));
-      if(!_suppressModal) showNewOrderModal(added[0], ORDERS.find(o => o.id === added[0]) || null);
+      const newOrder = ORDERS.find(o => o.id === added[0]) || null;
+      showNewOrderModal(added[0], newOrder);
       return;
     }
+
+    if(added.length) { _known = serverIds; renderOrdersDOM(); return; }
 
     const removed = [..._known].filter(id => !serverIds.has(id));
     if(removed.length) {
