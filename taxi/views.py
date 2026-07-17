@@ -61,6 +61,10 @@ def order_create(request):
         if phone_number and from_address:
             tariff = TariffSettings.get()
             client, _ = Client.objects.get_or_create(phone_number=phone_number)
+            if client.is_blocked:
+                from django.contrib import messages
+                messages.error(request, f"🚫 {client.full_name or phone_number} — bloklangan mijoz! Buyurtma berish uchun avval blokdan chiqaring.")
+                return redirect(request.META.get('HTTP_REFERER', 'taxi:order_list'))
             if customer_name and not client.full_name:
                 client.full_name = customer_name
                 client.save(update_fields=['full_name'])
@@ -252,6 +256,14 @@ def client_delete(request, pk):
     client = get_object_or_404(Client, pk=pk)
     if request.method == 'POST':
         client.delete()
+    return redirect('taxi:client_list')
+
+
+def client_block_toggle(request, pk):
+    client = get_object_or_404(Client, pk=pk)
+    if request.method == 'POST':
+        client.is_blocked = not client.is_blocked
+        client.save(update_fields=['is_blocked'])
     return redirect('taxi:client_list')
 
 

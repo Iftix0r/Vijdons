@@ -32,6 +32,7 @@ urlpatterns = [
     path('clients/add/', views.client_create, name='client_create'),
     path('clients/<int:pk>/', views.client_detail, name='client_detail'),
     path('clients/<int:pk>/delete/', views.client_delete, name='client_delete'),
+    path('clients/<int:pk>/block/', views.client_block_toggle, name='client_block_toggle'),
 
     # ── Telegram Client Bot Webhook ──
     path('bot/client-webhook/', views.client_bot_webhook, name='client_bot_webhook'),
