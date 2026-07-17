@@ -401,7 +401,65 @@ def order_arrived(request, driver, pk):
 @permission_classes([IsAuthenticated])
 @driver_required
 def order_complete(request, driver, pk):
-    return _order_action(request, driver, pk, ['arrived', 'on_way', 'accepted'], 'completed')
+    try:
+        order = Order.objects.select_related('client', 'driver').get(pk=pk)
+    except Order.DoesNotExist:
+        return Response({'detail': 'Buyurtma topilmadi.'}, status=404)
+
+    if order.status not in ['arrived', 'on_way', 'accepted']:
+        return Response(
+            {'detail': f"Bu amalni '{order.get_status_display()}' holatida bajarib bo'lmaydi."},
+            status=400,
+        )
+    if order.driver_id and order.driver_id != driver.id:
+        return Response({'detail': 'Bu buyurtma sizga tegishli emas.'}, status=403)
+
+    # Flutter taximetr ma'lumotlarini qabul qilish
+    price_val = request.data.get('price')
+    dist_val  = request.data.get('distance_km')
+
+    update_fields = ['status', 'updated_at']
+    order.status = 'completed'
+
+    if price_val is not None:
+        try:
+            from decimal import Decimal
+            order.price = Decimal(str(price_val))
+            update_fields.append('price')
+        except Exception:
+            pass
+
+    if dist_val is not None:
+        try:
+            order.distance_km = float(dist_val)
+            update_fields.append('distance_km')
+        except Exception:
+            pass
+
+    # Agar distance_km yo'q bo'lsa, koordinatalardan hisoblash
+    if order.distance_km is None and order.from_lat and order.from_lng and order.to_lat and order.to_lng:
+        from .utils import haversine
+        calc_dist = haversine(order.from_lat, order.from_lng, order.to_lat, order.to_lng)
+        if calc_dist:
+            order.distance_km = round(calc_dist, 2)
+            update_fields.append('distance_km')
+
+    # Agar price hali ham yo'q bo'lsa, tariff bo'yicha hisoblash
+    if order.price is None and order.distance_km is not None:
+        tariff = TariffSettings.get()
+        order.price = tariff.calc_price(order.distance_km)
+        update_fields.append('price')
+
+    order.save(update_fields=update_fields)
+
+    try:
+        order.client.trips_count += 1
+        order.client.save(update_fields=['trips_count'])
+    except Exception:
+        pass
+
+    tg_order_completed(order, driver)
+    return Response(OrderSerializer(order, context={'request': request}).data)
 
 
 @api_view(['POST'])
