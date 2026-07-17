@@ -49,6 +49,7 @@
        data-price="{% if order.price %}{{ order.price }}{% else %}0{% endif %}"
        data-km="{% if order.distance_km %}{{ order.distance_km }}{% else %}0{% endif %}"
        data-tmx-km="{% if order.tmx_dist_km %}{{ order.tmx_dist_km }}{% else %}0{% endif %}"
+       data-tmx-start="{% if order.tmx_start_time %}{{ order.tmx_start_time|date:'c' }}{% endif %}"
        data-id="{{ order.id }}"
        data-from="{{ order.from_address|escapejs }}"
        data-to="{{ order.to_address|escapejs }}"
@@ -122,6 +123,8 @@
 </div>
 
 <script>
+const TMX_BASE_PRICE = {{ tariff_base_price|default:0 }};
+const TMX_PER_KM      = {{ tariff_per_km|default:0 }};
 const items=[...document.querySelectorAll('.order-item')];
 
 function calcStats(vis){
@@ -166,12 +169,25 @@ function openDetail(el) {
     } catch(_) {}
   }
 
-  // Narx: live > server price > 0
-  const displayPrice = liveTmx ? liveTmx.price : (price > 0 ? Math.round(price).toLocaleString() : null);
+  const isActiveMeter = d.status === 'on_way' || d.status === 'arrived';
+
   // Masofa: live > tmxKm > km
   const displayDist = liveTmx ? parseFloat(liveTmx.dist).toFixed(2)
                               : (tmxKm > 0 ? tmxKm.toFixed(2) : (km > 0 ? km.toFixed(2) : '0.00'));
-  const displayTime = liveTmx ? liveTmx.time : null;
+
+  // Narx: live > server price > (faol buyurtma uchun) tarif formulasidan hisoblangan bazaviy narx
+  // Serverga hali birorta ham taximetr ma'lumoti yetib bormagan bo'lsa ham (masalan darhol
+  // Tarixga o'tilgan bo'lsa), "—" o'rniga kamida bazaviy narxni ko'rsatamiz
+  const displayPrice = liveTmx ? liveTmx.price
+    : (price > 0 ? Math.round(price).toLocaleString()
+    : (isActiveMeter ? Math.round(TMX_BASE_PRICE + parseFloat(displayDist) * TMX_PER_KM).toLocaleString() : null));
+
+  // Vaqt: live (sessionStorage) > serverdagi tmx_start_time asosida hisoblangan real vaqt
+  let displayTime = liveTmx ? liveTmx.time : null;
+  if (!displayTime && isActiveMeter && d.tmxStart) {
+    const elapsed = Math.max(0, Math.floor((Date.now() - new Date(d.tmxStart).getTime()) / 1000));
+    displayTime = Math.floor(elapsed / 60) + ':' + String(elapsed % 60).padStart(2, '0');
+  }
 
   // Faol buyurtmalar uchun action tugmalari
   const activeActions = {
