@@ -53,6 +53,12 @@
         <span class="ios-badge absolute -top-0.5 -right-0.5">{{ chat_unread }}</span>
         {% endif %}
       </a>
+      <!-- Hamburger menu (Liniyaga chiqish/chiqish shu yerdan ham) -->
+      <button onclick="openMenu()" type="button"
+         class="w-10 h-10 rounded-full flex items-center justify-center active:opacity-60 transition-opacity border-0 cursor-pointer"
+         style="background:var(--ios-fill)">
+        <i class="fas fa-bars text-[18px]" style="color:#8E8E93"></i>
+      </button>
     </div>
   </div>
 </div>
@@ -95,9 +101,9 @@
   0%,100% { box-shadow: 0 6px 22px rgba(52,199,89,.35); }
   50%     { box-shadow: 0 6px 34px rgba(52,199,89,.65); }
 }
-#duty-swipe.is-off { animation: duty-swipe-breathe 2.2s ease-in-out infinite; }
+#duty-btn.is-off { animation: duty-swipe-breathe 2.2s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  #duty-swipe.is-off { animation: none; }
+  #duty-btn.is-off { animation: none; }
 }
 </style>
 
@@ -106,24 +112,18 @@
      ostida buyurtmalar ko'rinmay qolib ketmasligi uchun -->
 <div class="px-4 py-3 space-y-3" id="orders-wrap" style="padding-bottom:120px"></div>
 
-<!-- Liniyaga chiqish/chiqish — tab-bar ustida doimiy (fixed) qadalgan holda -->
+<!-- Liniyaga chiqish/chiqish — tab-bar ustida doimiy (fixed) qadalgan holda. Oddiy
+     bosiladigan tugma (avval surish/swipe edi — ba'zi qurilma/brauzerlarda drag
+     hodisalari yetib bormay tugma qotib qolardi, shuning uchun tap ga o'tkazildi) -->
 <div class="fixed left-0 right-0 px-3 z-40" style="bottom:calc(env(safe-area-inset-bottom,34px) + 68px)">
-  <div id="duty-swipe" data-on-duty="{{ driver.is_on_duty|yesno:'1,0' }}"
-       class="relative select-none" style="height:60px;border-radius:22px;overflow:hidden;touch-action:none;transition:box-shadow .2s;
+  <button id="duty-btn" type="button" data-on-duty="{{ driver.is_on_duty|yesno:'1,0' }}"
+       class="w-full flex items-center justify-center gap-2 select-none border-0 cursor-pointer active:scale-[.97]"
+       style="height:60px;border-radius:22px;transition:box-shadow .2s,transform .1s;
        background:{% if driver.is_on_duty %}linear-gradient(135deg,#FF453A,#D70015){% else %}linear-gradient(135deg,#34C759,#1E9E45){% endif %};
        box-shadow:0 6px 22px {% if driver.is_on_duty %}rgba(255,59,48,.35){% else %}rgba(52,199,89,.35){% endif %}">
-    <div id="duty-swipe-label" class="absolute inset-0 flex items-center justify-center gap-2">
-      <span id="duty-swipe-chev" class="flex items-center" style="font-size:13px">
-        {% if driver.is_on_duty %}<i class="fas fa-chevron-left" style="color:#fff;margin-right:-7px"></i><i class="fas fa-chevron-left" style="color:rgba(255,255,255,.5)"></i>
-        {% else %}<i class="fas fa-chevron-right" style="color:rgba(255,255,255,.5)"></i><i class="fas fa-chevron-right" style="color:#fff;margin-left:-7px"></i>{% endif %}
-      </span>
-      <span id="duty-swipe-text" class="font-bold" style="font-size:15px;letter-spacing:-.2px;color:#fff">{% if driver.is_on_duty %}Liniyadan chiqish{% else %}Liniyaga chiqish{% endif %}</span>
-    </div>
-    <div id="duty-swipe-thumb" class="absolute top-[4px] rounded-full flex items-center justify-center"
-         style="width:52px;height:52px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.3);{% if driver.is_on_duty %}right:4px{% else %}left:4px{% endif %}">
-      <i id="duty-swipe-icon" class="text-lg {% if driver.is_on_duty %}fas fa-power-off{% else %}fas fa-play{% endif %}" style="color:{% if driver.is_on_duty %}#D70015{% else %}#1E9E45{% endif %}"></i>
-    </div>
-  </div>
+    <i id="duty-btn-icon" class="{% if driver.is_on_duty %}fas fa-power-off{% else %}fas fa-play{% endif %}" style="font-size:17px;color:#fff"></i>
+    <span id="duty-btn-text" class="font-bold" style="font-size:15px;letter-spacing:-.2px;color:#fff">{% if driver.is_on_duty %}Liniyadan chiqish{% else %}Liniyaga chiqish{% endif %}</span>
+  </button>
 </div>
 
 <style>
@@ -193,110 +193,53 @@ let _known = new Set(ORDERS.map(o => o.id));
 // Sahifa yuklanishi bilan darhol DOM ni render qilamiz
 renderOrdersDOM();
 
-// ── Liniyaga chiqish/chiqish — swipe boshqaruvi ────────────────────────────────
-// Oflayn: tugma chapda, "Liniyaga chiqish" — O'NGGA suring. Ish navbatida:
-// tugma o'ngda, "Liniyadan chiqish" — orqaga, CHAPGA suring.
+// ── Liniyaga chiqish/chiqish — oddiy bosiladigan tugma ─────────────────────────
+// Avval bu surish (swipe/drag) bilan boshqarilardi, lekin ba'zi qurilma va
+// brauzerlarda pointer/touch move hodisalari yetib bormay tugma qotib qolar
+// (bosilsa ham qimirlamas) edi. Endi oddiy bosish (tap) bilan ishlaydi — bu
+// har qanday qurilmada ishonchli ishlaydi.
 (function(){
-  const track = document.getElementById('duty-swipe');
-  if (!track) return;
-  const thumb = document.getElementById('duty-swipe-thumb');
-  const label = document.getElementById('duty-swipe-label');
-  const textEl = document.getElementById('duty-swipe-text');
-  const chevEl = document.getElementById('duty-swipe-chev');
-  const icon   = document.getElementById('duty-swipe-icon');
+  const btn = document.getElementById('duty-btn');
+  if (!btn) return;
+  if (btn.dataset.onDuty === '0') btn.classList.add('is-off');
 
-  const THUMB = 48, PAD = 5;
-  let onDuty  = track.dataset.onDuty === '1';
-  let dragging = false, startX = 0, startLeft = 0, curLeft = 0;
-
-  function trackW() { return track.clientWidth; }
-  function minLeft() { return PAD; }
-  function maxLeft() { return trackW() - THUMB - PAD; }
-  function leftFor(state) { return state ? maxLeft() : minLeft(); }
-
-  function setThumb(left, animate) {
-    thumb.style.transition = animate
-      ? 'left .28s cubic-bezier(.34,1.56,.64,1), background-color .2s'
-      : 'none';
-    // Server tomonidan boshlang'ich holat "right" bilan joylashtirilgan bo'lishi
-    // mumkin (navbatda) — JS endi "left" bilan boshqargani uchun uni tozalaymiz
-    thumb.style.right = 'auto';
-    thumb.style.left = left + 'px';
-  }
-
-  function paint(state, animate) {
-    onDuty = state;
-    curLeft = leftFor(state);
-    setThumb(curLeft, animate);
-    // Muhim: fon HAR DOIM to'liq quyuq (gradient) rangda bo'lishi kerak — avval
-    // shaffof (10% xiralik) fon ishlatilgani sababli tugma "yo'qolib" ko'rinar edi.
-    track.style.background = state
-      ? 'linear-gradient(135deg,#FF453A,#D70015)'
-      : 'linear-gradient(135deg,#34C759,#1E9E45)';
-    track.style.boxShadow = state
-      ? '0 6px 22px rgba(255,59,48,.35)'
-      : '0 6px 22px rgba(52,199,89,.35)';
-    track.classList.toggle('is-off', !state);
-    const c = state ? '#D70015' : '#1E9E45';
-    icon.style.color = c;
-    icon.className = state ? 'fas fa-power-off text-lg' : 'fas fa-play text-lg';
-    textEl.textContent = state ? 'Liniyadan chiqish' : 'Liniyaga chiqish';
-    textEl.style.color = '#fff';
-    // Yo'nalishni ko'rsatuvchi strelkalar — haqiqiy sudrash yo'nalishiga mos:
-    // oflaynda tugma CHAPDA turadi va uni O'NGGA surish kerak (o'ng strelka),
-    // navbatda tugma O'NGDA turadi va uni CHAPGA qaytarish kerak (chap strelka).
-    // Avval bu teskari edi.
-    chevEl.innerHTML = state
-      ? '<i class="fas fa-chevron-left" style="color:#fff;margin-right:-7px"></i><i class="fas fa-chevron-left" style="color:rgba(255,255,255,.5)"></i>'
-      : '<i class="fas fa-chevron-right" style="color:rgba(255,255,255,.5)"></i><i class="fas fa-chevron-right" style="color:#fff;margin-left:-7px"></i>';
-  }
-  paint(onDuty, false);
-
-  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
-
-  function onDown(e) {
+  btn.addEventListener('click', async () => {
     if (_hbgBusy) return;
-    dragging = true;
-    startX = e.clientX;
-    startLeft = leftFor(onDuty);
-    setThumb(startLeft, false);
-    // Pointer capture ba'zi WebView'larda ishlamasligi mumkin — shuning uchun
-    // move/up hodisalarini alohida (window darajasida) ham tinglaymiz (pastda)
-    try { thumb.setPointerCapture(e.pointerId); } catch(_) {}
     Native.vibrate();
-    e.preventDefault();
-  }
-  function onMoveEv(e) {
-    if (!dragging) return;
-    const dx = e.clientX - startX;
-    curLeft = clamp(startLeft + dx, minLeft(), maxLeft());
-    setThumb(curLeft, false);
-  }
-  async function onUpEv() {
-    if (!dragging) return;
-    dragging = false;
-    const mid = (minLeft() + maxLeft()) / 2;
-    // Oflaynda o'ngga (>mid) — navbatga chiqish; navbatda chapga (<mid) — chiqish
-    const crossed = onDuty ? (curLeft < mid) : (curLeft > mid);
-    if (!crossed) { paint(onDuty, true); return; }
-
-    const nextState = !onDuty;
-    paint(nextState, true); // optimistik — muvaffaqiyatli bo'lsa location.reload() bo'ladi
-    const ok = await hbgToggleDuty();
-    if (!ok) paint(!nextState, true); // muvaffaqiyatsiz — joyiga qaytaramiz
-  }
-
-  // Sudrashni butun tugma yuzasidan (faqat kichik tutqichdan emas) boshlash
-  // mumkin — bu barmoq aniq tutqichga tegmasa ham ishonchli ishlaydi. thumb
-  // track ichida joylashgani uchun undagi bosish ham shu tinglovchiga yetadi
-  // (bubbling). move/up esa window darajasida — barmoq tutqichdan chiqib
-  // ketsa ham yoki pointer capture ishlamasa ham davom etadi.
-  track.addEventListener('pointerdown', onDown);
-  window.addEventListener('pointermove', onMoveEv);
-  window.addEventListener('pointerup', onUpEv);
-  window.addEventListener('pointercancel', onUpEv);
-  window.addEventListener('resize', () => setThumb(leftFor(onDuty), false));
+    btn.disabled = true;
+    btn.style.opacity = '.6';
+    const ok = await hbgToggleDuty(); // muvaffaqiyatli bo'lsa ichida location.reload()
+    if (!ok) { btn.disabled = false; btn.style.opacity = '1'; }
+  });
 })();
+
+// ── Hamburger menyu — Liniyaga chiqish/chiqish shu yerdan ham boshqariladi ─────
+function openMenu(){
+  Native.vibrate();
+  const onDuty = document.getElementById('duty-btn')?.dataset.onDuty === '1';
+  document.getElementById('sheet-body').innerHTML = `
+    <div class="ios-title font-bold mb-1 px-1">Menyu</div>
+    <button id="menu-duty-btn" type="button" onclick="_menuToggleDuty()"
+       class="w-full flex items-center justify-center gap-2 border-0 cursor-pointer active:scale-[.97]"
+       style="height:56px;border-radius:16px;transition:transform .1s;
+       background:${onDuty ? 'linear-gradient(135deg,#FF453A,#D70015)' : 'linear-gradient(135deg,#34C759,#1E9E45)'}">
+      <i class="${onDuty ? 'fas fa-power-off' : 'fas fa-play'}" style="font-size:16px;color:#fff"></i>
+      <span class="font-bold" style="font-size:15px;letter-spacing:-.2px;color:#fff">${onDuty ? 'Liniyadan chiqish' : 'Liniyaga chiqish'}</span>
+    </button>
+  `;
+  const ov = document.getElementById('sheet-overlay');
+  const sh = document.getElementById('sheet');
+  ov.classList.remove('hidden');
+  requestAnimationFrame(() => { sh.style.transform = 'translateY(0)'; });
+}
+async function _menuToggleDuty(){
+  if (_hbgBusy) return;
+  Native.vibrate();
+  const btn = document.getElementById('menu-duty-btn');
+  if (btn) { btn.disabled = true; btn.style.opacity = '.6'; }
+  const ok = await hbgToggleDuty();
+  if (!ok && btn) { btn.disabled = false; btn.style.opacity = '1'; }
+}
 
 // on_way yoki arrived buyurtma bo'lsa taximetr fonda ishga tushadi — lekin
 // Asosiy sahifada tafsilot oynasi ENDI avtomatik OCHILMAYDI. Buyurtmani
