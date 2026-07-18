@@ -905,36 +905,39 @@ function _renderSheet(id, o){
 
     <!-- Taximeter (faqat on_way da) -->
     ${(o.status==='on_way'||o.status==='arrived'||o.status==='completed')?`
-    <div style="background:#111;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08)">
-      <div style="padding:10px 14px 6px;display:flex;align-items:center;justify-content:space-between">
+    <div style="background:linear-gradient(180deg,#161618,#0d0d0e);border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 24px rgba(0,0,0,.35)">
+      <div style="padding:12px 14px 8px;display:flex;align-items:center;justify-content:space-between">
         <div style="display:flex;align-items:center;gap:6px">
-          <div style="width:6px;height:6px;border-radius:50%;background:#AF52DE;box-shadow:0 0 6px #AF52DE"></div>
-          <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,.4);letter-spacing:.5px;text-transform:uppercase">Taximetr</span>
+          <div style="width:6px;height:6px;border-radius:50%;background:#AF52DE;box-shadow:0 0 6px #AF52DE${o.status!=='completed'?';animation:pulse-dot 1.4s ease-in-out infinite':''}"></div>
+          <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.45);letter-spacing:.6px;text-transform:uppercase">Taximetr</span>
         </div>
-        ${o.status==='completed'?'<span style="font-size:11px;color:#34C759;font-weight:600">✓ Yakunlandi</span>':''}
+        ${o.status==='completed'?'<span style="font-size:11px;color:#34C759;font-weight:700">✓ Yakunlandi</span>':''}
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;padding:0 10px 10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;padding:2px 8px 12px">
         <div style="text-align:center;padding:8px 4px">
-          <div style="font-size:10px;font-weight:600;color:rgba(255,214,0,.5);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">NARX</div>
-          <div style="font-size:18px;font-weight:700;color:#FFD600;font-variant-numeric:tabular-nums" id="sheet-tmx-price">${_tmxPriceStr||'0'}</div>
+          <div style="font-size:9px;font-weight:700;color:#FFD60088;letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px">NARX</div>
+          <div style="font-size:19px;font-weight:800;color:#FFD600;font-variant-numeric:tabular-nums;letter-spacing:-.3px" id="sheet-tmx-price">${_tmxPriceStr||'0'}</div>
+          <div style="font-size:9px;font-weight:600;color:rgba(255,255,255,.3);margin-top:1px">so'm</div>
         </div>
-        <div style="text-align:center;padding:8px 4px">
-          <div style="font-size:10px;font-weight:600;color:rgba(175,82,222,.5);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">VAQT</div>
-          <div style="font-size:18px;font-weight:700;color:#AF52DE;font-variant-numeric:tabular-nums" id="sheet-tmx-time">${_tmxTimeStr||'0:00'}</div>
+        <div style="text-align:center;padding:8px 4px;border-left:.5px solid rgba(255,255,255,.07)">
+          <div style="font-size:9px;font-weight:700;color:#AF52DE88;letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px">VAQT</div>
+          <div style="font-size:19px;font-weight:800;color:#AF52DE;font-variant-numeric:tabular-nums;letter-spacing:-.3px" id="sheet-tmx-time">${_tmxTimeStr||'0:00'}</div>
         </div>
-        <div style="text-align:center;padding:8px 4px">
-          <div style="font-size:10px;font-weight:600;color:rgba(0,122,255,.5);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">KM</div>
-          <div style="font-size:18px;font-weight:700;color:#007AFF;font-variant-numeric:tabular-nums" id="sheet-tmx-dist">${_tmxDistKm.toFixed(2)}</div>
+        <div style="text-align:center;padding:8px 4px;border-left:.5px solid rgba(255,255,255,.07)">
+          <div style="font-size:9px;font-weight:700;color:#007AFF88;letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px">BOSIB O'TILDI</div>
+          <div style="font-size:19px;font-weight:800;color:#007AFF;font-variant-numeric:tabular-nums;letter-spacing:-.3px" id="sheet-tmx-dist">${_tmxDistKm.toFixed(2)}</div>
+          <div style="font-size:9px;font-weight:600;color:rgba(255,255,255,.3);margin-top:1px">km</div>
         </div>
-        <div style="text-align:center;padding:8px 4px">
-          <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,.3);letter-spacing:.3px;text-transform:uppercase;margin-bottom:3px">KM/H</div>
-          <div style="font-size:18px;font-weight:700;color:rgba(255,255,255,.6);font-variant-numeric:tabular-nums" id="sheet-tmx-speed">${_tmxSpeedKmh}</div>
+        <div style="text-align:center;padding:8px 4px;border-left:.5px solid rgba(255,255,255,.07)">
+          <div style="font-size:9px;font-weight:700;color:#34C75988;letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px">TEZLIK</div>
+          <div style="font-size:19px;font-weight:800;color:#34C759;font-variant-numeric:tabular-nums;letter-spacing:-.3px" id="sheet-tmx-speed">${_tmxSpeedKmh}</div>
+          <div style="font-size:9px;font-weight:600;color:rgba(255,255,255,.3);margin-top:1px">km/h</div>
         </div>
       </div>
       ${o.status==='completed'&&o.price?`
-      <div style="margin:0 10px 10px;padding:10px 12px;background:rgba(52,199,89,.1);border-radius:10px;border:1px solid rgba(52,199,89,.2);display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:12px;color:rgba(52,199,89,.7);font-weight:600">JAMI TO'LOV</span>
-        <span style="font-size:20px;font-weight:700;color:#34C759">${parseInt(o.price).toLocaleString()} so'm</span>
+      <div style="margin:0 10px 10px;padding:12px 14px;background:rgba(52,199,89,.1);border-radius:12px;border:1px solid rgba(52,199,89,.2);display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:12px;color:rgba(52,199,89,.75);font-weight:700;letter-spacing:.2px">JAMI TO'LOV</span>
+        <span style="font-size:21px;font-weight:800;color:#34C759;letter-spacing:-.3px">${parseInt(o.price).toLocaleString()} so'm</span>
       </div>`:''}
     </div>`:''}
     <div>${btns[o.status]||''}</div>

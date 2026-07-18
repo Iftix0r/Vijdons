@@ -677,9 +677,15 @@ function tmxStart(orderId, order) {
     const elapsed = Math.max(0, Math.floor((Date.now() - _tmxStartTime) / 1000));
     _tmxTimeStr = Math.floor(elapsed / 60) + ':' + String(elapsed % 60).padStart(2, '0');
   }
+  // Ekranda ko'rsatiladigan (silliqlangan) qiymatlar — GPS nuqtalari notekis
+  // kelgani uchun masofa "qotib-qotib" (sakrab-sakrab) o'zgarib ko'rinmasligi
+  // uchun, haqiqiy qiymatga har kadr biroz yaqinlashtirib boriladi (pastda).
+  _tmxDispDist  = _tmxDistKm;
+  _tmxDispPrice = parseFloat(_tmxPriceStr.replace(/[^\d.]/g, '')) || 0;
 
   _tmxPersist();
   _tmxInterval = setInterval(_tmxTick, 1000);
+  requestAnimationFrame(_tmxSmoothLoop);
   window.addEventListener('vijdon_location', _tmxOnLocation);
   if (navigator.geolocation) {
     _tmxWatchId = navigator.geolocation.watchPosition(
@@ -716,10 +722,34 @@ function _syncSheetTmx(order) {
   const t = document.getElementById('sheet-tmx-time');
   const d = document.getElementById('sheet-tmx-dist');
   const s = document.getElementById('sheet-tmx-speed');
-  if(p) p.textContent = (_tmxActive ? _tmxPriceStr : (order?.price ? parseInt(order.price).toLocaleString('uz-UZ') : _tmxPriceStr)) || '0';
+  // Faol bo'lsa narx/masofani _tmxSmoothLoop yangilaydi (silliq o'sish uchun) —
+  // bu yerda faqat FAOL BO'LMAGAN (masalan yakunlangan) buyurtma uchun statik
+  // qiymatlarni ko'rsatamiz.
+  if (!_tmxActive) {
+    if(p) p.textContent = (order?.price ? parseInt(order.price).toLocaleString('uz-UZ') : _tmxPriceStr) || '0';
+    if(d) d.textContent = parseFloat(order?.tmx_dist_km || _tmxDistKm || 0).toFixed(2);
+  }
   if(t) t.textContent = _tmxTimeStr  || '0:00';
-  if(d) d.textContent = (_tmxActive ? _tmxDistKm : (order?.tmx_dist_km || _tmxDistKm || 0)).toFixed ? parseFloat(_tmxActive ? _tmxDistKm : (order?.tmx_dist_km || _tmxDistKm || 0)).toFixed(2) : '0.00';
   if(s) s.textContent = _tmxSpeedKmh;
+}
+
+// Ekrandagi narx/masofani har kadrda haqiqiy qiymatga biroz yaqinlashtirib boradi —
+// GPS nuqtalari notekis (har necha soniyada bir) kelgani uchun raqam sakrab-sakrab
+// emas, doim silliq (uzluksiz) o'sayotgandek ko'rinadi.
+let _tmxDispDist  = 0;
+let _tmxDispPrice = 0;
+function _tmxSmoothLoop() {
+  if (!_tmxActive) return;
+  const priceTarget = parseFloat((_tmxPriceStr || '0').replace(/[^\d.]/g, '')) || 0;
+  _tmxDispDist  += (_tmxDistKm  - _tmxDispDist)  * 0.12;
+  _tmxDispPrice += (priceTarget - _tmxDispPrice) * 0.12;
+  if (Math.abs(_tmxDistKm  - _tmxDispDist)  < 0.001) _tmxDispDist  = _tmxDistKm;
+  if (Math.abs(priceTarget - _tmxDispPrice) < 1)     _tmxDispPrice = priceTarget;
+  const p = document.getElementById('sheet-tmx-price');
+  const d = document.getElementById('sheet-tmx-dist');
+  if (p) p.textContent = Math.round(_tmxDispPrice).toLocaleString('uz-UZ');
+  if (d) d.textContent = _tmxDispDist.toFixed(2);
+  requestAnimationFrame(_tmxSmoothLoop);
 }
 
 function _tmxTick() {
