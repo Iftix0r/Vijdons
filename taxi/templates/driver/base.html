@@ -532,13 +532,23 @@ window.addEventListener('vijdon_location', e=>{
 // ── Helpers ───────────────────────────────────────────────────────────────────
 let _hbgBusy = false;
 // Ish navbatini almashtiradi. true/false qaytaradi — chaqiruvchi (masalan
-// Asosiy sahifadagi swipe boshqaruvi) muvaffaqiyatsiz bo'lsa UI'ni orqaga
-// qaytarishi (masalan tugmani joyiga qaytarish) uchun buni tekshira oladi.
+// Asosiy sahifadagi tugma boshqaruvi) muvaffaqiyatsiz bo'lsa UI'ni orqaga
+// qaytarishi (masalan tugmani qayta yoqishi) uchun buni tekshira oladi.
 async function hbgToggleDuty() {
-  if (_hbgBusy) return false;
+  if (_hbgBusy) { console.warn('hbgToggleDuty: band, e\'tiborsiz qoldirildi'); return false; }
   _hbgBusy = true;
   try {
-    const r = await fetch('{% url "driver:duty_toggle" %}', { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+    // So'rov osilib qolmasligi uchun taymaut — aks holda xato ko'rinmasdan
+    // tugma abadiy "band" holatda qolib ketardi (foydalanuvchiga hech narsa
+    // ko'rinmaydi: bosadi — hech narsa bo'lmaydi).
+    const ctrl = new AbortController();
+    const timeoutId = setTimeout(() => ctrl.abort(), 12000);
+    const r = await fetch('{% url "driver:duty_toggle" %}', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      signal: ctrl.signal,
+    });
+    clearTimeout(timeoutId);
     const d = await r.json();
     if (d.ok) {
       sessionStorage.removeItem('vijdon_addr');
@@ -547,10 +557,15 @@ async function hbgToggleDuty() {
       location.reload();
       return true;
     }
-    showToast('Xatolik', d.error || "Qayta urinib ko'ring", 'error', 4000);
+    console.error('hbgToggleDuty failed:', r.status, d);
+    try { showToast('Xatolik', d.error || "Qayta urinib ko'ring", 'error', 4000); } catch(e) { console.error('showToast xatosi', e); }
     return false;
-  } catch(_) {
-    showToast('Xatolik', "Qayta urinib ko'ring", 'error');
+  } catch(err) {
+    console.error('hbgToggleDuty error:', err);
+    const msg = err?.name === 'AbortError'
+      ? "So'rov 12 soniyada javob bermadi (internet sekin)"
+      : (err?.message || 'Internet aloqasini tekshiring');
+    try { showToast('Tarmoq xatosi', msg, 'error'); } catch(e) { console.error('showToast xatosi', e); }
     return false;
   } finally { _hbgBusy = false; }
 }
