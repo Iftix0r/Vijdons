@@ -547,7 +547,15 @@ async function hbgToggleDuty() {
       location.reload();
       return true;
     }
-    showToast('Xatolik', d.error || "Qayta urinib ko'ring", 'error', 4000);
+    // Faol buyurtma (accepted/on_way/arrived) sabab navbatdan chiqib bo'lmasa —
+    // bu buyurtma Asosiy sahifada ko'rinmaydi (faqat Tarix orqali boshqariladi),
+    // shuning uchun haydovchini to'g'ridan-to'g'ri Tarixga yo'naltiramiz — aks
+    // holda tugma bosilganda hech narsa bo'lmagandek tuyuladi.
+    const isActiveOrderBlock = (d.error || '').includes('Faol buyurtmangiz');
+    showToast('Xatolik', d.error || "Qayta urinib ko'ring", 'error', isActiveOrderBlock ? 6000 : 4000);
+    if (isActiveOrderBlock) {
+      setTimeout(() => { window.location.href = '{% url "driver:history" %}'; }, 1400);
+    }
     return false;
   } catch(_) {
     showToast('Xatolik', "Qayta urinib ko'ring", 'error');
