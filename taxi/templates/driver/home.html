@@ -215,6 +215,19 @@ renderOrdersDOM();
   if (btn.dataset.onDuty === '0') btn.classList.add('is-off');
 
   btn.addEventListener('click', async () => {
+    // Sheetdagi "Qabul qilish" va shu kabi tugmalar safe-area pastki chetiga
+    // yaqin joylashadi — xuddi shu joyda "Liniyadan chiqish" tugmasi ham fixed
+    // holda turadi. Ba'zi qurilma/brauzerlarda bitta bosishdan keyin (sheet
+    // yopilayotganda overlay'ning pointer-events darhol 'none' qilinishi
+    // sababli) kechikkan "hodisa" tagidagi tugmaga (aynan shu duty-btnga)
+    // o'tib ketishi mumkin edi — buyurtma qabul qilinadi-yu, orqasidan
+    // haydovchi kutilmaganda navbatdan ham chiqib ketadi. Shu sababli
+    // buyurtma amalidan keyingi qisqa oynada duty-btn bosilishini e'tiborsiz
+    // qoldiramiz (haqiqiy ataylab bosish bo'lsa, foydalanuvchi яна bosadi).
+    if (window._lastOrderActionAt && Date.now() - window._lastOrderActionAt < 800) {
+      console.warn('duty-btn: buyurtma amalidan keyingi shubhali hodisa, e\'tiborsiz qoldirildi');
+      return;
+    }
     if (_hbgBusy) return;
     Native.vibrate();
     btn.disabled = true;
@@ -935,6 +948,8 @@ async function doAction(id,action){
     showToast('Xatolik', "Buyurtma ID topilmadi, qayta urinib ko'ring", 'error');
     return;
   }
+  // duty-btn'dagi kechikkan/shubhali hodisalarni filtrlash uchun belgi
+  window._lastOrderActionAt = Date.now();
   try { Native.vibrate(); } catch(e) { console.error('vibrate xatosi', e); }
   try { closeSheet(); } catch(e) { console.error('closeSheet xatosi', e); }
   try { closeNewOrderModal(false); } catch(e) { console.error('closeNewOrderModal xatosi', e); }
