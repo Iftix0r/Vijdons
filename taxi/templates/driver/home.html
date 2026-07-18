@@ -191,6 +191,16 @@ let TODAY_TRIPS = {{ today_trips }};
 let ORDERS = {{ orders_json|safe }};
 let _known = new Set(ORDERS.map(o => o.id));
 
+// Diqqat: bu pastda (renderOrdersDOM -> _startTimers ichida) ishlatiladi, lekin
+// undan OLDIN e'lon qilinishi SHART — aks holda (kutilmoqda buyurtma bo'lganda,
+// renderOrdersDOM darhol _startTimers()ni chaqirganda) "let" o'zgaruvchisi hali
+// initsializatsiya qilinmagan bo'lib, ReferenceError (TDZ) tashlaydi va shu
+// sabab BUTUN qolgan skript (jumladan "Liniyaga chiqish" tugmasi ulanishi,
+// polling, push va h.k.) sukut bilan ishga tushmay qolar edi — aynan kutilmoqda
+// buyurtma bo'lgan holatlarda tugma "bosilsa ham hech narsa bo'lmasligi" shu
+// bag'dan kelib chiqqan.
+let _timerIntervals = {};
+
 // Sahifa yuklanishi bilan darhol DOM ni render qilamiz
 renderOrdersDOM();
 
@@ -455,7 +465,6 @@ function renderOrdersDOM() {
 
 // ── Pull-to-refresh ──────────────────────────────────────────────────────────
 // ── Pending timer countdown ───────────────────────────────────────────────────
-let _timerIntervals = {};
 function _startTimers() {
   Object.values(_timerIntervals).forEach(clearInterval);
   _timerIntervals = {};
