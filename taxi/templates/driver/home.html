@@ -963,23 +963,42 @@ function closeSheet(){
 }
 
 async function doAction(id,action){
-  Native.vibrate(); closeSheet(); closeNewOrderModal(false);
-  sessionStorage.removeItem('vijdon_new_order');
-  if(action==='accept') Audio.accept();
-  else if(action==='reject'||action==='cancel') Audio.reject();
-  else if(action==='complete') Audio.complete();
-  if(typeof FlutterNotify !== 'undefined') FlutterNotify.postMessage('0');
+  // Diqqat: pastdagi (vibratsiya/tovush/Flutter ko'prigi) qadamlarning
+  // har biri o'zining try/catch'iga o'ralgan — aks holda ulardan biri xato
+  // bersa, butun funksiya HECH QANDAY XABARSIZ to'xtab qolar edi (foydalanuvchi
+  // tugmani bossa ham hech narsa bo'lmagandek tuyulardi).
+  if (!id || !action) {
+    console.error('doAction: id yoki action yo\'q', id, action);
+    showToast('Xatolik', "Buyurtma ID topilmadi, qayta urinib ko'ring", 'error');
+    return;
+  }
+  try { Native.vibrate(); } catch(e) { console.error('vibrate xatosi', e); }
+  try { closeSheet(); } catch(e) { console.error('closeSheet xatosi', e); }
+  try { closeNewOrderModal(false); } catch(e) { console.error('closeNewOrderModal xatosi', e); }
+  try { sessionStorage.removeItem('vijdon_new_order'); } catch(e) {}
+  try {
+    if(action==='accept') Audio.accept();
+    else if(action==='reject'||action==='cancel') Audio.reject();
+    else if(action==='complete') Audio.complete();
+  } catch(e) { console.error('Audio xatosi', e); }
+  try {
+    if(typeof FlutterNotify !== 'undefined') FlutterNotify.postMessage('0');
+  } catch(e) { console.error('FlutterNotify xatosi', e); }
 
   try{
     const fd = new FormData();
     fd.append('tmx_dist_km', _tmxDistKm || 0);
     fd.append('tmx_price', parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,'')) || 0);
     fd.append('tmx_time', _tmxTimeStr || '0:00');
+    const ctrl = new AbortController();
+    const timeoutId = setTimeout(() => ctrl.abort(), 15000);
     const r=await fetch(`/driver/orders/${id}/${action}/`,{
       method:'POST',
       headers:{'X-CSRFToken':getCookie('csrftoken')},
       body: fd,
+      signal: ctrl.signal,
     });
+    clearTimeout(timeoutId);
     const d=await r.json();
     if(d.ok){
       if(action==='on_way'){
@@ -1048,7 +1067,10 @@ async function doAction(id,action){
     }
   }catch(err){
     console.error('doAction error:', action, id, err);
-    showToast('Tarmoq xatosi','Internet aloqasini tekshiring','error');
+    const msg = err?.name === 'AbortError'
+      ? "So'rov 15 soniyada javob bermadi (internet sekin)"
+      : (err?.message || 'Internet aloqasini tekshiring');
+    showToast('Tarmoq xatosi', msg, 'error');
   }
 }
 </script>
