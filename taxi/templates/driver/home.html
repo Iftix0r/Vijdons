@@ -260,8 +260,11 @@ renderOrdersDOM();
     startX = e.clientX;
     startLeft = leftFor(onDuty);
     setThumb(startLeft, false);
-    thumb.setPointerCapture(e.pointerId);
+    // Pointer capture ba'zi WebView'larda ishlamasligi mumkin — shuning uchun
+    // move/up hodisalarini alohida (window darajasida) ham tinglaymiz (pastda)
+    try { thumb.setPointerCapture(e.pointerId); } catch(_) {}
     Native.vibrate();
+    e.preventDefault();
   }
   function onMoveEv(e) {
     if (!dragging) return;
@@ -283,10 +286,15 @@ renderOrdersDOM();
     if (!ok) paint(!nextState, true); // muvaffaqiyatsiz — joyiga qaytaramiz
   }
 
-  thumb.addEventListener('pointerdown', onDown);
-  thumb.addEventListener('pointermove', onMoveEv);
-  thumb.addEventListener('pointerup', onUpEv);
-  thumb.addEventListener('pointercancel', onUpEv);
+  // Sudrashni butun tugma yuzasidan (faqat kichik tutqichdan emas) boshlash
+  // mumkin — bu barmoq aniq tutqichga tegmasa ham ishonchli ishlaydi. thumb
+  // track ichida joylashgani uchun undagi bosish ham shu tinglovchiga yetadi
+  // (bubbling). move/up esa window darajasida — barmoq tutqichdan chiqib
+  // ketsa ham yoki pointer capture ishlamasa ham davom etadi.
+  track.addEventListener('pointerdown', onDown);
+  window.addEventListener('pointermove', onMoveEv);
+  window.addEventListener('pointerup', onUpEv);
+  window.addEventListener('pointercancel', onUpEv);
   window.addEventListener('resize', () => setThumb(leftFor(onDuty), false));
 })();
 
