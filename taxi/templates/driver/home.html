@@ -102,10 +102,12 @@
 </style>
 
 <!-- Content: JS tomonidan to'ldiriladi -->
-<div class="px-4 py-3 space-y-3" id="orders-wrap" style="padding-bottom:16px"></div>
+<!-- padding-bottom: pastda doimiy (fixed) turadigan "Liniyaga chiqish" tugmasi
+     ostida buyurtmalar ko'rinmay qolib ketmasligi uchun -->
+<div class="px-4 py-3 space-y-3" id="orders-wrap" style="padding-bottom:120px"></div>
 
-<!-- Liniyaga chiqish/chiqish — sahifa oqimida, "Buyurtmalar tarixi"dan keyin, eng pastda -->
-<div class="px-4 pb-2">
+<!-- Liniyaga chiqish/chiqish — tab-bar ustida doimiy (fixed) qadalgan holda -->
+<div class="fixed left-0 right-0 px-3 z-40" style="bottom:calc(env(safe-area-inset-bottom,34px) + 68px)">
   <div id="duty-swipe" data-on-duty="{{ driver.is_on_duty|yesno:'1,0' }}"
        class="relative select-none" style="height:60px;border-radius:22px;overflow:hidden;touch-action:none;transition:box-shadow .2s;
        background:{% if driver.is_on_duty %}linear-gradient(135deg,#FF453A,#D70015){% else %}linear-gradient(135deg,#34C759,#1E9E45){% endif %};
