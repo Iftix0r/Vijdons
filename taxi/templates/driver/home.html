@@ -1050,8 +1050,14 @@ async function doAction(id,action){
         renderOrdersDOM();
         setTimeout(()=>{ _suppressModal = false; }, 3000);
       }
-    } else showToast('Xatolik',d.error||"Qayta urinib ko'ring",'error');
-  }catch(_){showToast('Tarmoq xatosi','Internet aloqasini tekshiring','error');}
+    } else {
+      console.error('doAction failed:', action, id, d);
+      showToast('Xatolik',d.error||"Qayta urinib ko'ring",'error');
+    }
+  }catch(err){
+    console.error('doAction error:', action, id, err);
+    showToast('Tarmoq xatosi','Internet aloqasini tekshiring','error');
+  }
 }
 </script>
 {% endblock %}
