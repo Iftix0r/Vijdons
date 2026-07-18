@@ -103,10 +103,17 @@ def _mask_phone(phone):
 @driver_login_required
 def driver_home(request, driver):
     from django.db.models import Q
+    from django.utils import timezone
     from .utils import haversine
+    # Dispatch muddati o'tgan buyurtmalar (masalan, avtomatik qayta-yuborish
+    # jarayoni server qayta ishga tushishi/ishchi jarayon almashinishi sababli
+    # bajarilmay qolgan bo'lsa) hamma haydovchiga ko'rinadigan bo'lsin — aks
+    # holda ular abadiy faqat bitta (javob bermagan) haydovchiga "osilib qoladi"
+    dispatch_cutoff = timezone.now() - timezone.timedelta(seconds=TariffSettings.get().dispatch_timeout)
     base_qs = Order.objects.select_related('client', 'driver').filter(
         Q(status='pending', dispatched_to=driver) |
         Q(status='pending', dispatched_to__isnull=True) |
+        Q(status='pending', dispatched_at__lt=dispatch_cutoff) |
         Q(driver=driver, status__in=['accepted', 'on_way', 'arrived'])
     ).exclude(
         Q(status='pending', rejected_by=driver)
@@ -189,9 +196,13 @@ def driver_orders_json(request, driver):
     """AJAX: buyurtmalar ro'yxati + yangi pending ID lar."""
     from django.db.models import Q
     from django.utils import timezone
+    # Dispatch muddati o'tgan buyurtmalar (avtomatik qayta-yuborish bajarilmay
+    # qolgan bo'lsa ham) hamma haydovchiga ko'rinsin — driver_home dagi bilan bir xil
+    dispatch_cutoff = timezone.now() - timezone.timedelta(seconds=TariffSettings.get().dispatch_timeout)
     qs = Order.objects.select_related('client').filter(
         Q(status='pending', dispatched_to=driver) |
         Q(status='pending', dispatched_to__isnull=True) |
+        Q(status='pending', dispatched_at__lt=dispatch_cutoff) |
         Q(driver=driver, status__in=['accepted', 'on_way', 'arrived'])
     ).exclude(
         Q(status='pending', rejected_by=driver)
@@ -632,6 +643,8 @@ def driver_meter_update(request, driver, pk):
 def driver_order_eta(request, driver, pk):
     """Haydovchining buyurtma manziliga ETA ni hisoblaydi (daqiqa)."""
     order = get_object_or_404(Order, pk=pk)
+    if order.driver_id and order.driver_id != driver.id:
+        return JsonResponse({'ok': False, 'error': 'Bu buyurtma sizga tegishli emas'}, status=403)
     eta_min = None
     distance_km = None
     if (driver.latitude and driver.longitude and
@@ -652,6 +665,8 @@ def driver_order_eta(request, driver, pk):
 def driver_order_rate(request, driver, pk):
     """Operator yoki mijoz haydovchiga reyting beradi (1-5)."""
     order = get_object_or_404(Order, pk=pk)
+    if order.driver_id and order.driver_id != driver.id:
+        return JsonResponse({'ok': False, 'error': 'Bu buyurtma sizga tegishli emas'}, status=403)
     if order.status != 'completed':
         return JsonResponse({'ok': False, 'error': 'Faqat yakunlangan buyurtmaga reyting beriladi'}, status=400)
     try:

@@ -110,6 +110,13 @@ class Order(models.Model):
     class Meta:
         verbose_name = "Buyurtma"
         verbose_name_plural = "Buyurtmalar"
+        indexes = [
+            # Haydovchi ilovasi buyurtmalar ro'yxatini har 3-5 soniyada shu
+            # kombinatsiyalar bo'yicha so'raydi (poll) — indekssiz jadval kattalashgani
+            # sari sekinlashib boradi.
+            models.Index(fields=['status', 'driver']),
+            models.Index(fields=['status', 'dispatched_to']),
+        ]
 
 
 class ChatMessage(models.Model):
