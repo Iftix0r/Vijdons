@@ -65,12 +65,6 @@
 </div>
 
 <style>
-@keyframes dot-blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
-.dot-blink{animation:dot-blink 1.4s ease-in-out infinite}
-.dot-blink:nth-child(2){animation-delay:.2s}.dot-blink:nth-child(3){animation-delay:.4s}
-@keyframes wave-shadow{0%,100%{box-shadow:0 8px 32px rgba(255,214,0,.18)}50%{box-shadow:0 12px 48px rgba(255,214,0,.42)}}
-.radar-core{animation:wave-shadow 2s ease-in-out infinite}
-
 /* ── Qidiruv: ekran chetlari bo'ylab aylanadigan chiziq ── */
 @property --scan-angle {
   syntax: '<angle>';
@@ -445,37 +439,25 @@ function renderOrdersDOM() {
     return;
   }
 
-  // Faqat hali qabul qilinmagan (pending) buyurtmalar Asosiy sahifa ko'rinishini
-  // o'zgartiradi. Qabul qilingan buyurtma (accepted/on_way/arrived) endi Asosiy
-  // sahifani "egallab olmaydi" — statistika o'z holicha qoladi, buyurtmani
-  // boshqarish (Yo'lga chiqdim/Yetib keldim/Yakunlash) Tarix orqali davom etadi.
+  // Statistika HAR DOIM ko'rinadi (Start holatida) — buyurtma bor-yo'qligidan
+  // qat'i nazar Asosiy sahifa o'zgarmaydi. Faqat hali qabul qilinmagan (pending)
+  // buyurtmalar bo'lsa, ular statistika OSTIDA qo'shimcha ko'rsatiladi. Qabul
+  // qilingan buyurtma (accepted/on_way/arrived) esa Asosiy sahifada ko'rinmaydi —
+  // uni boshqarish (Yo'lga chiqdim/Yetib keldim/Yakunlash) Tarix orqali davom etadi.
   const pendingOrders = ORDERS.filter(o => o.status === 'pending');
 
+  // Faol qidiruv indikatori — endi faqat ekran cheti bo'ylab aylanadigan sariq
+  // chiziq, alohida "Buyurtma qidirilmoqda" matni/nuqtalari kerak emas.
+  const scanHtml = `<div class="screen-scan"></div>`;
+
   if(!pendingOrders.length) {
-    wrap.innerHTML = statsHtml + `
-      <div class="screen-scan"></div>
-      <div class="flex flex-col items-center pt-6 pb-6 gap-6 anim-fade">
-        <div class="relative flex items-center justify-center" style="width:160px;height:160px">
-          <div class="radar-core relative z-10 w-[72px] h-[72px] rounded-full bg-[#FFD600] flex items-center justify-center" style="border:3px solid rgba(255,214,0,.3)">
-            <i class="fas fa-taxi text-black text-[26px]"></i>
-          </div>
-        </div>
-        <div class="text-center">
-          <p class="ios-title font-semibold">Buyurtma qidirilmoqda</p>
-          <div class="flex items-center justify-center gap-1.5 mt-2">
-            <span class="dot-blink w-[6px] h-[6px] rounded-full bg-[#FFD600]"></span>
-            <span class="dot-blink w-[6px] h-[6px] rounded-full bg-[#FFD600]"></span>
-            <span class="dot-blink w-[6px] h-[6px] rounded-full bg-[#FFD600]"></span>
-          </div>
-          <p class="ios-caption mt-2" style="color:var(--ios-label3)">Yangi buyurtma kelganda signal beriladi</p>
-        </div>
-      </div>`;
+    wrap.innerHTML = statsHtml + scanHtml;
     return;
   }
 
   const pill = {pending:'pill-yellow'};
   const lbl  = {pending:'Kutilmoqda'};
-  wrap.innerHTML = pendingOrders.map((o,i) => `
+  const ordersHtml = pendingOrders.map((o,i) => `
     <div class="ios-card active:opacity-70 transition-opacity cursor-pointer anim-up"
          onclick="openOrder(${o.id})"
          style="animation-delay:${i*50}ms;box-shadow:0 1px 3px rgba(0,0,0,.08)">
@@ -504,6 +486,8 @@ function renderOrdersDOM() {
         </div>
       </div>
     </div>`).join('');
+
+  wrap.innerHTML = statsHtml + scanHtml + `<div class="space-y-3 pt-1">${ordersHtml}</div>`;
   _startTimers();
 }
 
