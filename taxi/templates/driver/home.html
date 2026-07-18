@@ -108,8 +108,22 @@
 </style>
 
 <!-- Content: JS tomonidan to'ldiriladi -->
-<!-- padding-bottom: pastda doimiy turadigan "Liniyaga chiqish" tugmasi ostida qolib ketmasligi uchun -->
-<div class="px-4 py-3 space-y-3" id="orders-wrap" style="padding-bottom:110px"></div>
+<div class="px-4 py-3 space-y-3" id="orders-wrap" style="padding-bottom:16px"></div>
+
+<!-- Liniyaga chiqish/chiqish — sahifa oqimida, "Buyurtmalar tarixi"dan keyin, eng pastda -->
+<div class="px-4 pb-2">
+  <div id="duty-swipe" data-on-duty="{{ driver.is_on_duty|yesno:'1,0' }}"
+       class="relative select-none" style="height:60px;border-radius:22px;overflow:hidden;touch-action:none;transition:box-shadow .2s">
+    <div id="duty-swipe-label" class="absolute inset-0 flex items-center justify-center gap-2">
+      <span id="duty-swipe-chev" class="flex items-center" style="font-size:13px"></span>
+      <span id="duty-swipe-text" class="font-bold" style="font-size:15px;letter-spacing:-.2px"></span>
+    </div>
+    <div id="duty-swipe-thumb" class="absolute top-[4px] left-[4px] rounded-full flex items-center justify-center"
+         style="width:52px;height:52px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.3)">
+      <i id="duty-swipe-icon" class="text-lg"></i>
+    </div>
+  </div>
+</div>
 
 <style>
 @keyframes pulse-dot {
@@ -159,21 +173,6 @@
   </div>
 </div>
 
-<!-- Liniyaga chiqish/chiqish — tab-bar ustiga yaqin, keng va bo'rtib turadigan swipe boshqaruvi -->
-<div class="fixed left-0 right-0 px-3 z-40" style="bottom:calc(env(safe-area-inset-bottom,34px) + 68px)">
-  <div id="duty-swipe" data-on-duty="{{ driver.is_on_duty|yesno:'1,0' }}"
-       class="relative select-none" style="height:60px;border-radius:22px;overflow:hidden;touch-action:none;transition:box-shadow .2s">
-    <div id="duty-swipe-label" class="absolute inset-0 flex items-center justify-center gap-2">
-      <span id="duty-swipe-chev" class="flex items-center" style="font-size:13px"></span>
-      <span id="duty-swipe-text" class="font-bold" style="font-size:15px;letter-spacing:-.2px"></span>
-    </div>
-    <div id="duty-swipe-thumb" class="absolute top-[4px] left-[4px] rounded-full flex items-center justify-center"
-         style="width:52px;height:52px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.3)">
-      <i id="duty-swipe-icon" class="text-lg"></i>
-    </div>
-  </div>
-</div>
-
 {% endblock %}
 {% block extra_js %}
 <script>
@@ -194,8 +193,8 @@ let _known = new Set(ORDERS.map(o => o.id));
 renderOrdersDOM();
 
 // ── Liniyaga chiqish/chiqish — swipe boshqaruvi ────────────────────────────────
-// Oflayn: "Liniyaga chiqish" — tugmani CHAPGA suring. Ish navbatida:
-// "Liniyadan chiqish" — tugmani ORQAGA (o'ngga) suring.
+// Oflayn: tugma chapda, "Liniyaga chiqish" — O'NGGA suring. Ish navbatida:
+// tugma o'ngda, "Liniyadan chiqish" — orqaga, CHAPGA suring.
 (function(){
   const track = document.getElementById('duty-swipe');
   if (!track) return;
@@ -239,10 +238,13 @@ renderOrdersDOM();
     icon.className = state ? 'fas fa-power-off text-lg' : 'fas fa-play text-lg';
     textEl.textContent = state ? 'Liniyadan chiqish' : 'Liniyaga chiqish';
     textEl.style.color = '#fff';
-    // Yo'nalishni ko'rsatuvchi strelkalar: oflaynda chapga, navbatda o'ngga
+    // Yo'nalishni ko'rsatuvchi strelkalar — haqiqiy sudrash yo'nalishiga mos:
+    // oflaynda tugma CHAPDA turadi va uni O'NGGA surish kerak (o'ng strelka),
+    // navbatda tugma O'NGDA turadi va uni CHAPGA qaytarish kerak (chap strelka).
+    // Avval bu teskari edi.
     chevEl.innerHTML = state
-      ? '<i class="fas fa-chevron-right" style="color:rgba(255,255,255,.5)"></i><i class="fas fa-chevron-right" style="color:#fff;margin-left:-7px"></i>'
-      : '<i class="fas fa-chevron-left" style="color:#fff;margin-right:-7px"></i><i class="fas fa-chevron-left" style="color:rgba(255,255,255,.5)"></i>';
+      ? '<i class="fas fa-chevron-left" style="color:#fff;margin-right:-7px"></i><i class="fas fa-chevron-left" style="color:rgba(255,255,255,.5)"></i>'
+      : '<i class="fas fa-chevron-right" style="color:rgba(255,255,255,.5)"></i><i class="fas fa-chevron-right" style="color:#fff;margin-left:-7px"></i>';
   }
   paint(onDuty, false);
 

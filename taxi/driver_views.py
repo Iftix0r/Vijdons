@@ -110,13 +110,15 @@ def driver_home(request, driver):
     # bajarilmay qolgan bo'lsa) hamma haydovchiga ko'rinadigan bo'lsin — aks
     # holda ular abadiy faqat bitta (javob bermagan) haydovchiga "osilib qoladi"
     dispatch_cutoff = timezone.now() - timezone.timedelta(seconds=TariffSettings.get().dispatch_timeout)
+    # Diqqat: haydovchi avval "Rad etish" bosgan bo'lsa ham, agar buyurtma hali
+    # ham hech kim tomonidan olinmagan (pending) bo'lib qolsa, umumiy ro'yxatda
+    # ko'rinishda davom etadi — rad etish faqat avtomatik yuborish (dispatch)
+    # navbatidan chiqarib yuboradi, buyurtmani butunlay yashirmaydi.
     base_qs = Order.objects.select_related('client', 'driver').filter(
         Q(status='pending', dispatched_to=driver) |
         Q(status='pending', dispatched_to__isnull=True) |
         Q(status='pending', dispatched_at__lt=dispatch_cutoff) |
         Q(driver=driver, status__in=['accepted', 'on_way', 'arrived'])
-    ).exclude(
-        Q(status='pending', rejected_by=driver)
     ).exclude(
         status__in=['cancelled', 'completed']
     ).order_by('-created_at')
@@ -199,13 +201,13 @@ def driver_orders_json(request, driver):
     # Dispatch muddati o'tgan buyurtmalar (avtomatik qayta-yuborish bajarilmay
     # qolgan bo'lsa ham) hamma haydovchiga ko'rinsin — driver_home dagi bilan bir xil
     dispatch_cutoff = timezone.now() - timezone.timedelta(seconds=TariffSettings.get().dispatch_timeout)
+    # rad etilgan bo'lsa ham, hali hech kim olmagan (pending) buyurtma umumiy
+    # ro'yxatda ko'rinishda davom etadi — driver_home dagi bilan bir xil mantiq
     qs = Order.objects.select_related('client').filter(
         Q(status='pending', dispatched_to=driver) |
         Q(status='pending', dispatched_to__isnull=True) |
         Q(status='pending', dispatched_at__lt=dispatch_cutoff) |
         Q(driver=driver, status__in=['accepted', 'on_way', 'arrived'])
-    ).exclude(
-        Q(status='pending', rejected_by=driver)
     ).exclude(
         status__in=['cancelled', 'completed']
     ).order_by('-created_at')
