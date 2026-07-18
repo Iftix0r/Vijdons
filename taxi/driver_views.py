@@ -622,20 +622,14 @@ def driver_location_sync(request, driver):
 @require_POST
 def driver_duty_toggle(request, driver):
     tariff = TariffSettings.get()
-    if driver.is_on_duty:
-        # Faol (qabul qilingan/yo'lda/yetib kelgan) buyurtmasi bo'lsa, ish
-        # navbatini to'xtatishga ruxsat bermaymiz — aks holda "off-duty"
-        # bo'lib turib ham safar/taximetr fonda davom etib qolaveradi va
-        # buyurtma holati bilan navbat holati mos kelmay chalkashlik tug'diradi
-        has_active = Order.objects.filter(
-            driver=driver, status__in=['accepted', 'on_way', 'arrived']
-        ).exists()
-        if has_active:
-            return JsonResponse({
-                'ok': False,
-                'error': "Faol buyurtmangiz bor. Avval uni yakunlang yoki bekor qiling.",
-            }, status=400)
-    else:
+    # Diqqat: is_on_duty faqat YANGI buyurtma dispatch qilish uchun filtr
+    # sifatida ishlatiladi (utils.dispatch_order va h.k.) — joriy (accepted/
+    # on_way/arrived) buyurtmani boshqarish Tarix orqali navbat holatidan
+    # mustaqil davom etadi. Shu sababli bu yerda faol buyurtma borligi uchun
+    # navbatdan chiqishni taqiqlamaymiz (avval taqiqlangan edi — bu haydovchi
+    # uchun "tugma bosilsa ham hech narsa bo'lmaydi" holatini keltirib
+    # chiqargan, mobil ilova API'sida ham bunday cheklov yo'q).
+    if not driver.is_on_duty:
         # Navbatga kirishda balans yetarlimi tekshirish
         if driver.balance < tariff.commission:
             return JsonResponse({
