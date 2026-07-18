@@ -8,10 +8,19 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='driver',
-            name='last_address',
-            field=models.CharField(blank=True, default='', max_length=500, verbose_name="So'nggi manzil"),
+        # `last_address` ustuni productionda allaqachon mavjud (avvalroq
+        # migratsiyasiz, qo'lda yoki boshqa yo'l bilan qo'shilgan) — shuning
+        # uchun bazani o'zgartirmasdan, faqat Django'ning migratsiya holatini
+        # (state) modelga moslashtiramiz.
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.AddField(
+                    model_name='driver',
+                    name='last_address',
+                    field=models.CharField(blank=True, default='', max_length=500, verbose_name="So'nggi manzil"),
+                ),
+            ],
+            database_operations=[],
         ),
         # tmx_dist_km hozircha NULL bo'lishi mumkin edi (0020-migratsiya); NOT NULL
         # qilishdan oldin mavjud NULL qatorlarni 0 ga to'ldiramiz — aks holda
