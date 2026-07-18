@@ -304,14 +304,20 @@ body { background: var(--ios-bg); color: var(--ios-label); }
        style="padding-bottom:env(safe-area-inset-bottom,34px)">
 
     <a href="{% url 'driver:home' %}" onclick="Native.vibrate(); dismissAllSheets()"
-       class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60">
+       class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60 relative">
       <i class="fas fa-car-side text-[24px] {% if active_tab == 'home' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+      {% if pending_orders_count > 0 %}
+      <span class="ios-badge absolute top-1 right-2" style="font-size:10px;min-width:16px;height:16px">{{ pending_orders_count }}</span>
+      {% endif %}
       <span class="ios-caption2 {% if active_tab == 'home' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Asosiy</span>
     </a>
 
     <a href="{% url 'driver:history' %}" onclick="Native.vibrate(); dismissAllSheets()"
-       class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60">
+       class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60 relative">
       <i class="fas fa-clock-rotate-left text-[24px] {% if active_tab == 'history' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+      {% if active_orders_count > 0 %}
+      <span class="ios-badge absolute top-1 right-2" style="font-size:10px;min-width:16px;height:16px">{{ active_orders_count }}</span>
+      {% endif %}
       <span class="ios-caption2 {% if active_tab == 'history' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Tarix</span>
     </a>
 

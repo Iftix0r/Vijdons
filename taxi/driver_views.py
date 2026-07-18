@@ -37,6 +37,33 @@ def _chat_unread(driver):
     return ChatMessage.objects.filter(driver=driver, sender=ChatMessage.SENDER_OPERATOR, is_read=False).count()
 
 
+def _pending_orders_count(driver):
+    """Haydovchiga hozir ko'rinadigan, hali qabul qilinmagan buyurtmalar soni — tab-bardagi Asosiy belgisi uchun."""
+    from django.db.models import Q
+    from django.utils import timezone
+    from .utils import haversine
+    dispatch_cutoff = timezone.now() - timezone.timedelta(seconds=TariffSettings.get().dispatch_timeout)
+    qs = Order.objects.filter(
+        Q(status='pending', dispatched_to=driver) |
+        Q(status='pending', dispatched_to__isnull=True) |
+        Q(status='pending', dispatched_at__lt=dispatch_cutoff)
+    )
+    if driver.destination_mode and driver.destination_lat and driver.destination_lng:
+        count = 0
+        for o in qs:
+            if o.to_lat and o.to_lng:
+                d = haversine(o.to_lat, o.to_lng, driver.destination_lat, driver.destination_lng)
+                if d is not None and d <= 5:
+                    count += 1
+        return count
+    return qs.count()
+
+
+def _active_orders_count(driver):
+    """Haydovchining hali yakunlanmagan (accepted/on_way/arrived) buyurtmalari soni — tab-bardagi Tarix belgisi uchun."""
+    return Order.objects.filter(driver=driver, status__in=['accepted', 'on_way', 'arrived']).count()
+
+
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 def driver_login_view(request):
@@ -183,6 +210,10 @@ def driver_home(request, driver):
         'orders_json': json.dumps(orders_data, ensure_ascii=False),
         'active_tab':  'home',
         'chat_unread': _chat_unread(driver),
+        # Tab-bar belgilari uchun — bu yerda allaqachon yuklangan `orders`dan
+        # hisoblaymiz, qayta so'rov yubormaslik uchun
+        'pending_orders_count': sum(1 for o in orders if o.status == 'pending'),
+        'active_orders_count': sum(1 for o in orders if o.status in ('accepted', 'on_way', 'arrived')),
         'tariff':      _tariff,
         'tariff_base_price': int(_tariff.base_price),
         'tariff_per_km': int(_tariff.price_per_km),
@@ -402,6 +433,8 @@ def driver_history(request, driver):
         'total_earned':   stats['total_earned'] or 0,
         'active_tab':     'history',
         'chat_unread':    _chat_unread(driver),
+        'pending_orders_count': _pending_orders_count(driver),
+        'active_orders_count': _active_orders_count(driver),
         'period':         period,
         'period_choices': [('all','Barchasi'),('today','Bugun'),('week','7 kun'),('month','30 kun')],
         'tariff_base_price': int(_tariff.base_price),
@@ -423,6 +456,8 @@ def driver_chat(request, driver):
         'last_msg_id': last_msg_id,
         'active_tab':  'chat',
         'chat_unread': 0,
+        'pending_orders_count': _pending_orders_count(driver),
+        'active_orders_count': _active_orders_count(driver),
     })
 
 
@@ -481,6 +516,8 @@ def driver_profile(request, driver):
         'driver':      driver,
         'active_tab':  'profile',
         'chat_unread': _chat_unread(driver),
+        'pending_orders_count': _pending_orders_count(driver),
+        'active_orders_count': _active_orders_count(driver),
     })
 
 
