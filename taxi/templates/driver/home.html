@@ -139,6 +139,7 @@
 .price-updated { animation: price-pop .25s ease-out; }
 </style>
 <div id="new-order-modal" class="fixed inset-0 z-[200] hidden flex items-center justify-center"
+     onclick="if(event.target===this) closeNewOrderModal(false)"
      style="background:rgba(0,0,0,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)">
   <div class="ios-alert mx-4 w-full max-w-sm anim-scale" style="border-radius:20px;overflow:hidden">
     <!-- Header -->
