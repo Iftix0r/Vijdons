@@ -325,6 +325,15 @@ async function doHistoryAction(id, action) {
   closeDetail();
   try {
     const fd = new FormData();
+    // Taximetr shu buyurtma uchun faol bo'lsa, haqiqiy hisoblangan
+    // masofa/narxni ham yuboramiz — aks holda server buni bilmay, "Yakunlash"da
+    // narxni tariff bazaviy narxiga (masalan 5000 so'm) tushirib qo'yardi,
+    // garchi taximetr real vaqtda ancha yuqori narx ko'rsatgan bo'lsa ham.
+    if (typeof _tmxActive !== 'undefined' && _tmxActive && _tmxOrderId === id) {
+      fd.append('tmx_dist_km', _tmxDistKm || 0);
+      fd.append('tmx_price', parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,'')) || 0);
+      fd.append('tmx_time', _tmxTimeStr || '0:00');
+    }
     const r = await fetch(`/driver/orders/${id}/${action}/`, {
       method: 'POST',
       headers: { 'X-CSRFToken': getCookie('csrftoken') },
