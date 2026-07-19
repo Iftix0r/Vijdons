@@ -306,6 +306,7 @@ function openMenu(){
   `;
   const ov = document.getElementById('sheet-overlay');
   const sh = document.getElementById('sheet');
+  ov.style.pointerEvents='';   // qarang: _renderSheet dagi bir xil izoh
   ov.classList.remove('hidden');
   _lockDutyBtn();
   requestAnimationFrame(() => { sh.style.transform = 'translateY(0)'; });
@@ -992,6 +993,12 @@ function _renderSheet(id, o){
 
   const ov=document.getElementById('sheet-overlay');
   const sh=document.getElementById('sheet');
+  // closeSheet() yopilish animatsiyasi paytida overlay'ga vaqtincha
+  // pointer-events:none qo'yadi va uni 380ms dan keyin qaytaradi. Agar sheet
+  // shu 380ms ichida (masalan tez-tez ochib-yopilganda) QAYTA ochilsa, eski
+  // 'none' qiymati saqlanib qolib, ICHIDAGI TUGMALAR (jumladan "Qabul qilish")
+  // BUTUNLAY bosilmay qolar edi — shuning uchun ochishda har doim tiklaymiz.
+  ov.style.pointerEvents='';
   ov.classList.remove('hidden');
   _lockDutyBtn();
   requestAnimationFrame(()=>{
