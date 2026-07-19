@@ -306,7 +306,8 @@ function openMenu(){
   `;
   const ov = document.getElementById('sheet-overlay');
   const sh = document.getElementById('sheet');
-  ov.style.pointerEvents='';   // qarang: _renderSheet dagi bir xil izoh
+  clearTimeout(_sheetCloseTimer);   // qarang: closeSheet() yonidagi izoh
+  ov.style.pointerEvents='';
   ov.classList.remove('hidden');
   _lockDutyBtn();
   requestAnimationFrame(() => { sh.style.transform = 'translateY(0)'; });
@@ -994,10 +995,14 @@ function _renderSheet(id, o){
   const ov=document.getElementById('sheet-overlay');
   const sh=document.getElementById('sheet');
   // closeSheet() yopilish animatsiyasi paytida overlay'ga vaqtincha
-  // pointer-events:none qo'yadi va uni 380ms dan keyin qaytaradi. Agar sheet
-  // shu 380ms ichida (masalan tez-tez ochib-yopilganda) QAYTA ochilsa, eski
-  // 'none' qiymati saqlanib qolib, ICHIDAGI TUGMALAR (jumladan "Qabul qilish")
-  // BUTUNLAY bosilmay qolar edi — shuning uchun ochishda har doim tiklaymiz.
+  // pointer-events:none qo'yadi va 380ms dan keyin uni qaytadan yashiradi
+  // ('hidden' klassi bilan). Agar sheet shu 380ms ichida (masalan tez-tez
+  // ochib-yopilganda) QAYTA ochilsa: (1) eski pointer-events:none saqlanib
+  // qolishi mumkin edi, (2) eski, bekor qilinmagan taymer keyinroq ishga
+  // tushib hozirgina qayta ochilgan sheet'ni ORQASIDAN yana yashirib qo'yardi.
+  // Ikkalasi ham "Qabul qilish" kabi tugmalar hech qanday reaksiya bermay
+  // qolishiga olib kelardi — shuning uchun ochishda ikkalasini ham tozalaymiz.
+  clearTimeout(_sheetCloseTimer);
   ov.style.pointerEvents='';
   ov.classList.remove('hidden');
   _lockDutyBtn();
@@ -1011,6 +1016,12 @@ function _renderSheet(id, o){
   });
 }
 
+// closeSheet()ning "380ms dan keyin yashirish" taymerini saqlab turamiz — agar
+// sheet shu 380ms ichida QAYTA ochilsa (masalan tez-tez ochib-yopilganda),
+// bekor qilinmagan eski taymer keyinroq ishga tushib, hozirgina ochilgan
+// sheet'ni ORQASIDAN yashirib qo'yardi (shu sabab "Qabul qilish" tugmasi
+// ba'zan hech qanday reaksiya bermasdi — sheet aslida qayta yashiringan edi).
+let _sheetCloseTimer = null;
 function closeSheet(){
   const sh=document.getElementById('sheet');
   const ov=document.getElementById('sheet-overlay');
@@ -1018,7 +1029,8 @@ function closeSheet(){
   // Overlay pointer-events ni darhol o'chiramiz — animatsiya tugashini kutmasdan
   ov.style.pointerEvents='none';
   _unlockDutyBtnSoon();
-  setTimeout(()=>{
+  clearTimeout(_sheetCloseTimer);
+  _sheetCloseTimer = setTimeout(()=>{
     ov.classList.add('hidden');
     ov.style.pointerEvents='';
   },380);
