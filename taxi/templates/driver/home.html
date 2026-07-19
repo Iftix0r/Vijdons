@@ -215,15 +215,31 @@ renderOrdersDOM();
 // bo'lgan (va yopilgandan keyin ham qisqa muddat) paytda duty-btn'ning o'ziga
 // pointer-events:none qo'yamiz — shunda hech qanday hodisa unga umuman
 // yetib bormaydi, qatlamlanish holatidan qat'i nazar.
+// Diqqat: IKKITA mustaqil overlay ("buyurtma sheet"i va fon so'rovidan kelgan
+// "yangi buyurtma" oynasi) bir vaqtda ochiq bo'lishi mumkin — masalan haydovchi
+// bitta buyurtma sheet'ini ko'rib turganda, orqa fonda YANGI buyurtma kelib,
+// o'sha oyna 10s dan keyin o'z-o'zidan yopilib ketsa. Oddiy ON/OFF bayroq
+// bunday holatda ikkinchi oyna yopilishi bilan HALI OCHIQ turgan birinchi
+// sheet himoyasini ham noto'g'ri olib tashlar edi. Shu sabab HISOBLAGICH
+// ishlatiladi — faqat BARCHA ochiq oynalar yopilgandagina qulf olib tashlanadi.
+let _dutyLockCount = 0;
 let _dutyLockTimer = null;
 function _lockDutyBtn() {
+  _dutyLockCount++;
   clearTimeout(_dutyLockTimer);
   const wrap = document.getElementById('duty-btn-wrap');
   if (wrap) wrap.style.pointerEvents = 'none';
 }
 function _unlockDutyBtnSoon(delayMs = 700) {
+  _dutyLockCount = Math.max(0, _dutyLockCount - 1);
   clearTimeout(_dutyLockTimer);
   _dutyLockTimer = setTimeout(() => {
+    if (_dutyLockCount > 0) return;
+    // Hisoblagichdan tashqari, DOM'ning haqiqiy holatini ham tekshiramiz —
+    // ikkalasi ham yashiringan bo'lsagina qulfni olib tashlaymiz (ehtiyot chorasi).
+    const sheetHidden = document.getElementById('sheet-overlay')?.classList.contains('hidden') ?? true;
+    const modalHidden = document.getElementById('new-order-modal')?.classList.contains('hidden') ?? true;
+    if (!sheetHidden || !modalHidden) return;
     const wrap = document.getElementById('duty-btn-wrap');
     if (wrap) wrap.style.pointerEvents = '';
   }, delayMs);
