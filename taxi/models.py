@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from decimal import Decimal
+from .constants import PANEL_SOUND_EVENTS, DRIVER_SOUND_EVENTS, DEFAULT_SOUND_URLS
 
 
 class Driver(models.Model):
@@ -384,3 +385,49 @@ class TariffSettings(models.Model):
     class Meta:
         verbose_name = "Tariff sozlamalari"
         verbose_name_plural = "Tariff sozlamalari"
+
+
+class PanelEvent(models.Model):
+    """Operator panelida ovozli bildirishnoma uchun hodisalar jurnali (polling orqali o'qiladi)."""
+    EVENT_CHOICES = PANEL_SOUND_EVENTS
+
+    event_type = models.CharField(max_length=30, choices=EVENT_CHOICES, verbose_name='Hodisa turi')
+    message    = models.CharField(max_length=500, blank=True, default='', verbose_name='Xabar')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Vaqt')
+
+    def __str__(self):
+        return f"{self.get_event_type_display()} — {self.created_at:%d.%m.%Y %H:%M}"
+
+    class Meta:
+        verbose_name = 'Panel hodisasi'
+        verbose_name_plural = 'Panel hodisalari'
+        ordering = ['-created_at']
+
+
+class PanelSound(models.Model):
+    """Operator panel va haydovchi ilovasi uchun har bir hodisaga tayinlangan audio fayl."""
+    EVENT_CHOICES = PANEL_SOUND_EVENTS + DRIVER_SOUND_EVENTS
+
+    event_key = models.CharField(max_length=30, unique=True, choices=EVENT_CHOICES, verbose_name='Hodisa')
+    file      = models.FileField(upload_to='sounds/', blank=True, null=True, verbose_name='Audio fayl')
+    enabled   = models.BooleanField(default=True, verbose_name='Yoqilgan')
+
+    @classmethod
+    def get_map(cls):
+        """{event_key: PanelSound} — barcha qatorlarni bitta so'rovda olib keladi."""
+        return {s.event_key: s for s in cls.objects.all()}
+
+    def resolve_url(self):
+        """Yoqilgan bo'lsa: yuklangan fayl -> standart statik fayl -> None (frontend sintez ohang chaladi)."""
+        if not self.enabled:
+            return None
+        if self.file:
+            return self.file.url
+        return DEFAULT_SOUND_URLS.get(self.event_key)
+
+    def __str__(self):
+        return self.get_event_key_display()
+
+    class Meta:
+        verbose_name = 'Ovoz sozlamasi'
+        verbose_name_plural = 'Ovoz sozlamalari'

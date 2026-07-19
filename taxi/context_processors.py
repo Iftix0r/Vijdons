@@ -3,10 +3,23 @@ from .models import Driver
 
 def active_drivers(request):
     """Inject active drivers, pending driver count, VAPID key, and maps settings into every template context."""
+    import json
     from django.conf import settings
-    from .models import MapsSettings, TariffSettings
+    from django.db.models import Max
+    from .models import MapsSettings, TariffSettings, PanelEvent, PanelSound
+    from .constants import DRIVER_SOUND_EVENTS
     maps = MapsSettings.get()
     tariff = TariffSettings.get()
+
+    sounds = PanelSound.get_map()
+    driver_sounds = {}
+    for key, _label in DRIVER_SOUND_EVENTS:
+        snd = sounds.get(key)
+        driver_sounds[key] = {
+            'enabled': snd.enabled if snd else True,
+            'url': snd.resolve_url() if snd else None,
+        }
+
     return {
         'active_drivers': Driver.objects.filter(
             is_active=True, approval_status=Driver.APPROVAL_APPROVED
@@ -19,4 +32,7 @@ def active_drivers(request):
         # Haydovchi paneli taxi metri barcha sahifalarda (base.html) ishlashi uchun
         'tariff_base_price': int(tariff.base_price),
         'tariff_per_km':     int(tariff.price_per_km),
+        # Ovozli bildirishnomalar
+        'latest_event_id': PanelEvent.objects.aggregate(m=Max('id'))['m'] or 0,
+        'driver_sounds_json': json.dumps(driver_sounds),
     }

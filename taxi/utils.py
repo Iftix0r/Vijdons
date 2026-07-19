@@ -153,6 +153,16 @@ def _cfg():
         return None
 
 
+def log_panel_event(event_type, message=''):
+    """Operator panel ovozli bildirishnomasi uchun hodisani jurnalga yozadi.
+    Telegram notify_* sozlamalaridan mustaqil — shuning uchun har doim, tekshiruvdan oldin chaqiriladi."""
+    try:
+        from taxi.models import PanelEvent
+        PanelEvent.objects.create(event_type=event_type, message=message[:500])
+    except Exception:
+        pass
+
+
 # ── Telegram xabar shablonlari ────────────────────────────────────────────────
 
 def _order_url(order_id):
@@ -176,6 +186,7 @@ def _driver_inline(driver_id):
 
 
 def tg_new_order(order):
+    log_panel_event('panel_new_order', f"Buyurtma #{order.id} — {order.from_address}")
     cfg = _cfg()
     if cfg and not cfg.notify_new_order:
         return
@@ -283,6 +294,7 @@ def tg_order_completed(order, driver):
 
 
 def tg_order_cancelled(order, driver):
+    log_panel_event('panel_order_cancelled', f"Buyurtma #{order.id} — {driver.full_name}")
     cfg = _cfg()
     if cfg and not cfg.notify_cancelled:
         return
@@ -300,6 +312,7 @@ def tg_order_cancelled(order, driver):
 
 
 def tg_order_rejected(order, driver):
+    log_panel_event('panel_order_rejected', f"Buyurtma #{order.id} — {driver.full_name} rad etdi")
     cfg = _cfg()
     if cfg and not cfg.notify_rejected:
         return
@@ -312,6 +325,7 @@ def tg_order_rejected(order, driver):
 
 
 def tg_driver_registered(driver):
+    log_panel_event('panel_driver_registered', f"{driver.full_name} | {driver.phone_number}")
     cfg = _cfg()
     if cfg and not cfg.notify_driver_register:
         return
@@ -416,6 +430,7 @@ def tg_duty_changed(driver, is_on_duty):
 
 def tg_sos_alert(alert):
     driver = alert.driver
+    log_panel_event('panel_sos_alert', f"SOS #{alert.id} — {driver.full_name}")
     lines = [
         f"🆘 <b>SOS SIGNAL! #{alert.id}</b>",
         f"👤 <b>{driver.full_name}</b> | <code>{driver.phone_number}</code>",

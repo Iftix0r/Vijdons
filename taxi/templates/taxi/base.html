@@ -243,6 +243,10 @@
            class="nav-link {% if request.resolver_match.url_name == 'maps_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-map-marked-alt w-5 text-center"></i> Maps API
         </a>
+        <a href="{% url 'taxi:sound_settings' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'sound_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-volume-high w-5 text-center"></i> Ovoz sozlamalari
+        </a>
         <a href="/admin/"
            class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-shield-halved w-5 text-center"></i> Admin Panel
@@ -776,6 +780,52 @@
     updateSosCount();
     setInterval(updateSosCount, 20000);
 
+    // ── Panel ovozli bildirishnomalar ──────────────────────────────────────────
+    // Fayl yuklanmagan hodisalar uchun standart sintez qilingan ohanglar
+    // (haydovchi panelidagi Audio._play andozasi asosida).
+    function _playPanelTone(notes) {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            notes.forEach(([t, freq, vol=0.3, dur=0.15]) => {
+                const o = ctx.createOscillator(), g = ctx.createGain();
+                o.connect(g); g.connect(ctx.destination);
+                o.type = 'sine'; o.frequency.value = freq;
+                const st = ctx.currentTime + t;
+                g.gain.setValueAtTime(0, st);
+                g.gain.linearRampToValueAtTime(vol, st + 0.015);
+                g.gain.exponentialRampToValueAtTime(0.001, st + dur);
+                o.start(st); o.stop(st + dur + 0.05);
+            });
+        } catch (_) {}
+    }
+    const _PANEL_TONES = {
+        panel_order_deleted:     [[0, 440, 0.3, 0.14], [0.15, 330, 0.3, 0.2]],
+        panel_order_cancelled:   [[0, 440, 0.3, 0.14], [0.15, 330, 0.3, 0.2]],
+        panel_order_rejected:    [[0, 494, 0.3, 0.12], [0.14, 392, 0.3, 0.18]],
+        panel_driver_registered: [[0, 523, 0.3, 0.1], [0.12, 659, 0.3, 0.1], [0.24, 784, 0.35, 0.22]],
+        panel_sos_alert:         [[0, 880, 0.4, 0.12], [0.15, 660, 0.4, 0.12], [0.3, 880, 0.4, 0.12], [0.45, 660, 0.4, 0.2]],
+    };
+    function _playPanelEventSound(evt) {
+        if (evt.sound_url) {
+            try { new window.Audio(evt.sound_url).play().catch(() => {}); } catch (_) {}
+        } else if (_PANEL_TONES[evt.type]) {
+            _playPanelTone(_PANEL_TONES[evt.type]);
+        }
+    }
+    let _lastPanelEventId = {{ latest_event_id|default:0 }};
+    function pollPanelEvents() {
+        fetch('/panel/api/events/?since=' + _lastPanelEventId)
+            .then(r => r.json())
+            .then(d => {
+                _lastPanelEventId = d.last_id;
+                d.events.forEach(evt => {
+                    if (evt.message) showToast(evt.message);
+                    if (evt.enabled) _playPanelEventSound(evt);
+                });
+            }).catch(() => {});
+    }
+    setInterval(pollPanelEvents, 5000);
+
     // ── Phone lookup ──
     (function() {
         var _lookupTimer = null;
@@ -814,8 +864,11 @@
     })();
 
     // ── Keyboard Shortcuts ──
-    const shortcutToast = document.getElementById('shortcut-toast');
+    // Lazy lookup — bu <script> DOMdagi #shortcut-toast divdan oldinroq joylashgan,
+    // shuning uchun uni const bilan bir marta oldindan olib qo'yish bo'lmaydi (null bo'ladi).
     function showToast(msg) {
+        const shortcutToast = document.getElementById('shortcut-toast');
+        if (!shortcutToast) return;
         shortcutToast.textContent = msg;
         shortcutToast.classList.remove('opacity-0', 'translate-y-2');
         shortcutToast.classList.add('opacity-100', 'translate-y-0');

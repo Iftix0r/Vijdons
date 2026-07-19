@@ -4,8 +4,8 @@ from django.http import JsonResponse, HttpResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, SosAlert, BalanceLog, GroupMessage
-from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed
+from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, SosAlert, BalanceLog, GroupMessage, PanelEvent, PanelSound
+from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, log_panel_event
 import csv
 
 
@@ -151,6 +151,7 @@ def order_update_status(request, pk):
 def order_delete(request, pk):
     order = get_object_or_404(Order, pk=pk)
     if request.method == 'POST':
+        log_panel_event('panel_order_deleted', f"Buyurtma #{order.id} — {order.from_address}")
         order.delete()
     return redirect('taxi:order_list')
 
@@ -495,6 +496,35 @@ def bot_settings(request):
     })
 
 
+@login_required(login_url='taxi:panel_login')
+def sound_settings(request):
+    from .constants import PANEL_SOUND_EVENTS, DRIVER_SOUND_EVENTS
+    all_keys = [k for k, _ in PANEL_SOUND_EVENTS + DRIVER_SOUND_EVENTS]
+    sounds = PanelSound.get_map()
+    for key in all_keys:
+        if key not in sounds:
+            sounds[key] = PanelSound.objects.create(event_key=key)
+
+    if request.method == 'POST':
+        for key in all_keys:
+            snd = sounds[key]
+            if request.POST.get(f'reset_{key}'):
+                if snd.file:
+                    snd.file.delete(save=False)
+                snd.file = None
+            elif request.FILES.get(f'file_{key}'):
+                snd.file = request.FILES[f'file_{key}']
+            snd.enabled = f'enabled_{key}' in request.POST
+            snd.save()
+        messages.success(request, "Ovoz sozlamalari saqlandi.")
+        return redirect('taxi:sound_settings')
+
+    return render(request, 'taxi/sound_settings.html', {
+        'panel_sounds':  [(key, label, sounds[key]) for key, label in PANEL_SOUND_EVENTS],
+        'driver_sounds': [(key, label, sounds[key]) for key, label in DRIVER_SOUND_EVENTS],
+    })
+
+
 # ── Telegram Client Bot Webhook ───────────────────────────────────────────────
 
 # Har bir mijoz sessiyasi: {chat_id: {'step': 'phone'|'from'|'to', 'phone': ..., 'from_address': ...}}
@@ -671,6 +701,27 @@ def sos_resolve(request, pk):
 def sos_count(request):
     count = SosAlert.objects.filter(status=SosAlert.STATUS_NEW).count()
     return JsonResponse({'count': count})
+
+
+@login_required(login_url='taxi:panel_login')
+def panel_events_api(request):
+    """Operator panel ovozli bildirishnomasi uchun polling endpoint.
+    ?since=<id> dan keyingi hodisalarni, har biri uchun mos ovoz URL bilan qaytaradi."""
+    since = int(request.GET.get('since') or 0)
+    events = list(PanelEvent.objects.filter(id__gt=since).order_by('id')[:20])
+    sounds = PanelSound.get_map()
+    data = []
+    for e in events:
+        snd = sounds.get(e.event_type)
+        data.append({
+            'id': e.id,
+            'type': e.event_type,
+            'message': e.message,
+            'enabled': snd.enabled if snd else True,
+            'sound_url': snd.resolve_url() if snd else None,
+        })
+    last_id = events[-1].id if events else since
+    return JsonResponse({'events': data, 'last_id': last_id})
 
 
 @csrf_exempt

@@ -404,6 +404,11 @@ function hideToast() {
 }
 
 // ── Offline ───────────────────────────────────────────────────────────────────
+// ── Admin panel orqali yuklangan/o'chirilgan ovozlar (taxi.context_processors) ──
+window.VJ_DRIVER_SOUNDS = {{ driver_sounds_json|default:'{}'|safe }};
+function _vjSound(key) {
+  return (window.VJ_DRIVER_SOUNDS && window.VJ_DRIVER_SOUNDS[key]) || { enabled: true, url: null };
+}
 // ── Audio Alerts ─────────────────────────────────────────────────────────────
 const Audio = {
   _play(notes) {
@@ -423,10 +428,12 @@ const Audio = {
     } catch(_) {}
   },
   newOrder() {
-    // WAV fayl
+    const cfg = _vjSound('driver_new_order');
+    if (!cfg.enabled) return;
+    // Fayl (standart .wav yoki admin yuklagan) — loop qilib chalinadi, stopNewOrder() to'xtatguncha
     try {
       if (window._newOrderAudio) { window._newOrderAudio.pause(); window._newOrderAudio = null; }
-      const a = new window.Audio('/static/driver/sounds/new_order.wav');
+      const a = new window.Audio(cfg.url || '/static/driver/sounds/new_order.wav');
       a.volume = 1.0;
       a.loop = true;
       const p = a.play();
@@ -471,9 +478,15 @@ const Audio = {
       window._newOrderCtx = null;
     }
   },
+  _playCustomOrTones(key, notes) {
+    const cfg = _vjSound(key);
+    if (!cfg.enabled) return;
+    if (cfg.url) { try { new window.Audio(cfg.url).play().catch(() => {}); } catch(_) {} return; }
+    this._play(notes);
+  },
   accept() {
     // Yashil — yuqoriga ko'tariluvchi 3 nota
-    this._play([
+    this._playCustomOrTones('driver_accept', [
       [0,    'sine',   523, 0.35, 0.12],
       [0.13, 'sine',   659, 0.35, 0.12],
       [0.26, 'sine',   784, 0.40, 0.22],
@@ -482,7 +495,7 @@ const Audio = {
   },
   reject() {
     // Qizil — pastga tushuvchi 2 nota
-    this._play([
+    this._playCustomOrTones('driver_reject', [
       [0,    'sawtooth', 440, 0.30, 0.14],
       [0.18, 'sawtooth', 330, 0.30, 0.14],
       [0.36, 'sawtooth', 220, 0.25, 0.22],
@@ -490,7 +503,7 @@ const Audio = {
   },
   complete() {
     // Oltin — tantanali 4 nota
-    this._play([
+    this._playCustomOrTones('driver_complete', [
       [0,    'sine',  523, 0.30, 0.10],
       [0.12, 'sine',  659, 0.30, 0.10],
       [0.24, 'sine',  784, 0.30, 0.10],
@@ -498,8 +511,8 @@ const Audio = {
       [0.38, 'sine', 1319, 0.30, 0.28],
     ]);
   },
-  offline()  { this._play([[0,'sawtooth',220,0.30,0.40]]); },
-  online()   { this._play([[0,'sine',523,0.25,0.10],[0.15,'sine',784,0.25,0.18]]); },
+  offline()  { this._playCustomOrTones('driver_offline', [[0,'sawtooth',220,0.30,0.40]]); },
+  online()   { this._playCustomOrTones('driver_online',  [[0,'sine',523,0.25,0.10],[0.15,'sine',784,0.25,0.18]]); },
 };
 
 // ── Web Push Subscription ────────────────────────────────────────────────────

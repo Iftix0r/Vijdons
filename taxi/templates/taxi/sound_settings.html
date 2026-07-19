@@ -1,0 +1,95 @@
+{% extends 'taxi/base.html' %}
+{% block title %}Ovoz sozlamalari — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-end gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Ovoz sozlamalari 🔊</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Har bir hodisa uchun ovozni yoqing/o'chiring yoki o'z audio faylingizni (masalan, ovozli xabar) yuklang. Fayl yuklanmagan hodisalarda standart ohang ishlatiladi.</p>
+    </div>
+</div>
+
+<div class="max-w-2xl">
+    <form method="POST" enctype="multipart/form-data" class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+        {% csrf_token %}
+        <div class="px-6 py-5 space-y-6">
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+                    <i class="fas fa-desktop text-blue-500 mr-1"></i>Operator paneli ovozlari
+                </label>
+                <div class="space-y-3">
+                    {% for key, label, snd in panel_sounds %}
+                    <div class="p-4 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-100 dark:border-gray-700 space-y-3">
+                        <div class="flex items-center justify-between gap-3">
+                            <p class="text-sm font-bold text-gray-800 dark:text-white">{{ label }}</p>
+                            <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                                <input type="checkbox" name="enabled_{{ key }}" {% if snd.enabled %}checked{% endif %} class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-yellow-400 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
+                            </label>
+                        </div>
+                        {% if snd.file %}
+                        <div class="flex items-center gap-2">
+                            <audio controls src="{{ snd.file.url }}" class="h-8 flex-1 max-w-full"></audio>
+                            <button type="submit" name="reset_{{ key }}" value="1"
+                                    class="text-xs px-2.5 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 font-semibold whitespace-nowrap">
+                                Standartga qaytarish
+                            </button>
+                        </div>
+                        {% else %}
+                        <p class="text-xs text-gray-400">Standart ovoz ishlatilmoqda — fayl yuklanmagan</p>
+                        {% endif %}
+                        <input type="file" name="file_{{ key }}" accept="audio/*"
+                               class="block w-full text-xs text-gray-500 dark:text-gray-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100 dark:file:bg-yellow-900/20 dark:file:text-yellow-400">
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+                    <i class="fas fa-mobile-alt text-purple-500 mr-1"></i>Haydovchi ilovasi ovozlari
+                </label>
+                <div class="space-y-3">
+                    {% for key, label, snd in driver_sounds %}
+                    <div class="p-4 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-100 dark:border-gray-700 space-y-3">
+                        <div class="flex items-center justify-between gap-3">
+                            <p class="text-sm font-bold text-gray-800 dark:text-white">{{ label }}</p>
+                            <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                                <input type="checkbox" name="enabled_{{ key }}" {% if snd.enabled %}checked{% endif %} class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-400 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
+                            </label>
+                        </div>
+                        {% if snd.file %}
+                        <div class="flex items-center gap-2">
+                            <audio controls src="{{ snd.file.url }}" class="h-8 flex-1 max-w-full"></audio>
+                            <button type="submit" name="reset_{{ key }}" value="1"
+                                    class="text-xs px-2.5 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 font-semibold whitespace-nowrap">
+                                Standartga qaytarish
+                            </button>
+                        </div>
+                        {% else %}
+                        <p class="text-xs text-gray-400">Standart ovoz ishlatilmoqda — fayl yuklanmagan</p>
+                        {% endif %}
+                        <input type="file" name="file_{{ key }}" accept="audio/*"
+                               class="block w-full text-xs text-gray-500 dark:text-gray-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 dark:file:bg-purple-900/20 dark:file:text-purple-400">
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+
+        <div class="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex gap-3">
+            <button type="submit"
+                    class="flex-1 py-3 bg-green-500 hover:bg-green-600 text-white font-bold text-sm rounded-xl shadow-sm transition-all hover:-translate-y-0.5">
+                <i class="fas fa-save mr-2"></i>Saqlash
+            </button>
+            <a href="{% url 'taxi:panel_dashboard' %}"
+               class="px-6 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-semibold text-sm rounded-xl hover:bg-gray-50 transition">
+                Bekor qilish
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
