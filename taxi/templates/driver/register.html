@@ -77,6 +77,17 @@
       </div>
     </div>
     <div>
+      <div class="lbl">Mashina turi</div>
+      <div class="relative">
+        <i class="fas fa-truck absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(235,235,245,.35);font-size:15px"></i>
+        <select name="car_type" class="{{ inp }}">
+          {% for value, label in car_type_choices %}
+          <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div>
       <div class="lbl">Parol</div>
       <div class="relative">
         <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(235,235,245,.35);font-size:15px"></i>

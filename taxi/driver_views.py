@@ -107,6 +107,7 @@ def driver_register_view(request):
             'phone_number': request.POST.get('phone_number', ''),
             'car_model':    request.POST.get('car_model', ''),
             'car_number':   request.POST.get('car_number', ''),
+            'car_type':     request.POST.get('car_type', 'light'),
             'password':     request.POST.get('password', ''),
         }
         s = DriverRegisterSerializer(data=data)
@@ -114,7 +115,7 @@ def driver_register_view(request):
             s.save()
             return render(request, 'driver/register_done.html')
         error = ' '.join([str(v[0]) for v in s.errors.values()])
-    return render(request, 'driver/register.html', {'error': error})
+    return render(request, 'driver/register.html', {'error': error, 'car_type_choices': Driver.CAR_TYPE_CHOICES})
 
 
 def _mask_phone(phone):

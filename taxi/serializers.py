@@ -9,6 +9,7 @@ class DriverRegisterSerializer(serializers.Serializer):
     phone_number = serializers.CharField(max_length=20)
     car_model    = serializers.CharField(max_length=100)
     car_number   = serializers.CharField(max_length=20)
+    car_type     = serializers.ChoiceField(choices=Driver.CAR_TYPE_CHOICES, default=Driver.CAR_TYPE_LIGHT, required=False)
     password     = serializers.CharField(write_only=True, min_length=6)
 
     def validate_phone_number(self, value):
@@ -49,7 +50,7 @@ class DriverProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Driver
         fields = [
-            'id', 'full_name', 'phone_number', 'car_model', 'car_number',
+            'id', 'full_name', 'phone_number', 'car_model', 'car_number', 'car_type',
             'is_active', 'is_on_duty', 'approval_status', 'registered_at', 'balance',
             'photo_url',
         ]
@@ -81,7 +82,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'from_address', 'from_lat', 'from_lng',
             'to_address', 'to_lat', 'to_lng',
             'price', 'commission', 'distance_km',
-            'payment_type', 'note',
+            'payment_type', 'car_type', 'note',
             'status', 'status_label', 'created_at', 'updated_at',
             'seconds_left',
             'client_rating', 'client_trips_count',

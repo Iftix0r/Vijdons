@@ -14,11 +14,21 @@ class Driver(models.Model):
         (APPROVAL_REJECTED, 'Rad etilgan'),
     )
 
+    CAR_TYPE_LIGHT   = 'light'
+    CAR_TYPE_CARGO   = 'cargo'
+    CAR_TYPE_MINIVAN = 'minivan'
+    CAR_TYPE_CHOICES = (
+        (CAR_TYPE_LIGHT,   '🚗 Yengil'),
+        (CAR_TYPE_CARGO,   '🚚 Yuk mashinasi'),
+        (CAR_TYPE_MINIVAN, '🚐 Minivan'),
+    )
+
     user            = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True, related_name='driver_profile')
     full_name       = models.CharField(max_length=255, verbose_name="Haydovchi ismi")
     phone_number    = models.CharField(max_length=20, unique=True, verbose_name="Telefon raqami")
     car_model       = models.CharField(max_length=100, verbose_name="Mashina modeli")
     car_number      = models.CharField(max_length=20, verbose_name="Mashina raqami")
+    car_type        = models.CharField(max_length=10, choices=CAR_TYPE_CHOICES, default=CAR_TYPE_LIGHT, verbose_name="Mashina turi")
     is_active       = models.BooleanField(default=True, verbose_name="Faol")
     approval_status = models.CharField(max_length=20, choices=APPROVAL_CHOICES, default=APPROVAL_PENDING, verbose_name="Tasdiqlash holati")
     fcm_token       = models.TextField(blank=True, null=True, verbose_name="FCM Token")
@@ -96,6 +106,7 @@ class Order(models.Model):
     price        = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Narxi")
     commission   = models.DecimalField(max_digits=10, decimal_places=2, default=1000, verbose_name="Komissiya")
     payment_type  = models.CharField(max_length=10, choices=PAYMENT_CHOICES, default=PAYMENT_CASH, verbose_name="To'lov turi")
+    car_type      = models.CharField(max_length=10, choices=Driver.CAR_TYPE_CHOICES, default=Driver.CAR_TYPE_LIGHT, verbose_name="Mashina turi")
     note          = models.TextField(blank=True, default='', verbose_name="Izoh")
     status        = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="Holati")
     dispatched_to = models.ForeignKey(Driver, on_delete=models.SET_NULL, null=True, blank=True, related_name='dispatched_orders', verbose_name="Yuborilgan haydovchi")

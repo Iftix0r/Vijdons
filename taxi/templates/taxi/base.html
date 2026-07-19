@@ -412,13 +412,25 @@
                        class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
             </div>
 
-            <!-- Komissiya + To'lov + Haydovchi -->
-            <div class="grid grid-cols-3 gap-3">
+            <!-- Komissiya + Mashina turi -->
+            <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Komissiya</label>
                     <input type="number" name="commission" value="1000" min="0" required placeholder="1000"
                            class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
                 </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Mashina turi</label>
+                    <select name="car_type" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                        {% for value, label in car_type_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- To'lov + Haydovchi -->
+            <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">To'lov</label>
                     <select name="payment_type" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
@@ -490,6 +502,14 @@
                     <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Mashina raqami</label>
                     <input type="text" name="car_number" required placeholder="01 A 123 AA"
                            class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Mashina turi</label>
+                    <select name="car_type" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition">
+                        {% for value, label in car_type_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
             <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">

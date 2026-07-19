@@ -101,7 +101,7 @@
         </div>
 
         <!-- Car info -->
-        <div class="grid grid-cols-2 gap-2 mb-4">
+        <div class="grid grid-cols-3 gap-2 mb-4">
             <div class="bg-gray-50 dark:bg-gray-800/60 rounded-xl px-3 py-2.5">
                 <p class="text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500 font-bold mb-0.5">Mashina modeli</p>
                 <p class="text-sm font-semibold text-gray-800 dark:text-white flex items-center gap-1.5">
@@ -113,6 +113,10 @@
                 <p class="text-sm font-bold text-gray-800 dark:text-white font-mono flex items-center gap-1.5">
                     <i class="fas fa-hashtag text-gray-400 text-xs"></i>{{ driver.car_number }}
                 </p>
+            </div>
+            <div class="bg-gray-50 dark:bg-gray-800/60 rounded-xl px-3 py-2.5">
+                <p class="text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500 font-bold mb-0.5">Mashina turi</p>
+                <p class="text-sm font-semibold text-gray-800 dark:text-white">{{ driver.get_car_type_display }}</p>
             </div>
         </div>
 
@@ -237,6 +241,7 @@
                     <td class="px-5 py-4">
                         <div class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ driver.car_model }}</div>
                         <div class="text-xs font-mono text-gray-400 dark:text-gray-500 mt-0.5">{{ driver.car_number }}</div>
+                        <div class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{{ driver.get_car_type_display }}</div>
                     </td>
 
                     <!-- Balance -->

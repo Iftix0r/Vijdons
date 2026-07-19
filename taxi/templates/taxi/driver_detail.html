@@ -9,7 +9,7 @@
     </a>
     <div class="flex-1">
         <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white">{{ driver.full_name }}</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ driver.car_model }} · {{ driver.car_number }}</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ driver.car_model }} · {{ driver.car_number }} · {{ driver.get_car_type_display }}</p>
     </div>
     <!-- Block / Unblock -->
     <form action="{% url 'taxi:driver_toggle_active' driver.pk %}" method="POST">
@@ -59,7 +59,7 @@
                 <div class="flex items-center gap-3 px-5 py-3">
                     <i class="fas fa-car text-blue-400 w-4 text-center text-sm"></i>
                     <div><p class="text-[10px] text-gray-400 uppercase font-bold">Mashina</p>
-                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ driver.car_model }} · <span class="font-mono">{{ driver.car_number }}</span></p></div>
+                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ driver.car_model }} · <span class="font-mono">{{ driver.car_number }}</span> · {{ driver.get_car_type_display }}</p></div>
                 </div>
                 <div class="flex items-center gap-3 px-5 py-3">
                     <i class="fas fa-calendar text-blue-400 w-4 text-center text-sm"></i>

@@ -96,6 +96,7 @@ def order_create(request):
                 pass  # dispatch_order() thread ichida eng yaqinga yuboradi
 
             payment_type = request.POST.get('payment_type', 'cash')
+            car_type     = request.POST.get('car_type', Driver.CAR_TYPE_LIGHT)
             note         = request.POST.get('note', '').strip()
 
             order = Order.objects.create(
@@ -109,6 +110,7 @@ def order_create(request):
                 commission=tariff.commission,
                 driver=driver,
                 payment_type=payment_type,
+                car_type=car_type,
                 note=note,
                 status='pending',
             )
@@ -213,12 +215,14 @@ def driver_create(request):
         phone_number = request.POST.get('phone_number', '').strip()
         car_model    = request.POST.get('car_model', '').strip()
         car_number   = request.POST.get('car_number', '').strip()
+        car_type     = request.POST.get('car_type', Driver.CAR_TYPE_LIGHT)
         if full_name and phone_number:
             driver = Driver.objects.create(
                 full_name=full_name,
                 phone_number=phone_number,
                 car_model=car_model,
                 car_number=car_number,
+                car_type=car_type,
                 approval_status=Driver.APPROVAL_APPROVED,
                 is_active=True,
             )
@@ -1007,7 +1011,8 @@ def driver_edit(request, pk):
         driver.phone_number = request.POST.get('phone_number', driver.phone_number).strip()
         driver.car_model    = request.POST.get('car_model', driver.car_model).strip()
         driver.car_number   = request.POST.get('car_number', driver.car_number).strip()
-        driver.save(update_fields=['full_name', 'phone_number', 'car_model', 'car_number'])
+        driver.car_type     = request.POST.get('car_type', driver.car_type)
+        driver.save(update_fields=['full_name', 'phone_number', 'car_model', 'car_number', 'car_type'])
         messages.success(request, "Haydovchi ma'lumotlari yangilandi.")
     return redirect('taxi:driver_detail', pk=pk)
 
