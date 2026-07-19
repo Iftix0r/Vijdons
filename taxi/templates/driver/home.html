@@ -115,7 +115,7 @@
 <!-- Liniyaga chiqish/chiqish — tab-bar ustida doimiy (fixed) qadalgan holda. Oddiy
      bosiladigan tugma (avval surish/swipe edi — ba'zi qurilma/brauzerlarda drag
      hodisalari yetib bormay tugma qotib qolardi, shuning uchun tap ga o'tkazildi) -->
-<div class="fixed left-0 right-0 px-3 z-40" style="bottom:calc(env(safe-area-inset-bottom,34px) + 68px)">
+<div id="duty-btn-wrap" class="fixed left-0 right-0 px-3 z-40" style="bottom:calc(env(safe-area-inset-bottom,34px) + 68px)">
   <button id="duty-btn" type="button" data-on-duty="{{ driver.is_on_duty|yesno:'1,0' }}"
        class="w-full flex items-center justify-center gap-2 select-none border-0 cursor-pointer active:scale-[.97]"
        style="height:60px;border-radius:22px;transition:box-shadow .2s,transform .1s;
@@ -204,6 +204,31 @@ let _timerIntervals = {};
 // Sahifa yuklanishi bilan darhol DOM ni render qilamiz
 renderOrdersDOM();
 
+// ── "Liniyadan chiqish" tugmasini sheet/modal ochiq turganda BUTUNLAY
+// bosilmaydigan qilib qo'yish ─────────────────────────────────────────────────
+// Ba'zi qurilma/WebView'larda "Qabul qilish" kabi sheet ichidagi tugmalar va
+// pastda fixed turgan "Liniyadan chiqish" tugmasi BIR VAQTNING O'ZIDA bosilib
+// qolishi kuzatildi (ehtimol CSS qatlamlanish/hit-testing xatoligi tufayli) —
+// vaqt oralig'iga asoslangan himoya (_lastOrderActionAt debounce) buni to'liq
+// qamrab ololmadi, chunki ikkalasi DEARLIK bir vaqtda sodir bo'lmoqda. Shu
+// sabab endi eng ishonchli usul: sheet yoki "yangi buyurtma" oynasi ochiq
+// bo'lgan (va yopilgandan keyin ham qisqa muddat) paytda duty-btn'ning o'ziga
+// pointer-events:none qo'yamiz — shunda hech qanday hodisa unga umuman
+// yetib bormaydi, qatlamlanish holatidan qat'i nazar.
+let _dutyLockTimer = null;
+function _lockDutyBtn() {
+  clearTimeout(_dutyLockTimer);
+  const wrap = document.getElementById('duty-btn-wrap');
+  if (wrap) wrap.style.pointerEvents = 'none';
+}
+function _unlockDutyBtnSoon(delayMs = 700) {
+  clearTimeout(_dutyLockTimer);
+  _dutyLockTimer = setTimeout(() => {
+    const wrap = document.getElementById('duty-btn-wrap');
+    if (wrap) wrap.style.pointerEvents = '';
+  }, delayMs);
+}
+
 // ── Liniyaga chiqish/chiqish — oddiy bosiladigan tugma ─────────────────────────
 // Avval bu surish (swipe/drag) bilan boshqarilardi, lekin ba'zi qurilma va
 // brauzerlarda pointer/touch move hodisalari yetib bormay tugma qotib qolar
@@ -266,6 +291,7 @@ function openMenu(){
   const ov = document.getElementById('sheet-overlay');
   const sh = document.getElementById('sheet');
   ov.classList.remove('hidden');
+  _lockDutyBtn();
   requestAnimationFrame(() => { sh.style.transform = 'translateY(0)'; });
 }
 async function _menuToggleDuty(){
@@ -573,6 +599,7 @@ function showNewOrderModal(orderId, order) {
   // Show modal
   const modal = document.getElementById('new-order-modal');
   modal.classList.remove('hidden');
+  _lockDutyBtn();
   // Modal body ga bosish — sheet ochilsin
   document.getElementById('nom-body').onclick = () => {
     closeNewOrderModal(false);
@@ -607,6 +634,7 @@ function closeNewOrderModal(autoClose = false) {
   Audio.stopNewOrder();
   document.getElementById('new-order-modal').classList.add('hidden');
   sessionStorage.removeItem('vijdon_new_order');
+  _unlockDutyBtnSoon();
   if (autoClose) {
     _known = new Set();
     loadOrders();
@@ -949,6 +977,7 @@ function _renderSheet(id, o){
   const ov=document.getElementById('sheet-overlay');
   const sh=document.getElementById('sheet');
   ov.classList.remove('hidden');
+  _lockDutyBtn();
   requestAnimationFrame(()=>{
     sh.style.transform='translateY(0)';
     if(o.status==='on_way'||o.status==='arrived') {
@@ -965,6 +994,7 @@ function closeSheet(){
   sh.style.transform='translateY(100%)';
   // Overlay pointer-events ni darhol o'chiramiz — animatsiya tugashini kutmasdan
   ov.style.pointerEvents='none';
+  _unlockDutyBtnSoon();
   setTimeout(()=>{
     ov.classList.add('hidden');
     ov.style.pointerEvents='';
