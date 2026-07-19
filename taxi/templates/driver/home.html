@@ -452,6 +452,7 @@ function renderOrdersDOM() {
           <div class="flex items-center gap-2">
             ${o.status==='pending'&&o.timer_sec>0?`<span id="timer-${o.id}" class="ios-caption2 font-bold text-[#FF9500]">${o.timer_sec}s</span>`:''}
             <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">${o.payment_type==='cash'?'💵 Naqd':'💳 Karta'}</span>
+            <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">${o.car_type_display||''}</span>
             <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">#${o.id}</span>
           </div>
         </div>
@@ -540,6 +541,7 @@ function showNewOrderModal(orderId, order) {
         ${order.price?`<span class="ios-subhead font-semibold text-[#34C759]">${parseInt(order.price).toLocaleString()} so'm</span>`:''}
         ${order.distance_km?`<span class="ios-caption" style="color:var(--ios-label3)">${parseFloat(order.distance_km).toFixed(1)} km</span>`:''}
         <span class="ios-caption" style="color:var(--ios-label3)">${order.payment_type==='cash'?'💵 Naqd':'💳 Karta'}</span>
+        <span class="ios-caption font-semibold" style="color:var(--ios-label2)">${order.car_type_display||''}</span>
       </div>`;
   } else {
     body.innerHTML = `<p class="ios-subhead text-center" style="color:var(--ios-label3)">#${orderId}</p>`;
@@ -787,6 +789,7 @@ function _renderSheet(id, o){
       <span class="ios-caption2 font-semibold px-2.5 py-1 rounded-[8px] ${pill[o.status]||''}">${label[o.status]||o.status}</span>
       <div class="flex items-center gap-2">
         <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">${o.payment_type==='cash'?'💵 Naqd':'💳 Karta'}</span>
+        <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">${o.car_type_display||''}</span>
         <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">#${o.id}</span>
       </div>
     </div>

@@ -56,6 +56,7 @@
        data-client="{{ order.client.full_name|default:'Mijoz'|escapejs }}"
        data-phone="{{ order.client.phone_number|escapejs }}"
        data-payment="{{ order.payment_type }}"
+       data-car-type="{{ order.get_car_type_display }}"
        data-note="{{ order.note|default:''|escapejs }}"
        data-date="{{ order.created_at|date:'d.m.Y H:i' }}"
        data-commission="{% if order.commission %}{{ order.commission }}{% else %}0{% endif %}"
@@ -286,7 +287,10 @@ function openDetail(el) {
           <div class="ios-subhead font-semibold">${d.client}</div>
           <div class="ios-caption mt-0.5" style="color:var(--ios-label3)">${d.phone}</div>
         </div>
-        <span class="ios-caption" style="color:var(--ios-label3)">${d.payment==='cash'?'💵 Naqd':'💳 Karta'}</span>
+        <div class="text-right">
+          <div class="ios-caption" style="color:var(--ios-label3)">${d.payment==='cash'?'💵 Naqd':'💳 Karta'}</div>
+          <div class="ios-caption" style="color:var(--ios-label3)">${d.carType||''}</div>
+        </div>
       </div>
     </div>
 
