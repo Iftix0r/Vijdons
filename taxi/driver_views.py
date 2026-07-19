@@ -3,11 +3,13 @@ Haydovchi Web UI views — WebView ilovasi uchun.
 URL prefix: /driver/
 """
 import json
+import os
 from decimal import Decimal
 from functools import wraps
 
+from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
@@ -62,6 +64,18 @@ def _pending_orders_count(driver):
 def _active_orders_count(driver):
     """Haydovchining hali yakunlanmagan (accepted/on_way/arrived) buyurtmalari soni — tab-bardagi Tarix belgisi uchun."""
     return Order.objects.filter(driver=driver, status__in=['accepted', 'on_way', 'arrived']).count()
+
+
+def driver_service_worker(request):
+    """Service Worker faylini /driver/ ostidan xizmat qiladi (Web Push uchun).
+    /static/driver/sw.js dan farqli — bu yerda skriptning o'zi allaqachon
+    /driver/ ostida bo'lgani uchun {scope:'/driver/'} bilan ro'yxatdan
+    o'tkazish (base.html) hech qanday qo'shimcha sozlashsiz to'g'ri ishlaydi
+    (aks holda brauzer "scope ruxsat etilgan maksimal doiradan tashqarida"
+    degan xato berardi, chunki /static/ ostidagi skript standart holda
+    faqat /static/ doirasini boshqara oladi)."""
+    with open(os.path.join(settings.BASE_DIR, 'taxi', 'static', 'driver', 'sw.js'), 'rb') as f:
+        return HttpResponse(f.read(), content_type='application/javascript')
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────

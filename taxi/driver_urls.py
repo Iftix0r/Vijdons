@@ -4,6 +4,7 @@ from . import driver_views
 app_name = 'driver'
 
 urlpatterns = [
+    path('sw.js',      driver_views.driver_service_worker, name='sw_js'),
     path('',           driver_views.driver_login_view,    name='login'),
     path('logout/',    driver_views.driver_logout_view,   name='logout'),
     path('register/',  driver_views.driver_register_view, name='register'),

@@ -539,7 +539,7 @@ const Audio = {
 // Push subscription home.html da (driver.is_on_duty bo'lganda) amalga oshiriladi.
 // Service Worker ni faqat ro'yxatdan o'tkazamiz:
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/static/driver/sw.js', { scope: '/driver/' }).catch(() => {});
+  navigator.serviceWorker.register('{% url "driver:sw_js" %}', { scope: '/driver/' }).catch(() => {});
 }
 
 window.addEventListener('offline', () => {
