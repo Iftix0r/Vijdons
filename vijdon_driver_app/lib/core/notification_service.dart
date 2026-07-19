@@ -54,11 +54,21 @@ class NotificationService {
   static Future<void> notifyNewOrder(int count) async {
     await _playOrderSound();
     await _showNotification(count);
-    await AppBadgePlus.updateBadge(count);
+    await _updateBadge(count);
   }
 
   static Future<void> clearBadge() async {
-    await AppBadgePlus.updateBadge(0);
+    await _updateBadge(0);
+  }
+
+  // app_badge_plus faqat Android/iOS'da qo'llab-quvvatlanadi (masalan Linux
+  // desktop'da mavjud emas) — shuning uchun avval tekshiramiz.
+  static Future<void> _updateBadge(int count) async {
+    try {
+      if (await AppBadgePlus.isSupported()) {
+        await AppBadgePlus.updateBadge(count);
+      }
+    } catch (_) {}
   }
 
   static Future<void> _playOrderSound() async {

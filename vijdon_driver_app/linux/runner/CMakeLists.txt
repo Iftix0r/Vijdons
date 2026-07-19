@@ -23,4 +23,13 @@ add_definitions(-DAPPLICATION_ID="${APPLICATION_ID}")
 target_link_libraries(${BINARY_NAME} PRIVATE flutter)
 target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::GTK)
 
+# Flutter snap orqali o'rnatilganda, o'zining GTK/GLib nusxalarini ishlatadi
+# (snap ichida qadalgan, eskiroq versiya). Lekin audioplayers_linux plagini
+# tizimning GStreamer'iga bog'liq, u esa tizimning yangiroq GLib'iga muhtoj —
+# shu ikkalasi bitta build'da uchrashganda, ba'zi belgilar (symbol) build
+# vaqtida "undefined" bo'lib ko'rinadi, garchi ular DASTUR ISHGA TUSHGANDA
+# tizimning haqiqiy (yangi) kutubxonalari orqali muammosiz topilsa ham.
+# --allow-shlib-undefined shu tekshiruvni build vaqtidan runtime'ga o'tkazadi.
+target_link_options(${BINARY_NAME} PRIVATE "-Wl,--allow-shlib-undefined")
+
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
