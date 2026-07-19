@@ -269,6 +269,7 @@ setInterval(async () => {
           appendOpMsg(m);
           Native.vibrate([40,20,40]);
           showToast('Operator', m.audio_url ? '🎤 Ovozli xabar' : m.text.slice(0,60), 'info', 4000);
+          Audio.chatMessage();
         }
       }
     });

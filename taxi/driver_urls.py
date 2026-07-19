@@ -14,6 +14,7 @@ urlpatterns = [
     path('chat/send/', driver_views.driver_chat_send,       name='chat_send'),
     path('chat/send-audio/', driver_views.driver_chat_send_audio, name='chat_send_audio'),
     path('chat/poll/', driver_views.driver_chat_poll,       name='chat_poll'),
+    path('balance/poll/', driver_views.driver_balance_poll, name='balance_poll'),
     path('profile/',   driver_views.driver_profile,       name='profile'),
     path('profile/photo/',    driver_views.driver_profile_photo,    name='profile_photo'),
     path('profile/password/', driver_views.driver_profile_password, name='profile_password'),

@@ -12,7 +12,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .models import Driver, Order, ChatMessage, GroupMessage, TariffSettings, DriverActivityLog
+from .models import Driver, Order, ChatMessage, GroupMessage, TariffSettings, DriverActivityLog, BalanceLog, PanelSound
 from .utils import tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected
 
 
@@ -490,6 +490,27 @@ def driver_chat_poll(request, driver):
         }
         for m in msgs
     ]})
+
+
+@driver_login_required
+def driver_balance_poll(request, driver):
+    """Haydovchi ilovasida balans to'ldirilganda ovoz chiqarish uchun polling endpoint."""
+    last_id = int(request.GET.get('last_id', 0))
+    logs = BalanceLog.objects.filter(driver=driver, id__gt=last_id).order_by('id')
+    snd = PanelSound.objects.filter(event_key='driver_balance_changed').first()
+    data = [
+        {
+            'id': l.id,
+            'action': l.action,
+            'amount': str(l.amount),
+            'balance_after': str(l.balance_after),
+            'enabled': snd.enabled if snd else True,
+            'sound_url': snd.resolve_url() if snd else None,
+        }
+        for l in logs
+    ]
+    last = logs.last()
+    return JsonResponse({'logs': data, 'last_id': last.id if last else last_id})
 
 
 @driver_login_required

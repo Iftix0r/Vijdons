@@ -244,6 +244,7 @@ def tg_order_accepted(order, driver):
 
 
 def tg_order_on_way(order, driver):
+    log_panel_event('panel_order_on_way', f"Buyurtma #{order.id} — {driver.full_name}")
     cfg = _cfg()
     if cfg and not cfg.notify_on_way:
         return
@@ -260,6 +261,7 @@ def tg_order_on_way(order, driver):
 
 
 def tg_order_arrived(order, driver):
+    log_panel_event('panel_order_arrived', f"Buyurtma #{order.id} — {driver.full_name}")
     cfg = _cfg()
     if cfg and not cfg.notify_arrived:
         return
@@ -276,6 +278,7 @@ def tg_order_arrived(order, driver):
 
 
 def tg_order_completed(order, driver):
+    log_panel_event('panel_order_completed', f"Buyurtma #{order.id} — {driver.full_name}")
     cfg = _cfg()
     if cfg and not cfg.notify_completed:
         return
@@ -342,6 +345,7 @@ def tg_driver_registered(driver):
 
 
 def tg_driver_approved(driver):
+    log_panel_event('panel_driver_approved', f"{driver.full_name} | {driver.phone_number}")
     cfg = _cfg()
     if cfg and not cfg.notify_driver_approved:
         return
@@ -354,6 +358,7 @@ def tg_driver_approved(driver):
 
 
 def tg_driver_rejected(driver):
+    log_panel_event('panel_driver_rejected', f"{driver.full_name} | {driver.phone_number}")
     cfg = _cfg()
     if cfg and not cfg.notify_driver_rejected:
         return
@@ -365,6 +370,7 @@ def tg_driver_rejected(driver):
 
 
 def tg_driver_blocked(driver):
+    log_panel_event('panel_driver_blocked', f"{driver.full_name} — bloklandi")
     cfg = _cfg()
     if cfg and not cfg.notify_driver_blocked:
         return
@@ -377,6 +383,7 @@ def tg_driver_blocked(driver):
 
 
 def tg_driver_unblocked(driver):
+    log_panel_event('panel_driver_blocked', f"{driver.full_name} — blokdan chiqarildi")
     cfg = _cfg()
     if cfg and not cfg.notify_driver_blocked:
         return
@@ -400,10 +407,11 @@ def tg_driver_login(driver, ip=None):
 
 
 def tg_balance_changed(driver, amount, action):
+    sign = '+' if action == 'add' else '-'
+    log_panel_event('panel_balance_changed', f"{driver.full_name} — {sign}{amount} UZS")
     cfg = _cfg()
     if cfg and not cfg.notify_balance_changed:
         return
-    sign = '+' if action == 'add' else '-'
     emoji = '💚' if action == 'add' else '🔴'
     send_telegram(
         f"{emoji} <b>Balans o'zgardi</b>\n"
