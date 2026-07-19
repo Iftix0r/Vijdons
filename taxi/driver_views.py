@@ -191,6 +191,8 @@ def driver_home(request, driver):
             'timer_sec':    timer_sec,
             'tmx_dist_km':  o.tmx_dist_km or 0,
             'tmx_start_time': o.tmx_start_time.isoformat() if o.tmx_start_time else None,
+            'tmx_paused':    o.tmx_paused,
+            'tmx_paused_ms': o.tmx_paused_ms or 0,
         })
 
     _tariff = TariffSettings.get()
@@ -266,6 +268,8 @@ def driver_orders_json(request, driver):
             'timer_sec':     timer_sec,
             'tmx_dist_km':   o.tmx_dist_km or 0,
             'tmx_start_time': o.tmx_start_time.isoformat() if o.tmx_start_time else None,
+            'tmx_paused':    o.tmx_paused,
+            'tmx_paused_ms': o.tmx_paused_ms or 0,
         })
 
     ids = [o['id'] for o in orders_data]
@@ -370,8 +374,9 @@ def driver_order_action(request, driver, pk, action):
                     update_fields.append('distance_km')
         if order.price is None:
             tariff = TariffSettings.get()
+            waiting_minutes = (order.tmx_paused_ms or 0) / 60000
             order.price = (
-                tariff.calc_price(order.distance_km)
+                tariff.calc_price(order.distance_km, waiting_minutes)
                 if order.distance_km is not None else tariff.base_price
             )
             if 'price' not in update_fields:
@@ -671,11 +676,15 @@ def driver_meter_update(request, driver, pk):
     try:
         dist_km = float(request.POST.get('dist_km') or request.GET.get('dist_km') or 0)
         price   = float(request.POST.get('price')   or request.GET.get('price')   or 0)
+        waiting = (request.POST.get('waiting') or request.GET.get('waiting') or '0') == '1'
+        wait_ms = int(request.POST.get('wait_ms') or request.GET.get('wait_ms') or 0)
     except (ValueError, TypeError):
         return JsonResponse({'ok': False}, status=400)
 
-    update_fields = ['tmx_dist_km', 'updated_at']
+    update_fields = ['tmx_dist_km', 'tmx_paused', 'tmx_paused_ms', 'updated_at']
     order.tmx_dist_km = round(dist_km, 2)
+    order.tmx_paused = waiting
+    order.tmx_paused_ms = max(0, wait_ms)
     if dist_km > 0:
         order.distance_km = round(dist_km, 2)
         update_fields.append('distance_km')

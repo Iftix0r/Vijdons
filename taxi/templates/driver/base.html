@@ -620,8 +620,9 @@ document.addEventListener('DOMContentLoaded', ()=>{ Native.getLocation().catch((
 // Bu yerga (base.html) ko'chirilgan — aks holda Home'dan Tarix/Chat/Profilga
 // o'tilganda sahifa to'liq qayta yuklangani uchun (SPA emas) taximetr JS holati
 // butunlay o'chib qolar, GPS orqali masofa hisoblash to'xtab qolardi.
-const TMX_BASE_PRICE  = {{ tariff_base_price|default:0 }};
-const TMX_PER_KM      = {{ tariff_per_km|default:0 }};
+const TMX_BASE_PRICE     = {{ tariff_base_price|default:0 }};
+const TMX_PER_KM         = {{ tariff_per_km|default:0 }};
+const TMX_WAITING_PER_MIN = {{ tariff_waiting_per_min|default:0 }};
 
 let _tmxActive    = false;
 let _tmxOrderId   = null;
@@ -634,6 +635,10 @@ let _tmxPrevLng   = null;
 let _tmxWatchId   = null;
 let _tmxPriceStr  = '0';
 let _tmxTimeStr   = '0:00';
+// ── Kutish (mijoz do'kon/uyga kirib qolganda, harakatsiz vaqt uchun pullik kutish) ──
+let _tmxWaiting      = false;  // hozir kutish rejimidami
+let _tmxWaitMs       = 0;      // avval yakunlangan kutish davrlaridan yig'ilgan umumiy ms
+let _tmxWaitStartedAt = null;  // joriy kutish davri boshlangan payt (Date.now())
 let _tmxSpeedKmh  = 0;
 
 // Serverga taximetr ma'lumotlarini saqlash
@@ -645,13 +650,19 @@ function _tmxSave() {
   _tmxSaveTimer = setTimeout(_tmxFlushNow, 2000);
 }
 
+// Joriy umumiy kutish davomiyligi (ms) — avval yakunlangan davrlar + hozir
+// davom etayotgan davrning shu paytgacha o'tgan qismi (agar hozir kutayotgan bo'lsa)
+function _tmxTotalWaitMs() {
+  return _tmxWaitMs + ((_tmxWaiting && _tmxWaitStartedAt) ? (Date.now() - _tmxWaitStartedAt) : 0);
+}
+
 // Ilova fonga o'tganda/yopilganda darhol yuboramiz — 2s debounce tugashini kutmasdan,
 // aks holda oxirgi bir necha soniyalik masofa/narx bazaga yozilmay qolib,
 // ilova qayta ochilganda taximetr orqaga tortiladi
 function _tmxFlushNow() {
   clearTimeout(_tmxSaveTimer);
   if (!_tmxOrderId) return;
-  const body = `dist_km=${_tmxDistKm.toFixed(3)}&price=${parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,''))||0}&csrfmiddlewaretoken=${encodeURIComponent(getCookie('csrftoken')||'')}`;
+  const body = `dist_km=${_tmxDistKm.toFixed(3)}&price=${parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,''))||0}&waiting=${_tmxWaiting?1:0}&wait_ms=${Math.round(_tmxTotalWaitMs())}&csrfmiddlewaretoken=${encodeURIComponent(getCookie('csrftoken')||'')}`;
   if (navigator.sendBeacon) {
     navigator.sendBeacon(
       `/driver/orders/${_tmxOrderId}/meter/`,
@@ -696,9 +707,10 @@ function _resetSheetOverlay() {
 function _tmxPersist() {
   if (!_tmxOrderId) return;
   sessionStorage.setItem('vijdon_tmx_' + _tmxOrderId, JSON.stringify({
-    price: _tmxPriceStr,
-    dist:  _tmxDistKm,
-    time:  _tmxTimeStr,
+    price:  _tmxPriceStr,
+    dist:   _tmxDistKm,
+    time:   _tmxTimeStr,
+    waitMs: _tmxTotalWaitMs(),
   }));
 }
 
@@ -719,6 +731,12 @@ function tmxStart(orderId, order) {
   _tmxPriceStr  = '0';
   _tmxTimeStr   = '0:00';
 
+  // Kutish holatini serverdan tiklash — ilova qayta ochilganda "Kutish" bosilgan
+  // holat yo'qolib ketmasin (masalan haydovchi mijozni kutayotganda sahifani yopib qo'ysa)
+  _tmxWaitMs        = (order?.tmx_paused_ms && parseInt(order.tmx_paused_ms) > 0) ? parseInt(order.tmx_paused_ms) : 0;
+  _tmxWaiting       = !!order?.tmx_paused;
+  _tmxWaitStartedAt = _tmxWaiting ? Date.now() : null;
+
   // sessionStorage dan tiklash (shu sessiya ichida sahifa yangilansa) — masofa uchun,
   // narx va vaqt har doim formuladan qayta hisoblanadi (pastda)
   try {
@@ -726,12 +744,13 @@ function tmxStart(orderId, order) {
     if (raw) {
       const saved = JSON.parse(raw);
       if (saved.dist > 0 && saved.dist > _tmxDistKm) _tmxDistKm = parseFloat(saved.dist);
+      if (!_tmxWaiting && saved.waitMs > 0 && saved.waitMs > _tmxWaitMs) _tmxWaitMs = parseFloat(saved.waitMs);
     }
   } catch(_) {}
 
   // Narx va vaqt doim joriy masofa/vaqtdan hisoblanadi — bazadagi eski price
   // qiymatini "belgilangan narx" deb noto'g'ri qabul qilib, taximetrni muzlatib qo'ymaslik uchun
-  _tmxPriceStr = Math.round(TMX_BASE_PRICE + _tmxDistKm * TMX_PER_KM).toLocaleString('uz-UZ');
+  _tmxPriceStr = Math.round(TMX_BASE_PRICE + _tmxDistKm * TMX_PER_KM + (_tmxTotalWaitMs()/60000) * TMX_WAITING_PER_MIN).toLocaleString('uz-UZ');
   if (_tmxStartTime) {
     const elapsed = Math.max(0, Math.floor((Date.now() - _tmxStartTime) / 1000));
     _tmxTimeStr = Math.floor(elapsed / 60) + ':' + String(elapsed % 60).padStart(2, '0');
@@ -742,6 +761,7 @@ function tmxStart(orderId, order) {
   _tmxDispDist  = _tmxDistKm;
   _tmxDispPrice = parseFloat(_tmxPriceStr.replace(/[^\d.]/g, '')) || 0;
 
+  _tmxUpdateWaitUI();
   _tmxPersist();
   _tmxInterval = setInterval(_tmxTick, 1000);
   requestAnimationFrame(_tmxSmoothLoop);
@@ -763,7 +783,10 @@ function _tmxOnLocation(e) {
 
   if (spd != null && spd >= 0) _tmxSpeedKmh = Math.round(spd * 3.6);
 
-  if (_tmxPrevLat !== null) {
+  // Kutish rejimida masofa hisoblanmaydi — mijoz do'kon/uyga kirib qolganda
+  // haydovchi harakatsiz turadi (yoki atrofda kichik yurishlar qiladi), bular
+  // masofa sifatida hisobga olinmasligi kerak, faqat kutish narxi qo'shiladi.
+  if (_tmxPrevLat !== null && !_tmxWaiting) {
     const d = _haversine(_tmxPrevLat, _tmxPrevLng, lat, lng);
     if (d > 0.005 && d < 2.0) {
       _tmxDistKm += d;
@@ -819,21 +842,67 @@ function _tmxTick() {
   _tmxTimeStr = min + ':' + String(sec).padStart(2, '0');
   _tmxUpdatePrice();
   _syncSheetTmx();
-  _tmxSave();
+  _tmxUpdateWaitUI();
+  // Kutish rejimida ham narx (vaqt asosida) o'sib boradi — shuning uchun bu holatda
+  // ham davriy saqlash kerak, aks holda faqat GPS harakatiga bog'liq _tmxSave()
+  // chaqirilmay, kutish narxi bazaga yozilmay qolib ketardi.
+  if (_tmxWaiting) _tmxSave();
   // Taximetr qiymatlarini sessionStorage ga saqlaymiz — history.html ularni o'qiydi
-  if (_tmxOrderId) {
-    sessionStorage.setItem('vijdon_tmx_' + _tmxOrderId, JSON.stringify({
-      price: _tmxPriceStr,
-      dist:  _tmxDistKm,
-      time:  _tmxTimeStr,
-    }));
-  }
+  _tmxPersist();
 }
 
 function _tmxUpdatePrice() {
   if (!_tmxActive) return;
-  const price = Math.round(TMX_BASE_PRICE + _tmxDistKm * TMX_PER_KM);
+  const waitMinutes = _tmxTotalWaitMs() / 60000;
+  const price = Math.round(TMX_BASE_PRICE + _tmxDistKm * TMX_PER_KM + waitMinutes * TMX_WAITING_PER_MIN);
   _tmxPriceStr = price.toLocaleString('uz-UZ');
+}
+
+// "⏸ Kutish" / "▶️ Davom etish" tugmasi bosilganda chaqiriladi (home.html dagi
+// taximetr paneli ichida). Masofa hisoblanishini to'xtatib/davom ettirib,
+// vaqt asosidagi kutish narxini boshlaydi/yakunlaydi.
+function tmxToggleWait() {
+  if (!_tmxActive) return;
+  if (_tmxWaiting) {
+    _tmxWaitMs = _tmxTotalWaitMs();
+    _tmxWaiting = false;
+    _tmxWaitStartedAt = null;
+  } else {
+    _tmxWaiting = true;
+    _tmxWaitStartedAt = Date.now();
+  }
+  _tmxUpdatePrice();
+  _tmxUpdateWaitUI();
+  _tmxPersist();
+  _tmxFlushNow();
+  try { showToast(_tmxWaiting ? 'Kutish boshlandi' : 'Safar davom etmoqda', '', 'info', 2000); } catch(_) {}
+}
+
+function _fmtWaitTime(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return min + ':' + String(sec).padStart(2, '0');
+}
+
+function _tmxUpdateWaitUI() {
+  const btn = document.getElementById('tmx-wait-btn');
+  if (btn) {
+    btn.textContent = _tmxWaiting ? "▶️ Davom etish" : "⏸ Kutish (mijoz band)";
+    btn.style.background = _tmxWaiting ? 'rgba(255,149,0,.18)' : 'rgba(255,255,255,.08)';
+    btn.style.color = _tmxWaiting ? '#FF9500' : 'rgba(255,255,255,.75)';
+  }
+  const w = document.getElementById('tmx-wait-info');
+  if (w) {
+    const waitMs = _tmxTotalWaitMs();
+    if (waitMs > 500) {
+      const waitPrice = Math.round((waitMs / 60000) * TMX_WAITING_PER_MIN);
+      w.textContent = `⏱ Kutish: ${_fmtWaitTime(waitMs)} (+${waitPrice.toLocaleString('uz-UZ')} so'm)`;
+      w.style.display = '';
+    } else {
+      w.style.display = 'none';
+    }
+  }
 }
 
 function tmxStop() {
@@ -845,6 +914,9 @@ function tmxStop() {
     _tmxWatchId = null;
   }
   window.removeEventListener('vijdon_location', _tmxOnLocation);
+  _tmxWaiting = false;
+  _tmxWaitMs = 0;
+  _tmxWaitStartedAt = null;
   _tmxClear();
 }
 

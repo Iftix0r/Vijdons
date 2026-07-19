@@ -359,6 +359,7 @@ class TariffSettings(models.Model):
     """Singleton: admin paneldan narx sozlamalari."""
     base_price    = models.DecimalField(max_digits=10, decimal_places=2, default=5000, verbose_name="Boshlang'ich narx (UZS)", help_text="Har bir buyurtma uchun minimal narx")
     price_per_km  = models.DecimalField(max_digits=10, decimal_places=2, default=2000, verbose_name="1 km narxi (UZS)")
+    waiting_price_per_minute = models.DecimalField(max_digits=10, decimal_places=2, default=1000, verbose_name="Kutish narxi (1 daqiqa, UZS)", help_text="Haydovchi \"Kutish\" tugmasini bosgan vaqtda, har daqiqa uchun qo'shiladigan narx")
     commission    = models.DecimalField(max_digits=10, decimal_places=2, default=1000, verbose_name="Haydovchi komissiyasi (UZS)", help_text="Har bir qabul qilingan buyurtma uchun haydovchi balansidan yechiladi")
     auto_dispatch = models.BooleanField(default=True, verbose_name="Avtomatik taqsimlash", help_text="Yoqilgan bo'lsa eng yaqin haydovchiga avtomatik beriladi")
     max_dispatch_attempts = models.IntegerField(default=4, verbose_name="Maksimal urinishlar soni", help_text="Buyurtma eng ko'pi bilan nechta haydovchiga navbatma-navbat ko'rsatiladi")
@@ -374,10 +375,13 @@ class TariffSettings(models.Model):
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
 
-    def calc_price(self, distance_km):
+    def calc_price(self, distance_km, waiting_minutes=0):
         if distance_km is None:
             return None
-        return self.base_price + Decimal(str(distance_km)) * self.price_per_km
+        price = self.base_price + Decimal(str(distance_km)) * self.price_per_km
+        if waiting_minutes:
+            price += Decimal(str(waiting_minutes)) * self.waiting_price_per_minute
+        return price
 
     def __str__(self):
         return f"Tariff: {self.base_price} + {self.price_per_km}/km, komissiya={self.commission}"

@@ -21,7 +21,7 @@
                 <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
                     <i class="fas fa-flag-checkered text-green-500 mr-1"></i>Boshlang'ich narx (UZS)
                 </label>
-                <input type="number" name="base_price" value="{{ tariff.base_price }}" min="0" required
+                <input type="number" name="base_price" value="{{ tariff.base_price|stringformat:'s' }}" min="0" required
                        class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-green-400 dark:text-white transition">
                 <p class="text-xs text-gray-400 mt-1">Har bir buyurtma uchun minimal narx</p>
             </div>
@@ -30,15 +30,24 @@
                 <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
                     <i class="fas fa-road text-blue-500 mr-1"></i>1 km narxi (UZS)
                 </label>
-                <input type="number" name="price_per_km" value="{{ tariff.price_per_km }}" min="0" required
+                <input type="number" name="price_per_km" value="{{ tariff.price_per_km|stringformat:'s' }}" min="0" required
                        class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-green-400 dark:text-white transition">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                    <i class="fas fa-hourglass text-amber-500 mr-1"></i>Kutish narxi — 1 daqiqa (UZS)
+                </label>
+                <input type="number" name="waiting_price_per_minute" value="{{ tariff.waiting_price_per_minute|stringformat:'s' }}" min="0" required
+                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-green-400 dark:text-white transition">
+                <p class="text-xs text-gray-400 mt-1">Haydovchi taximetrda "Kutish" tugmasini bosgan vaqtda (mijoz do'kon/uyga kirib qolsa) har daqiqa uchun qo'shiladigan narx</p>
             </div>
 
             <div>
                 <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
                     <i class="fas fa-percent text-red-500 mr-1"></i>Haydovchi komissiyasi (UZS)
                 </label>
-                <input type="number" name="commission" value="{{ tariff.commission }}" min="0" required
+                <input type="number" name="commission" value="{{ tariff.commission|stringformat:'s' }}" min="0" required
                        class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-green-400 dark:text-white transition">
                 <p class="text-xs text-gray-400 mt-1">Har bir qabul qilingan buyurtma uchun haydovchi balansidan yechiladi</p>
             </div>
@@ -77,7 +86,7 @@
                     <i class="fas fa-calculator mr-1"></i>Misol hisob-kitob
                 </p>
                 <p class="text-sm text-green-800 dark:text-green-300">
-                    5 km uchun: <b>{{ tariff.base_price }} + (5 × {{ tariff.price_per_km }}) = {{ tariff.calc_price|default:"—" }} UZS</b>
+                    5 km, 3 daqiqa kutish bilan: <b>{{ tariff.base_price }} + (5 × {{ tariff.price_per_km }}) + (3 × {{ tariff.waiting_price_per_minute }})</b>
                 </p>
             </div>
         </div>

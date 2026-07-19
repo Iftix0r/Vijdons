@@ -20,6 +20,16 @@ urlpatterns = [
     path('profile/password/', driver_views.driver_profile_password, name='profile_password'),
 
     path('orders/json/',              driver_views.driver_orders_json,   name='orders_json'),
+
+    # Diqqat: bu aniq (specific) yo'llar quyidagi umumiy
+    # `orders/<int:pk>/<str:action>/` naqshidan OLDIN turishi shart — aks holda
+    # Django URL resolver ularni doim o'sha umumiy naqshga moslashtirib yuborardi
+    # (masalan /orders/1/meter/ ham "action=meter" sifatida driver_order_action'ga
+    # tushib, "Noto'g'ri amal" xatosini qaytarardi — taximetr avtosaqlashi,
+    # ETA va reyting endpointlari shu sababli hech qachon ishlamas edi).
+    path('orders/<int:pk>/eta/',    driver_views.driver_order_eta,    name='order_eta'),
+    path('orders/<int:pk>/meter/',  driver_views.driver_meter_update, name='order_meter'),
+    path('orders/<int:pk>/rate/',   driver_views.driver_order_rate,   name='order_rate'),
     path('orders/<int:pk>/<str:action>/', driver_views.driver_order_action, name='order_action'),
 
     path('sync/fcm/',      driver_views.driver_fcm_sync,        name='fcm_sync'),
@@ -27,10 +37,6 @@ urlpatterns = [
     path('sync/push/',     driver_views.driver_push_subscribe,  name='push_subscribe'),
     path('duty/',          driver_views.driver_duty_toggle,     name='duty_toggle'),
 
-    # Yandex-style funksiyalar
-    path('orders/<int:pk>/eta/',    driver_views.driver_order_eta,    name='order_eta'),
-    path('orders/<int:pk>/meter/',  driver_views.driver_meter_update, name='order_meter'),
-    path('orders/<int:pk>/rate/',   driver_views.driver_order_rate,   name='order_rate'),
     path('surge/',                  driver_views.driver_surge_info,   name='surge_info'),
     path('sos/',                     driver_views.driver_sos_send,     name='sos_send'),
     path('destination/',             driver_views.driver_destination,  name='destination'),

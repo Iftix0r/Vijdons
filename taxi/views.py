@@ -659,6 +659,7 @@ def tariff_settings(request):
         try:
             tariff.base_price   = Decimal(request.POST.get('base_price', tariff.base_price))
             tariff.price_per_km = Decimal(request.POST.get('price_per_km', tariff.price_per_km))
+            tariff.waiting_price_per_minute = Decimal(request.POST.get('waiting_price_per_minute', tariff.waiting_price_per_minute))
             tariff.commission   = Decimal(request.POST.get('commission', tariff.commission))
             tariff.auto_dispatch = request.POST.get('auto_dispatch') == 'on'
             tariff.max_dispatch_attempts = int(request.POST.get('max_dispatch_attempts', tariff.max_dispatch_attempts))
