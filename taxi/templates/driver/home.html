@@ -905,14 +905,9 @@ function _renderSheet(id, o){
         </div>
       </div>
       ${(o.status==='on_way'||o.status==='arrived')?`
-      <div style="margin:0 10px 10px;display:flex;align-items:center;gap:8px">
-        <button id="tmx-wait-btn" onclick="tmxToggleWait()" style="flex:1;padding:10px 12px;border-radius:12px;border:none;cursor:pointer;font-weight:700;font-size:13px;
-                background:${_tmxWaiting?'rgba(255,149,0,.18)':'rgba(255,255,255,.08)'};color:${_tmxWaiting?'#FF9500':'rgba(255,255,255,.75)'}">
-          ${_tmxWaiting?"▶️ Davom etish":"⏸ Kutish (mijoz band)"}
-        </button>
-        <span id="tmx-wait-info" style="font-size:11px;color:#FF9500;font-weight:700;white-space:nowrap;${_tmxTotalWaitMs()>500?'':'display:none'}">
-          ${_tmxTotalWaitMs()>500?`⏱ ${_fmtWaitTime(_tmxTotalWaitMs())} (+${Math.round((_tmxTotalWaitMs()/60000)*TMX_WAITING_PER_MIN).toLocaleString('uz-UZ')} so'm)`:''}
-        </span>
+      <div style="margin:0 10px 10px">
+        <button id="tmx-wait-btn" onclick="tmxToggleWait()" style="display:block;width:100%;box-sizing:border-box;padding:12px;border-radius:12px;border:none;cursor:pointer;font-weight:700;font-size:14px;background:${_tmxWaiting?'rgba(255,149,0,.18)':'rgba(255,255,255,.08)'};color:${_tmxWaiting?'#FF9500':'rgba(255,255,255,.75)'}">${_tmxWaiting?"▶️ Davom etish":"⏸ Kutish (mijoz band)"}</button>
+        <div id="tmx-wait-info" style="text-align:center;font-size:11px;color:#FF9500;font-weight:700;margin-top:6px;${_tmxTotalWaitMs()>500?'':'display:none'}">${_tmxTotalWaitMs()>500?`⏱ ${_fmtWaitTime(_tmxTotalWaitMs())} (+${Math.round((_tmxTotalWaitMs()/60000)*TMX_WAITING_PER_MIN).toLocaleString('uz-UZ')} so'm)`:''}</div>
       </div>`:''}
       ${o.status==='completed'&&o.price?`
       <div style="margin:0 10px 10px;padding:12px 14px;background:rgba(52,199,89,.1);border-radius:12px;border:1px solid rgba(52,199,89,.2);display:flex;align-items:center;justify-content:space-between">
