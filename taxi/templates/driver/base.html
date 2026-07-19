@@ -374,6 +374,14 @@ const Native = {
   callPhone(phone) { window.location.href='tel:'+phone; }
 };
 
+// Qabul qilingan buyurtmani haydovchi o'zi bekor qila olmaydi — operatorga
+// qo'ng'iroq qilishi kerak (admin panel > Tarif sozlamalari da o'zgartiriladi).
+const OPERATOR_PHONE = '{{ operator_phone|default:"1351" }}';
+function callOperator() {
+  try { Native.vibrate(); } catch(_) {}
+  Native.callPhone(OPERATOR_PHONE);
+}
+
 // ── Toast ─────────────────────────────────────────────────────────────────────
 let _tt;
 const _TS = {

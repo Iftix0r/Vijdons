@@ -190,15 +190,15 @@ function openDetail(el) {
   const activeActions = {
     accepted: `<div class="space-y-2 mt-1">
       <button onclick="doHistoryAction(${id},'on_way')" style="width:100%;padding:14px;border-radius:14px;background:#AF52DE;color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer">🚗 Yo'lga chiqdim</button>
-      <button onclick="doHistoryAction(${id},'cancel')" style="width:100%;padding:12px;border-radius:14px;background:rgba(255,59,48,.1);color:#FF3B30;font-size:14px;font-weight:700;border:1px solid rgba(255,59,48,.2);cursor:pointer">Bekor qilish</button>
+      <button onclick="callOperator()" style="width:100%;padding:12px;border-radius:14px;background:rgba(255,59,48,.1);color:#FF3B30;font-size:14px;font-weight:700;border:1px solid rgba(255,59,48,.2);cursor:pointer">📞 Bekor qilish (Operator: ${OPERATOR_PHONE})</button>
     </div>`,
     on_way: `<div class="space-y-2 mt-1">
       <button onclick="doHistoryAction(${id},'arrived')" style="width:100%;padding:14px;border-radius:14px;background:#007AFF;color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer">📍 Yetib keldim</button>
-      <button onclick="doHistoryAction(${id},'cancel')" style="width:100%;padding:12px;border-radius:14px;background:rgba(255,59,48,.1);color:#FF3B30;font-size:14px;font-weight:700;border:1px solid rgba(255,59,48,.2);cursor:pointer">Bekor qilish</button>
+      <button onclick="callOperator()" style="width:100%;padding:12px;border-radius:14px;background:rgba(255,59,48,.1);color:#FF3B30;font-size:14px;font-weight:700;border:1px solid rgba(255,59,48,.2);cursor:pointer">📞 Bekor qilish (Operator: ${OPERATOR_PHONE})</button>
     </div>`,
     arrived: `<div class="space-y-2 mt-1">
       <button onclick="doHistoryAction(${id},'complete')" style="width:100%;padding:14px;border-radius:14px;background:#34C759;color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer">🏁 Yakunlash</button>
-      <button onclick="doHistoryAction(${id},'cancel')" style="width:100%;padding:12px;border-radius:14px;background:rgba(255,59,48,.1);color:#FF3B30;font-size:14px;font-weight:700;border:1px solid rgba(255,59,48,.2);cursor:pointer">Bekor qilish</button>
+      <button onclick="callOperator()" style="width:100%;padding:12px;border-radius:14px;background:rgba(255,59,48,.1);color:#FF3B30;font-size:14px;font-weight:700;border:1px solid rgba(255,59,48,.2);cursor:pointer">📞 Bekor qilish (Operator: ${OPERATOR_PHONE})</button>
     </div>`,
   };
 

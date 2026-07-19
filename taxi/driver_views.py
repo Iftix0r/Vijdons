@@ -295,12 +295,23 @@ def driver_order_action(request, driver, pk, action):
                 threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
         return JsonResponse({'ok': True})
 
+    # Haydovchi endi qabul qilingan buyurtmani o'zi bekor qila olmaydi — bekor
+    # qilish uchun operatorga qo'ng'iroq qilishi kerak (operator komissiyani
+    # qaytaradi va buyurtmani boshqa haydovchilarga ochadi). Shu bilan birga,
+    # UI'dagi tugma ham qo'ng'iroqqa yo'naltiriladi (taxi/templates/driver/home.html,
+    # history.html) — bu yerdagi tekshiruv shunchaki himoya qatlami.
+    if action == 'cancel':
+        tariff = TariffSettings.get()
+        return JsonResponse({
+            'ok': False,
+            'error': f"Buyurtmani bekor qilish uchun operatorga qo'ng'iroq qiling: {tariff.operator_phone}",
+        }, status=403)
+
     allowed = {
         'accept':   (['pending'],                  'accepted'),
         'on_way':   (['accepted'],                 'on_way'),
         'arrived':  (['on_way'],                   'arrived'),
         'complete': (['arrived', 'on_way', 'accepted'], 'completed'),
-        'cancel':   (['accepted', 'on_way', 'arrived'], 'cancelled'),
     }
     if action not in allowed:
         return JsonResponse({'ok': False, 'error': 'Noto\'g\'ri amal'}, status=400)

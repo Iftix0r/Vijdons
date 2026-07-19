@@ -260,6 +260,19 @@
             </form>
         </div>
 
+        {% if order.driver_id %}
+        {% if order.status == 'accepted' or order.status == 'on_way' or order.status == 'arrived' %}
+        <!-- Haydovchidan bekor qilish (komissiya qaytariladi, qayta ochiladi) -->
+        <form id="cancel-reassign-{{ order.pk }}" action="{% url 'taxi:order_cancel_reassign' order.pk %}" method="POST">
+            {% csrf_token %}
+        </form>
+        <button type="button" onclick="if(confirm('Bekor qilinsinmi? {{ order.driver.full_name }} ga {{ order.commission }} so\'m qaytariladi va buyurtma boshqa haydovchilarga ochiladi.')) document.getElementById('cancel-reassign-{{ order.pk }}').submit()"
+                class="w-full py-2.5 rounded-xl bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 text-sm font-bold hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors border border-orange-100 dark:border-orange-800/30">
+            <i class="fas fa-rotate-left mr-2"></i>Haydovchidan bekor qilish (pulini qaytarish)
+        </button>
+        {% endif %}
+        {% endif %}
+
         <!-- O'chirish -->
         <form id="del-order-{{ order.pk }}" action="{% url 'taxi:order_delete' order.pk %}" method="POST">
             {% csrf_token %}

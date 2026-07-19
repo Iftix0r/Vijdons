@@ -40,6 +40,7 @@ def active_drivers(request):
         'tariff_base_price': int(tariff.base_price),
         'tariff_per_km':     int(tariff.price_per_km),
         'tariff_waiting_per_min': int(tariff.waiting_price_per_minute),
+        'operator_phone': tariff.operator_phone,
         # Ovozli bildirishnomalar
         'latest_event_id': PanelEvent.objects.aggregate(m=Max('id'))['m'] or 0,
         'driver_sounds_json': json.dumps(driver_sounds),

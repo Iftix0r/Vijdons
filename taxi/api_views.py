@@ -466,7 +466,14 @@ def order_complete(request, driver, pk):
 @permission_classes([IsAuthenticated])
 @driver_required
 def order_cancel(request, driver, pk):
-    return _order_action(request, driver, pk, ['accepted', 'on_way', 'arrived'], 'cancelled')
+    # Haydovchi qabul qilingan buyurtmani o'zi bekor qila olmaydi — operatorga
+    # qo'ng'iroq qilishi kerak (operator komissiyani qaytaradi va buyurtmani
+    # boshqa haydovchilarga ochadi). driver_views.py'dagi web panel bilan bir xil qoida.
+    tariff = TariffSettings.get()
+    return Response(
+        {'detail': f"Buyurtmani bekor qilish uchun operatorga qo'ng'iroq qiling: {tariff.operator_phone}"},
+        status=403,
+    )
 
 
 

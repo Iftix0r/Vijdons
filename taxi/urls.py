@@ -15,6 +15,7 @@ urlpatterns = [
     path('orders/add/', views.order_create, name='order_create'),
     path('orders/<int:pk>/', views.order_detail, name='order_detail'),
     path('orders/<int:pk>/status/', views.order_update_status, name='order_update_status'),
+    path('orders/<int:pk>/cancel-reassign/', views.order_cancel_reassign, name='order_cancel_reassign'),
     path('orders/<int:pk>/delete/', views.order_delete, name='order_delete'),
 
     path('drivers/', views.driver_list, name='driver_list'),

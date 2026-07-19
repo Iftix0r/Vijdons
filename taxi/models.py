@@ -364,6 +364,7 @@ class TariffSettings(models.Model):
     auto_dispatch = models.BooleanField(default=True, verbose_name="Avtomatik taqsimlash", help_text="Yoqilgan bo'lsa eng yaqin haydovchiga avtomatik beriladi")
     max_dispatch_attempts = models.IntegerField(default=4, verbose_name="Maksimal urinishlar soni", help_text="Buyurtma eng ko'pi bilan nechta haydovchiga navbatma-navbat ko'rsatiladi")
     dispatch_timeout      = models.IntegerField(default=10, verbose_name="Kutish vaqti (sekund)", help_text="Har bir haydovchi qabul qilishi uchun beriladigan vaqt")
+    operator_phone = models.CharField(max_length=20, default='1351', verbose_name="Operator telefon raqami", help_text="Haydovchi qabul qilingan buyurtmani bekor qilmoqchi bo'lsa, shu raqamga qo'ng'iroq qiladi")
     updated_at    = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):

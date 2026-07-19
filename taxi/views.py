@@ -148,6 +148,54 @@ def order_update_status(request, pk):
 
 
 @login_required(login_url='taxi:panel_login')
+def order_cancel_reassign(request, pk):
+    """Haydovchi operatorga qo'ng'iroq qilib buyurtmani bekor qilishni so'raganda
+    ishlatiladi: haydovchidan yechilgan komissiya unga qaytariladi, buyurtma undan
+    yechib olinib qayta 'kutilmoqda' holatiga o'tkaziladi — shu bilan boshqa
+    haydovchilar uni qabul qilishi mumkin bo'ladi."""
+    order = get_object_or_404(Order, pk=pk)
+    if request.method == 'POST' and order.driver_id and order.status in ('accepted', 'on_way', 'arrived'):
+        from decimal import Decimal
+        from .utils import send_fcm
+
+        old_driver = order.driver
+        commission = order.commission or TariffSettings.get().commission
+        old_driver.balance += Decimal(str(commission))
+        old_driver.save(update_fields=['balance'])
+        BalanceLog.objects.create(
+            driver=old_driver, action=BalanceLog.ACTION_ADD, amount=commission,
+            balance_after=old_driver.balance,
+            note=f"Komissiya qaytarildi — buyurtma #{order.id} operator tomonidan bekor qilindi",
+        )
+
+        order.rejected_by.add(old_driver)
+        order.driver = None
+        order.dispatched_to = None
+        order.dispatched_at = None
+        order.status = 'pending'
+        order.save(update_fields=['driver', 'dispatched_to', 'dispatched_at', 'status', 'updated_at'])
+
+        log_panel_event('panel_order_cancelled', f"Buyurtma #{order.id} — {old_driver.full_name} dan bekor qilindi, qayta ochildi")
+        send_fcm(
+            old_driver.fcm_token,
+            title='Buyurtma bekor qilindi',
+            body=f"Buyurtma #{order.id} operator tomonidan bekor qilindi. {commission} so'm balansingizga qaytarildi.",
+            data={'type': 'order_cancelled', 'order_id': str(order.id)},
+        )
+
+        tariff = TariffSettings.get()
+        if tariff.auto_dispatch:
+            import threading
+            threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
+
+        messages.success(
+            request,
+            f"Buyurtma #{order.id} bekor qilindi — {old_driver.full_name}ga {commission} so'm qaytarildi, buyurtma qayta ochildi.",
+        )
+    return redirect(request.META.get('HTTP_REFERER', 'taxi:order_list'))
+
+
+@login_required(login_url='taxi:panel_login')
 def order_delete(request, pk):
     order = get_object_or_404(Order, pk=pk)
     if request.method == 'POST':
@@ -664,6 +712,7 @@ def tariff_settings(request):
             tariff.auto_dispatch = request.POST.get('auto_dispatch') == 'on'
             tariff.max_dispatch_attempts = int(request.POST.get('max_dispatch_attempts', tariff.max_dispatch_attempts))
             tariff.dispatch_timeout      = int(request.POST.get('dispatch_timeout', tariff.dispatch_timeout))
+            tariff.operator_phone        = request.POST.get('operator_phone', tariff.operator_phone).strip() or tariff.operator_phone
             tariff.save()
         except (InvalidOperation, ValueError):
             pass

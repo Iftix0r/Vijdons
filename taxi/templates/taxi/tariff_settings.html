@@ -81,6 +81,15 @@
                 <p class="text-xs text-gray-400 mt-1">Har bir haydovchiga buyurtmani qabul qilish uchun beriladigan soniya</p>
             </div>
 
+            <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                    <i class="fas fa-phone text-blue-500 mr-1"></i>Operator telefon raqami
+                </label>
+                <input type="text" name="operator_phone" value="{{ tariff.operator_phone }}" required
+                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-green-400 dark:text-white transition">
+                <p class="text-xs text-gray-400 mt-1">Haydovchi qabul qilingan buyurtmani bekor qilmoqchi bo'lsa, ilovadagi "Bekor qilish" tugmasi shu raqamga qo'ng'iroq qiladi (o'zi bekor qila olmaydi)</p>
+            </div>
+
             <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40 rounded-xl p-4">
                 <p class="text-xs font-bold text-green-700 dark:text-green-400 uppercase tracking-wide mb-2">
                     <i class="fas fa-calculator mr-1"></i>Misol hisob-kitob

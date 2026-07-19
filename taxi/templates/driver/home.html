@@ -730,11 +730,9 @@ function tmxArrived() {
 }
 
 function tmxCancel() {
-  if (!_tmxOrderId) return;
-  Native.vibrate();
-  const id = _tmxOrderId;
-  tmxStop();
-  doAction(id, 'cancel');
+  // Haydovchi qabul qilingan buyurtmani o'zi bekor qila olmaydi — operatorga
+  // qo'ng'iroq qilishi kerak.
+  callOperator();
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -776,11 +774,11 @@ function _renderSheet(id, o){
     pending: `<button onclick="doAction(${id},'accept')" class="ios-btn-primary">✓ Qabul qilish</button>
               <button onclick="doAction(${id},'reject')" class="ios-btn-destructive mt-2">Rad etish</button>`,
     accepted:`<button onclick="doAction(${id},'on_way')" class="ios-btn-primary" style="background:#AF52DE;color:#fff">🚗 Yo'lga chiqdim</button>
-              <button onclick="doAction(${id},'cancel')" class="ios-btn-destructive mt-2">Bekor qilish</button>`,
+              <button onclick="callOperator()" class="ios-btn-destructive mt-2">📞 Bekor qilish (Operator: ${OPERATOR_PHONE})</button>`,
     on_way:  `<button onclick="doAction(${id},'arrived')" class="ios-btn-primary" style="background:#007AFF;color:#fff">📍 Yetib keldim</button>
-              <button onclick="doAction(${id},'cancel')" class="ios-btn-destructive mt-2">Bekor qilish</button>`,
+              <button onclick="callOperator()" class="ios-btn-destructive mt-2">📞 Bekor qilish (Operator: ${OPERATOR_PHONE})</button>`,
     arrived: `<button onclick="doAction(${id},'complete')" class="ios-btn-primary" style="background:#34C759;color:#fff">🏁 Yakunlash</button>
-              <button onclick="doAction(${id},'cancel')" class="ios-btn-destructive mt-2">Bekor qilish</button>`,
+              <button onclick="callOperator()" class="ios-btn-destructive mt-2">📞 Bekor qilish (Operator: ${OPERATOR_PHONE})</button>`,
   };
 
   document.getElementById('sheet-body').innerHTML=`
