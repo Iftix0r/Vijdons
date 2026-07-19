@@ -224,7 +224,7 @@ renderOrdersDOM();
     // haydovchi kutilmaganda navbatdan ham chiqib ketadi. Shu sababli
     // buyurtma amalidan keyingi qisqa oynada duty-btn bosilishini e'tiborsiz
     // qoldiramiz (haqiqiy ataylab bosish bo'lsa, foydalanuvchi яна bosadi).
-    if (window._lastOrderActionAt && Date.now() - window._lastOrderActionAt < 800) {
+    if (window._lastOrderActionAt && Date.now() - window._lastOrderActionAt < 1200) {
       console.warn('duty-btn: buyurtma amalidan keyingi shubhali hodisa, e\'tiborsiz qoldirildi');
       return;
     }
@@ -257,6 +257,13 @@ function openMenu(){
   requestAnimationFrame(() => { sh.style.transform = 'translateY(0)'; });
 }
 async function _menuToggleDuty(){
+  // duty-btn'dagi bilan bir xil himoya — menyu ham xuddi shu sheet-overlay
+  // ichida ko'rsatiladi, shuning uchun buyurtma amalidan keyingi tasodifiy
+  // hodisa bu yerga ham o'tib ketmasligi kerak.
+  if (window._lastOrderActionAt && Date.now() - window._lastOrderActionAt < 1200) {
+    console.warn('menu-duty-btn: buyurtma amalidan keyingi shubhali hodisa, e\'tiborsiz qoldirildi');
+    return;
+  }
   if (_hbgBusy) return;
   Native.vibrate();
   const btn = document.getElementById('menu-duty-btn');
@@ -571,8 +578,12 @@ function showNewOrderModal(orderId, order) {
   }, 1000);
 
   // Buttons
-  document.getElementById('nom-accept').onclick = () => { closeNewOrderModal(false); doAction(_nomOrderId, 'accept'); };
-  document.getElementById('nom-reject').onclick = () => { closeNewOrderModal(false); doAction(_nomOrderId, 'reject'); };
+  // Diqqat: debounce belgisi ("_lastOrderActionAt") modal yopilishidan OLDIN
+  // qo'yiladi — aks holda modal darhol yo'qolib, tagidagi duty-btn bir lahzalik
+  // "himoyasiz" oynada qolib, kechikkan/ikkilamchi hodisa (ba'zi WebView'larda
+  // uchraydigan "ghost click") o'sha tugmaga o'tib ketishi mumkin edi.
+  document.getElementById('nom-accept').onclick = () => { window._lastOrderActionAt = Date.now(); closeNewOrderModal(false); doAction(_nomOrderId, 'accept'); };
+  document.getElementById('nom-reject').onclick = () => { window._lastOrderActionAt = Date.now(); closeNewOrderModal(false); doAction(_nomOrderId, 'reject'); };
 }
 
 function closeNewOrderModal(autoClose = false) {
