@@ -53,12 +53,26 @@
         <span class="ios-badge absolute -top-0.5 -right-0.5">{{ chat_unread }}</span>
         {% endif %}
       </a>
+      <!-- Jonli ovozli aloqa ("efir") — hamma haydovchilar bir vaqtda gaplasha
+           oladigan guruh kanali, mikrofonni yoqish/o'chirish orqali (JS base.html'da) -->
+      <button id="voice-btn" onclick="voiceToggle()" type="button"
+         class="w-10 h-10 rounded-full flex items-center justify-center active:opacity-60 transition-opacity border-0 cursor-pointer"
+         style="background:var(--ios-fill)" title="Jonli ovozli aloqa">
+        <i id="voice-btn-icon" class="fas fa-microphone text-[18px]" style="color:#8E8E93"></i>
+      </button>
       <!-- Hamburger menu (Liniyaga chiqish/chiqish shu yerdan ham) -->
       <button onclick="openMenu()" type="button"
          class="w-10 h-10 rounded-full flex items-center justify-center active:opacity-60 transition-opacity border-0 cursor-pointer"
          style="background:var(--ios-fill)">
         <i class="fas fa-bars text-[18px]" style="color:#8E8E93"></i>
       </button>
+    </div>
+  </div>
+  <div id="voice-status" class="hidden mt-2.5">
+    <div class="flex items-center gap-2 px-3 py-2 rounded-[10px]" style="background:rgba(255,59,48,.1)">
+      <span style="width:7px;height:7px;border-radius:50%;background:#FF3B30;animation:pulse-ring 1s ease-out infinite;flex-shrink:0"></span>
+      <span class="ios-caption2 font-semibold" style="color:#FF3B30">Efirdasiz — mikrofoningiz yoniq</span>
+      <span id="voice-participants" class="ios-caption2" style="color:var(--ios-label3);margin-left:auto;white-space:nowrap"></span>
     </div>
   </div>
 </div>

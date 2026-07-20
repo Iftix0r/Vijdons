@@ -624,6 +624,215 @@ function getCookie(n) {
 }
 document.addEventListener('DOMContentLoaded', ()=>{ Native.getLocation().catch(()=>{}); });
 
+// ══════════════════════════════════════════════════════════════════════════════
+// JONLI OVOZLI ALOQA ("EFIR") — WebRTC P2P mesh (barcha sahifalarda umumiy,
+// mikrofon tugmasi Asosiy va Chat navbarlarida ko'rinadi — ikkalasi ham shu
+// bir xil funksiyalarni ishlatadi)
+// Alohida media-server (SFU) o'rniga — bu hostingda buni ishga tushirish imkoni
+// bo'lmagani uchun — har bir haydovchi hozir efirda turgan BOSHQA barcha
+// haydovchilar bilan to'g'ridan-to'g'ri (P2P) ulanadi, shuning uchun HAMMASI
+// bir vaqtning o'zida gapira oladi (har birining brauzeri qolganlarning
+// ovozini alohida-alohida qabul qilib, birgalikda eshittiradi). Signalizatsiya
+// (offer/answer/ICE) uchun WebSocket o'rniga mavjud HTTP polling ishlatiladi —
+// boshqa joylardagi chat pollingi bilan bir xil uslub (voice_heartbeat).
+// DIQQAT — bilib qo'yish kerak bo'lgan cheklovlar:
+//  1) Bu SPA emas — Asosiy/Chat sahifasidan chiqib ketilsa (Tarix/Profilga
+//     o'tilsa) ulanish uziladi, qayta qaytganda yana "efir"ga qo'shilish kerak
+//     bo'ladi.
+//  2) Mesh usuli faqat bir necha (~6-8) faol ishtirokchi uchun mos — juda ko'p
+//     haydovchi bir vaqtda efirda bo'lsa, har birining qurilmasi va interneti
+//     N-1 ta alohida ulanishni ko'tarishi kerak bo'lgani uchun sifat pasayishi
+//     mumkin (haqiqiy ko'p ishtirokchili konferensiya uchun alohida media-server
+//     — masalan LiveKit — kerak bo'ladi).
+//  3) TURN server yo'q (faqat bepul ochiq STUN) — juda cheklangan/korporativ
+//     tarmoqlarda ba'zi ulanishlar o'rnatilmasligi mumkin.
+// ══════════════════════════════════════════════════════════════════════════════
+const VOICE_ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+let _voiceJoined      = false;
+let _voiceLocalStream = null;
+let _voicePeers       = {};   // driverId -> { pc, name, candQueue }
+let _voiceHeartbeatTimer = null;
+
+function _voicePeer(peerId, peerName) {
+  if (_voicePeers[peerId]) return _voicePeers[peerId];
+  const pc = new RTCPeerConnection({ iceServers: VOICE_ICE_SERVERS });
+  if (_voiceLocalStream) {
+    _voiceLocalStream.getTracks().forEach(t => pc.addTrack(t, _voiceLocalStream));
+  }
+  pc.onicecandidate = (e) => {
+    if (e.candidate) _voiceSendSignal(peerId, 'candidate', e.candidate.toJSON());
+  };
+  pc.ontrack = (e) => {
+    let audioEl = document.getElementById('voice-audio-' + peerId);
+    if (!audioEl) {
+      audioEl = document.createElement('audio');
+      audioEl.id = 'voice-audio-' + peerId;
+      audioEl.autoplay = true;
+      document.body.appendChild(audioEl);
+    }
+    audioEl.srcObject = e.streams[0];
+  };
+  const entry = { pc, name: peerName, candQueue: [] };
+  _voicePeers[peerId] = entry;
+  return entry;
+}
+
+function _voiceSendSignal(to, kind, payload) {
+  fetch('{% url "driver:voice_signal" %}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+    body: JSON.stringify({ to, kind, payload }),
+  }).catch(() => {});
+}
+
+function _voiceClosePeer(peerId) {
+  const entry = _voicePeers[peerId];
+  if (!entry) return;
+  try { entry.pc.close(); } catch (_) {}
+  const audioEl = document.getElementById('voice-audio-' + peerId);
+  if (audioEl) audioEl.remove();
+  delete _voicePeers[peerId];
+}
+
+async function voiceToggle() {
+  Native.vibrate();
+  if (_voiceJoined) await voiceLeaveRoom();
+  else await voiceJoinRoom();
+}
+
+async function voiceJoinRoom() {
+  try {
+    _voiceLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (_) {
+    showToast('Mikrofonga ruxsat kerak', 'Brauzer/ilova sozlamalaridan ruxsat bering', 'error', 3500);
+    return;
+  }
+  let data;
+  try {
+    const r = await fetch('{% url "driver:voice_join" %}', {
+      method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') },
+    });
+    data = await r.json();
+  } catch (_) {
+    _voiceLocalStream.getTracks().forEach(t => t.stop());
+    _voiceLocalStream = null;
+    showToast('Tarmoq xatosi', '', 'error');
+    return;
+  }
+  _voiceJoined = true;
+  _voiceUpdateBtnUI();
+
+  // Men yangi qo'shilganim uchun, allaqachon efirda turgan har bir ishtirokchiga
+  // OFFER yuboraman — shu bilan ikki tomon ham bir vaqtda offer yubormay,
+  // "kim birinchi so'z boshlaydi" mojarosining oldi olinadi.
+  for (const p of (data.participants || [])) {
+    const entry = _voicePeer(p.id, p.name);
+    const offer = await entry.pc.createOffer();
+    await entry.pc.setLocalDescription(offer);
+    _voiceSendSignal(p.id, 'offer', offer);
+  }
+
+  _voiceUpdateParticipantsUI(data.participants || []);
+  _voiceHeartbeatTimer = setInterval(_voiceTick, 3000);
+  _voiceTick(); // birinchi javobni (offer/answer) 3s kutmasdan darhol so'rab olamiz
+}
+
+async function voiceLeaveRoom() {
+  clearInterval(_voiceHeartbeatTimer);
+  _voiceHeartbeatTimer = null;
+  try {
+    await fetch('{% url "driver:voice_leave" %}', { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+  } catch (_) {}
+  Object.keys(_voicePeers).forEach(id => _voiceClosePeer(id));
+  if (_voiceLocalStream) { _voiceLocalStream.getTracks().forEach(t => t.stop()); _voiceLocalStream = null; }
+  _voiceJoined = false;
+  _voiceUpdateBtnUI();
+}
+
+async function _voiceTick() {
+  if (!_voiceJoined) return;
+  let data;
+  try {
+    const r = await fetch('{% url "driver:voice_heartbeat" %}', { cache: 'no-store' });
+    data = await r.json();
+  } catch (_) { return; }
+  if (!data.joined) {
+    // Server tomonidan chiqarib yuborilgan (masalan uzoq vaqt heartbeat
+    // yubormagani uchun eskirgan hisoblanib o'chirilgan)
+    clearInterval(_voiceHeartbeatTimer); _voiceHeartbeatTimer = null;
+    Object.keys(_voicePeers).forEach(id => _voiceClosePeer(id));
+    if (_voiceLocalStream) { _voiceLocalStream.getTracks().forEach(t => t.stop()); _voiceLocalStream = null; }
+    _voiceJoined = false; _voiceUpdateBtnUI();
+    return;
+  }
+  for (const sig of (data.signals || [])) {
+    await _voiceHandleSignal(sig);
+  }
+  _voiceUpdateParticipantsUI(data.participants || []);
+}
+
+async function _voiceHandleSignal(sig) {
+  const peerId = sig.from;
+  if (sig.kind === 'leave') { _voiceClosePeer(peerId); return; }
+
+  const entry = _voicePeer(peerId, sig.from_name);
+  if (sig.kind === 'offer') {
+    await entry.pc.setRemoteDescription(new RTCSessionDescription(sig.payload));
+    for (const c of entry.candQueue) { try { await entry.pc.addIceCandidate(c); } catch (_) {} }
+    entry.candQueue = [];
+    const answer = await entry.pc.createAnswer();
+    await entry.pc.setLocalDescription(answer);
+    _voiceSendSignal(peerId, 'answer', answer);
+  } else if (sig.kind === 'answer') {
+    await entry.pc.setRemoteDescription(new RTCSessionDescription(sig.payload));
+    for (const c of entry.candQueue) { try { await entry.pc.addIceCandidate(c); } catch (_) {} }
+    entry.candQueue = [];
+  } else if (sig.kind === 'candidate') {
+    if (entry.pc.remoteDescription && entry.pc.remoteDescription.type) {
+      try { await entry.pc.addIceCandidate(sig.payload); } catch (_) {}
+    } else {
+      entry.candQueue.push(sig.payload);
+    }
+  }
+}
+
+function _voiceUpdateBtnUI() {
+  const btn    = document.getElementById('voice-btn');
+  const icon   = document.getElementById('voice-btn-icon');
+  const status = document.getElementById('voice-status');
+  if (!btn) return;
+  if (_voiceJoined) {
+    btn.style.background = 'rgba(255,59,48,.15)';
+    icon.style.color = '#FF3B30';
+    if (status) status.classList.remove('hidden');
+  } else {
+    btn.style.background = 'var(--ios-fill)';
+    icon.style.color = '#8E8E93';
+    if (status) status.classList.add('hidden');
+  }
+}
+
+function _voiceUpdateParticipantsUI(participants) {
+  const el = document.getElementById('voice-participants');
+  if (!el) return;
+  const total = participants.length + 1; // + o'zim
+  el.textContent = total <= 1 ? "Hozircha yolg'izsiz" : `${total} ta haydovchi efirda`;
+}
+
+// Sahifadan chiqib ketilganda (boshqa tabga o'tilganda yoki ilova yopilganda)
+// efirdan ham avtomatik chiqamiz — SPA bo'lmagani uchun sahifa navigatsiyasida
+// JS holati saqlanmaydi, aks holda serverda "efirdaman" holati eskirguncha
+// (~12s) osilib qolardi va boshqalarga chalkash ko'rinardi.
+window.addEventListener('pagehide', () => {
+  if (_voiceJoined && navigator.sendBeacon) {
+    const body = new Blob(
+      [`csrfmiddlewaretoken=${encodeURIComponent(getCookie('csrftoken') || '')}`],
+      { type: 'application/x-www-form-urlencoded' }
+    );
+    navigator.sendBeacon('{% url "driver:voice_leave" %}', body);
+  }
+});
+
 // ── TAXIMETER (barcha sahifalarda umumiy) ──────────────────────────────────────
 // Bu yerga (base.html) ko'chirilgan — aks holda Home'dan Tarix/Chat/Profilga
 // o'tilganda sahifa to'liq qayta yuklangani uchun (SPA emas) taximetr JS holati
