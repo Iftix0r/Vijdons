@@ -509,6 +509,10 @@ function renderOrdersDOM() {
 
   const pill = {pending:'pill-yellow'};
   const lbl  = {pending:'Kutilmoqda'};
+  // Soddalik uchun: yuqori qatorda faqat holat + (bo'lsa) taymer + # qoladi;
+  // narx pastda ENG KATTA va yashil (haydovchi qaror qabul qilish uchun birinchi
+  // qaraydigan raqam), to'lov turi/mashina turi esa masofa yonida kichikroq
+  // ko'rinadi — haydovchi bir qarashda "qancha pul, qayerga" deb bilib olsin.
   const ordersHtml = pendingOrders.map((o,i) => `
     <div class="ios-card active:opacity-70 transition-opacity cursor-pointer anim-up"
          onclick="openOrder(${o.id})"
@@ -518,9 +522,7 @@ function renderOrdersDOM() {
           <span class="ios-caption2 font-semibold px-2.5 py-1 rounded-[8px] ${pill[o.status]||''}">${lbl[o.status]||o.status}</span>
           <div class="flex items-center gap-2">
             ${o.status==='pending'&&o.timer_sec>0?`<span id="timer-${o.id}" class="ios-caption2 font-bold text-[#FF9500]">${o.timer_sec}s</span>`:''}
-            <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">${o.payment_type==='cash'?'💵 Naqd':'💳 Karta'}</span>
-            <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">${o.car_type_display||''}</span>
-            <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">#${o.id}</span>
+            <span class="ios-caption2" style="color:var(--ios-label3)">#${o.id}</span>
           </div>
         </div>
         <div class="space-y-2">
@@ -531,11 +533,12 @@ function renderOrdersDOM() {
           ${o.to_address?`<div class="flex items-start gap-2.5"><i class="fas fa-location-dot text-[#FF3B30] text-xs mt-1 flex-shrink-0"></i><span class="ios-subhead leading-snug" style="color:var(--ios-label3)">${o.to_address}</span></div>`:''}
         </div>
         <div class="flex items-center justify-between mt-3 pt-3" style="border-top:.5px solid var(--ios-sep)">
-          <div class="flex items-center gap-3">
-            ${o.price?`<span class="ios-subhead font-semibold text-[#34C759]">${parseInt(o.price).toLocaleString()} so'm</span>`:''}
-            ${o.distance_km?`<span class="ios-caption" style="color:var(--ios-label3)">${parseFloat(o.distance_km).toFixed(1)} km</span>`:''}
+          ${o.price?`<div style="font-size:20px;font-weight:800;color:#34C759;letter-spacing:-.3px">${parseInt(o.price).toLocaleString()}<span class="ios-caption font-semibold" style="margin-left:3px;color:rgba(52,199,89,.6)">so'm</span></div>`:'<div></div>'}
+          <div class="flex items-center gap-2.5">
+            ${o.distance_km?`<span class="ios-caption font-medium" style="color:var(--ios-label3)">${parseFloat(o.distance_km).toFixed(1)} km</span>`:''}
+            <span class="ios-caption2" style="color:var(--ios-label3)">${o.payment_type==='cash'?'💵':'💳'} ${o.car_type_display||''}</span>
+            <i class="fas fa-chevron-right ios-caption2" style="color:var(--ios-label3)"></i>
           </div>
-          <i class="fas fa-chevron-right ios-caption2" style="color:var(--ios-label3)"></i>
         </div>
       </div>
     </div>`).join('');
@@ -590,11 +593,19 @@ function showNewOrderModal(orderId, order) {
   Audio.newOrder();
   Native.vibrate([60,30,60,30,120]);
 
-  // Body content
+  // Body content — soddalik uchun: haydovchi 10 soniyada qaror qilishi kerak,
+  // shuning uchun ENG MUHIM raqam (narx) eng katta va markazda, qolgan
+  // ma'lumotlar (to'lov turi, mashina turi) pastda kichikroq ko'rinadi.
   const body = document.getElementById('nom-body');
   if (order) {
     body.innerHTML = `
-      <div class="ios-card2 rounded-[14px] p-3 space-y-2">
+      <div class="text-center">
+        <div style="font-size:32px;font-weight:800;color:#34C759;letter-spacing:-.5px;line-height:1.1">
+          ${order.price?parseInt(order.price).toLocaleString():'—'}<span style="font-size:14px;font-weight:700;margin-left:4px;color:rgba(52,199,89,.6)">so'm</span>
+        </div>
+        ${order.distance_km?`<div class="ios-caption font-semibold mt-0.5" style="color:var(--ios-label3)">${parseFloat(order.distance_km).toFixed(1)} km</div>`:''}
+      </div>
+      <div class="ios-card2 rounded-[14px] p-3 space-y-2" style="margin-top:10px">
         <div class="flex items-start gap-2">
           <div class="w-2 h-2 rounded-full bg-[#34C759] mt-1.5 flex-shrink-0"></div>
           <span class="ios-subhead font-medium">${order.from_address||''}</span>
@@ -604,11 +615,9 @@ function showNewOrderModal(orderId, order) {
           <span class="ios-subhead" style="color:var(--ios-label3)">${order.to_address}</span>
         </div>`:''}
       </div>
-      <div class="flex items-center justify-between px-1">
-        ${order.price?`<span class="ios-subhead font-semibold text-[#34C759]">${parseInt(order.price).toLocaleString()} so'm</span>`:''}
-        ${order.distance_km?`<span class="ios-caption" style="color:var(--ios-label3)">${parseFloat(order.distance_km).toFixed(1)} km</span>`:''}
-        <span class="ios-caption" style="color:var(--ios-label3)">${order.payment_type==='cash'?'💵 Naqd':'💳 Karta'}</span>
-        <span class="ios-caption font-semibold" style="color:var(--ios-label2)">${order.car_type_display||''}</span>
+      <div class="flex items-center justify-center gap-4">
+        <span class="ios-caption font-semibold" style="color:var(--ios-label3)">${order.payment_type==='cash'?'💵 Naqd':'💳 Karta'}</span>
+        <span class="ios-caption font-semibold" style="color:var(--ios-label3)">${order.car_type_display||''}</span>
       </div>`;
   } else {
     body.innerHTML = `<p class="ios-subhead text-center" style="color:var(--ios-label3)">#${orderId}</p>`;
@@ -839,6 +848,25 @@ function openOrder(id){
   _renderSheet(numId, o);
 }
 
+// Asosiy sahifadagi taximetr — doim joriy jonli (global) qiymatlarni ko'rsatadi
+// (haydovchining hozir "yo'lda/yetib keldim" holatidagi buyurtmasi uchun).
+function _tmxWidgetHTML(o){
+  const completed = o.status==='completed';
+  return _tmxRenderWidget({
+    live: !completed,
+    statusText: completed?'✓ Yakunlandi':(o.status==='arrived'?'📍 Yetib keldi':'● Ishlayapti'),
+    statusColor: completed||o.status==='arrived' ? '#34C759' : '#AF52DE',
+    price: _tmxPriceStr||'0', priceId: 'sheet-tmx-price',
+    time:  _tmxTimeStr||'0:00', timeId: 'sheet-tmx-time',
+    dist:  _tmxDistKm.toFixed(2), distId: 'sheet-tmx-dist',
+    speed: _tmxSpeedKmh, speedId: 'sheet-tmx-speed',
+    showWait: (o.status==='on_way'||o.status==='arrived'),
+    waiting: _tmxWaiting,
+    waitInfoHTML: _tmxTotalWaitMs()>500?`⏱ ${_fmtWaitTime(_tmxTotalWaitMs())} (+${Math.round((_tmxTotalWaitMs()/60000)*TMX_WAITING_PER_MIN).toLocaleString('uz-UZ')} so'm)`:'',
+    totalPrice: (completed&&o.price) ? parseInt(o.price).toLocaleString() : null,
+  });
+}
+
 function _renderSheet(id, o){
   const pill={
     pending: 'pill-yellow', accepted:'pill-blue', on_way:'pill-purple', arrived:'pill-green'
@@ -867,29 +895,32 @@ function _renderSheet(id, o){
       </div>
     </div>
 
-    <!-- Route card -->
-    <div class="ios-card2 rounded-[14px] p-4 space-y-3">
-      <div class="flex items-start gap-3">
-        <div class="w-2.5 h-2.5 rounded-full bg-[#34C759] mt-1.5 flex-shrink-0"></div>
-        <div>
-          <div class="ios-caption2 font-semibold mb-0.5" style="color:var(--ios-label3)">QAYERDAN</div>
-          <div class="ios-subhead font-medium">${o.from_address}</div>
+    <!-- Route card — pastdan yuqoriga bog'lovchi chiziq bilan (pickup → dropoff) -->
+    <div class="ios-card2 rounded-[14px] p-4">
+      <div style="display:flex;gap:12px">
+        <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;padding-top:3px">
+          <div style="width:10px;height:10px;border-radius:50%;background:#34C759;box-shadow:0 0 0 4px rgba(52,199,89,.15)"></div>
+          ${o.to_address?`
+          <div style="width:2px;flex:1;min-height:22px;margin:4px 0;background:repeating-linear-gradient(180deg,var(--ios-sep) 0 4px,transparent 4px 8px)"></div>
+          <i class="fas fa-location-dot" style="color:#FF3B30;font-size:13px"></i>`:''}
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">
+          <div>
+            <div class="ios-caption2 font-semibold mb-0.5" style="color:var(--ios-label3)">QAYERDAN</div>
+            <div class="ios-subhead font-medium">${o.from_address}</div>
+          </div>
+          ${o.to_address?`
+          <div>
+            <div class="ios-caption2 font-semibold mb-0.5" style="color:var(--ios-label3)">QAYERGA</div>
+            <div class="ios-subhead font-medium" style="color:var(--ios-label2)">${o.to_address}</div>
+          </div>`:''}
         </div>
       </div>
-      ${o.to_address?`
-      <div style="height:.5px;background:var(--ios-sep);margin-left:20px"></div>
-      <div class="flex items-start gap-3">
-        <i class="fas fa-location-dot text-[#FF3B30] text-sm mt-1 flex-shrink-0"></i>
-        <div>
-          <div class="ios-caption2 font-semibold mb-0.5" style="color:var(--ios-label3)">QAYERGA</div>
-          <div class="ios-subhead font-medium" style="color:var(--ios-label2)">${o.to_address}</div>
-        </div>
-      </div>`:''}
     </div>
 
     <!-- Client card -->
     <div class="ios-card2 rounded-[14px] p-4">
-      <div class="flex items-center gap-3 mb-3">
+      <div class="flex items-center gap-3 ${o.status!=='pending'?'mb-3':''}">
         <div class="w-11 h-11 rounded-full bg-[#007AFF] flex items-center justify-center flex-shrink-0">
           <i class="fas fa-user text-white text-base"></i>
         </div>
@@ -904,6 +935,11 @@ function _renderSheet(id, o){
           ${o.distance_km?`<div class="ios-caption" style="color:var(--ios-label3)">${parseFloat(o.distance_km).toFixed(1)} km</div>`:''}
         </div>`:''}
       </div>
+      ${(o.status!=='pending'&&o.commission)?`
+      <div class="flex items-center justify-between" style="padding:8px 10px;margin-bottom:12px;border-radius:10px;background:rgba(255,149,0,.08)">
+        <span class="ios-caption2 font-semibold" style="color:#FF9500"><i class="fas fa-percent" style="font-size:9px;margin-right:4px"></i>Komissiya</span>
+        <span class="ios-caption font-bold" style="color:#FF9500">${parseInt(o.commission).toLocaleString()} so'm</span>
+      </div>`:''}
       ${o.status!=='pending'?`
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
         <!-- Telefon -->
@@ -947,48 +983,8 @@ function _renderSheet(id, o){
       <span class="ios-subhead" style="color:var(--ios-label2)">${o.note}</span>
     </div>`:''}
 
-    <!-- Taximeter (faqat on_way da) -->
-    ${(o.status==='on_way'||o.status==='arrived'||o.status==='completed')?`
-    <div style="background:linear-gradient(180deg,#161618,#0d0d0e);border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 24px rgba(0,0,0,.35)">
-      <div style="padding:12px 14px 8px;display:flex;align-items:center;justify-content:space-between">
-        <div style="display:flex;align-items:center;gap:6px">
-          <div style="width:6px;height:6px;border-radius:50%;background:#AF52DE;box-shadow:0 0 6px #AF52DE${o.status!=='completed'?';animation:pulse-dot 1.4s ease-in-out infinite':''}"></div>
-          <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.45);letter-spacing:.6px;text-transform:uppercase">Taximetr</span>
-        </div>
-        ${o.status==='completed'?'<span style="font-size:11px;color:#34C759;font-weight:700">✓ Yakunlandi</span>':''}
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;padding:2px 8px 12px">
-        <div style="text-align:center;padding:8px 4px">
-          <div style="font-size:9px;font-weight:700;color:#FFD60088;letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px">NARX</div>
-          <div style="font-size:19px;font-weight:800;color:#FFD600;font-variant-numeric:tabular-nums;letter-spacing:-.3px" id="sheet-tmx-price">${_tmxPriceStr||'0'}</div>
-          <div style="font-size:9px;font-weight:600;color:rgba(255,255,255,.3);margin-top:1px">so'm</div>
-        </div>
-        <div style="text-align:center;padding:8px 4px;border-left:.5px solid rgba(255,255,255,.07)">
-          <div style="font-size:9px;font-weight:700;color:#AF52DE88;letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px">VAQT</div>
-          <div style="font-size:19px;font-weight:800;color:#AF52DE;font-variant-numeric:tabular-nums;letter-spacing:-.3px" id="sheet-tmx-time">${_tmxTimeStr||'0:00'}</div>
-        </div>
-        <div style="text-align:center;padding:8px 4px;border-left:.5px solid rgba(255,255,255,.07)">
-          <div style="font-size:9px;font-weight:700;color:#007AFF88;letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px">BOSIB O'TILDI</div>
-          <div style="font-size:19px;font-weight:800;color:#007AFF;font-variant-numeric:tabular-nums;letter-spacing:-.3px" id="sheet-tmx-dist">${_tmxDistKm.toFixed(2)}</div>
-          <div style="font-size:9px;font-weight:600;color:rgba(255,255,255,.3);margin-top:1px">km</div>
-        </div>
-        <div style="text-align:center;padding:8px 4px;border-left:.5px solid rgba(255,255,255,.07)">
-          <div style="font-size:9px;font-weight:700;color:#34C75988;letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px">TEZLIK</div>
-          <div style="font-size:19px;font-weight:800;color:#34C759;font-variant-numeric:tabular-nums;letter-spacing:-.3px" id="sheet-tmx-speed">${_tmxSpeedKmh}</div>
-          <div style="font-size:9px;font-weight:600;color:rgba(255,255,255,.3);margin-top:1px">km/h</div>
-        </div>
-      </div>
-      ${(o.status==='on_way'||o.status==='arrived')?`
-      <div style="margin:0 10px 10px">
-        <button id="tmx-wait-btn" onclick="tmxToggleWait()" style="display:block;width:100%;box-sizing:border-box;padding:12px;border-radius:12px;border:none;cursor:pointer;font-weight:700;font-size:14px;background:${_tmxWaiting?'rgba(255,149,0,.18)':'rgba(255,255,255,.08)'};color:${_tmxWaiting?'#FF9500':'rgba(255,255,255,.75)'}">${_tmxWaiting?"▶️ Davom etish":"⏸ Kutish (mijoz band)"}</button>
-        <div id="tmx-wait-info" style="text-align:center;font-size:11px;color:#FF9500;font-weight:700;margin-top:6px;${_tmxTotalWaitMs()>500?'':'display:none'}">${_tmxTotalWaitMs()>500?`⏱ ${_fmtWaitTime(_tmxTotalWaitMs())} (+${Math.round((_tmxTotalWaitMs()/60000)*TMX_WAITING_PER_MIN).toLocaleString('uz-UZ')} so'm)`:''}</div>
-      </div>`:''}
-      ${o.status==='completed'&&o.price?`
-      <div style="margin:0 10px 10px;padding:12px 14px;background:rgba(52,199,89,.1);border-radius:12px;border:1px solid rgba(52,199,89,.2);display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:12px;color:rgba(52,199,89,.75);font-weight:700;letter-spacing:.2px">JAMI TO'LOV</span>
-        <span style="font-size:21px;font-weight:800;color:#34C759;letter-spacing:-.3px">${parseInt(o.price).toLocaleString()} so'm</span>
-      </div>`:''}
-    </div>`:''}
+    <!-- Taximeter (faqat on_way/arrived/completed da) -->
+    ${(o.status==='on_way'||o.status==='arrived'||o.status==='completed')?_tmxWidgetHTML(o):''}
     <div>${btns[o.status]||''}</div>
   `;
 

@@ -85,19 +85,22 @@
         </div>
         {% endif %}
       </div>
-      <div class="flex items-center gap-3 mt-3 pt-3" style="border-top:.5px solid var(--ios-sep)">
+      <div class="flex items-center justify-between mt-3 pt-3" style="border-top:.5px solid var(--ios-sep)">
         {% if order.price %}
-        <span class="ios-subhead font-semibold {% if order.status == 'completed' %}text-[#34C759]{% else %}line-through{% endif %}"
-              style="{% if order.status != 'completed' %}color:var(--ios-label3){% endif %}">
-          {{ order.price|floatformat:0 }} so'm
-        </span>
+        <div {% if order.status == 'completed' %}style="font-size:18px;font-weight:800;color:#34C759;letter-spacing:-.3px"{% else %}class="ios-subhead font-semibold line-through" style="color:var(--ios-label3)"{% endif %}>
+          {{ order.price|floatformat:0 }}<span class="ios-caption font-semibold" style="margin-left:3px;{% if order.status == 'completed' %}color:rgba(52,199,89,.6){% else %}color:var(--ios-label3){% endif %}">so'm</span>
+        </div>
+        {% else %}
+        <div></div>
         {% endif %}
-        {% if order.distance_km %}
-        <span class="ios-caption" style="color:var(--ios-label3)">{{ order.distance_km|floatformat:1 }} km</span>
-        {% endif %}
-        <span class="ios-caption ml-auto" style="color:var(--ios-label3)">
-          {% if order.payment_type == 'cash' %}💵{% else %}💳{% endif %} {{ order.client.phone_number }}
-        </span>
+        <div class="flex items-center gap-2.5">
+          {% if order.distance_km %}
+          <span class="ios-caption font-medium" style="color:var(--ios-label3)">{{ order.distance_km|floatformat:1 }} km</span>
+          {% endif %}
+          <span class="ios-caption2" style="color:var(--ios-label3)">
+            {% if order.payment_type == 'cash' %}💵{% else %}💳{% endif %} {{ order.client.phone_number }}
+          </span>
+        </div>
       </div>
     </div>
   </div>
@@ -216,42 +219,19 @@ function openDetail(el) {
   // uchun shu ID'larni topib, bu yerdagi statik (tarixiy) qiymatlarni ustidan
   // yozib qo'yishi mumkin edi.
   const _id = (name) => isThisRunning ? name : undefined;
-  const tmxCols = [
-    { id: _id('sheet-tmx-price'), label: 'NARX',         val: tmxPrice,        unit: "so'm", color: '#FFD600' },
-    ...(displayTime ? [{ id: _id('sheet-tmx-time'), label: 'VAQT', val: displayTime, unit: '', color: '#AF52DE' }] : []),
-    { id: _id('sheet-tmx-dist'),  label: "BOSIB O'TILDI", val: tmxDistDisplay,  unit: 'km',   color: '#007AFF' },
-    ...(isThisRunning ? [{ id: 'sheet-tmx-speed', label: 'TEZLIK', val: _tmxSpeedKmh, unit: 'km/h', color: '#34C759' }] : []),
-  ];
-  const tmxWidget = showTmx ? `
-    <div style="background:linear-gradient(180deg,#161618,#0d0d0e);border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 24px rgba(0,0,0,.35)">
-      <div style="padding:12px 14px 8px;display:flex;align-items:center;justify-content:space-between">
-        <div style="display:flex;align-items:center;gap:6px">
-          <div style="width:6px;height:6px;border-radius:50%;background:#AF52DE;box-shadow:0 0 6px #AF52DE${isThisRunning ? ';animation:pulse-dot 1.4s ease-in-out infinite' : ''}"></div>
-          <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.45);letter-spacing:.6px;text-transform:uppercase">Taximetr</span>
-        </div>
-        ${d.status==='completed'?'<span style="font-size:11px;color:#34C759;font-weight:700">✓ Yakunlandi</span>':
-          d.status==='on_way'?'<span style="font-size:11px;color:#AF52DE;font-weight:700">● Ishlayapti</span>':
-          '<span style="font-size:11px;color:#34C759;font-weight:700">📍 Yetib keldi</span>'}
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(${tmxCols.length},1fr);gap:0;padding:2px 8px 12px">
-        ${tmxCols.map((c,i) => `
-        <div style="text-align:center;padding:8px 4px;${i>0?'border-left:.5px solid rgba(255,255,255,.07)':''}">
-          <div style="font-size:9px;font-weight:700;color:${c.color}88;letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px">${c.label}</div>
-          <div style="font-size:19px;font-weight:800;color:${c.color};font-variant-numeric:tabular-nums;letter-spacing:-.3px"><span${c.id ? ` id="${c.id}"` : ''}>${c.val}</span></div>
-          ${c.unit ? `<div style="font-size:9px;font-weight:600;color:rgba(255,255,255,.3);margin-top:1px">${c.unit}</div>` : ''}
-        </div>`).join('')}
-      </div>
-      ${isThisRunning && (d.status==='on_way'||d.status==='arrived')?`
-      <div style="margin:0 10px 10px">
-        <button id="tmx-wait-btn" onclick="tmxToggleWait()" style="display:block;width:100%;box-sizing:border-box;padding:12px;border-radius:12px;border:none;cursor:pointer;font-weight:700;font-size:14px;background:${_tmxWaiting?'rgba(255,149,0,.18)':'rgba(255,255,255,.08)'};color:${_tmxWaiting?'#FF9500':'rgba(255,255,255,.75)'}">${_tmxWaiting?"▶️ Davom etish":"⏸ Kutish (mijoz band)"}</button>
-        <div id="tmx-wait-info" style="text-align:center;font-size:11px;color:#FF9500;font-weight:700;margin-top:6px;${_tmxTotalWaitMs()>500?'':'display:none'}">${_tmxTotalWaitMs()>500?`⏱ ${_fmtWaitTime(_tmxTotalWaitMs())} (+${Math.round((_tmxTotalWaitMs()/60000)*TMX_WAITING_PER_MIN).toLocaleString('uz-UZ')} so'm)`:''}</div>
-      </div>`:''}
-      ${d.status==='completed'&&price>0?`
-      <div style="margin:0 10px 10px;padding:12px 14px;background:rgba(52,199,89,.1);border-radius:12px;border:1px solid rgba(52,199,89,.2);display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:12px;color:rgba(52,199,89,.75);font-weight:700;letter-spacing:.2px">JAMI TO'LOV</span>
-        <span style="font-size:21px;font-weight:800;color:#34C759;letter-spacing:-.3px">${Math.round(price).toLocaleString()} so'm</span>
-      </div>`:''}
-    </div>` : '';
+  const tmxWidget = showTmx ? _tmxRenderWidget({
+    live: isThisRunning,
+    statusText: d.status==='completed'?'✓ Yakunlandi':d.status==='on_way'?'● Ishlayapti':'📍 Yetib keldi',
+    statusColor: d.status==='completed'?'#34C759':d.status==='on_way'?'#AF52DE':'#34C759',
+    price: tmxPrice, priceId: _id('sheet-tmx-price'),
+    time: displayTime||null, timeId: _id('sheet-tmx-time'),
+    dist: tmxDistDisplay, distId: _id('sheet-tmx-dist'),
+    speed: isThisRunning?_tmxSpeedKmh:null, speedId: 'sheet-tmx-speed',
+    showWait: isThisRunning && (d.status==='on_way'||d.status==='arrived'),
+    waiting: _tmxWaiting,
+    waitInfoHTML: (isThisRunning && _tmxTotalWaitMs()>500)?`⏱ ${_fmtWaitTime(_tmxTotalWaitMs())} (+${Math.round((_tmxTotalWaitMs()/60000)*TMX_WAITING_PER_MIN).toLocaleString('uz-UZ')} so'm)`:'',
+    totalPrice: (d.status==='completed'&&price>0) ? Math.round(price).toLocaleString() : null,
+  }) : '';
 
   document.getElementById('sheet-body').innerHTML = `
     <div class="flex items-center justify-between">
@@ -259,23 +239,26 @@ function openDetail(el) {
       <span class="ios-caption2" style="color:var(--ios-label3)">#${d.id} · ${d.date}</span>
     </div>
 
-    <div class="ios-card2 rounded-[14px] p-4 space-y-3">
-      <div class="flex items-start gap-3">
-        <div class="w-2.5 h-2.5 rounded-full bg-[#34C759] mt-1.5 flex-shrink-0"></div>
-        <div>
-          <div class="ios-caption2 font-semibold mb-0.5" style="color:var(--ios-label3)">QAYERDAN</div>
-          <div class="ios-subhead font-medium">${d.from}</div>
+    <div class="ios-card2 rounded-[14px] p-4">
+      <div style="display:flex;gap:12px">
+        <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;padding-top:3px">
+          <div style="width:10px;height:10px;border-radius:50%;background:#34C759;box-shadow:0 0 0 4px rgba(52,199,89,.15)"></div>
+          ${d.to?`
+          <div style="width:2px;flex:1;min-height:22px;margin:4px 0;background:repeating-linear-gradient(180deg,var(--ios-sep) 0 4px,transparent 4px 8px)"></div>
+          <i class="fas fa-location-dot" style="color:#FF3B30;font-size:13px"></i>`:''}
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">
+          <div>
+            <div class="ios-caption2 font-semibold mb-0.5" style="color:var(--ios-label3)">QAYERDAN</div>
+            <div class="ios-subhead font-medium">${d.from}</div>
+          </div>
+          ${d.to?`
+          <div>
+            <div class="ios-caption2 font-semibold mb-0.5" style="color:var(--ios-label3)">QAYERGA</div>
+            <div class="ios-subhead font-medium" style="color:var(--ios-label2)">${d.to}</div>
+          </div>`:''}
         </div>
       </div>
-      ${d.to ? `
-      <div style="height:.5px;background:var(--ios-sep);margin-left:20px"></div>
-      <div class="flex items-start gap-3">
-        <i class="fas fa-location-dot text-[#FF3B30] text-sm mt-1 flex-shrink-0"></i>
-        <div>
-          <div class="ios-caption2 font-semibold mb-0.5" style="color:var(--ios-label3)">QAYERGA</div>
-          <div class="ios-subhead font-medium" style="color:var(--ios-label2)">${d.to}</div>
-        </div>
-      </div>` : ''}
     </div>
 
     <div class="ios-card2 rounded-[14px] p-4">
@@ -296,19 +279,19 @@ function openDetail(el) {
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div class="ios-card2 rounded-[12px] p-3 text-center">
-        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">NARX</div>
+        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)"><i class="fas fa-sack-dollar" style="font-size:9px;margin-right:3px"></i>NARX</div>
         <div class="ios-footnote font-bold" style="color:${d.status==='completed'?'#34C759':d.status==='cancelled'?'var(--ios-label3)':'var(--ios-label)'}">${displayPrice ? displayPrice + " so'm" : '—'}</div>
       </div>
       <div class="ios-card2 rounded-[12px] p-3 text-center">
-        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">MASOFA</div>
+        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)"><i class="fas fa-route" style="font-size:9px;margin-right:3px"></i>MASOFA</div>
         <div class="ios-footnote font-bold">${parseFloat(displayDist) > 0 ? parseFloat(displayDist).toFixed(1) + ' km' : '—'}</div>
       </div>
       <div class="ios-card2 rounded-[12px] p-3 text-center">
-        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">KOMISSIYA</div>
+        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)"><i class="fas fa-percent" style="font-size:9px;margin-right:3px"></i>KOMISSIYA</div>
         <div class="ios-footnote font-bold text-[#FF9500]">${commission>0?Math.round(commission).toLocaleString()+" so'm":'—'}</div>
       </div>
       <div class="ios-card2 rounded-[12px] p-3 text-center">
-        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">YAKUNLANDI</div>
+        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)"><i class="fas fa-flag-checkered" style="font-size:9px;margin-right:3px"></i>YAKUNLANDI</div>
         <div class="ios-footnote font-bold">${durationVal}</div>
       </div>
     </div>
