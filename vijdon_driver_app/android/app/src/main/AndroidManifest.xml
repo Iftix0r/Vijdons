@@ -15,12 +15,26 @@
     <!-- Camera & Storage -->
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- WebView (Chromium) ichidagi getUserMedia mikrofon yozib olishi uchun
+         RECORD_AUDIO'ning o'zi YETARLI EMAS — Chromium'ning audio manageri
+         "aloqa" (communication) audio qurilmasini tanlash uchun bu ruxsatga
+         ham muhtoj, aks holda "Unable to select communication device!" bilan
+         jimgina muvaffaqiyatsizlikka uchraydi (NotReadableError). -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29"/>
+
+    <!-- Doimiy fon xizmati — haydovchi "ish navbatida" bo'lganda ilova
+         jarayonini tirik ushlab turadi, shunda Android uni fondan
+         o'chirib qo'ymaydi va yangi buyurtma bildirishnomasi ilova
+         yopiq/fonda bo'lsa ham darhol kelaveradi. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
 
     <application
         android:label="Vijdon Driver"
@@ -50,6 +64,12 @@
         <meta-data
             android:name="com.yandex.android.maps.MAPKIT_API_KEY"
             android:value="469e8d29-be0b-42da-9bd4-ed515dbdb741" />
+
+        <!-- Warning: Do not change service name (flutter_foreground_task). -->
+        <service
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false" />
 
         <!-- image_picker FileProvider -->
         <provider

@@ -1,16 +1,16 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'core/notification_service.dart';
+import 'core/order_poll_task_handler.dart';
 
 const String kBaseUrl      = 'https://vijdontaxi.uz/driver/';
 const String kUserAgent    =
@@ -18,6 +18,7 @@ const String kUserAgent    =
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  FlutterForegroundTask.initCommunicationPort();
   await NotificationService.init();
   await NotificationService.clearBadge();
   runApp(const VijdonDriverApp());
@@ -62,23 +63,23 @@ class _DriverWebViewState extends State<DriverWebView>
   bool   _offline     = false;
   bool   _splashDone  = false;
   Timer? _locationTimer;
-  Timer? _pollTimer;
   final  _picker      = ImagePicker();
-  final  _knownIds    = <int>{};
 
   // ── Lifecycle ───────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    FlutterForegroundTask.addTaskDataCallback(_onReceiveTaskData);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initForegroundTask());
     _requestPermissionsAndInit();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    FlutterForegroundTask.removeTaskDataCallback(_onReceiveTaskData);
     _locationTimer?.cancel();
-    _pollTimer?.cancel();
     super.dispose();
   }
 
@@ -104,7 +105,6 @@ class _DriverWebViewState extends State<DriverWebView>
 
     _initWebView();
     _startLocationUpdates();
-    _startOrderPolling();
   }
 
   // ── WebView init ─────────────────────────────────────────────────────────────
@@ -123,6 +123,14 @@ class _DriverWebViewState extends State<DriverWebView>
             } else {
               NotificationService.notifyNewOrder(count);
             }
+          })
+      // Sayt har sahifa ochilishida (jumladan Liniyaga chiqish/chiqishdan
+      // keyingi qayta yuklanishda) haydovchining "ish navbatida" holatini
+      // shu kanal orqali bildiradi — shunga qarab fon xizmati yoqiladi/
+      // o'chiriladi (base.html'dagi IS_ON_DUTY_GLOBAL orqali yuboriladi).
+      ..addJavaScriptChannel('FlutterDuty',
+          onMessageReceived: (msg) {
+            _syncDutyService(msg.message == '1');
           })
       ..setNavigationDelegate(NavigationDelegate(
         onPageStarted: (_) {
@@ -227,35 +235,76 @@ class _DriverWebViewState extends State<DriverWebView>
     return [];
   }
 
-  // ── Order polling (fon rejimida ham ishlaydi) ──────────────────────────────
-  void _startOrderPolling() {
-    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) => _pollOrders());
+  // ── Buyurtma kuzatuvi fon xizmati ────────────────────────────────────────────
+  // Oldin bu shunchaki widget darajasidagi Timer edi — u faqat ilova jarayoni
+  // tirik bo'lganda ishlardi (Android ilovani fondan "o'chirib" qo'ysa,
+  // to'xtab qolardi, va yangi buyurtma bildirishnomasi faqat ilova qayta
+  // ochilgandagina kelardi). Endi buyurtma so'rovi alohida fon-xizmat
+  // isolate'ida (order_poll_task_handler.dart) ishlaydi — u doimiy
+  // bildirishnoma bilan ko'rinib turgani uchun Android tomonidan deyarli
+  // hech qachon o'chirilmaydi. Xizmat FAQAT haydovchi "ish navbatida"
+  // bo'lganda ishlaydi (_syncDutyService orqali FlutterDuty kanalidan
+  // boshqariladi).
+  void _initForegroundTask() {
+    FlutterForegroundTask.init(
+      androidNotificationOptions: AndroidNotificationOptions(
+        channelId: 'duty_service_channel',
+        channelName: 'Ish navbatida',
+        channelDescription:
+            'Ilova fonda ishlashi va yangi buyurtmalarni o\'tkazib yubormasligi uchun',
+        onlyAlertOnce: true,
+      ),
+      iosNotificationOptions: const IOSNotificationOptions(
+        showNotification: false,
+        playSound: false,
+      ),
+      foregroundTaskOptions: ForegroundTaskOptions(
+        eventAction: ForegroundTaskEventAction.repeat(7000),
+        autoRunOnBoot: false,
+        autoRunOnMyPackageReplaced: true,
+        allowWakeLock: true,
+        allowWifiLock: true,
+      ),
+    );
   }
 
-  Future<void> _pollOrders() async {
+  // Fon xizmatidagi isolate'dan (yangi buyurtma topilganda) kelgan signal —
+  // ilova ekranda ochiq bo'lsa, sahifadagi buyurtmalar ro'yxatini ham
+  // yangilaymiz (bildirishnomaning o'zi allaqachon fon isolate'ida
+  // ko'rsatilgan bo'ladi).
+  void _onReceiveTaskData(Object data) {
+    if (data is Map && data['newOrders'] != null) {
+      _ctrl?.runJavaScript('if(typeof onNewOrder==="function")onNewOrder();');
+    }
+  }
+
+  Future<void> _syncDutyService(bool onDuty) async {
+    if (!Platform.isAndroid) return;
     try {
-      final uri = Uri.parse('https://vijdontaxi.uz/driver/orders/json/');
-      final resp = await http.get(uri, headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-      }).timeout(const Duration(seconds: 6));
-      if (resp.statusCode != 200) return;
-      final data = json.decode(resp.body) as Map<String, dynamic>;
-      final ids = (data['new_ids'] as List?)?.map((e) => e as int).toSet() ?? {};
-      if (ids.isEmpty) {
-        _knownIds.clear();
-        return;
-      }
-
-      final newIds = ids.difference(_knownIds);
-      _knownIds
-        ..clear()
-        ..addAll(ids);
-
-      if (newIds.isNotEmpty) {
-        await NotificationService.notifyNewOrder(newIds.length);
-        _ctrl?.runJavaScript(
-          'if(typeof onNewOrder==="function")onNewOrder();',
+      if (onDuty) {
+        if (await FlutterForegroundTask.isRunningService) return;
+        final NotificationPermission notifPerm =
+            await FlutterForegroundTask.checkNotificationPermission();
+        if (notifPerm != NotificationPermission.granted) {
+          await FlutterForegroundTask.requestNotificationPermission();
+        }
+        // Android ilovani fondan o'chirib qo'ymasligi uchun — bu tuzatish
+        // aynan MIUI kabi tizimlarda haydovchilar shikoyat qilgan "yangi
+        // buyurtma bildirishnomasi ilova qayta ochilgandan keyin keladi"
+        // muammosining bosh sababi edi.
+        if (!await FlutterForegroundTask.isIgnoringBatteryOptimizations) {
+          await FlutterForegroundTask.requestIgnoreBatteryOptimization();
+        }
+        await FlutterForegroundTask.startService(
+          serviceId: 300,
+          notificationTitle: 'Vijdon Driver — ish navbatida',
+          notificationText: 'Yangi buyurtmalarni kuzatib turibmiz',
+          callback: startOrderPollTask,
         );
+      } else {
+        if (await FlutterForegroundTask.isRunningService) {
+          await FlutterForegroundTask.stopService();
+        }
       }
     } catch (_) {}
   }

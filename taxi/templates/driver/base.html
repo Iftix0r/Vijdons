@@ -1379,6 +1379,16 @@ function tmxStop() {
 const IS_ON_DUTY_GLOBAL = {{ driver.is_on_duty|yesno:'true,false' }};
 let _wakeLock = null;
 
+// Har sahifa ochilishida "ish navbatidami" holatini Flutter'ga bildiramiz —
+// shu orqali ilova fon xizmatini (yangi buyurtma bildirishnomasi ilova
+// yopiq/fonda bo'lganda ham kelishi uchun) yoqib/o'chirib turadi. Liniyaga
+// chiqish/chiqish tugmasi bosilganda sahifa qayta yuklanadi (location.reload),
+// shuning uchun bu yerga qo'yilgan signal har doim serverdagi haqiqiy holat
+// bilan mos bo'lib turadi.
+if (typeof FlutterDuty !== 'undefined') {
+  FlutterDuty.postMessage(IS_ON_DUTY_GLOBAL ? '1' : '0');
+}
+
 async function requestWakeLock() {
   if (!(IS_ON_DUTY_GLOBAL || _tmxActive)) return;
   if (!('wakeLock' in navigator)) return;
