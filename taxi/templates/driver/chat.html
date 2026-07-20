@@ -419,6 +419,22 @@ function _resetRecUI(tab) {
   else              { mic.style.background='rgba(52,199,89,.15)';  mic.querySelector('i').style.color='#34C759'; }
 }
 
+// Bu sahifadan chiqib ketilganda (masalan Asosiy/Tarixga o'tilganda) yozib
+// turilgan ovozli xabar bo'lsa ham, mikrofon trekini albatta to'xtatamiz —
+// aks holda Android WebView'da mikrofon apparat darajasida "band" holicha
+// qolib ketishi mumkin, va keyinroq boshqa sahifada (masalan "efir"
+// mikrofoni bosilganda) getUserMedia() "NotReadableError: Could not start
+// audio source" xatosi bilan rad etiladi (garchi ruxsat berilgan bo'lsa ham).
+window.addEventListener('pagehide', () => {
+  ['op', 'gr'].forEach(tab => {
+    const s = _rec[tab];
+    if (s.mr) {
+      try { s.mr.stream.getTracks().forEach(t => t.stop()); } catch (_) {}
+      s.mr = null;
+    }
+  });
+});
+
 async function sendAudio(tab, blob) {
   Native.vibrate(10);
   const fd = new FormData();
