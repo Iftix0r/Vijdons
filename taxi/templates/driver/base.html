@@ -628,20 +628,17 @@ document.addEventListener('DOMContentLoaded', ()=>{ Native.getLocation().catch((
 // JONLI OVOZLI ALOQA ("EFIR") — WebRTC P2P mesh (barcha sahifalarda umumiy,
 // mikrofon tugmasi Asosiy va Chat navbarlarida ko'rinadi — ikkalasi ham shu
 // bir xil funksiyalarni ishlatadi)
-// Ratsiya (taksi radiosi) mantig'i: TINGLASH doim yoniq — sahifa ochilishi
-// bilan avtomatik ulanadi, mikrofonga ruxsat SO'RALMAYDI (chunki faqat qabul
-// qilish uchun ruxsat kerak emas). Mikrofon tugmasi esa FAQAT gapirishni
-// yoqib-o'chiradi — bosilganda birinchi marta mikrofonga ruxsat so'raladi,
-// keyingi bosishlar esa shunchaki trekni bir zumda yoqib/o'chirib turadi
-// (ulanishni qayta o'rnatmasdan).
 // Alohida media-server (SFU) o'rniga — bu hostingda buni ishga tushirish imkoni
 // bo'lmagani uchun — har bir haydovchi hozir efirda turgan BOSHQA barcha
 // haydovchilar bilan to'g'ridan-to'g'ri (P2P) ulanadi, shuning uchun HAMMASI
-// bir vaqtning o'zida gapira oladi. Signalizatsiya (offer/answer/ICE) uchun
-// WebSocket o'rniga mavjud HTTP polling ishlatiladi (voice_heartbeat).
+// bir vaqtning o'zida gapira oladi (har birining brauzeri qolganlarning
+// ovozini alohida-alohida qabul qilib, birgalikda eshittiradi). Signalizatsiya
+// (offer/answer/ICE) uchun WebSocket o'rniga mavjud HTTP polling ishlatiladi —
+// boshqa joylardagi chat pollingi bilan bir xil uslub (voice_heartbeat).
 // DIQQAT — bilib qo'yish kerak bo'lgan cheklovlar:
 //  1) Bu SPA emas — Asosiy/Chat sahifasidan chiqib ketilsa (Tarix/Profilga
-//     o'tilsa) ulanish uziladi, qayta qaytganda avtomatik tiklanadi.
+//     o'tilsa) ulanish uziladi, qayta qaytganda yana "efir"ga qo'shilish kerak
+//     bo'ladi.
 //  2) Mesh usuli faqat bir necha (~6-8) faol ishtirokchi uchun mos — juda ko'p
 //     haydovchi bir vaqtda efirda bo'lsa, har birining qurilmasi va interneti
 //     N-1 ta alohida ulanishni ko'tarishi kerak bo'lgani uchun sifat pasayishi
@@ -651,79 +648,34 @@ document.addEventListener('DOMContentLoaded', ()=>{ Native.getLocation().catch((
 //     tarmoqlarda ba'zi ulanishlar o'rnatilmasligi mumkin.
 // ══════════════════════════════════════════════════════════════════════════════
 const VOICE_ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
-let _voiceConnected   = false;  // efirga ulanganmiz (tinglash uchun) — avtomatik
-let _voiceTalking     = false;  // mikrofon yoniqmi (faqat gapirish uchun)
-let _voiceLocalStream = null;   // birinchi "gapirish" bosilganda yaratiladi
-let _voicePeers       = {};     // driverId -> { pc, name, candQueue, transceiver }
+let _voiceJoined      = false;
+let _voiceLocalStream = null;
+let _voicePeers       = {};   // driverId -> { pc, name, candQueue }
 let _voiceHeartbeatTimer = null;
 
 function _voicePeer(peerId, peerName) {
   if (_voicePeers[peerId]) return _voicePeers[peerId];
   const pc = new RTCPeerConnection({ iceServers: VOICE_ICE_SERVERS });
-  // Har doim audio QABUL QILISHGA tayyor turamiz (tinglash doim yoniq) —
-  // hali gapirmayotgan bo'lsam ham, boshqalarni eshitishim kerak. Agar aynan
-  // shu payt gapirayotgan bo'lsam, darhol o'z trekimni ham ulab yuboramiz.
-  const transceiver = pc.addTransceiver('audio', { direction: 'recvonly' });
-  if (_voiceTalking && _voiceLocalStream) {
-    transceiver.sender.replaceTrack(_voiceLocalStream.getAudioTracks()[0]);
-    transceiver.direction = 'sendrecv';
+  if (_voiceLocalStream) {
+    _voiceLocalStream.getTracks().forEach(t => pc.addTrack(t, _voiceLocalStream));
   }
   pc.onicecandidate = (e) => {
     if (e.candidate) _voiceSendSignal(peerId, 'candidate', e.candidate.toJSON());
   };
-  // VAQTINCHA DIAGNOSTIKA — telefon ekranida ko'rinadigan xabarlar, chunki
-  // WebView'da devtools ochib bo'lmaydi. P2P ulanish haqiqatan o'rnatilyaptimi
-  // (ICE) yoki yo'qmi — buni bilish uchun. Muammo topilgach olib tashlanadi.
-  pc.oniceconnectionstatechange = () => {
-    const st = pc.iceConnectionState;
-    if (st === 'connected' || st === 'completed') {
-      showToast('Ovoz: ulandi ✅', peerName, 'success', 2500);
-    } else if (st === 'failed' || st === 'disconnected') {
-      showToast('Ovoz: ulanish uzildi ❌', `${peerName} — ${st}`, 'error', 4000);
-    }
-  };
   pc.ontrack = (e) => {
-    showToast('Ovoz signali keldi 🔊', peerName, 'success', 2500);
     let audioEl = document.getElementById('voice-audio-' + peerId);
     if (!audioEl) {
       audioEl = document.createElement('audio');
       audioEl.id = 'voice-audio-' + peerId;
       audioEl.autoplay = true;
-      audioEl.playsInline = true;
       document.body.appendChild(audioEl);
     }
     audioEl.srcObject = e.streams[0];
-    _voicePlayAudio(audioEl);
   };
-  const entry = { pc, name: peerName, candQueue: [], transceiver };
+  const entry = { pc, name: peerName, candQueue: [] };
   _voicePeers[peerId] = entry;
   return entry;
 }
-
-// Tinglash endi hech qanday tugma bosilmasdan (sahifa ochilishi bilan)
-// avtomatik boshlanadi — shuning uchun kiruvchi ovoz elementi (audio.play())
-// brauzerning "avtoplay" siyosati tomonidan jimgina bloklanishi mumkin
-// (foydalanuvchi hali sahifada birorta amal qilmagan bo'lsa). Bloklansa,
-// keyingi bosish/tegishda avtomatik qayta urinib ko'ramiz.
-const _voicePendingAudio = new Set();
-function _voicePlayAudio(audioEl) {
-  const p = audioEl.play();
-  if (p && p.catch) {
-    p.then(() => showToast('Ovoz ijro etilyapti ▶️', '', 'success', 1500))
-     .catch((err) => {
-       _voicePendingAudio.add(audioEl);
-       showToast('Ovoz bloklandi ⛔', String(err && err.message || err), 'error', 4000);
-     });
-  }
-}
-['click', 'touchstart'].forEach(evt => {
-  document.addEventListener(evt, () => {
-    if (!_voicePendingAudio.size) return;
-    _voicePendingAudio.forEach(el => {
-      el.play().then(() => _voicePendingAudio.delete(el)).catch(() => {});
-    });
-  }, { passive: true });
-});
 
 function _voiceSendSignal(to, kind, payload) {
   fetch('{% url "driver:voice_signal" %}', {
@@ -742,17 +694,33 @@ function _voiceClosePeer(peerId) {
   delete _voicePeers[peerId];
 }
 
-// Sahifa ochilishi bilan avtomatik chaqiriladi (pastda) — mikrofon so'ralmaydi,
-// faqat tinglash uchun ulanadi.
-async function _voiceAutoConnect() {
+async function voiceToggle() {
+  Native.vibrate();
+  if (_voiceJoined) await voiceLeaveRoom();
+  else await voiceJoinRoom();
+}
+
+async function voiceJoinRoom() {
+  try {
+    _voiceLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (_) {
+    showToast('Mikrofonga ruxsat kerak', 'Brauzer/ilova sozlamalaridan ruxsat bering', 'error', 3500);
+    return;
+  }
   let data;
   try {
     const r = await fetch('{% url "driver:voice_join" %}', {
       method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') },
     });
     data = await r.json();
-  } catch (_) { return; }
-  _voiceConnected = true;
+  } catch (_) {
+    _voiceLocalStream.getTracks().forEach(t => t.stop());
+    _voiceLocalStream = null;
+    showToast('Tarmoq xatosi', '', 'error');
+    return;
+  }
+  _voiceJoined = true;
+  _voiceUpdateBtnUI();
 
   // Men yangi qo'shilganim uchun, allaqachon efirda turgan har bir ishtirokchiga
   // OFFER yuboraman — shu bilan ikki tomon ham bir vaqtda offer yubormay,
@@ -765,12 +733,11 @@ async function _voiceAutoConnect() {
   }
 
   _voiceUpdateParticipantsUI(data.participants || []);
-  _voiceUpdateBtnUI();
   _voiceHeartbeatTimer = setInterval(_voiceTick, 3000);
   _voiceTick(); // birinchi javobni (offer/answer) 3s kutmasdan darhol so'rab olamiz
 }
 
-async function _voiceDisconnect() {
+async function voiceLeaveRoom() {
   clearInterval(_voiceHeartbeatTimer);
   _voiceHeartbeatTimer = null;
   try {
@@ -778,54 +745,12 @@ async function _voiceDisconnect() {
   } catch (_) {}
   Object.keys(_voicePeers).forEach(id => _voiceClosePeer(id));
   if (_voiceLocalStream) { _voiceLocalStream.getTracks().forEach(t => t.stop()); _voiceLocalStream = null; }
-  _voiceConnected = false;
-  _voiceTalking = false;
+  _voiceJoined = false;
   _voiceUpdateBtnUI();
-}
-
-// Mikrofon tugmasi bosilganda — FAQAT gapirishni yoqadi/o'chiradi, efir
-// ulanishiga (tinglashga) tegmaydi.
-async function voiceToggleTalk() {
-  Native.vibrate();
-  if (_voiceTalking) {
-    // Gapirishni to'xtatish — ulanishni uzmasdan, faqat trekni o'chiramiz
-    // (qayta ulanish/renegotiatsiya kerak emas, shuning uchun bir zumda ishlaydi)
-    if (_voiceLocalStream) _voiceLocalStream.getAudioTracks().forEach(t => { t.enabled = false; });
-    _voiceTalking = false;
-    _voiceUpdateBtnUI();
-    return;
-  }
-  if (!_voiceLocalStream) {
-    try {
-      _voiceLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (_) {
-      showToast('Mikrofonga ruxsat kerak', 'Brauzer/ilova sozlamalaridan ruxsat bering', 'error', 3500);
-      return;
-    }
-  } else {
-    _voiceLocalStream.getAudioTracks().forEach(t => { t.enabled = true; });
-  }
-  _voiceTalking = true;
-  _voiceUpdateBtnUI();
-
-  // Allaqachon ulangan har bir ishtirokchi bilan trekni ulab, renegotiatsiya
-  // qilamiz (faqat shu safar — ulanish "sendrecv"ga bir marta o'tgach, keyingi
-  // yoqib-o'chirishlar yuqoridagi track.enabled orqali, qayta so'rovsiz ishlaydi)
-  const track = _voiceLocalStream.getAudioTracks()[0];
-  for (const id of Object.keys(_voicePeers)) {
-    const entry = _voicePeers[id];
-    if (entry.transceiver.direction !== 'sendrecv') {
-      entry.transceiver.sender.replaceTrack(track);
-      entry.transceiver.direction = 'sendrecv';
-      const offer = await entry.pc.createOffer();
-      await entry.pc.setLocalDescription(offer);
-      _voiceSendSignal(id, 'offer', offer);
-    }
-  }
 }
 
 async function _voiceTick() {
-  if (!_voiceConnected) return;
+  if (!_voiceJoined) return;
   let data;
   try {
     const r = await fetch('{% url "driver:voice_heartbeat" %}', { cache: 'no-store' });
@@ -833,11 +758,11 @@ async function _voiceTick() {
   } catch (_) { return; }
   if (!data.joined) {
     // Server tomonidan chiqarib yuborilgan (masalan uzoq vaqt heartbeat
-    // yubormagani uchun eskirgan hisoblanib o'chirilgan) — qayta ulanamiz
+    // yubormagani uchun eskirgan hisoblanib o'chirilgan)
     clearInterval(_voiceHeartbeatTimer); _voiceHeartbeatTimer = null;
     Object.keys(_voicePeers).forEach(id => _voiceClosePeer(id));
-    _voiceConnected = false;
-    _voiceAutoConnect();
+    if (_voiceLocalStream) { _voiceLocalStream.getTracks().forEach(t => t.stop()); _voiceLocalStream = null; }
+    _voiceJoined = false; _voiceUpdateBtnUI();
     return;
   }
   for (const sig of (data.signals || [])) {
@@ -875,25 +800,16 @@ function _voiceUpdateBtnUI() {
   const btn    = document.getElementById('voice-btn');
   const icon   = document.getElementById('voice-btn-icon');
   const status = document.getElementById('voice-status');
-  const label  = document.getElementById('voice-status-label');
   if (!btn) return;
-  if (_voiceTalking) {
+  if (_voiceJoined) {
     btn.style.background = 'rgba(255,59,48,.15)';
     icon.style.color = '#FF3B30';
+    if (status) status.classList.remove('hidden');
   } else {
     btn.style.background = 'var(--ios-fill)';
     icon.style.color = '#8E8E93';
+    if (status) status.classList.add('hidden');
   }
-  if (status) {
-    if (_voiceConnected) status.classList.remove('hidden'); else status.classList.add('hidden');
-    const dot = status.querySelector('span');
-    const wrap = status.firstElementChild;
-    const color = _voiceTalking ? '#FF3B30' : '#34C759';
-    if (wrap) wrap.style.background = _voiceTalking ? 'rgba(255,59,48,.1)' : 'rgba(52,199,89,.1)';
-    if (dot) dot.style.background = color;
-    if (label) label.style.color = color;
-  }
-  if (label) label.textContent = _voiceTalking ? 'Gapiryapsiz' : 'Efirni tinglayapsiz';
 }
 
 function _voiceUpdateParticipantsUI(participants) {
@@ -903,16 +819,12 @@ function _voiceUpdateParticipantsUI(participants) {
   el.textContent = total <= 1 ? "Hozircha yolg'izsiz" : `${total} ta haydovchi efirda`;
 }
 
-// Mikrofon tugmasi mavjud sahifada (Asosiy/Chat) ochilishi bilan avtomatik
-// "efir"ga ulanamiz (faqat tinglash uchun, ruxsat so'ralmaydi).
-if (document.getElementById('voice-btn')) _voiceAutoConnect();
-
 // Sahifadan chiqib ketilganda (boshqa tabga o'tilganda yoki ilova yopilganda)
 // efirdan ham avtomatik chiqamiz — SPA bo'lmagani uchun sahifa navigatsiyasida
 // JS holati saqlanmaydi, aks holda serverda "efirdaman" holati eskirguncha
 // (~12s) osilib qolardi va boshqalarga chalkash ko'rinardi.
 window.addEventListener('pagehide', () => {
-  if (_voiceConnected && navigator.sendBeacon) {
+  if (_voiceJoined && navigator.sendBeacon) {
     const body = new Blob(
       [`csrfmiddlewaretoken=${encodeURIComponent(getCookie('csrftoken') || '')}`],
       { type: 'application/x-www-form-urlencoded' }

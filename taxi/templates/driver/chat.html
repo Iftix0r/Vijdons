@@ -10,18 +10,18 @@
       <i class="fas fa-comments text-white text-sm"></i>
     </div>
     <div class="ios-title font-semibold flex-1">Chat</div>
-    <!-- Jonli ovozli aloqa ("efir") — tinglash doim yoniq (avtomatik ulanadi),
-         bu tugma esa FAQAT gapirishni yoqadi/o'chiradi -->
-    <button id="voice-btn" onclick="voiceToggleTalk()" type="button"
+    <!-- Jonli ovozli aloqa ("efir") — hamma haydovchilar bir vaqtda gaplasha
+         oladigan guruh kanali, mikrofonni yoqish/o'chirish orqali -->
+    <button id="voice-btn" onclick="voiceToggle()" type="button"
        class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 active:opacity-70 transition-all border-0 cursor-pointer"
-       style="background:var(--ios-fill)" title="Gapirish">
+       style="background:var(--ios-fill)" title="Jonli ovozli aloqa">
       <i id="voice-btn-icon" class="fas fa-microphone" style="font-size:16px;color:#8E8E93"></i>
     </button>
   </div>
   <div id="voice-status" class="hidden px-4 pb-2">
-    <div class="flex items-center gap-2 px-3 py-2 rounded-[10px]" style="background:rgba(52,199,89,.1)">
-      <span style="width:7px;height:7px;border-radius:50%;background:#34C759;animation:pulse-ring 1s ease-out infinite;flex-shrink:0"></span>
-      <span id="voice-status-label" class="ios-caption2 font-semibold" style="color:#34C759">Efirni tinglayapsiz</span>
+    <div class="flex items-center gap-2 px-3 py-2 rounded-[10px]" style="background:rgba(255,59,48,.1)">
+      <span style="width:7px;height:7px;border-radius:50%;background:#FF3B30;animation:pulse-ring 1s ease-out infinite;flex-shrink:0"></span>
+      <span class="ios-caption2 font-semibold" style="color:#FF3B30">Efirdasiz — mikrofoningiz yoniq</span>
       <span id="voice-participants" class="ios-caption2" style="color:var(--ios-label3);margin-left:auto;white-space:nowrap"></span>
     </div>
   </div>
