@@ -37,16 +37,6 @@ class Migration(migrations.Migration):
                 'ordering': ['created_at'],
             },
         ),
-        migrations.RenameIndex(
-            model_name='order',
-            new_name='taxi_order_status_e06106_idx',
-            old_name='taxi_order_status_driver_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='order',
-            new_name='taxi_order_status_af94ec_idx',
-            old_name='taxi_order_status_dispatch_idx',
-        ),
         migrations.AddField(
             model_name='voiceparticipant',
             name='driver',
