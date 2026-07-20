@@ -53,12 +53,6 @@
         <span class="ios-badge absolute -top-0.5 -right-0.5">{{ chat_unread }}</span>
         {% endif %}
       </a>
-      <!-- Hamburger menu (Liniyaga chiqish/chiqish shu yerdan ham) -->
-      <button onclick="openMenu()" type="button"
-         class="w-10 h-10 rounded-full flex items-center justify-center active:opacity-60 transition-opacity border-0 cursor-pointer"
-         style="background:var(--ios-fill)">
-        <i class="fas fa-bars text-[18px]" style="color:#8E8E93"></i>
-      </button>
     </div>
   </div>
 </div>
@@ -289,48 +283,6 @@ function _unlockDutyBtnSoon(delayMs = 700) {
     if (!ok) { btn.disabled = false; btn.style.opacity = '1'; }
   });
 })();
-
-// ── Hamburger menyu — Liniyaga chiqish/chiqish shu yerdan ham boshqariladi ─────
-function openMenu(){
-  Native.vibrate();
-  const onDuty = document.getElementById('duty-btn')?.dataset.onDuty === '1';
-  document.getElementById('sheet-body').innerHTML = `
-    <div class="ios-title font-bold mb-1 px-1">Menyu</div>
-    <button id="menu-duty-btn" type="button" onclick="_menuToggleDuty()"
-       class="w-full flex items-center justify-center gap-2 border-0 cursor-pointer active:scale-[.97]"
-       style="height:56px;border-radius:16px;transition:transform .1s;
-       background:${onDuty ? 'linear-gradient(135deg,#FF453A,#D70015)' : 'linear-gradient(135deg,#34C759,#1E9E45)'}">
-      <i class="${onDuty ? 'fas fa-power-off' : 'fas fa-play'}" style="font-size:16px;color:#fff"></i>
-      <span class="font-bold" style="font-size:15px;letter-spacing:-.2px;color:#fff">${onDuty ? 'Liniyadan chiqish' : 'Liniyaga chiqish'}</span>
-    </button>
-  `;
-  const ov = document.getElementById('sheet-overlay');
-  const sh = document.getElementById('sheet');
-  clearTimeout(_sheetCloseTimer);   // qarang: closeSheet() yonidagi izoh
-  ov.style.pointerEvents='';
-  ov.classList.remove('hidden');
-  _lockDutyBtn();
-  requestAnimationFrame(() => { sh.style.transform = 'translateY(0)'; });
-}
-async function _menuToggleDuty(){
-  // duty-btn'dagi bilan bir xil himoya — menyu ham xuddi shu sheet-overlay
-  // ichida ko'rsatiladi, shuning uchun buyurtma amalidan keyingi tasodifiy
-  // hodisa bu yerga ham o'tib ketmasligi kerak.
-  if (window._lastOrderActionAt && Date.now() - window._lastOrderActionAt < 1200) {
-    console.warn('menu-duty-btn: buyurtma amalidan keyingi shubhali hodisa, e\'tiborsiz qoldirildi');
-    return;
-  }
-  if (_hbgBusy) return;
-  const btn = document.getElementById('menu-duty-btn');
-  const isOnDuty = document.getElementById('duty-btn')?.dataset.onDuty === '1';
-  if (isOnDuty && !confirm("Rostdan ham liniyadan chiqmoqchimisiz? Bu holatda yangi buyurtmalar kelmaydi.")) {
-    return;
-  }
-  Native.vibrate();
-  if (btn) { btn.disabled = true; btn.style.opacity = '.6'; }
-  const ok = await hbgToggleDuty();
-  if (!ok && btn) { btn.disabled = false; btn.style.opacity = '1'; }
-}
 
 // on_way yoki arrived buyurtma bo'lsa taximetr fonda ishga tushadi — lekin
 // Asosiy sahifada tafsilot oynasi ENDI avtomatik OCHILMAYDI. Buyurtmani
