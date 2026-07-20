@@ -448,20 +448,20 @@ function renderOrdersDOM() {
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div class="ios-card rounded-[14px] p-4">
-            <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">BUGUN SAFARLAR</div>
-            <div class="ios-title font-bold text-[#FFD600]">${TODAY_TRIPS}</div>
+            <div class="flex items-center gap-1.5 mb-1.5"><i class="fas fa-flag-checkered" style="color:#FFD600;font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3)">BUGUN SAFARLAR</span></div>
+            <div style="font-size:22px;font-weight:800;color:#FFD600;letter-spacing:-.3px">${TODAY_TRIPS}</div>
           </div>
           <div class="ios-card rounded-[14px] p-4">
-            <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">BUGUN DAROMAD</div>
-            <div class="ios-footnote font-bold text-[#34C759]">${TODAY_EARNED > 0 ? TODAY_EARNED.toLocaleString() + " so'm" : '—'}</div>
+            <div class="flex items-center gap-1.5 mb-1.5"><i class="fas fa-sack-dollar" style="color:#34C759;font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3)">BUGUN DAROMAD</span></div>
+            <div style="font-size:16px;font-weight:800;color:#34C759;letter-spacing:-.2px">${TODAY_EARNED > 0 ? TODAY_EARNED.toLocaleString() + " so'm" : '—'}</div>
           </div>
           <div class="ios-card rounded-[14px] p-4">
-            <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">JAMI SAFARLAR</div>
-            <div class="ios-title font-bold" style="color:var(--ios-label3)">${DRIVER_TRIPS}</div>
+            <div class="flex items-center gap-1.5 mb-1.5"><i class="fas fa-route" style="color:var(--ios-label3);font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3)">JAMI SAFARLAR</span></div>
+            <div style="font-size:22px;font-weight:800;color:var(--ios-label);letter-spacing:-.3px">${DRIVER_TRIPS}</div>
           </div>
           <div class="ios-card rounded-[14px] p-4">
-            <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">REYTING</div>
-            <div class="ios-title font-bold text-[#FF9500]">${DRIVER_RATING ? DRIVER_RATING + ' ★' : '—'}</div>
+            <div class="flex items-center gap-1.5 mb-1.5"><i class="fas fa-star" style="color:#FF9500;font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3)">REYTING</span></div>
+            <div style="font-size:22px;font-weight:800;color:#FF9500;letter-spacing:-.3px">${DRIVER_RATING ? DRIVER_RATING : '—'}</div>
           </div>
         </div>
         <div class="ios-card rounded-[16px] p-4 flex items-center gap-3">

@@ -24,20 +24,19 @@
 {% if orders %}
 <!-- Stats -->
 <div class="px-4 pt-3 pb-1 grid grid-cols-3 gap-2">
-  {% for stat in stats %}{% endfor %}
   <div class="ios-card rounded-[14px] p-3 text-center">
-    <div class="ios-title font-bold text-[#FFD600]" id="s-count">{{ orders|length }}</div>
-    <div class="ios-caption2 mt-0.5" style="color:var(--ios-label3)">Jami</div>
+    <div class="flex items-center justify-center gap-1.5 mb-1"><i class="fas fa-flag-checkered" style="color:#FFD600;font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3)">Jami</span></div>
+    <div style="font-size:20px;font-weight:800;color:#FFD600;letter-spacing:-.3px" id="s-count">{{ orders|length }}</div>
   </div>
   <div class="ios-card rounded-[14px] p-3 text-center">
-    <div class="ios-footnote font-bold text-[#34C759] leading-tight" id="s-earned">
+    <div class="flex items-center justify-center gap-1.5 mb-1"><i class="fas fa-sack-dollar" style="color:#34C759;font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3)">Daromad</span></div>
+    <div style="font-size:15px;font-weight:800;color:#34C759;letter-spacing:-.2px" id="s-earned">
       {% if total_earned %}{{ total_earned|floatformat:0 }} so'm{% else %}&mdash;{% endif %}
     </div>
-    <div class="ios-caption2 mt-0.5" style="color:var(--ios-label3)">Daromad</div>
   </div>
   <div class="ios-card rounded-[14px] p-3 text-center">
-    <div class="ios-title font-bold text-[#007AFF]" id="s-km">—</div>
-    <div class="ios-caption2 mt-0.5" style="color:var(--ios-label3)">Km</div>
+    <div class="flex items-center justify-center gap-1.5 mb-1"><i class="fas fa-route" style="color:#007AFF;font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3)">Km</span></div>
+    <div style="font-size:20px;font-weight:800;color:#007AFF;letter-spacing:-.3px" id="s-km">—</div>
   </div>
 </div>
 {% endif %}
