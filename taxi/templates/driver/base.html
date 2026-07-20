@@ -675,19 +675,7 @@ function _voicePeer(peerId, peerName) {
   pc.onicecandidate = (e) => {
     if (e.candidate) _voiceSendSignal(peerId, 'candidate', e.candidate.toJSON());
   };
-  // VAQTINCHA DIAGNOSTIKA — telefon ekranida ko'rinadigan xabarlar, chunki
-  // WebView'da devtools ochib bo'lmaydi. P2P ulanish haqiqatan o'rnatilyaptimi
-  // (ICE) yoki yo'qmi — buni bilish uchun. Muammo topilgach olib tashlanadi.
-  pc.oniceconnectionstatechange = () => {
-    const st = pc.iceConnectionState;
-    if (st === 'connected' || st === 'completed') {
-      showToast('Ovoz: ulandi ✅', peerName, 'success', 2500);
-    } else if (st === 'failed' || st === 'disconnected') {
-      showToast('Ovoz: ulanish uzildi ❌', `${peerName} — ${st}`, 'error', 4000);
-    }
-  };
   pc.ontrack = (e) => {
-    showToast('Ovoz signali keldi 🔊', peerName, 'success', 2500);
     let audioEl = document.getElementById('voice-audio-' + peerId);
     if (!audioEl) {
       audioEl = document.createElement('audio');
@@ -713,11 +701,7 @@ const _voicePendingAudio = new Set();
 function _voicePlayAudio(audioEl) {
   const p = audioEl.play();
   if (p && p.catch) {
-    p.then(() => showToast('Ovoz ijro etilyapti ▶️', '', 'success', 1500))
-     .catch((err) => {
-       _voicePendingAudio.add(audioEl);
-       showToast('Ovoz bloklandi ⛔', String(err && err.message || err), 'error', 4000);
-     });
+    p.catch(() => { _voicePendingAudio.add(audioEl); });
   }
 }
 ['click', 'touchstart'].forEach(evt => {
