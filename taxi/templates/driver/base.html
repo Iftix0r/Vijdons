@@ -312,15 +312,6 @@ body { background: var(--ios-bg); color: var(--ios-label); }
       <span class="ios-caption2 {% if active_tab == 'home' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Asosiy</span>
     </a>
 
-    <a href="{% url 'driver:history' %}" onclick="Native.vibrate(); dismissAllSheets()"
-       class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60 relative">
-      <i class="fas fa-clock-rotate-left text-[24px] {% if active_tab == 'history' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
-      {% if active_orders_count > 0 %}
-      <span class="ios-badge absolute top-1 right-2" style="font-size:10px;min-width:16px;height:16px">{{ active_orders_count }}</span>
-      {% endif %}
-      <span class="ios-caption2 {% if active_tab == 'history' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Tarix</span>
-    </a>
-
     <!-- Jonli ovozli aloqa ("efir") — tinglash doim yoniq (avtomatik ulanadi),
          bu tugma esa FAQAT gapirishni yoqadi/o'chiradi (JS pastda) -->
     <button id="voice-btn" onclick="voiceToggleTalk()" type="button"
@@ -329,6 +320,15 @@ body { background: var(--ios-bg); color: var(--ios-label); }
       <span id="voice-participants-badge" class="ios-badge absolute top-1 right-2 hidden" style="font-size:10px;min-width:16px;height:16px"></span>
       <span id="voice-tab-label" class="ios-caption2" style="color:#8E8E93">Efir</span>
     </button>
+
+    <a href="{% url 'driver:history' %}" onclick="Native.vibrate(); dismissAllSheets()"
+       class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60 relative">
+      <i class="fas fa-clock-rotate-left text-[24px] {% if active_tab == 'history' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+      {% if active_orders_count > 0 %}
+      <span class="ios-badge absolute top-1 right-2" style="font-size:10px;min-width:16px;height:16px">{{ active_orders_count }}</span>
+      {% endif %}
+      <span class="ios-caption2 {% if active_tab == 'history' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Tarix</span>
+    </a>
 
   </div>
 </div>
