@@ -964,6 +964,14 @@ if (document.getElementById('voice-btn')) _voiceAutoConnect();
 // JS holati saqlanmaydi, aks holda serverda "efirdaman" holati eskirguncha
 // (~12s) osilib qolardi va boshqalarga chalkash ko'rinardi.
 window.addEventListener('pagehide', () => {
+  // Mikrofon trekini albatta to'xtatamiz — aks holda Android WebView'da
+  // (SPA bo'lmagani uchun HAR BIR sahifa o'tishida) apparat darajasida
+  // "band" holicha qolib ketishi mumkin, va keyingi sahifada getUserMedia()
+  // "NotReadableError: Could not start audio source" bilan rad etiladi,
+  // garchi ruxsat allaqachon berilgan bo'lsa ham.
+  if (_voiceLocalStream) {
+    try { _voiceLocalStream.getTracks().forEach(t => t.stop()); } catch (_) {}
+  }
   if (_voiceConnected && navigator.sendBeacon) {
     const body = new Blob(
       [`csrfmiddlewaretoken=${encodeURIComponent(getCookie('csrftoken') || '')}`],
