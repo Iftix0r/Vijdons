@@ -5,18 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#F2F2F7">
 <title>Ro'yxatdan o'tish — Vijdon Driver</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 <style>
   *{font-family:-apple-system,'SF Pro Display','SF Pro Text','Helvetica Neue',sans-serif;-webkit-tap-highlight-color:transparent;box-sizing:border-box;}
-  body{overscroll-behavior:none;background:#000;color:#fff;}
-  .ios-input{background:rgba(118,118,128,.24);border-radius:10px;padding:13px 16px 13px 44px;font-size:17px;color:#fff;width:100%;border:none;outline:none;transition:background .2s;}
-  .ios-input::placeholder{color:rgba(235,235,245,.3);}
-  .ios-input:focus{background:rgba(118,118,128,.32);}
-  .lbl{font-size:13px;font-weight:600;color:rgba(235,235,245,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;padding-left:4px;}
+  body{overscroll-behavior:none;background:#F2F2F7;color:#000;}
+  .ios-input{background:rgba(120,120,128,.16);border-radius:10px;padding:13px 16px 13px 44px;font-size:17px;color:#000;width:100%;border:none;outline:none;transition:background .2s;}
+  .ios-input::placeholder{color:rgba(60,60,67,.3);}
+  .ios-input:focus{background:rgba(120,120,128,.24);}
+  .lbl{font-size:13px;font-weight:600;color:rgba(60,60,67,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;padding-left:4px;}
   @keyframes fadeUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
   .fu{animation:fadeUp .36s cubic-bezier(.25,.46,.45,.94) both;}
 </style>
@@ -27,14 +27,14 @@
 
   <!-- Header -->
   <div class="flex items-center gap-4 fu">
-    <a href="{% url 'driver:login' %}" style="color:#FFD600;font-size:17px;font-weight:500">
+    <a href="{% url 'driver:login' %}" style="color:#B8860B;font-size:17px;font-weight:500">
       <i class="fas fa-chevron-left mr-1"></i>Orqaga
     </a>
   </div>
 
   <div class="fu" style="animation-delay:.05s">
     <div style="font-size:34px;font-weight:700;letter-spacing:.37px">Ro'yxatdan<br>o'tish</div>
-    <div style="font-size:15px;color:rgba(235,235,245,.5);margin-top:6px">Haydovchi sifatida qo'shiling</div>
+    <div style="font-size:15px;color:rgba(60,60,67,.5);margin-top:6px">Haydovchi sifatida qo'shiling</div>
   </div>
 
   {% if error %}
@@ -51,35 +51,35 @@
     <div>
       <div class="lbl">To'liq ism familya</div>
       <div class="relative">
-        <i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(235,235,245,.35);font-size:15px"></i>
+        <i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(60,60,67,.35);font-size:15px"></i>
         <input type="text" name="full_name" required placeholder="Abdullayev Abdulla" class="{{ inp }}">
       </div>
     </div>
     <div>
       <div class="lbl">Telefon raqami</div>
       <div class="relative">
-        <i class="fas fa-phone absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(235,235,245,.35);font-size:15px"></i>
+        <i class="fas fa-phone absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(60,60,67,.35);font-size:15px"></i>
         <input type="tel" name="phone_number" required placeholder="+998 90 000 00 00" class="{{ inp }}">
       </div>
     </div>
     <div>
       <div class="lbl">Mashina modeli</div>
       <div class="relative">
-        <i class="fas fa-car absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(235,235,245,.35);font-size:15px"></i>
+        <i class="fas fa-car absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(60,60,67,.35);font-size:15px"></i>
         <input type="text" name="car_model" required placeholder="Cobalt 2, Nexia 3..." class="{{ inp }}">
       </div>
     </div>
     <div>
       <div class="lbl">Mashina raqami</div>
       <div class="relative">
-        <i class="fas fa-hashtag absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(235,235,245,.35);font-size:15px"></i>
+        <i class="fas fa-hashtag absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(60,60,67,.35);font-size:15px"></i>
         <input type="text" name="car_number" required placeholder="01 A 123 AA" class="{{ inp }}" style="text-transform:uppercase">
       </div>
     </div>
     <div>
       <div class="lbl">Mashina turi</div>
       <div class="relative">
-        <i class="fas fa-truck absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(235,235,245,.35);font-size:15px"></i>
+        <i class="fas fa-truck absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(60,60,67,.35);font-size:15px"></i>
         <select name="car_type" class="{{ inp }}">
           {% for value, label in car_type_choices %}
           <option value="{{ value }}">{{ label }}</option>
@@ -90,7 +90,7 @@
     <div>
       <div class="lbl">Parol</div>
       <div class="relative">
-        <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(235,235,245,.35);font-size:15px"></i>
+        <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(60,60,67,.35);font-size:15px"></i>
         <input type="password" name="password" required placeholder="Kamida 6 ta belgi" class="{{ inp }}">
       </div>
     </div>
