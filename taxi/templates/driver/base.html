@@ -677,14 +677,37 @@ function _voicePeer(peerId, peerName) {
       audioEl = document.createElement('audio');
       audioEl.id = 'voice-audio-' + peerId;
       audioEl.autoplay = true;
+      audioEl.playsInline = true;
       document.body.appendChild(audioEl);
     }
     audioEl.srcObject = e.streams[0];
+    _voicePlayAudio(audioEl);
   };
   const entry = { pc, name: peerName, candQueue: [], transceiver };
   _voicePeers[peerId] = entry;
   return entry;
 }
+
+// Tinglash endi hech qanday tugma bosilmasdan (sahifa ochilishi bilan)
+// avtomatik boshlanadi — shuning uchun kiruvchi ovoz elementi (audio.play())
+// brauzerning "avtoplay" siyosati tomonidan jimgina bloklanishi mumkin
+// (foydalanuvchi hali sahifada birorta amal qilmagan bo'lsa). Bloklansa,
+// keyingi bosish/tegishda avtomatik qayta urinib ko'ramiz.
+const _voicePendingAudio = new Set();
+function _voicePlayAudio(audioEl) {
+  const p = audioEl.play();
+  if (p && p.catch) {
+    p.catch(() => { _voicePendingAudio.add(audioEl); });
+  }
+}
+['click', 'touchstart'].forEach(evt => {
+  document.addEventListener(evt, () => {
+    if (!_voicePendingAudio.size) return;
+    _voicePendingAudio.forEach(el => {
+      el.play().then(() => _voicePendingAudio.delete(el)).catch(() => {});
+    });
+  }, { passive: true });
+});
 
 function _voiceSendSignal(to, kind, payload) {
   fetch('{% url "driver:voice_signal" %}', {
