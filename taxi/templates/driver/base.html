@@ -746,22 +746,52 @@ function _voiceClosePeer(peerId) {
   delete _voicePeers[peerId];
 }
 
-// Sahifa ochilishi bilan avtomatik chaqiriladi (pastda). Mikrofon ruxsati
-// shu yerda, tugma bosilmasdan turib so'raladi — chunki har bir ulanish
-// boshidanoq TO'LIQ (sendrecv) qilib o'rnatiladi, faqat trek "enabled=false"
-// holatda (ovoz jo'natilmaydi). Shu tufayli keyinchalik mikrofon tugmasi
-// bosilganda hech qanday qayta ulanish/renegotiatsiya kerak bo'lmaydi —
-// shunchaki trek yoqiladi va bir zumda eshitiladigan bo'ladi. Ruxsat rad
-// etilsa, faqat tinglash (recvonly) rejimida davom etamiz.
-async function _voiceAutoConnect() {
-  if (!_voiceLocalStream) {
+// Mikrofonni bir martagina, birinchi foydalanuvchi teginishida (tugmani
+// bosishi shart emas — sahifadagi istalgan bosish/tegish yetarli) fonda
+// so'rab olamiz va allaqachon ulangan sheriklarga trekni biriktirib,
+// bir martalik renegotiatsiya qilamiz. Buni SAHIFA OCHILISHI bilan darhol
+// (foydalanuvchi teginmasdan turib) qilish MUAMMOLI edi — Android WebView'da
+// getUserMedia() ba'zan foydalanuvchi ishorasisiz (user gesture) jimgina rad
+// etiladi, garchi ilova darajasidagi RECORD_AUDIO ruxsati berilgan bo'lsa ham
+// (haydovchilar ruxsat berdi deb aytishgan, lekin sayt baribir "ruxsat
+// berilmagan" deb chiqargan holat shundan). Shuning uchun tinglash (recvonly)
+// hech qanday ruxsatsiz darhol boshlanadi, mikrofon so'rovi esa haqiqiy
+// tegishga bog'lab qo'yiladi.
+let _voiceMicRequestInFlight = null;
+async function _voiceEnsureLocalStream() {
+  if (_voiceLocalStream) return _voiceLocalStream;
+  if (_voiceMicRequestInFlight) return _voiceMicRequestInFlight;
+  _voiceMicRequestInFlight = (async () => {
+    let stream;
     try {
-      _voiceLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      _voiceLocalStream.getAudioTracks().forEach(t => { t.enabled = false; });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (_) {
-      _voiceLocalStream = null;
+      return null;
     }
-  }
+    stream.getAudioTracks().forEach(t => { t.enabled = false; });
+    _voiceLocalStream = stream;
+    for (const id of Object.keys(_voicePeers)) {
+      const entry = _voicePeers[id];
+      stream.getTracks().forEach(t => entry.pc.addTrack(t, stream));
+      const offer = await entry.pc.createOffer();
+      await entry.pc.setLocalDescription(offer);
+      _voiceSendSignal(id, 'offer', offer);
+    }
+    return stream;
+  })();
+  const result = await _voiceMicRequestInFlight;
+  _voiceMicRequestInFlight = null;
+  return result;
+}
+['click', 'touchstart'].forEach(evt => {
+  document.addEventListener(evt, () => {
+    if (document.getElementById('voice-btn')) _voiceEnsureLocalStream();
+  }, { once: true, passive: true });
+});
+
+// Sahifa ochilishi bilan avtomatik chaqiriladi (pastda) — mikrofon so'ralmaydi,
+// faqat tinglash (recvonly) uchun ulanadi (ruxsatsiz, gesture'siz ishlaydi).
+async function _voiceAutoConnect() {
   let data;
   try {
     const r = await fetch('{% url "driver:voice_join" %}', {
@@ -801,32 +831,19 @@ async function _voiceDisconnect() {
 }
 
 // Mikrofon tugmasi bosilganda — FAQAT gapirishni yoqadi/o'chiradi, efir
-// ulanishiga (tinglashga) tegmaydi. Odatiy holatda (ruxsat avtomatik ulanish
-// paytida allaqachon olingan bo'lsa) bu shunchaki track.enabled'ni
-// almashtiradi — hech qanday tarmoq so'rovi yoki qayta ulanish yo'q, shuning
-// uchun bir zumda va ishonchli ishlaydi.
+// ulanishiga (tinglashga) tegmaydi. Tugmani bosish o'zi ham haqiqiy
+// foydalanuvchi ishorasi bo'lgani uchun, agar birinchi tegishda mikrofon
+// hali olinmagan bo'lsa (masalan ruxsat so'ralayotgan payt tugmaga tez
+// bosilgan bo'lsa), shu yerda ham xavfsiz qayta so'raladi.
 async function voiceToggleTalk() {
   Native.vibrate();
-  if (!_voiceLocalStream) {
-    // Faqat avtomatik ulanishda ruxsat rad etilgan (kamdan-kam) holat uchun
-    // zaxira yo'l — endi so'raymiz va allaqachon ulangan sheriklarga trekni
-    // qo'shib, qayta signal yuboramiz (renegotiatsiya shu bir martagina kerak).
-    try {
-      _voiceLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (_) {
-      showToast('Mikrofonga ruxsat kerak', 'Brauzer/ilova sozlamalaridan ruxsat bering', 'error', 3500);
-      return;
-    }
-    for (const id of Object.keys(_voicePeers)) {
-      const entry = _voicePeers[id];
-      _voiceLocalStream.getTracks().forEach(t => entry.pc.addTrack(t, _voiceLocalStream));
-      const offer = await entry.pc.createOffer();
-      await entry.pc.setLocalDescription(offer);
-      _voiceSendSignal(id, 'offer', offer);
-    }
+  const stream = await _voiceEnsureLocalStream();
+  if (!stream) {
+    showToast('Mikrofonga ruxsat kerak', 'Brauzer/ilova sozlamalaridan ruxsat bering', 'error', 3500);
+    return;
   }
   _voiceTalking = !_voiceTalking;
-  _voiceLocalStream.getAudioTracks().forEach(t => { t.enabled = _voiceTalking; });
+  stream.getAudioTracks().forEach(t => { t.enabled = _voiceTalking; });
   _voiceUpdateBtnUI();
 }
 
