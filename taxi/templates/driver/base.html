@@ -300,6 +300,15 @@ body { background: var(--ios-bg); color: var(--ios-label); }
 
 <!-- iOS Tab Bar -->
 <div class="ios-tabbar fixed bottom-0 left-0 right-0 z-50">
+  <!-- Jonli ovozli aloqa ("efir") holati — barcha sahifalarda tab bar ustida
+       ko'rinadi (avval faqat Asosiy/Chat sahifasida edi) -->
+  <div id="voice-status" class="hidden px-4 pt-2">
+    <div class="flex items-center gap-2 px-3 py-2 rounded-[10px]" style="background:rgba(52,199,89,.1)">
+      <span style="width:7px;height:7px;border-radius:50%;background:#34C759;animation:pulse-ring 1s ease-out infinite;flex-shrink:0"></span>
+      <span id="voice-status-label" class="ios-caption2 font-semibold" style="color:#34C759">Efirni tinglayapsiz</span>
+      <span id="voice-participants" class="ios-caption2" style="color:var(--ios-label3);margin-left:auto;white-space:nowrap"></span>
+    </div>
+  </div>
   <div class="flex items-center justify-around px-2 pt-2"
        style="padding-bottom:env(safe-area-inset-bottom,34px)">
 
@@ -320,6 +329,14 @@ body { background: var(--ios-bg); color: var(--ios-label); }
       {% endif %}
       <span class="ios-caption2 {% if active_tab == 'history' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Tarix</span>
     </a>
+
+    <!-- Jonli ovozli aloqa ("efir") — tinglash doim yoniq (avtomatik ulanadi),
+         bu tugma esa FAQAT gapirishni yoqadi/o'chiradi (JS pastda) -->
+    <button id="voice-btn" onclick="voiceToggleTalk()" type="button"
+       class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60 relative border-0 bg-transparent cursor-pointer">
+      <i id="voice-btn-icon" class="fas fa-microphone text-[24px]" style="color:#8E8E93"></i>
+      <span id="voice-tab-label" class="ios-caption2" style="color:#8E8E93">Efir</span>
+    </button>
 
     <a href="{% url 'driver:chat' %}" onclick="Native.vibrate()"
        class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60 relative">
@@ -924,17 +941,16 @@ async function _voiceHandleSignal(sig) {
 }
 
 function _voiceUpdateBtnUI() {
-  const btn    = document.getElementById('voice-btn');
-  const icon   = document.getElementById('voice-btn-icon');
-  const status = document.getElementById('voice-status');
-  const label  = document.getElementById('voice-status-label');
-  if (!btn) return;
-  if (_voiceTalking) {
-    btn.style.background = 'rgba(255,59,48,.15)';
-    icon.style.color = '#FF3B30';
-  } else {
-    btn.style.background = 'var(--ios-fill)';
-    icon.style.color = '#8E8E93';
+  const icon      = document.getElementById('voice-btn-icon');
+  const tabLabel  = document.getElementById('voice-tab-label');
+  const status    = document.getElementById('voice-status');
+  const bannerLabel = document.getElementById('voice-status-label');
+  if (!icon) return;
+  const talkColor = _voiceTalking ? '#FF3B30' : '#8E8E93';
+  icon.style.color = talkColor;
+  if (tabLabel) {
+    tabLabel.style.color = talkColor;
+    tabLabel.textContent = _voiceTalking ? 'Gapiryapsiz' : 'Efir';
   }
   if (status) {
     if (_voiceConnected) status.classList.remove('hidden'); else status.classList.add('hidden');
@@ -943,9 +959,8 @@ function _voiceUpdateBtnUI() {
     const color = _voiceTalking ? '#FF3B30' : '#34C759';
     if (wrap) wrap.style.background = _voiceTalking ? 'rgba(255,59,48,.1)' : 'rgba(52,199,89,.1)';
     if (dot) dot.style.background = color;
-    if (label) label.style.color = color;
+    if (bannerLabel) { bannerLabel.style.color = color; bannerLabel.textContent = _voiceTalking ? 'Gapiryapsiz' : 'Efirni tinglayapsiz'; }
   }
-  if (label) label.textContent = _voiceTalking ? 'Gapiryapsiz' : 'Efirni tinglayapsiz';
 }
 
 function _voiceUpdateParticipantsUI(participants) {
