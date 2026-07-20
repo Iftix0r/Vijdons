@@ -71,29 +71,28 @@
 </div>
 
 <style>
-/* ── Qidiruv: ekran chetlari bo'ylab aylanadigan chiziq ── */
-@property --scan-angle {
-  syntax: '<angle>';
-  inherits: false;
-  initial-value: 0deg;
+/* ── Qidiruv: radar/sonar uslubidagi pulsatsiya (avvalgi ekran chetidagi
+   aylanuvchi chiziq o'rniga) — markazdagi mashina belgisi atrofida
+   ketma-ket kengayib-yo'qoluvchi halqalar, taxi ilovalariga xos va
+   "buyurtma qidirilmoqda" ma'nosini chiziqqa qaraganda aniqroq bildiradi ── */
+.radar-wrap { position:relative; width:84px; height:84px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.radar-core {
+  width:52px; height:52px; border-radius:50%; background:#FFD600;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 4px 18px rgba(255,214,0,.45); position:relative; z-index:2;
 }
-@keyframes screen-scan-spin { to { --scan-angle: 360deg; } }
-.screen-scan {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  padding: 3px;
-  pointer-events: none;
-  background: conic-gradient(from var(--scan-angle),
-    transparent 0deg, transparent 300deg,
-    rgba(255,214,0,.55) 336deg, #FFD600 351deg, rgba(255,214,0,.55) 356deg, transparent 360deg);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-          mask-composite: exclude;
-  animation: screen-scan-spin 3.2s linear infinite;
+.radar-core i { color:#000; font-size:20px; }
+.radar-ring {
+  position:absolute; inset:0; border-radius:50%;
+  border:2px solid rgba(255,214,0,.55);
+  animation: radar-pulse 2.4s cubic-bezier(0,.55,.55,1) infinite;
+}
+@keyframes radar-pulse {
+  0%   { transform:scale(.55); opacity:.9; }
+  100% { transform:scale(2); opacity:0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .screen-scan { animation: none; display: none; }
+  .radar-ring { animation: none; opacity:0; }
 }
 
 /* ── Liniyaga chiqish tugmasi — oflaynda e'tibor tortish uchun yumshoq nafas olish ── */
@@ -498,9 +497,18 @@ function renderOrdersDOM() {
   // uni boshqarish (Yo'lga chiqdim/Yetib keldim/Yakunlash) Tarix orqali davom etadi.
   const pendingOrders = ORDERS.filter(o => o.status === 'pending');
 
-  // Faol qidiruv indikatori — endi faqat ekran cheti bo'ylab aylanadigan sariq
-  // chiziq, alohida "Buyurtma qidirilmoqda" matni/nuqtalari kerak emas.
-  const scanHtml = `<div class="screen-scan"></div>`;
+  // Faol qidiruv indikatori — radar/sonar pulsatsiyasi + tushunarli matn
+  const scanHtml = `
+    <div class="ios-card rounded-[16px] p-6 flex flex-col items-center justify-center anim-fade">
+      <div class="radar-wrap">
+        <span class="radar-ring" style="animation-delay:0s"></span>
+        <span class="radar-ring" style="animation-delay:.8s"></span>
+        <span class="radar-ring" style="animation-delay:1.6s"></span>
+        <div class="radar-core"><i class="fas fa-car-side"></i></div>
+      </div>
+      <div class="ios-subhead font-semibold mt-4">Buyurtma qidirilmoqda...</div>
+      <div class="ios-caption mt-1 text-center" style="color:var(--ios-label3)">Yangi buyurtma kelishi bilan darhol xabar beramiz</div>
+    </div>`;
 
   if(!pendingOrders.length) {
     wrap.innerHTML = statsHtml + scanHtml;
@@ -543,7 +551,11 @@ function renderOrdersDOM() {
       </div>
     </div>`).join('');
 
-  wrap.innerHTML = statsHtml + scanHtml + `<div class="space-y-3 pt-1">${ordersHtml}</div>`;
+  // Diqqat: bu yerda scanHtml (qidiruv radari) qo'shilmaydi — pastda allaqachon
+  // topilgan buyurtmalar ko'rinib turganda "qidirilmoqda" degan matn qarama-qarshi
+  // bo'lardi (avvalgi ekran chetidagi chiziq esa shunchaki fon effekti bo'lgani
+  // uchun bu muammo yo'q edi, lekin yangi radar aniq matn bilan keladi).
+  wrap.innerHTML = statsHtml + `<div class="space-y-3 pt-1">${ordersHtml}</div>`;
   _startTimers();
 }
 
