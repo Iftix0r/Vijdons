@@ -163,6 +163,13 @@ class _DriverWebViewState extends State<DriverWebView>
     if (Platform.isAndroid) {
       final androidCtrl = ctrl.platform as AndroidWebViewController;
       androidCtrl.setOnShowFileSelector(_handleFileChooser);
+      // Jonli ovozli aloqa ("efir") sahifa ochilishi bilan avtomatik ulanadi
+      // va foydalanuvchi biror joyni bosmasdan turib kiruvchi ovozni ijro
+      // etishga urinadi — standart holatda Android WebView buni "avtoijro"
+      // siyosati bo'yicha bloklaydi (chunki hech qanday tegish/bosish
+      // bo'lmagan). Bu ilova to'liq o'zimizniki bo'lgani uchun bu cheklovni
+      // xavfsiz o'chirib qo'yamiz.
+      androidCtrl.setMediaPlaybackRequiresUserGesture(false);
     }
 
     setState(() => _ctrl = ctrl);
