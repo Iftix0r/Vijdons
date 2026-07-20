@@ -45,4 +45,9 @@ urlpatterns = [
     path('group-chat/',             driver_views.driver_group_chat_list,       name='group_chat_list'),
     path('group-chat/send/',        driver_views.driver_group_chat_send,       name='group_chat_send'),
     path('group-chat/send-audio/',  driver_views.driver_group_chat_send_audio, name='group_chat_send_audio'),
+
+    path('voice/join/',      driver_views.driver_voice_join,      name='voice_join'),
+    path('voice/leave/',     driver_views.driver_voice_leave,     name='voice_leave'),
+    path('voice/heartbeat/', driver_views.driver_voice_heartbeat, name='voice_heartbeat'),
+    path('voice/signal/',    driver_views.driver_voice_signal,    name='voice_signal'),
 ]

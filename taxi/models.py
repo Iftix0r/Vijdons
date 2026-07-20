@@ -349,6 +349,51 @@ class GroupMessage(models.Model):
         ordering = ['created_at']
 
 
+class VoiceParticipant(models.Model):
+    """Guruh jonli ovozli aloqasida ('efir') hozir turgan haydovchi — heartbeat
+    (davriy so'rov) orqali yangilanadi. last_seen uzoq vaqt yangilanmasa
+    (masalan ilova yopilib qolsa), haydovchi "chiqib ketgan" deb hisoblanadi."""
+    driver     = models.OneToOneField(Driver, on_delete=models.CASCADE, related_name='voice_participant', verbose_name='Haydovchi')
+    joined_at  = models.DateTimeField(auto_now_add=True, verbose_name="Qo'shilgan vaqti")
+    last_seen  = models.DateTimeField(auto_now=True, verbose_name="Oxirgi faollik")
+
+    def __str__(self):
+        return f"{self.driver.full_name} — efirda"
+
+    class Meta:
+        verbose_name = 'Efirdagi haydovchi'
+        verbose_name_plural = 'Efirdagi haydovchilar'
+
+
+class VoiceSignal(models.Model):
+    """Ikki haydovchi orasida to'g'ridan-to'g'ri (P2P) ovozli ulanish (WebRTC)
+    o'rnatish uchun signalizatsiya xabari (offer/answer/ICE candidate/leave).
+    Faqat manzilga yetguncha (bir marta o'qilgunga qadar) saqlanadi — heartbeat
+    so'rovi orqali o'qilib, darhol o'chiriladi."""
+    KIND_OFFER     = 'offer'
+    KIND_ANSWER    = 'answer'
+    KIND_CANDIDATE = 'candidate'
+    KIND_LEAVE     = 'leave'
+    KIND_CHOICES = (
+        (KIND_OFFER,     'Offer'),
+        (KIND_ANSWER,    'Answer'),
+        (KIND_CANDIDATE, 'ICE Candidate'),
+        (KIND_LEAVE,     'Leave'),
+    )
+
+    from_driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='voice_signals_sent', verbose_name='Kimdan')
+    to_driver   = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='voice_signals_received', verbose_name='Kimga')
+    kind        = models.CharField(max_length=12, choices=KIND_CHOICES, verbose_name='Turi')
+    payload     = models.TextField(blank=True, default='', verbose_name='Ma\'lumot (JSON)')
+    created_at  = models.DateTimeField(auto_now_add=True, verbose_name='Vaqt')
+
+    class Meta:
+        verbose_name = 'Ovoz signali'
+        verbose_name_plural = 'Ovoz signallari'
+        ordering = ['created_at']
+        indexes = [models.Index(fields=['to_driver', 'created_at'])]
+
+
 class BalanceLog(models.Model):
     ACTION_ADD    = 'add'
     ACTION_DEDUCT = 'deduct'

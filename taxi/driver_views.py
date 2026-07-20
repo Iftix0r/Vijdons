@@ -14,7 +14,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .models import Driver, Order, ChatMessage, GroupMessage, TariffSettings, DriverActivityLog, BalanceLog, PanelSound
+from .models import Driver, Order, ChatMessage, GroupMessage, TariffSettings, DriverActivityLog, BalanceLog, PanelSound, VoiceParticipant, VoiceSignal
 from .utils import tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected
 
 
@@ -910,3 +910,105 @@ def driver_group_chat_send_audio(request, driver):
         'text': '', 'audio_url': request.build_absolute_uri(msg.audio.url),
         'created_at': msg.created_at.isoformat(),
     })
+
+
+# ── Guruh jonli ovozli aloqa ("efir") — WebRTC P2P mesh signalizatsiya ────────
+# Bitta markaziy media-server (SFU) o'rniga — bu hostingda alohida server
+# ishga tushirish imkoni bo'lmagani uchun — har bir haydovchi qolgan barcha
+# faol ishtirokchilar bilan to'g'ridan-to'g'ri (P2P) WebRTC ulanish o'rnatadi.
+# Signalizatsiya (offer/answer/ICE candidate almashish) uchun alohida
+# WebSocket server o'rniga mavjud HTTP polling infratuzilmasidan foydalaniladi
+# (boshqa joylardagi chat_poll bilan bir xil uslub) — VoiceSignal jadvali
+# navbat vazifasini o'taydi. Diqqat: ko'p ishtirokchi bir vaqtda "efir"da
+# bo'lsa, mesh ulanishlar soni tezda ko'payadi (N ishtirokchi = har birida N-1
+# ulanish) — shuning uchun bu yondashuv o'nlab emas, bir necha (~6-8) faol
+# ishtirokchi uchun mo'ljallangan. Ishonchli NAT o'tish uchun TURN server yo'q
+# (faqat bepul ochiq STUN) — juda cheklangan tarmoqlarda ulanish muvaffaqiyatsiz
+# bo'lishi mumkin.
+VOICE_STALE_SECONDS = 12
+
+
+def _voice_prune_stale():
+    from django.utils import timezone
+    import datetime
+    cutoff = timezone.now() - datetime.timedelta(seconds=VOICE_STALE_SECONDS)
+    VoiceParticipant.objects.filter(last_seen__lt=cutoff).delete()
+
+
+def _voice_participants_list(exclude_driver):
+    return [
+        {'id': p.driver_id, 'name': p.driver.full_name, 'car_number': p.driver.car_number}
+        for p in VoiceParticipant.objects.select_related('driver').exclude(driver_id=exclude_driver.id)
+    ]
+
+
+@driver_login_required
+@require_POST
+def driver_voice_join(request, driver):
+    _voice_prune_stale()
+    VoiceParticipant.objects.update_or_create(driver=driver)
+    return JsonResponse({'ok': True, 'participants': _voice_participants_list(driver)})
+
+
+@driver_login_required
+@require_POST
+def driver_voice_leave(request, driver):
+    others = _voice_participants_list(driver)
+    VoiceParticipant.objects.filter(driver=driver).delete()
+    VoiceSignal.objects.bulk_create([
+        VoiceSignal(from_driver=driver, to_driver_id=o['id'], kind=VoiceSignal.KIND_LEAVE, payload='')
+        for o in others
+    ])
+    return JsonResponse({'ok': True})
+
+
+@driver_login_required
+def driver_voice_heartbeat(request, driver):
+    try:
+        # last_seen `auto_now=True` bo'lgani uchun .save() chaqirilishi kerak —
+        # queryset .update() bilan avtomatik yangilanmaydi (faqat model instance save()da ishlaydi)
+        VoiceParticipant.objects.get(driver=driver).save(update_fields=['last_seen'])
+    except VoiceParticipant.DoesNotExist:
+        return JsonResponse({'ok': True, 'joined': False})
+    _voice_prune_stale()
+
+    signals = list(VoiceSignal.objects.filter(to_driver=driver).select_related('from_driver').order_by('created_at')[:50])
+    signal_ids = [s.id for s in signals]
+    if signal_ids:
+        VoiceSignal.objects.filter(id__in=signal_ids).delete()
+
+    return JsonResponse({
+        'ok': True,
+        'joined': True,
+        'participants': _voice_participants_list(driver),
+        'signals': [
+            {
+                'from': s.from_driver_id,
+                'from_name': s.from_driver.full_name,
+                'kind': s.kind,
+                'payload': json.loads(s.payload) if s.payload else None,
+            }
+            for s in signals
+        ],
+    })
+
+
+@driver_login_required
+@require_POST
+def driver_voice_signal(request, driver):
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'ok': False}, status=400)
+
+    to_id = data.get('to')
+    kind = data.get('kind')
+    payload = data.get('payload')
+    if not to_id or kind not in dict(VoiceSignal.KIND_CHOICES):
+        return JsonResponse({'ok': False, 'error': "Noto'g'ri so'rov"}, status=400)
+
+    VoiceSignal.objects.create(
+        from_driver=driver, to_driver_id=to_id, kind=kind,
+        payload=json.dumps(payload) if payload is not None else '',
+    )
+    return JsonResponse({'ok': True})
