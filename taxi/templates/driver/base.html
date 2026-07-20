@@ -651,6 +651,21 @@ document.addEventListener('DOMContentLoaded', ()=>{ Native.getLocation().catch((
 //     tarmoqlarda ba'zi ulanishlar o'rnatilmasligi mumkin.
 // ══════════════════════════════════════════════════════════════════════════════
 const VOICE_ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+// Oddiy Chrome brauzerda mikrofon muammosiz ishlaydi, lekin AYNAN shu
+// Flutter ilova ichidagi Android WebView'da getUserMedia() "NotReadableError:
+// Could not start audio source" bilan rad etadi — bir nechta turli brend
+// telefonlarda ham xuddi shunday. Bu Android WebView'ning ma'lum, hujjatlashgan
+// nozik joyi: standart audio-processing effektlari (aks-sado bosish, shovqin
+// bostirish, avto-kuchaytirish) yoqilgan holda audio sessiyasini ochishga
+// urinishda ba'zi qurilmalar/WebView versiyalarida audio HAL darajasida
+// muvaffaqiyatsizlikka uchraydi — oddiy Chrome bunga chidamliroq. Shu sabab
+// bu effektlarni ANIQ o'chirib so'raymiz — muammoni chetlab o'tish uchun eng
+// arzon, kam-xavfli birinchi urinish.
+const VOICE_AUDIO_CONSTRAINTS = {
+  echoCancellation: false,
+  noiseSuppression: false,
+  autoGainControl: false,
+};
 let _voiceConnected   = false;  // efirga ulanganmiz (tinglash uchun) — avtomatik
 let _voiceTalking     = false;  // mikrofon yoniqmi (faqat gapirish uchun)
 let _voiceLocalStream = null;   // birinchi "gapirish" bosilganda yaratiladi
@@ -753,7 +768,7 @@ async function _voiceEnsureLocalStream() {
   _voiceMicRequestInFlight = (async () => {
     let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: VOICE_AUDIO_CONSTRAINTS });
     } catch (err) {
       // "NotReadableError" ko'pincha VAQTINCHALIK bo'ladi — masalan
       // mikrofonning oldingi sessiyasi (boshqa sahifadagi yozib olish yoki
@@ -763,7 +778,7 @@ async function _voiceEnsureLocalStream() {
       if (err && err.name === 'NotReadableError') {
         await _sleep(700);
         try {
-          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream = await navigator.mediaDevices.getUserMedia({ audio: VOICE_AUDIO_CONSTRAINTS });
         } catch (err2) {
           _voiceLastMicError = err2;
           return null;
