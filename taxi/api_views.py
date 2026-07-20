@@ -313,6 +313,13 @@ def _order_action(request, driver, pk, allowed_statuses, new_status):
             if locked.dispatched_to_id and locked.dispatched_to_id != driver.id:
                 return Response({'detail': 'Bu buyurtma sizga yuborilmagan.'}, status=403)
 
+            active_count = Order.objects.filter(driver=driver, status__in=Order.ACTIVE_STATUSES).count()
+            if active_count >= Order.MAX_ACTIVE_PER_DRIVER:
+                return Response(
+                    {'detail': f"Bir vaqtda ko'pi bilan {Order.MAX_ACTIVE_PER_DRIVER} ta faol buyurtma olish mumkin. Avval joriy buyurtma(lar)ni yakunlang."},
+                    status=400,
+                )
+
             tariff = TariffSettings.get()
             commission = locked.commission if locked.commission else tariff.commission
             if driver.balance < commission:

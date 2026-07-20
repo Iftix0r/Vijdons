@@ -83,6 +83,11 @@ class Order(models.Model):
         ('cancelled', 'Bekor qilindi'),
     )
 
+    # Haydovchi hali yakunlamagan (band) buyurtma holatlari
+    ACTIVE_STATUSES = ('accepted', 'on_way', 'arrived')
+    # Bir haydovchi bir vaqtning o'zida shuncha buyurtmani band qila oladi
+    MAX_ACTIVE_PER_DRIVER = 2
+
     PAYMENT_CASH = 'cash'
     PAYMENT_CARD = 'card'
     PAYMENT_CHOICES = (

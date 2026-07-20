@@ -63,7 +63,7 @@ def _pending_orders_count(driver):
 
 def _active_orders_count(driver):
     """Haydovchining hali yakunlanmagan (accepted/on_way/arrived) buyurtmalari soni — tab-bardagi Tarix belgisi uchun."""
-    return Order.objects.filter(driver=driver, status__in=['accepted', 'on_way', 'arrived']).count()
+    return Order.objects.filter(driver=driver, status__in=Order.ACTIVE_STATUSES).count()
 
 
 def driver_service_worker(request):
@@ -345,6 +345,12 @@ def driver_order_action(request, driver, pk, action):
             locked = Order.objects.select_for_update().get(pk=pk)
             if locked.status != 'pending':
                 return JsonResponse({'ok': False, 'error': 'Bu buyurtmani boshqa haydovchi qabul qildi'}, status=409)
+            active_count = Order.objects.filter(driver=driver, status__in=Order.ACTIVE_STATUSES).count()
+            if active_count >= Order.MAX_ACTIVE_PER_DRIVER:
+                return JsonResponse({
+                    'ok': False,
+                    'error': f"Bir vaqtda ko'pi bilan {Order.MAX_ACTIVE_PER_DRIVER} ta faol buyurtma olish mumkin. Avval joriy buyurtma(lar)ni yakunlang.",
+                }, status=400)
             tariff = TariffSettings.get()
             commission = locked.commission or tariff.commission
             if driver.balance < commission:
