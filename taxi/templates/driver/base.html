@@ -80,15 +80,19 @@ body { background: var(--ios-bg); color: var(--ios-label); }
   box-shadow: 0 8px 28px rgba(0,0,0,.50), 0 2px 8px rgba(0,0,0,.30);
 }
 
-/* ── iOS Navigation Bar ── */
+/* ── iOS Navigation Bar — tab-bar kabi endi chetlarga yopishmaydi, suzib
+   turuvchi, yumaloq burchakli panel ── */
 .ios-navbar {
   background: rgba(242,242,247,.85);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-bottom: .5px solid var(--ios-sep);
+  border: .5px solid var(--ios-sep);
+  border-radius: 22px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.10), 0 2px 8px rgba(0,0,0,.05);
 }
 .dark .ios-navbar {
-  background: rgba(0,0,0,.85);
+  background: rgba(18,18,20,.92);
+  box-shadow: 0 8px 28px rgba(0,0,0,.40), 0 2px 8px rgba(0,0,0,.25);
 }
 
 /* ── iOS Large Title ── */
