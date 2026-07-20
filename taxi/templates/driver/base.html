@@ -746,6 +746,7 @@ let _voiceMicRequestInFlight = null;
 // haqiqiy xato saqlab qo'yiladi (masalan NotAllowedError / NotFoundError /
 // NotReadableError) — sabab aniqlangach olib tashlanadi.
 let _voiceLastMicError = null;
+function _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 async function _voiceEnsureLocalStream() {
   if (_voiceLocalStream) return _voiceLocalStream;
   if (_voiceMicRequestInFlight) return _voiceMicRequestInFlight;
@@ -754,8 +755,23 @@ async function _voiceEnsureLocalStream() {
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (err) {
-      _voiceLastMicError = err;
-      return null;
+      // "NotReadableError" ko'pincha VAQTINCHALIK bo'ladi — masalan
+      // mikrofonning oldingi sessiyasi (boshqa sahifadagi yozib olish yoki
+      // shu sahifaning o'zidagi oldingi ulanish) hali OS darajasida to'liq
+      // bo'shatilib ulgurmagan bo'lishi mumkin. Darhol taslim bo'lmasdan,
+      // qisqa kutib bir marta qayta urinib ko'ramiz.
+      if (err && err.name === 'NotReadableError') {
+        await _sleep(700);
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch (err2) {
+          _voiceLastMicError = err2;
+          return null;
+        }
+      } else {
+        _voiceLastMicError = err;
+        return null;
+      }
     }
     stream.getAudioTracks().forEach(t => { t.enabled = false; });
     _voiceLocalStream = stream;
