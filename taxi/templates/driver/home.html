@@ -189,13 +189,22 @@ renderOrdersDOM();
 // qolgani uchun tab-bar ustiga siqilib/ustma-ust chiqib qolardi. Shu sabab
 // endi tab-barning HAQIQIY balandligini kuzatib, tugmani doim shu balandlik
 // + kichik oraliqqa moslab qo'yamiz.
+// Tab-bar endi Instagram uslubida ekran chetidan bo'shliq bilan suzib
+// turadi (fixed bottom:0 emas) — shu sabab uning balandligi emas, balki
+// ekran pastidan tab-barning YUQORI chetigacha bo'lgan haqiqiy masofa
+// o'lchanadi (getBoundingClientRect().top orqali), aks holda tugma pastga
+// bo'shliqni hisobga olmay tab-bar ustiga siqilib qolardi.
 (function() {
   const wrap = document.getElementById('duty-btn-wrap');
   const tabbar = document.querySelector('.ios-tabbar');
   if (!wrap || !tabbar) return;
-  const sync = () => { wrap.style.bottom = (tabbar.getBoundingClientRect().height + 8) + 'px'; };
+  const sync = () => {
+    const gapAboveTabbar = window.innerHeight - tabbar.getBoundingClientRect().top;
+    wrap.style.bottom = (gapAboveTabbar + 8) + 'px';
+  };
   sync();
   new ResizeObserver(sync).observe(tabbar);
+  window.addEventListener('resize', sync);
 })();
 
 // ── "Liniyadan chiqish" tugmasini sheet/modal ochiq turganda BUTUNLAY

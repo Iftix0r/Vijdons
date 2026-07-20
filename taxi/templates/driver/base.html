@@ -65,17 +65,19 @@ body { background: var(--ios-bg); color: var(--ios-label); }
   border-radius: 16px;
 }
 
-/* ── iOS Tab Bar ── */
+/* ── iOS Tab Bar — Instagram uslubidagi suzib turuvchi panel: chetlarga
+   yopishmaydi, to'liq dumaloq (pill) shaklda, atrofida soya bilan ── */
 .ios-tabbar {
   background: rgba(255,255,255,.88);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-top: .5px solid var(--ios-sep);
-  box-shadow: 0 -8px 32px rgba(0,0,0,.10), 0 -1px 0 rgba(0,0,0,.06);
+  border: .5px solid var(--ios-sep);
+  border-radius: 9999px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.08);
 }
 .dark .ios-tabbar {
   background: rgba(18,18,20,.92);
-  box-shadow: 0 -8px 32px rgba(0,0,0,.40), 0 -1px 0 rgba(255,255,255,.06);
+  box-shadow: 0 8px 28px rgba(0,0,0,.50), 0 2px 8px rgba(0,0,0,.30);
 }
 
 /* ── iOS Navigation Bar ── */
@@ -298,10 +300,11 @@ body { background: var(--ios-bg); color: var(--ios-label); }
   {% block content %}{% endblock %}
 </main>
 
-<!-- iOS Tab Bar -->
-<div class="ios-tabbar fixed bottom-0 left-0 right-0 z-50">
-  <div class="flex items-center justify-around px-2 pt-2"
-       style="padding-bottom:env(safe-area-inset-bottom,34px)">
+<!-- iOS Tab Bar — Instagram'dagi kabi chetlardan bo'shliq bilan suzib turadi
+     (ekran chetiga yopishmaydi) -->
+<div class="ios-tabbar fixed left-5 right-5 z-50"
+     style="bottom:calc(env(safe-area-inset-bottom,16px) + 10px)">
+  <div class="flex items-center justify-around px-1 py-1">
 
     <a href="{% url 'driver:home' %}" onclick="Native.vibrate(); dismissAllSheets()"
        class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60 relative">
