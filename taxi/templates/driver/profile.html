@@ -27,6 +27,12 @@
         <i class="fas fa-camera text-white text-[11px]"></i>
       </label>
       <input id="photo-input" type="file" accept="image/*" class="hidden" onchange="uploadPhoto(this)">
+      <!-- Yuklanayotganda avatar ustida aylanuvchi indikator — aks holda
+           foydalanuvchi bosgani ishlaganini bilmay, qayta-qayta bosaverardi -->
+      <div id="photo-loading" class="hidden absolute inset-0 rounded-full flex items-center justify-center"
+           style="background:rgba(0,0,0,.45)">
+        <i class="fas fa-circle-notch fa-spin text-white text-lg"></i>
+      </div>
     </div>
     <div class="text-center">
       <div class="ios-title font-semibold">{{ driver.full_name }}</div>
@@ -72,54 +78,67 @@
   </div>
 
   <!-- ── Car info ── -->
-  <div class="ios-group anim-up" style="animation-delay:120ms">
-    <div class="ios-row gap-3">
-      <div class="w-9 h-9 rounded-[10px] bg-[rgba(0,122,255,.12)] flex items-center justify-center flex-shrink-0">
-        <i class="fas fa-car text-[#007AFF] text-sm"></i>
-      </div>
-      <div class="flex-1">
-        <div class="ios-subhead font-medium">{{ driver.car_model }}</div>
-        <div class="ios-caption font-medium font-mono tracking-wider mt-0.5" style="color:var(--ios-label3)">{{ driver.car_number }}</div>
+  <div class="anim-up" style="animation-delay:120ms">
+    <div class="ios-caption2 font-semibold mb-1.5 ml-1" style="color:var(--ios-label3)">TRANSPORT VOSITASI</div>
+    <div class="ios-group">
+      <div class="ios-row gap-3">
+        <div class="w-9 h-9 rounded-[10px] bg-[rgba(0,122,255,.12)] flex items-center justify-center flex-shrink-0">
+          <i class="fas fa-car text-[#007AFF] text-sm"></i>
+        </div>
+        <div class="flex-1">
+          <div class="ios-subhead font-medium">{{ driver.car_model }}</div>
+          <div class="ios-caption font-medium font-mono tracking-wider mt-0.5" style="color:var(--ios-label3)">{{ driver.car_number }}</div>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- ── Destination Mode ── -->
-  <div class="ios-group anim-up" style="animation-delay:150ms">
-    <div class="ios-row gap-3" onclick="toggleDestination()">
-      <div class="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0"
-           style="background:rgba(52,199,89,.12)">
-        <i class="fas fa-route text-[#34C759] text-sm"></i>
-      </div>
-      <div class="flex-1">
-        <div class="ios-subhead font-medium">Yo'nalish rejimi</div>
-        <div class="ios-caption mt-0.5" id="dest-sub" style="color:var(--ios-label3)">
-          {% if driver.destination_mode and driver.destination_address %}{{ driver.destination_address }}{% else %}O'chirilgan{% endif %}
+  <div class="anim-up" style="animation-delay:150ms">
+    <div class="ios-caption2 font-semibold mb-1.5 ml-1" style="color:var(--ios-label3)">ISH REJIMI</div>
+    <div class="ios-group">
+      <div class="ios-row gap-3" onclick="toggleDestination()">
+        <div class="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0"
+             style="background:rgba(52,199,89,.12)">
+          <i class="fas fa-route text-[#34C759] text-sm"></i>
         </div>
+        <div class="flex-1">
+          <div class="ios-subhead font-medium">Yo'nalish rejimi</div>
+          <div class="ios-caption mt-0.5" id="dest-sub" style="color:var(--ios-label3)">
+            {% if driver.destination_mode and driver.destination_address %}{{ driver.destination_address }}{% else %}O'chirilgan{% endif %}
+          </div>
+        </div>
+        <div class="ios-toggle {% if driver.destination_mode %}on{% endif %}" id="dest-tog"></div>
       </div>
-      <div class="ios-toggle {% if driver.destination_mode %}on{% endif %}" id="dest-tog"></div>
     </div>
   </div>
 
   <!-- ── Settings ── -->
-  <div class="ios-group anim-up" style="animation-delay:160ms">
-    <!-- Parol o'zgartirish -->
-    <div class="ios-row gap-3" onclick="showPasswordSheet()">
-      <div class="w-9 h-9 rounded-[10px] bg-[rgba(255,149,0,.12)] flex items-center justify-center flex-shrink-0">
-        <i class="fas fa-lock text-[#FF9500] text-sm"></i>
+  <div class="anim-up" style="animation-delay:160ms">
+    <div class="ios-caption2 font-semibold mb-1.5 ml-1" style="color:var(--ios-label3)">SOZLAMALAR</div>
+    <div class="ios-group">
+      <!-- Parol o'zgartirish -->
+      <div class="ios-row gap-3" onclick="showPasswordSheet()">
+        <div class="w-9 h-9 rounded-[10px] bg-[rgba(255,149,0,.12)] flex items-center justify-center flex-shrink-0">
+          <i class="fas fa-lock text-[#FF9500] text-sm"></i>
+        </div>
+        <div class="flex-1 ios-subhead font-medium">Parolni o'zgartirish</div>
+        <i class="fas fa-chevron-right ios-caption" style="color:var(--ios-label3)"></i>
       </div>
-      <div class="flex-1 ios-subhead font-medium">Parolni o'zgartirish</div>
-      <i class="fas fa-chevron-right ios-caption" style="color:var(--ios-label3)"></i>
-    </div>
-    <!-- Version -->
-    <div class="ios-row gap-3">
-      <div class="w-9 h-9 rounded-[10px] bg-[rgba(255,214,0,.15)] flex items-center justify-center flex-shrink-0">
-        <span class="text-sm font-bold text-[#FFD600]">V</span>
+      <!-- Version -->
+      <div class="ios-row gap-3">
+        <div class="w-9 h-9 rounded-[10px] bg-[rgba(255,214,0,.15)] flex items-center justify-center flex-shrink-0">
+          <span class="text-sm font-bold text-[#FFD600]">V</span>
+        </div>
+        <div class="flex-1 ios-subhead font-medium">Vijdon Driver</div>
+        <span class="ios-caption" style="color:var(--ios-label3)">v1.0</span>
       </div>
-      <div class="flex-1 ios-subhead font-medium">Vijdon Driver</div>
-      <span class="ios-caption" style="color:var(--ios-label3)">v1.0</span>
     </div>
   </div>
+
+  <!-- ── Danger zone ajratuvchisi — SOS/Chiqish tugmalari oddiy sozlamalardan
+       vizual jihatdan ajralib tursin, tasodifan bosilib ketmasin ── -->
+  <div style="height:.5px;background:var(--ios-sep);margin:4px 8px"></div>
 
   <!-- ── Parol sheet ── -->
   <div id="pwd-overlay" class="fixed inset-0 z-[150] hidden" onclick="hidePwdSheet()">
@@ -209,6 +228,8 @@ async function toggleDestination() {
 
 async function uploadPhoto(input) {
   const file = input.files[0]; if (!file) return;
+  const loading = document.getElementById('photo-loading');
+  loading.classList.remove('hidden');
   const fd = new FormData();
   fd.append('photo', file);
   fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
@@ -216,8 +237,8 @@ async function uploadPhoto(input) {
     const r = await fetch('{% url "driver:profile_photo" %}', {method:'POST', body:fd});
     const d = await r.json();
     if (d.ok) location.reload();
-    else showToast('Xatolik', d.error||'', 'error');
-  } catch(_) { showToast('Tarmoq xatosi','','error'); }
+    else { loading.classList.add('hidden'); showToast('Xatolik', d.error||'', 'error'); }
+  } catch(_) { loading.classList.add('hidden'); showToast('Tarmoq xatosi','','error'); }
 }
 
 function showPasswordSheet() {

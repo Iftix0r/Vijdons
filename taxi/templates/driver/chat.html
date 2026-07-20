@@ -18,8 +18,9 @@
       <i class="fas fa-headset" style="margin-right:5px"></i>Operator
     </button>
     <button id="tab-gr" onclick="switchTab('group')"
-      style="flex:1;padding:8px 0;border-radius:12px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;background:var(--ios-fill);color:var(--ios-label)">
+      style="position:relative;flex:1;padding:8px 0;border-radius:12px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;background:var(--ios-fill);color:var(--ios-label)">
       <i class="fas fa-users" style="margin-right:5px"></i>Guruh
+      <span id="gr-unread-dot" class="hidden" style="position:absolute;top:4px;right:calc(50% - 34px);width:8px;height:8px;border-radius:50%;background:#FF3B30;box-shadow:0 0 0 2px var(--ios-bg)"></span>
     </button>
   </div>
 </div>
@@ -158,6 +159,7 @@ function switchTab(tab) {
   document.getElementById('tab-op').style.color      = isOp ? '#fff' : 'var(--ios-label)';
   document.getElementById('tab-gr').style.background = isOp ? 'var(--ios-fill)' : '#34C759';
   document.getElementById('tab-gr').style.color      = isOp ? 'var(--ios-label)' : '#fff';
+  if (tab === 'group') document.getElementById('gr-unread-dot').classList.add('hidden');
   if (tab === 'group' && grLastId === 0) loadGroupMessages();
   setTimeout(() => scrollBottom(tab), 50);
 }
@@ -342,7 +344,10 @@ setInterval(async () => {
         if (m.driver_id !== MY_DRIVER_ID) {
           appendGrMsg(m);
           Native.vibrate([30,15,30]);
-          if (activeTab !== 'group') showToast(m.driver_name, m.audio_url ? '🎤 Ovozli xabar' : m.text.slice(0,60), 'info', 3000);
+          if (activeTab !== 'group') {
+            showToast(m.driver_name, m.audio_url ? '🎤 Ovozli xabar' : m.text.slice(0,60), 'info', 3000);
+            document.getElementById('gr-unread-dot').classList.remove('hidden');
+          }
         }
       }
     });
