@@ -742,6 +742,10 @@ function _voiceClosePeer(peerId) {
 // hech qanday ruxsatsiz darhol boshlanadi, mikrofon so'rovi esa haqiqiy
 // tegishga bog'lab qo'yiladi.
 let _voiceMicRequestInFlight = null;
+// VAQTINCHA DIAGNOSTIKA — nega getUserMedia() rad etilganini bilish uchun
+// haqiqiy xato saqlab qo'yiladi (masalan NotAllowedError / NotFoundError /
+// NotReadableError) — sabab aniqlangach olib tashlanadi.
+let _voiceLastMicError = null;
 async function _voiceEnsureLocalStream() {
   if (_voiceLocalStream) return _voiceLocalStream;
   if (_voiceMicRequestInFlight) return _voiceMicRequestInFlight;
@@ -749,7 +753,8 @@ async function _voiceEnsureLocalStream() {
     let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (_) {
+    } catch (err) {
+      _voiceLastMicError = err;
       return null;
     }
     stream.getAudioTracks().forEach(t => { t.enabled = false; });
@@ -823,7 +828,8 @@ async function voiceToggleTalk() {
   Native.vibrate();
   const stream = await _voiceEnsureLocalStream();
   if (!stream) {
-    showToast('Mikrofonga ruxsat kerak', 'Brauzer/ilova sozlamalaridan ruxsat bering', 'error', 3500);
+    const reason = _voiceLastMicError ? `${_voiceLastMicError.name}: ${_voiceLastMicError.message}` : '';
+    showToast('Mikrofonga ruxsat kerak', reason || 'Brauzer/ilova sozlamalaridan ruxsat bering', 'error', 5000);
     return;
   }
   _voiceTalking = !_voiceTalking;
