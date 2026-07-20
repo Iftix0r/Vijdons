@@ -43,15 +43,15 @@ class OrderPollTaskHandler extends TaskHandler {
       final data = json.decode(resp.body) as Map<String, dynamic>;
       final ids =
           (data['new_ids'] as List?)?.map((e) => e as int).toSet() ?? {};
-      if (ids.isEmpty) {
-        _knownIds.clear();
-        return;
-      }
 
+      // Diqqat: "_knownIds" hech qachon TOZALANMAYDI, faqat o'sadi — buyurtma
+      // ID'lari doim o'sib boruvchi va qayta ishlatilmaydigan bo'lgani uchun
+      // bu xavfsiz. Agar bo'sh ro'yxat chiqqanda yoki har safar "_knownIds"
+      // qayta yozilsa, allaqachon ko'rsatilgan buyurtma keyingi so'rovda
+      // yana "yangi" deb aniqlanib, bildirishnoma cheksiz qayta-qayta
+      // kelaverardi (haydovchi allaqachon ko'rgan bo'lsa ham).
       final newIds = ids.difference(_knownIds);
-      _knownIds
-        ..clear()
-        ..addAll(ids);
+      _knownIds.addAll(ids);
 
       if (newIds.isNotEmpty) {
         await NotificationService.notifyNewOrder(newIds.length);

@@ -654,7 +654,12 @@ function closeNewOrderModal(autoClose = false) {
   sessionStorage.removeItem('vijdon_new_order');
   _unlockDutyBtnSoon();
   if (autoClose) {
-    _known = new Set();
+    // Diqqat: bu yerda "_known"ni TOZALASH KERAK EMAS — shu buyurtma hali
+    // ham serverda kutayotgani uchun, agar "_known" tozalansa, keyingi
+    // so'rovda u yana "yangi" deb aniqlanib, modal/bildirishnoma cheksiz
+    // qayta-qayta chiqaveradi (haydovchi allaqachon ko'rgan/o'qigan bo'lsa
+    // ham). "_known" o'zgarishsiz qoldirilsa, loadOrders() haqiqatan yangi
+    // buyurtmalarni to'g'ri aniqlab, shu buyurtmani esa qayta ko'rsatmaydi.
     loadOrders();
   }
 }
