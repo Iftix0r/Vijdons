@@ -170,6 +170,20 @@ class _DriverWebViewState extends State<DriverWebView>
       // bo'lmagan). Bu ilova to'liq o'zimizniki bo'lgani uchun bu cheklovni
       // xavfsiz o'chirib qo'yamiz.
       androidCtrl.setMediaPlaybackRequiresUserGesture(false);
+      // Taximetr sahifada (base.html) zaxira manba sifatida
+      // navigator.geolocation.watchPosition() ni ham chaqiradi (asosiy
+      // manba — native GPS bridge, bu esa faqat qo'shimcha). Bu
+      // onPermissionRequest'dan BUTUNLAY BOSHQA, alohida WebView callback
+      // (onGeolocationPermissionsShowPrompt) orqali so'raladi — shu
+      // sozlanmagani uchun sayt so'rovi hozircha javobsiz qolardi. Ilova
+      // OS darajasida joylashuv ruxsatini allaqachon olgani uchun
+      // (_requestPermissionsAndInit yuqorida), bu yerda ham xavfsiz
+      // avtomatik ruxsat beramiz.
+      androidCtrl.setGeolocationPermissionsPromptCallbacks(
+        onShowPrompt: (request) async {
+          return const GeolocationPermissionsResponse(allow: true, retain: true);
+        },
+      );
     }
 
     setState(() => _ctrl = ctrl);
