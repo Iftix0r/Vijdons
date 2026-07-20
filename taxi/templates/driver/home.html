@@ -490,11 +490,11 @@ function renderOrdersDOM() {
     return;
   }
 
-  // Statistika HAR DOIM ko'rinadi (Start holatida) — buyurtma bor-yo'qligidan
-  // qat'i nazar Asosiy sahifa o'zgarmaydi. Faqat hali qabul qilinmagan (pending)
-  // buyurtmalar bo'lsa, ular statistika OSTIDA qo'shimcha ko'rsatiladi. Qabul
-  // qilingan buyurtma (accepted/on_way/arrived) esa Asosiy sahifada ko'rinmaydi —
-  // uni boshqarish (Yo'lga chiqdim/Yetib keldim/Yakunlash) Tarix orqali davom etadi.
+  // Liniyaga chiqqandan keyin (Start holatida) statistika/balans/mashina kartalari
+  // ko'rsatilmaydi (yuqoridagi statsHtml faqat oflaynda ishlatiladi) — Asosiy
+  // sahifa endi faqat hali qabul qilinmagan (pending) buyurtmalarni yoki qidiruv
+  // animatsiyasini ko'rsatadi. Qabul qilingan buyurtma (accepted/on_way/arrived)
+  // Asosiy sahifada ko'rinmaydi — uni boshqarish Tarix orqali davom etadi.
   const pendingOrders = ORDERS.filter(o => o.status === 'pending');
 
   // Faol qidiruv indikatori — radar/sonar pulsatsiyasi + tushunarli matn
@@ -510,8 +510,12 @@ function renderOrdersDOM() {
       <div class="ios-caption mt-1 text-center" style="color:var(--ios-label3)">Yangi buyurtma kelishi bilan darhol xabar beramiz</div>
     </div>`;
 
+  // Diqqat: liniyaga chiqqandan keyin statsHtml (balans/statistika/mashina/tarix
+  // kartalari) ko'rsatilmaydi — bular Profil va Tarix sahifalarida allaqachon bor.
+  // Ish vaqtida Asosiy sahifa faqat ishga tegishli narsani (qidiruv yoki kelgan
+  // buyurtmalar) ko'rsatib, e'tiborni chalg'itmasin.
   if(!pendingOrders.length) {
-    wrap.innerHTML = statsHtml + scanHtml;
+    wrap.innerHTML = scanHtml;
     return;
   }
 
@@ -551,11 +555,9 @@ function renderOrdersDOM() {
       </div>
     </div>`).join('');
 
-  // Diqqat: bu yerda scanHtml (qidiruv radari) qo'shilmaydi — pastda allaqachon
-  // topilgan buyurtmalar ko'rinib turganda "qidirilmoqda" degan matn qarama-qarshi
-  // bo'lardi (avvalgi ekran chetidagi chiziq esa shunchaki fon effekti bo'lgani
-  // uchun bu muammo yo'q edi, lekin yangi radar aniq matn bilan keladi).
-  wrap.innerHTML = statsHtml + `<div class="space-y-3 pt-1">${ordersHtml}</div>`;
+  // statsHtml ham, scanHtml (qidiruv radari) ham qo'shilmaydi — buyurtma(lar)
+  // topilgan bo'lsa, Asosiy sahifa faqat o'shalarni ko'rsatadi.
+  wrap.innerHTML = `<div class="space-y-3 pt-1">${ordersHtml}</div>`;
   _startTimers();
 }
 
