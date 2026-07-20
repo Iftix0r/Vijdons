@@ -654,19 +654,23 @@ const VOICE_ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 let _voiceConnected   = false;  // efirga ulanganmiz (tinglash uchun) — avtomatik
 let _voiceTalking     = false;  // mikrofon yoniqmi (faqat gapirish uchun)
 let _voiceLocalStream = null;   // birinchi "gapirish" bosilganda yaratiladi
-let _voicePeers       = {};     // driverId -> { pc, name, candQueue, transceiver }
+let _voicePeers       = {};     // driverId -> { pc, name, candQueue }
 let _voiceHeartbeatTimer = null;
 
 function _voicePeer(peerId, peerName) {
   if (_voicePeers[peerId]) return _voicePeers[peerId];
   const pc = new RTCPeerConnection({ iceServers: VOICE_ICE_SERVERS });
-  // Har doim audio QABUL QILISHGA tayyor turamiz (tinglash doim yoniq) —
-  // hali gapirmayotgan bo'lsam ham, boshqalarni eshitishim kerak. Agar aynan
-  // shu payt gapirayotgan bo'lsam, darhol o'z trekimni ham ulab yuboramiz.
-  const transceiver = pc.addTransceiver('audio', { direction: 'recvonly' });
-  if (_voiceTalking && _voiceLocalStream) {
-    transceiver.sender.replaceTrack(_voiceLocalStream.getAudioTracks()[0]);
-    transceiver.direction = 'sendrecv';
+  // Ulanish har doim TO'LIQ (sendrecv) o'rnatiladi — mikrofonga ruxsat
+  // avtomatik ulanish paytidayoq so'raladi va trek darhol qo'shiladi, faqat
+  // "enabled=false" qilib o'chirib qo'yiladi. Shu tufayli gapirish/gapirmaslik
+  // faqat lokal track.enabled bilan boshqariladi — hech qanday qayta
+  // signalizatsiya (renegotiatsiya) kerak bo'lmaydi, shuning uchun eshitish
+  // doim ishonchli ishlaydi. Faqat foydalanuvchi ruxsatni RAD ETGAN holdagina
+  // (kamdan-kam) pastdagi recvonly zaxira yo'liga o'tamiz.
+  if (_voiceLocalStream) {
+    _voiceLocalStream.getTracks().forEach(t => pc.addTrack(t, _voiceLocalStream));
+  } else {
+    pc.addTransceiver('audio', { direction: 'recvonly' });
   }
   pc.onicecandidate = (e) => {
     if (e.candidate) _voiceSendSignal(peerId, 'candidate', e.candidate.toJSON());
@@ -695,7 +699,7 @@ function _voicePeer(peerId, peerName) {
     audioEl.srcObject = e.streams[0];
     _voicePlayAudio(audioEl);
   };
-  const entry = { pc, name: peerName, candQueue: [], transceiver };
+  const entry = { pc, name: peerName, candQueue: [] };
   _voicePeers[peerId] = entry;
   return entry;
 }
@@ -742,9 +746,22 @@ function _voiceClosePeer(peerId) {
   delete _voicePeers[peerId];
 }
 
-// Sahifa ochilishi bilan avtomatik chaqiriladi (pastda) — mikrofon so'ralmaydi,
-// faqat tinglash uchun ulanadi.
+// Sahifa ochilishi bilan avtomatik chaqiriladi (pastda). Mikrofon ruxsati
+// shu yerda, tugma bosilmasdan turib so'raladi — chunki har bir ulanish
+// boshidanoq TO'LIQ (sendrecv) qilib o'rnatiladi, faqat trek "enabled=false"
+// holatda (ovoz jo'natilmaydi). Shu tufayli keyinchalik mikrofon tugmasi
+// bosilganda hech qanday qayta ulanish/renegotiatsiya kerak bo'lmaydi —
+// shunchaki trek yoqiladi va bir zumda eshitiladigan bo'ladi. Ruxsat rad
+// etilsa, faqat tinglash (recvonly) rejimida davom etamiz.
 async function _voiceAutoConnect() {
+  if (!_voiceLocalStream) {
+    try {
+      _voiceLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      _voiceLocalStream.getAudioTracks().forEach(t => { t.enabled = false; });
+    } catch (_) {
+      _voiceLocalStream = null;
+    }
+  }
   let data;
   try {
     const r = await fetch('{% url "driver:voice_join" %}', {
@@ -784,44 +801,33 @@ async function _voiceDisconnect() {
 }
 
 // Mikrofon tugmasi bosilganda — FAQAT gapirishni yoqadi/o'chiradi, efir
-// ulanishiga (tinglashga) tegmaydi.
+// ulanishiga (tinglashga) tegmaydi. Odatiy holatda (ruxsat avtomatik ulanish
+// paytida allaqachon olingan bo'lsa) bu shunchaki track.enabled'ni
+// almashtiradi — hech qanday tarmoq so'rovi yoki qayta ulanish yo'q, shuning
+// uchun bir zumda va ishonchli ishlaydi.
 async function voiceToggleTalk() {
   Native.vibrate();
-  if (_voiceTalking) {
-    // Gapirishni to'xtatish — ulanishni uzmasdan, faqat trekni o'chiramiz
-    // (qayta ulanish/renegotiatsiya kerak emas, shuning uchun bir zumda ishlaydi)
-    if (_voiceLocalStream) _voiceLocalStream.getAudioTracks().forEach(t => { t.enabled = false; });
-    _voiceTalking = false;
-    _voiceUpdateBtnUI();
-    return;
-  }
   if (!_voiceLocalStream) {
+    // Faqat avtomatik ulanishda ruxsat rad etilgan (kamdan-kam) holat uchun
+    // zaxira yo'l — endi so'raymiz va allaqachon ulangan sheriklarga trekni
+    // qo'shib, qayta signal yuboramiz (renegotiatsiya shu bir martagina kerak).
     try {
       _voiceLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (_) {
       showToast('Mikrofonga ruxsat kerak', 'Brauzer/ilova sozlamalaridan ruxsat bering', 'error', 3500);
       return;
     }
-  } else {
-    _voiceLocalStream.getAudioTracks().forEach(t => { t.enabled = true; });
-  }
-  _voiceTalking = true;
-  _voiceUpdateBtnUI();
-
-  // Allaqachon ulangan har bir ishtirokchi bilan trekni ulab, renegotiatsiya
-  // qilamiz (faqat shu safar — ulanish "sendrecv"ga bir marta o'tgach, keyingi
-  // yoqib-o'chirishlar yuqoridagi track.enabled orqali, qayta so'rovsiz ishlaydi)
-  const track = _voiceLocalStream.getAudioTracks()[0];
-  for (const id of Object.keys(_voicePeers)) {
-    const entry = _voicePeers[id];
-    if (entry.transceiver.direction !== 'sendrecv') {
-      entry.transceiver.sender.replaceTrack(track);
-      entry.transceiver.direction = 'sendrecv';
+    for (const id of Object.keys(_voicePeers)) {
+      const entry = _voicePeers[id];
+      _voiceLocalStream.getTracks().forEach(t => entry.pc.addTrack(t, _voiceLocalStream));
       const offer = await entry.pc.createOffer();
       await entry.pc.setLocalDescription(offer);
       _voiceSendSignal(id, 'offer', offer);
     }
   }
+  _voiceTalking = !_voiceTalking;
+  _voiceLocalStream.getAudioTracks().forEach(t => { t.enabled = _voiceTalking; });
+  _voiceUpdateBtnUI();
 }
 
 async function _voiceTick() {
