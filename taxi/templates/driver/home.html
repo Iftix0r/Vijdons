@@ -1043,19 +1043,22 @@ function _renderSheet(id, o){
     sh.style.maxHeight = '';
     sh.style.height    = '';
     sh.style.borderRadius = '0';
-    // Overlay (backdrop + sheet) pastdan tab-bar joylashgan joygacha qisqaradi
-    // — shu orqali tugmalar suzib turuvchi tab-bar ostida qolib ko'rinmay
-    // qolmaydi va bo'sh joyda shaffof sheet foni bilan qorong'i backdrop
-    // qo'shilib kulrang "dog'" hosil bo'lmaydi (chunki bu joy endi overlay'ga
-    // umuman kirmaydi — orqadagi sahifa foni tabiiy ko'rinadi).
-    ov.style.bottom = 'calc(env(safe-area-inset-bottom,16px) + 92px)';
+    // Diqqat: faqat SHEET (karta)ning o'zi pastdan tab-bar joylashgan joygacha
+    // qisqaradi — BACKDROP esa (ov emas, uning ichidagi qorong'i qatlam) hamon
+    // to'liq ekranni qoplaydi. Aks holda (avval overlay'ning o'zini qisqartirgan
+    // edik) bu bo'sh joyda orqadagi sahifa (masalan #orders-wrap ichidagi eski
+    // skeleton/karta) tasodifan ko'rinib qolar, tungi rejimda esa bu uning
+    // och rangli foni sof qora fon ustida yorqin "dog'" bo'lib chiqib qolardi.
+    // Endi bu joyda faqat backdrop'ning o'zi (nazorat qilinadigan qorong'i
+    // xira rang) ko'rinadi — tab-bar esa undan balandroq qatlamda bosiladi.
+    sh.style.bottom = 'calc(env(safe-area-inset-bottom,16px) + 92px)';
     if (handle) handle.style.display = 'none';
   } else {
     sh.style.top = '';
     sh.style.maxHeight = '';
     sh.style.height    = '';
     sh.style.borderRadius = '';
-    ov.style.bottom = '';
+    sh.style.bottom = '';
     if (handle) handle.style.display = '';
   }
 
