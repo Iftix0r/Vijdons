@@ -1055,22 +1055,23 @@ function _renderSheet(id, o){
     sh.style.maxHeight = '';
     sh.style.height    = '';
     sh.style.borderRadius = '0';
-    // Diqqat: faqat SHEET (karta)ning o'zi pastdan tab-bar joylashgan joygacha
-    // qisqaradi — BACKDROP esa (ov emas, uning ichidagi qorong'i qatlam) hamon
-    // to'liq ekranni qoplaydi. Aks holda (avval overlay'ning o'zini qisqartirgan
-    // edik) bu bo'sh joyda orqadagi sahifa (masalan #orders-wrap ichidagi eski
-    // skeleton/karta) tasodifan ko'rinib qolar, tungi rejimda esa bu uning
-    // och rangli foni sof qora fon ustida yorqin "dog'" bo'lib chiqib qolardi.
-    // Endi bu joyda faqat backdrop'ning o'zi (nazorat qilinadigan qorong'i
-    // xira rang) ko'rinadi — tab-bar esa undan balandroq qatlamda bosiladi.
-    sh.style.bottom = 'calc(env(safe-area-inset-bottom,16px) + 92px)';
+    // Diqqat: sheet HAMON bottom:0 gacha (haqiqiy ekran ostigacha) to'liq
+    // cho'zilgan holda qoladi — uni qisqartirmaymiz. Avval sheet/overlay'ni
+    // tab-bar joyigacha "qisqartirib", o'sha bo'sh joyda orqadagi sahifa yoki
+    // backdrop ko'rinishini sinab ko'rgan edik — ikkalasi ham sheet'ning
+    // o'zining uzluksiz foni bilan mos kelmay, tungi rejimda "dog'"/qop-qora
+    // chiziq bo'lib ko'rinib qolardi (rang chegarasi sezilib turardi). Endi
+    // shunchaki PASTKI BO'SHLIQ (padding) qo'shamiz — fon rangi boshidan
+    // oxirigacha bir xil (uzluksiz) bo'lib qoladi, faqat tugmalar tab-bar
+    // tagida qolib ko'rinmay qolmasligi uchun ular yuqoriroqqa suriladi.
+    sh.style.paddingBottom = 'calc(env(safe-area-inset-bottom,16px) + 100px)';
     if (handle) handle.style.display = 'none';
   } else {
     sh.style.top = '';
     sh.style.maxHeight = '';
     sh.style.height    = '';
     sh.style.borderRadius = '';
-    sh.style.bottom = '';
+    sh.style.paddingBottom = '';
     if (handle) handle.style.display = '';
   }
 
