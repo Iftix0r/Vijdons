@@ -531,9 +531,9 @@ document.addEventListener('visibilitychange', () => {
 // aniqlash — to'liq manzil (ko'cha/uy) hech qayerda ko'rsatilmaydi ───────────
 {% if driver.is_on_duty %}
 (function trackDriverLocation() {
-  const SS_LAT  = 'vijdon_lat';
-  const SS_LNG  = 'vijdon_lng';
-  const SS_AREA = 'vijdon_area';
+  const SS_LAT  = `vijdon_lat_${DRIVER_ID}`;
+  const SS_LNG  = `vijdon_lng_${DRIVER_ID}`;
+  const SS_AREA = `vijdon_area_${DRIVER_ID}`;
 
   let _lastLat = parseFloat(sessionStorage.getItem(SS_LAT)) || null;
   let _lastLng = parseFloat(sessionStorage.getItem(SS_LNG)) || null;
