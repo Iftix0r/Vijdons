@@ -452,11 +452,21 @@ function renderOrdersDOM() {
     return;
   }
 
+  // Haydovchida bajarilayotgan buyurtma (accepted/on_way/arrived) bo'lsa —
+  // buyurtma tafsilotlari ekrani (sheet) doim OCHIQ turadi, "Buyurtma
+  // qidirilmoqda" holati ko'rinmaydi. Faqat "Yakunlash" (yoki bekor qilish)
+  // bosilib, buyurtma tugagandan keyingina yangi qidiruv holati qaytadi.
+  const activeOrder = ORDERS.find(o =>
+    o.status === 'accepted' || o.status === 'on_way' || o.status === 'arrived');
+  if (activeOrder) {
+    _ensureActiveSheet(activeOrder);
+    return;
+  }
+
   // Liniyaga chiqqandan keyin (Start holatida) statistika/balans/mashina kartalari
   // ko'rsatilmaydi (yuqoridagi statsHtml faqat oflaynda ishlatiladi) — Asosiy
   // sahifa endi faqat hali qabul qilinmagan (pending) buyurtmalarni yoki qidiruv
-  // animatsiyasini ko'rsatadi. Qabul qilingan buyurtma (accepted/on_way/arrived)
-  // Asosiy sahifada ko'rinmaydi — uni boshqarish Tarix orqali davom etadi.
+  // animatsiyasini ko'rsatadi.
   const pendingOrders = ORDERS.filter(o => o.status === 'pending');
 
   // Faol qidiruv indikatori — skeleton/shimmer: kelayotgan buyurtma qanday
@@ -925,7 +935,22 @@ function _initSheetMap(o){
   });
 }
 
+// Sheet hozir qaysi buyurtma/holat uchun ochiqligini kuzatamiz — shu orqali
+// har poll (3-5s) da bajarilayotgan buyurtma uchun sheet qayta-qayta
+// (keraksiz) render qilinmaydi: faqat ID yoki status haqiqatan o'zgarganda
+// (masalan on_way -> arrived) qayta chiziladi, aks holda tegilmaydi (xarita
+// qayta yaratilmaydi, scroll pozitsiyasi yo'qolmaydi).
+let _sheetOpenForId = null;
+let _sheetOpenForStatus = null;
+
+function _ensureActiveSheet(o){
+  if (_sheetOpenForId === o.id && _sheetOpenForStatus === o.status) return;
+  _renderSheet(o.id, o);
+}
+
 function _renderSheet(id, o){
+  _sheetOpenForId = id;
+  _sheetOpenForStatus = o.status;
   _destroySheetMap();
   const pill={
     pending: 'pill-yellow', accepted:'pill-blue', on_way:'pill-purple', arrived:'pill-green'
@@ -1092,6 +1117,8 @@ function closeSheet(){
   ov.style.pointerEvents='none';
   _unlockDutyBtnSoon();
   _destroySheetMap();
+  _sheetOpenForId = null;
+  _sheetOpenForStatus = null;
   clearTimeout(_sheetCloseTimer);
   _sheetCloseTimer = setTimeout(()=>{
     ov.classList.add('hidden');
@@ -1109,10 +1136,21 @@ async function doAction(id,action){
     showToast('Xatolik', "Buyurtma ID topilmadi, qayta urinib ko'ring", 'error');
     return;
   }
+  // Ketma-ket ikki marta bosilishining (masalan tarmoq sekin bo'lganda) oldini
+  // olamiz — sheet endi harakat davomida OCHIQ qoladi, shuning uchun tugma
+  // hali ko'rinib turadi va ikkinchi marta bosilishi mumkin.
+  if (window._actionInFlight) return;
+  window._actionInFlight = true;
+
   // duty-btn'dagi kechikkan/shubhali hodisalarni filtrlash uchun belgi
   window._lastOrderActionAt = Date.now();
   try { Native.vibrate(); } catch(e) { console.error('vibrate xatosi', e); }
-  try { closeSheet(); } catch(e) { console.error('closeSheet xatosi', e); }
+  // Sheet faqat "yakunlovchi" harakatlarda (yakunlash/bekor qilish/rad etish)
+  // yopiladi — qabul qilish/yo'lga chiqish/yetib kelishda buyurtma tafsilotlari
+  // ekrani ochiq qoladi va natija kelgach yangi holat bilan qayta chiziladi.
+  if (action === 'complete' || action === 'cancel' || action === 'reject') {
+    try { closeSheet(); } catch(e) { console.error('closeSheet xatosi', e); }
+  }
   try { closeNewOrderModal(false); } catch(e) { console.error('closeNewOrderModal xatosi', e); }
   try { sessionStorage.removeItem('vijdon_new_order'); } catch(e) {}
   try {
@@ -1148,8 +1186,8 @@ async function doAction(id,action){
         await loadOrders();
         renderOrdersDOM();
         setTimeout(()=>{ _suppressModal = false; }, 5000);
-        // Sheet qayta ochilmaydi — buyurtmani davom ettirish (Yetib keldim/
-        // Yakunlash/Bekor qilish) endi faqat Tarix bo'limi orqali amalga oshiriladi.
+        // Sheet ochiq qoladi — renderOrdersDOM() ichidagi _ensureActiveSheet()
+        // uni yangi holat ("Yo'lda") bilan avtomatik qayta chizadi.
       } else if(action==='arrived'||action==='complete'){
         if(action==='complete') {
           tmxStop();
@@ -1158,14 +1196,16 @@ async function doAction(id,action){
           const earnedPrice = parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,'')) || 0;
           TODAY_EARNED += earnedPrice;
           _updateNavBalance(d.new_balance);
-          // complete dan keyin sheet yopiladi, qayta ochilmaydi
+          // Yakunlangandan keyin sheet allaqachon yopilgan (yuqorida) — endi
+          // faol buyurtma yo'q, renderOrdersDOM() qidiruv holatini ko'rsatadi.
           _suppressModal = true;
           _known = new Set();
           await loadOrders();
           renderOrdersDOM();
           setTimeout(()=>{ _suppressModal = false; }, 5000);
         } else {
-          // arrived: sheet qayta ochilmaydi — davomi Tarix orqali
+          // arrived: sheet ochiq qoladi, _ensureActiveSheet() "Yetib keldim"
+          // holati bilan qayta chizadi (Yakunlash tugmasi shu yerdan bosiladi).
           _suppressModal = true;
           _known = new Set();
           await loadOrders();
@@ -1191,8 +1231,8 @@ async function doAction(id,action){
           setTimeout(()=>Native.callPhone(updated.client_phone),900);
         }
         _updateNavBalance(d.new_balance);
-        // Sheet qayta ochilmaydi — buyurtma endi Asosiy ro'yxatida ko'rinmaydi,
-        // davomi (Yo'lga chiqdim va h.k.) faqat Tarix bo'limida.
+        // Sheet ochiq qoladi — renderOrdersDOM() ichidagi _ensureActiveSheet()
+        // uni "Qabul qilindi" holati (Yo'lga chiqdim tugmasi) bilan qayta chizadi.
       } else {
         _suppressModal = true;
         _known = new Set();
@@ -1210,6 +1250,8 @@ async function doAction(id,action){
       ? "So'rov 15 soniyada javob bermadi (internet sekin)"
       : (err?.message || 'Internet aloqasini tekshiring');
     showToast('Tarmoq xatosi', msg, 'error');
+  } finally {
+    window._actionInFlight = false;
   }
 }
 </script>
