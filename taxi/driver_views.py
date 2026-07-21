@@ -152,18 +152,31 @@ def driver_home(request, driver):
     # bajarilmay qolgan bo'lsa) hamma haydovchiga ko'rinadigan bo'lsin — aks
     # holda ular abadiy faqat bitta (javob bermagan) haydovchiga "osilib qoladi"
     dispatch_cutoff = timezone.now() - timezone.timedelta(seconds=TariffSettings.get().dispatch_timeout)
-    # Diqqat: haydovchi avval "Rad etish" bosgan bo'lsa ham, agar buyurtma hali
-    # ham hech kim tomonidan olinmagan (pending) bo'lib qolsa, umumiy ro'yxatda
-    # ko'rinishda davom etadi — rad etish faqat avtomatik yuborish (dispatch)
-    # navbatidan chiqarib yuboradi, buyurtmani butunlay yashirmaydi.
-    base_qs = Order.objects.select_related('client', 'driver').filter(
-        Q(status='pending', dispatched_to=driver) |
-        Q(status='pending', dispatched_to__isnull=True) |
-        Q(status='pending', dispatched_at__lt=dispatch_cutoff) |
-        Q(driver=driver, status__in=['accepted', 'on_way', 'arrived'])
-    ).exclude(
-        status__in=['cancelled', 'completed']
-    ).order_by('-created_at')
+
+    # Haydovchi hozir biror buyurtmani bajarayotgan bo'lsa (accepted/on_way/
+    # arrived) — uni bezovta qilmaslik uchun boshqa (hali hech kim olmagan)
+    # buyurtmalar butunlay ko'rsatilmaydi va yangi buyurtma bildirishnomasi
+    # kelmaydi. Joriy buyurtma yakunlangach (yoki bekor qilingach) navbatdagi
+    # buyurtmalar yana ko'rinadi.
+    active_order = Order.objects.filter(
+        driver=driver, status__in=['accepted', 'on_way', 'arrived']
+    ).select_related('client', 'driver').first()
+
+    if active_order:
+        base_qs = [active_order]
+    else:
+        # Diqqat: haydovchi avval "Rad etish" bosgan bo'lsa ham, agar buyurtma
+        # hali ham hech kim tomonidan olinmagan (pending) bo'lib qolsa, umumiy
+        # ro'yxatda ko'rinishda davom etadi — rad etish faqat avtomatik
+        # yuborish (dispatch) navbatidan chiqarib yuboradi, buyurtmani
+        # butunlay yashirmaydi.
+        base_qs = Order.objects.select_related('client', 'driver').filter(
+            Q(status='pending', dispatched_to=driver) |
+            Q(status='pending', dispatched_to__isnull=True) |
+            Q(status='pending', dispatched_at__lt=dispatch_cutoff)
+        ).exclude(
+            status__in=['cancelled', 'completed']
+        ).order_by('-created_at')
 
     # Destination mode: faqat yo'nalish atrofidagi buyurtmalar
     if driver.destination_mode and driver.destination_lat and driver.destination_lng:
@@ -255,16 +268,26 @@ def driver_orders_json(request, driver):
     # Dispatch muddati o'tgan buyurtmalar (avtomatik qayta-yuborish bajarilmay
     # qolgan bo'lsa ham) hamma haydovchiga ko'rinsin — driver_home dagi bilan bir xil
     dispatch_cutoff = timezone.now() - timezone.timedelta(seconds=TariffSettings.get().dispatch_timeout)
-    # rad etilgan bo'lsa ham, hali hech kim olmagan (pending) buyurtma umumiy
-    # ro'yxatda ko'rinishda davom etadi — driver_home dagi bilan bir xil mantiq
-    qs = Order.objects.select_related('client').filter(
-        Q(status='pending', dispatched_to=driver) |
-        Q(status='pending', dispatched_to__isnull=True) |
-        Q(status='pending', dispatched_at__lt=dispatch_cutoff) |
-        Q(driver=driver, status__in=['accepted', 'on_way', 'arrived'])
-    ).exclude(
-        status__in=['cancelled', 'completed']
-    ).order_by('-created_at')
+
+    # Haydovchi hozir biror buyurtmani bajarayotgan bo'lsa — driver_home dagi
+    # bilan bir xil mantiq: boshqa buyurtmalar butunlay ko'rsatilmaydi.
+    active_order = Order.objects.filter(
+        driver=driver, status__in=['accepted', 'on_way', 'arrived']
+    ).select_related('client').first()
+
+    if active_order:
+        qs = [active_order]
+    else:
+        # rad etilgan bo'lsa ham, hali hech kim olmagan (pending) buyurtma
+        # umumiy ro'yxatda ko'rinishda davom etadi — driver_home dagi bilan
+        # bir xil mantiq
+        qs = Order.objects.select_related('client').filter(
+            Q(status='pending', dispatched_to=driver) |
+            Q(status='pending', dispatched_to__isnull=True) |
+            Q(status='pending', dispatched_at__lt=dispatch_cutoff)
+        ).exclude(
+            status__in=['cancelled', 'completed']
+        ).order_by('-created_at')
 
     orders_data = []
     for o in qs:
