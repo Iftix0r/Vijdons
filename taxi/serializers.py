@@ -13,7 +13,12 @@ class DriverRegisterSerializer(serializers.Serializer):
     password     = serializers.CharField(write_only=True, min_length=6)
 
     def validate_phone_number(self, value):
-        if Driver.objects.filter(phone_number=value).exists():
+        # Driver.phone_number o'zi unique, lekin User.username (login uchun
+        # ishlatiladigan) buni bilmaydi — agar shu raqam allaqachon boshqa
+        # turdagi hisob (masalan yo'lovchi) tomonidan User sifatida band
+        # qilingan bo'lsa, create_user() IntegrityError bilan qulaydi. Shu
+        # sabab ikkalasini ham oldindan tekshiramiz.
+        if Driver.objects.filter(phone_number=value).exists() or User.objects.filter(username=value).exists():
             raise serializers.ValidationError("Bu telefon raqami allaqachon ro'yxatdan o'tgan.")
         return value
 
@@ -70,7 +75,11 @@ class ClientRegisterSerializer(serializers.Serializer):
     password     = serializers.CharField(write_only=True, min_length=6)
 
     def validate_phone_number(self, value):
-        if Client.objects.filter(phone_number=value, user__isnull=False).exists():
+        # Client (bot orqali user=None holida) mavjud bo'lishi mumkin — muammo
+        # emas, create() uni akkauntga bog'laydi. Lekin shu raqam allaqachon
+        # BOSHQA bir hisob (masalan haydovchi) uchun User.username sifatida
+        # band bo'lsa, create_user() IntegrityError bilan qulaydi.
+        if Client.objects.filter(phone_number=value, user__isnull=False).exists() or User.objects.filter(username=value).exists():
             raise serializers.ValidationError("Bu telefon raqami allaqachon ro'yxatdan o'tgan.")
         return value
 

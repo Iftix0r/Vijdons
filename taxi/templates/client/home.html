@@ -290,7 +290,7 @@ async function cancelOrder(id){
     if (d.ok) {
       stopPolling();
       showToast('Bekor qilindi', '', 'info');
-      location.reload();
+      setTimeout(()=>location.reload(), 1200);
     } else {
       showToast('Xatolik', d.error || '', 'error');
     }
