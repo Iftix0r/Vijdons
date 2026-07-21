@@ -208,15 +208,27 @@ renderOrdersDOM();
 // oynasi (sheet) esa renderOrdersDOM() -> _ensureActiveSheet() orqali
 // avtomatik ochiq turadi (bajarilayotgan buyurtma tugagunicha ekranni
 // to'liq bekitadi) — bu yerda faqat taximetrni tiklab qo'yamiz.
+// Diqqat: bu yerda _resetSheetOverlay() CHAQIRILMAYDI — u sheet'ni yopib
+// qo'yardi, aynan yuqoridagi renderOrdersDOM() uni to'g'ri ochganidan keyin
+// (chunki _ensureActiveSheet() keyingi chaqiruvlarda _sheetOpenForId/Status
+// mos kelgani uchun qayta ochmaydi) — natijada qabul qilingan buyurtma
+// bo'lsa, sahifa ochilganda tafsilotlar ekrani DARHOL yopilib, o'rniga
+// bo'sh ekran qolib ketardi.
 (function(){
-  _resetSheetOverlay();
   const active = ORDERS.find(o => o.status === 'on_way' || o.status === 'arrived');
   if(active) tmxStart(active.id, active);
 })();
 
+// Sahifa bfcache'dan (masalan ilova fon-oldinga o'tganda) tiklanganda — sheet
+// eski/qotib qolgan holatda ko'rinib qolishi mumkin, shu sabab avval yopib,
+// keyin joriy holatga (qayta ochish ham shu ichida) mos ravishda qayta
+// chizamiz — aks holda faol buyurtma bo'lsa ham ekran bo'sh qolib ketardi.
 window.addEventListener('pageshow', e => {
   if (e.persisted) {
     _resetSheetOverlay();
+    _sheetOpenForId = null;
+    _sheetOpenForStatus = null;
+    renderOrdersDOM();
     const active = ORDERS.find(o => o.status === 'on_way' || o.status === 'arrived');
     if (active) tmxStart(active.id, active);
   }
