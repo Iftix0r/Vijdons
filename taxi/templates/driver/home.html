@@ -27,6 +27,12 @@
             {% if driver.is_on_duty %}Ish navbatida{% else %}Oflayn{% endif %}
           </span>
         </div>
+        {% if driver.is_on_duty %}
+        <div class="flex items-center gap-1 mt-0.5" id="nav-location-wrap">
+          <i class="fas fa-location-dot" style="font-size:9px;color:var(--ios-label3)"></i>
+          <span id="nav-location" class="ios-caption2" style="color:var(--ios-label3)">aniqlanmoqda…</span>
+        </div>
+        {% endif %}
       </div>
     </div>
     <div class="flex items-center gap-2.5">
@@ -149,13 +155,6 @@ let _known = new Set(ORDERS.map(o => o.id));
 // buyurtma bo'lgan holatlarda tugma "bosilsa ham hech narsa bo'lmasligi" shu
 // bag'dan kelib chiqqan.
 let _timerIntervals = {};
-
-// Haydovchi joriy turgan tuman/hudud nomi ("Sergeli" kabi) — qidiruv
-// ekranida ko'rsatish uchun. trackDriverLocation() geokodlab shuni to'ldiradi.
-// Diqqat: sessionStorage kaliti DRIVER_ID bilan bog'langan — aks holda bir
-// qurilmada (masalan sinov paytida) haydovchi almashtirilganda oldingi
-// haydovchining eski (boshqa hududdagi) natijasi yangisiga "yopishib qolardi".
-let _driverArea = sessionStorage.getItem(`vijdon_area_${DRIVER_ID}`) || null;
 
 // Sahifa yuklanishi bilan darhol DOM ni render qilamiz
 renderOrdersDOM();
@@ -325,7 +324,7 @@ function renderOrdersDOM() {
     <div class="space-y-3 anim-fade">
       <div class="flex items-center gap-2 px-1">
         <span class="search-dot w-2 h-2 rounded-full flex-shrink-0" style="background:#FFD600"></span>
-        <span class="ios-subhead font-semibold">${_driverArea ? `Manzilingiz aniqlandi: ${_driverArea}. Shu bo'yicha buyurtma qidirilmoqda` : 'Buyurtma qidirilmoqda'}</span>
+        <span class="ios-subhead font-semibold">Buyurtma qidirilmoqda</span>
       </div>
       ${_skeletonCard(false)}
       ${_skeletonCard(true)}
@@ -526,45 +525,63 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') Audio.stopNewOrder();
 });
 
-// ── Haydovchi joylashuvini kuzatish (serverga sinxronlash + sheet xaritasi
-// uchun) va joriy tuman/hudud nomini ("Sergeli" kabi) qidiruv ekrani uchun
-// aniqlash — to'liq manzil (ko'cha/uy) hech qayerda ko'rsatilmaydi ───────────
+// ── Haydovchi manzilini navbar'da ko'rsatish ─────────────────────────────────
+// Diqqat: sessionStorage kalitlari DRIVER_ID bilan bog'langan — aks holda bir
+// qurilmada (masalan sinov paytida) haydovchi almashtirilganda oldingi
+// haydovchining eski (boshqa hududdagi) manzili yangisiga "yopishib qolardi".
 {% if driver.is_on_duty %}
-(function trackDriverLocation() {
+(function initNavLocation() {
+  const el = document.getElementById('nav-location');
+  if (!el) return;
+
+  const SS_ADDR = `vijdon_addr_${DRIVER_ID}`;
   const SS_LAT  = `vijdon_lat_${DRIVER_ID}`;
   const SS_LNG  = `vijdon_lng_${DRIVER_ID}`;
-  const SS_AREA = `vijdon_area_${DRIVER_ID}`;
 
-  let _lastLat = parseFloat(sessionStorage.getItem(SS_LAT)) || null;
-  let _lastLng = parseFloat(sessionStorage.getItem(SS_LNG)) || null;
-  let _syncTimer = null;
+  let _lastGeoLat = parseFloat(sessionStorage.getItem(SS_LAT)) || null;
+  let _lastGeoLng = parseFloat(sessionStorage.getItem(SS_LNG)) || null;
+  let _geoTimer   = null;
 
-  // ── Reverse geocode — faqat tuman/hudud nomi (Nominatim) ─────────────────
-  async function reverseGeocodeArea(lat, lng) {
+  // Oldingi manzil sessionStorage da saqlangan bo'lsa — darhol ko'rsatamiz
+  const _saved = sessionStorage.getItem(SS_ADDR);
+  if (_saved) el.textContent = _saved;
+
+  // ── Reverse geocode — Nominatim ──────────────────────────────────────────
+  async function reverseGeocode(lat, lng) {
     const ctrl = new AbortController();
     const tid  = setTimeout(() => ctrl.abort(), 6000);
     try {
       const r = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=uz&zoom=14`,
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=uz&zoom=16`,
         { signal: ctrl.signal }
       );
       clearTimeout(tid);
       const d = await r.json();
       if (!d || d.error) return null;
       const a = d.address || {};
-      return a.city_district || a.suburb || a.quarter || a.neighbourhood || a.town || a.city || a.village || null;
+      const street = a.road || a.pedestrian || a.path || a.suburb || '';
+      const house  = a.house_number || '';
+      const area   = a.neighbourhood || a.quarter || a.city_district || a.city || a.town || a.village || '';
+      if (street && house) return `${street}, ${house}`;
+      if (street && area)  return `${street}, ${area}`;
+      return street || area || d.display_name?.split(',')[0] || null;
     } catch (_) { clearTimeout(tid); return null; }
   }
 
   // ── Koordinat keldi ───────────────────────────────────────────────────────
-  function gotCoords(lat, lng) {
-    // 50m dan kam ko'chsa serverga qayta yubormaymiz, tuman nomini ham qayta so'ramaymiz
-    if (_lastLat !== null) {
-      const dlat = (lat - _lastLat) * 111320;
-      const dlng = (lng - _lastLng) * 111320 * Math.cos(lat * Math.PI / 180);
-      if (Math.sqrt(dlat * dlat + dlng * dlng) < 50) return;
+  async function gotCoords(lat, lng) {
+    // 50m dan kam ko'chsa geocode so'ramaymiz, koordinatni ham ko'rsatmaymiz
+    if (_lastGeoLat !== null) {
+      const dlat = (lat - _lastGeoLat) * 111320;
+      const dlng = (lng - _lastGeoLng) * 111320 * Math.cos(lat * Math.PI / 180);
+      if (Math.sqrt(dlat * dlat + dlng * dlng) < 50) {
+        // Saqlanganidan foydalanish
+        const cached = sessionStorage.getItem(SS_ADDR);
+        if (cached && el) el.textContent = cached;
+        return;
+      }
     }
-    _lastLat = lat; _lastLng = lng;
+    _lastGeoLat = lat; _lastGeoLng = lng;
     sessionStorage.setItem(SS_LAT, lat);
     sessionStorage.setItem(SS_LNG, lng);
     // Buyurtma sheet'idagi xarita (_initSheetMap) haydovchining hozirgi
@@ -572,14 +589,20 @@ document.addEventListener('visibilitychange', () => {
     window._driverLat = lat;
     window._driverLng = lng;
 
-    clearTimeout(_syncTimer);
-    _syncTimer = setTimeout(async () => {
-      const area = await reverseGeocodeArea(lat, lng);
-      if (area && area !== _driverArea) {
-        _driverArea = area;
-        sessionStorage.setItem(SS_AREA, area);
-        renderOrdersDOM();
+    // Koordinatni vaqtincha ko'rsatamiz (geocode kelgunga qadar)
+    if (el && !sessionStorage.getItem(SS_ADDR)) {
+      el.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    }
+
+    // 1.5s debounce
+    clearTimeout(_geoTimer);
+    _geoTimer = setTimeout(async () => {
+      const addr = await reverseGeocode(lat, lng);
+      if (addr) {
+        sessionStorage.setItem(SS_ADDR, addr);
+        if (el) el.textContent = addr;
       }
+      // Server ga ham yuboramiz
       fetch('{% url "driver:location_sync" %}', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
@@ -609,7 +632,7 @@ document.addEventListener('visibilitychange', () => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       pos => gotCoords(pos.coords.latitude, pos.coords.longitude),
-      () => {},
+      () => { if (el) el.textContent = ''; },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
     );
   }, 6000);
