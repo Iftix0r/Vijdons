@@ -201,6 +201,18 @@ let _known = new Set(ORDERS.map(o => o.id));
 // bag'dan kelib chiqqan.
 let _timerIntervals = {};
 
+// Diqqat: xuddi shu TDZ sababiga ko'ra (yuqoridagi izohga qarang) — bular ham
+// renderOrdersDOM() faol buyurtma topib _ensureActiveSheet()/_renderSheet()ni
+// DARHOL chaqirishi mumkinligi uchun shu yerda, oldindan e'lon qilinishi
+// SHART. Aks holda (aynan haydovchida sahifa ochilganda allaqachon faol —
+// accepted/on_way/arrived — buyurtma bo'lgan holatda) xuddi shu ReferenceError
+// yuzaga kelib, butun skript ishga tushmay, ekran butunlay bo'sh qolib
+// ketardi (buyurtma tafsilotlari HAM, "Buyurtma qidirilmoqda" ham ko'rinmasdi).
+let _sheetMap = null;
+let _sheetOpenForId = null;
+let _sheetOpenForStatus = null;
+let _sheetCloseTimer = null;
+
 // Sahifa yuklanishi bilan darhol DOM ni render qilamiz
 renderOrdersDOM();
 
@@ -841,7 +853,8 @@ function _tmxWidgetHTML(o){
 // tushirish nuqtasi (qizil, bo'lsa) va ular orasidagi haydash marshrutini
 // ko'rsatadi. "Yo'lda" holatida marshrut mijozning tushish nuqtasigacha,
 // qolgan holatlarda olib ketish nuqtasigacha chiziladi.
-let _sheetMap = null;
+// (Diqqat: `_sheetMap` o'zgaruvchisi TDZ xatosining oldini olish uchun
+// yuqorida, `renderOrdersDOM()` chaqiruvidan OLDIN e'lon qilingan.)
 
 function _destroySheetMap(){
   if (_sheetMap) {
@@ -899,8 +912,8 @@ function _initSheetMap(o){
 // (keraksiz) render qilinmaydi: faqat ID yoki status haqiqatan o'zgarganda
 // (masalan on_way -> arrived) qayta chiziladi, aks holda tegilmaydi (xarita
 // qayta yaratilmaydi, scroll pozitsiyasi yo'qolmaydi).
-let _sheetOpenForId = null;
-let _sheetOpenForStatus = null;
+// (Diqqat: `_sheetOpenForId`/`_sheetOpenForStatus` TDZ xatosining oldini
+// olish uchun yuqorida, `renderOrdersDOM()` chaqiruvidan OLDIN e'lon qilingan.)
 
 function _ensureActiveSheet(o){
   // Diqqat: faqat ID/status'ga emas, sheet'ning DOM'dagi HAQIQIY holatiga ham
@@ -1128,7 +1141,8 @@ function _renderSheet(id, o){
 // bekor qilinmagan eski taymer keyinroq ishga tushib, hozirgina ochilgan
 // sheet'ni ORQASIDAN yashirib qo'yardi (shu sabab "Qabul qilish" tugmasi
 // ba'zan hech qanday reaksiya bermasdi — sheet aslida qayta yashiringan edi).
-let _sheetCloseTimer = null;
+// (Diqqat: `_sheetCloseTimer` TDZ xatosining oldini olish uchun yuqorida,
+// `renderOrdersDOM()` chaqiruvidan OLDIN e'lon qilingan.)
 function closeSheet(){
   const sh=document.getElementById('sheet');
   const ov=document.getElementById('sheet-overlay');
