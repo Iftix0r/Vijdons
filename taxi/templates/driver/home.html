@@ -27,12 +27,6 @@
             {% if driver.is_on_duty %}Ish navbatida{% else %}Oflayn{% endif %}
           </span>
         </div>
-        {% if driver.is_on_duty %}
-        <div class="flex items-center gap-1 mt-0.5" id="nav-location-wrap">
-          <i class="fas fa-location-dot" style="font-size:9px;color:var(--ios-label3)"></i>
-          <span id="nav-location" class="ios-caption2" style="color:var(--ios-label3)">aniqlanmoqda…</span>
-        </div>
-        {% endif %}
       </div>
     </div>
     <div class="flex items-center gap-2.5">
@@ -323,7 +317,7 @@ function renderOrdersDOM() {
     <div class="space-y-3 anim-fade">
       <div class="flex items-center gap-2 px-1">
         <span class="search-dot w-2 h-2 rounded-full flex-shrink-0" style="background:#FFD600"></span>
-        <span class="ios-subhead font-semibold">Buyurtma qidirilmoqda</span>
+        <span class="ios-subhead font-semibold">Lokatsiya bo'yicha buyurtma qidirilmoqda</span>
       </div>
       ${_skeletonCard(false)}
       ${_skeletonCard(true)}
@@ -524,60 +518,26 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') Audio.stopNewOrder();
 });
 
-// ── Haydovchi manzilini navbar'da ko'rsatish ─────────────────────────────────
+// ── Haydovchi joylashuvini kuzatish (serverga sinxronlash + sheet xaritasi
+// uchun) — manzil endi hech qayerda matn sifatida ko'rsatilmaydi ──────────────
 {% if driver.is_on_duty %}
-(function initNavLocation() {
-  const el = document.getElementById('nav-location');
-  if (!el) return;
+(function trackDriverLocation() {
+  const SS_LAT = 'vijdon_lat';
+  const SS_LNG = 'vijdon_lng';
 
-  const SS_ADDR = 'vijdon_addr';
-  const SS_LAT  = 'vijdon_lat';
-  const SS_LNG  = 'vijdon_lng';
-
-  let _lastGeoLat = parseFloat(sessionStorage.getItem(SS_LAT)) || null;
-  let _lastGeoLng = parseFloat(sessionStorage.getItem(SS_LNG)) || null;
-  let _geoTimer   = null;
-
-  // Oldingi manzil sessionStorage da saqlangan bo'lsa — darhol ko'rsatamiz
-  const _saved = sessionStorage.getItem(SS_ADDR);
-  if (_saved) el.textContent = _saved;
-
-  // ── Reverse geocode — Nominatim ──────────────────────────────────────────
-  async function reverseGeocode(lat, lng) {
-    const ctrl = new AbortController();
-    const tid  = setTimeout(() => ctrl.abort(), 6000);
-    try {
-      const r = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=uz&zoom=16`,
-        { signal: ctrl.signal }
-      );
-      clearTimeout(tid);
-      const d = await r.json();
-      if (!d || d.error) return null;
-      const a = d.address || {};
-      const street = a.road || a.pedestrian || a.path || a.suburb || '';
-      const house  = a.house_number || '';
-      const area   = a.neighbourhood || a.quarter || a.city_district || a.city || a.town || a.village || '';
-      if (street && house) return `${street}, ${house}`;
-      if (street && area)  return `${street}, ${area}`;
-      return street || area || d.display_name?.split(',')[0] || null;
-    } catch (_) { clearTimeout(tid); return null; }
-  }
+  let _lastLat = parseFloat(sessionStorage.getItem(SS_LAT)) || null;
+  let _lastLng = parseFloat(sessionStorage.getItem(SS_LNG)) || null;
+  let _syncTimer = null;
 
   // ── Koordinat keldi ───────────────────────────────────────────────────────
-  async function gotCoords(lat, lng) {
-    // 50m dan kam ko'chsa geocode so'ramaymiz, koordinatni ham ko'rsatmaymiz
-    if (_lastGeoLat !== null) {
-      const dlat = (lat - _lastGeoLat) * 111320;
-      const dlng = (lng - _lastGeoLng) * 111320 * Math.cos(lat * Math.PI / 180);
-      if (Math.sqrt(dlat * dlat + dlng * dlng) < 50) {
-        // Saqlanganidan foydalanish
-        const cached = sessionStorage.getItem(SS_ADDR);
-        if (cached && el) el.textContent = cached;
-        return;
-      }
+  function gotCoords(lat, lng) {
+    // 50m dan kam ko'chsa serverga qayta yubormaymiz
+    if (_lastLat !== null) {
+      const dlat = (lat - _lastLat) * 111320;
+      const dlng = (lng - _lastLng) * 111320 * Math.cos(lat * Math.PI / 180);
+      if (Math.sqrt(dlat * dlat + dlng * dlng) < 50) return;
     }
-    _lastGeoLat = lat; _lastGeoLng = lng;
+    _lastLat = lat; _lastLng = lng;
     sessionStorage.setItem(SS_LAT, lat);
     sessionStorage.setItem(SS_LNG, lng);
     // Buyurtma sheet'idagi xarita (_initSheetMap) haydovchining hozirgi
@@ -585,20 +545,8 @@ document.addEventListener('visibilitychange', () => {
     window._driverLat = lat;
     window._driverLng = lng;
 
-    // Koordinatni vaqtincha ko'rsatamiz (geocode kelgunga qadar)
-    if (el && !sessionStorage.getItem(SS_ADDR)) {
-      el.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-    }
-
-    // 1.5s debounce
-    clearTimeout(_geoTimer);
-    _geoTimer = setTimeout(async () => {
-      const addr = await reverseGeocode(lat, lng);
-      if (addr) {
-        sessionStorage.setItem(SS_ADDR, addr);
-        if (el) el.textContent = addr;
-      }
-      // Server ga ham yuboramiz
+    clearTimeout(_syncTimer);
+    _syncTimer = setTimeout(() => {
       fetch('{% url "driver:location_sync" %}', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
@@ -628,7 +576,7 @@ document.addEventListener('visibilitychange', () => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       pos => gotCoords(pos.coords.latitude, pos.coords.longitude),
-      () => { if (el) el.textContent = ''; },
+      () => {},
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
     );
   }, 6000);
