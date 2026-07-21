@@ -265,12 +265,19 @@ async function loadOrders() {
 
     const added = d.new_ids.filter(id => !_known.has(id));
     if(added.length && !_suppressModal) {
+      // "Genie" effekti uchun: "Buyurtma qidirilmoqda" nuqtasi hali shu
+      // yerda ekan, uni renderOrdersDOM() haqiqiy karta bilan ALMASHTIRIB
+      // yubormasdan OLDIN pozitsiyasini saqlab qolamiz — modal aynan shu
+      // nuqtadan "tug'ilib chiqqandek" animatsiya qilinadi.
+      const _dot = document.querySelector('.search-dot');
+      const _dotRect = _dot ? _dot.getBoundingClientRect() : null;
+
       _known = serverIds;
       renderOrdersDOM();
       Native.vibrate([60,30,60,30,120]);
       if(typeof FlutterNotify !== 'undefined') FlutterNotify.postMessage(String(added.length));
       const newOrder = ORDERS.find(o => o.id === added[0]) || null;
-      showNewOrderModal(added[0], newOrder);
+      showNewOrderModal(added[0], newOrder, _dotRect);
       return;
     }
 
@@ -461,7 +468,7 @@ _mc.addEventListener('touchend',()=>{
 let _nomTimer = null;
 let _nomOrderId = null;
 
-function showNewOrderModal(orderId, order) {
+function showNewOrderModal(orderId, order, originRect) {
   _nomOrderId = orderId;
   Audio.newOrder();
   Native.vibrate([60,30,60,30,120]);
@@ -498,7 +505,35 @@ function showNewOrderModal(orderId, order) {
 
   // Show modal
   const modal = document.getElementById('new-order-modal');
+  const card  = document.getElementById('nom-card');
   modal.classList.remove('hidden');
+
+  // ── "Genie" effekti: karta xuddi "Buyurtma qidirilmoqda" nuqtasidan
+  // tug'ilib chiqayotgandek animatsiya qilinadi (originRect — o'sha nuqtaning
+  // renderOrdersDOM() uni almashtirib yuborishidan OLDINGI ekrandagi joyi).
+  // Diqqat: klasslarni olib tashlab/reflow qilib qayta qo'shamiz — aks holda
+  // ketma-ket kelgan ikkinchi buyurtmada CSS animatsiya qayta ishga tushmay,
+  // karta "sakrab" chiqib qolar edi.
+  document.querySelectorAll('.nom-ripple-ring').forEach(r => r.remove());
+  card.classList.remove('nom-genie', 'anim-scale');
+  void card.offsetWidth;
+  if (originRect && originRect.width) {
+    const ox = originRect.left + originRect.width / 2;
+    const oy = originRect.top + originRect.height / 2;
+    card.style.setProperty('--nom-x', (ox - window.innerWidth / 2) + 'px');
+    card.style.setProperty('--nom-y', (oy - window.innerHeight / 2) + 'px');
+    card.classList.add('nom-genie');
+
+    const ring = document.createElement('div');
+    ring.className = 'nom-ripple-ring';
+    ring.style.left = ox + 'px';
+    ring.style.top = oy + 'px';
+    document.body.appendChild(ring);
+    setTimeout(() => ring.remove(), 650);
+  } else {
+    card.classList.add('anim-scale');
+  }
+
   // Modal body ga bosish — sheet ochilsin
   document.getElementById('nom-body').onclick = () => {
     closeNewOrderModal(false);
