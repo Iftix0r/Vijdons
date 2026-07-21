@@ -73,6 +73,45 @@
 @media (prefers-reduced-motion: reduce) {
   .skeleton, .search-dot { animation: none; }
 }
+
+/* ── Yangi buyurtma modali "qidiruv" nuqtasidan tug'ilib chiqadi ──────────────
+   JS (showNewOrderModal) --nom-x/--nom-y (ekrandagi manba nuqtasining markazga
+   nisbatan siljishi) va --nom-r (boshlang'ich "zarra" radiusi) ni hisoblab
+   beradi, karta esa o'sha nuqtadan porloq nurga o'ralib "portlab" chiqadi. */
+@keyframes nom-genie-in {
+  0% {
+    transform: translate(var(--nom-x, 0px), var(--nom-y, 0px)) scale(.04);
+    opacity: 0;
+    border-radius: 50%;
+    filter: blur(1px);
+  }
+  45% { opacity: 1; filter: blur(0); }
+  70% { border-radius: 26px; }
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+    border-radius: 20px;
+  }
+}
+.nom-genie { animation: nom-genie-in .62s cubic-bezier(.22,1.28,.36,1) both; transform-origin: center; }
+
+@keyframes nom-ripple {
+  0%   { transform: translate(-50%,-50%) scale(.2); opacity: .9; }
+  100% { transform: translate(-50%,-50%) scale(1); opacity: 0; }
+}
+.nom-ripple-ring {
+  position: fixed;
+  width: var(--nom-r, 220px); height: var(--nom-r, 220px);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,214,0,.55) 0%, rgba(255,214,0,0) 70%);
+  pointer-events: none;
+  z-index: 199;
+  animation: nom-ripple .62s cubic-bezier(.22,1,.36,1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nom-genie { animation: ios-scale-in .3s ease both; }
+  .nom-ripple-ring { display: none; }
+}
 </style>
 
 <!-- Content: JS tomonidan to'ldiriladi -->
@@ -95,7 +134,7 @@
 <div id="new-order-modal" class="fixed inset-0 z-[200] hidden flex items-center justify-center"
      onclick="if(event.target===this) closeNewOrderModal(false)"
      style="background:rgba(0,0,0,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)">
-  <div class="ios-alert mx-4 w-full max-w-sm anim-scale" style="border-radius:20px;overflow:hidden">
+  <div id="nom-card" class="ios-alert mx-4 w-full max-w-sm anim-scale" style="border-radius:20px;overflow:hidden">
     <!-- Header -->
     <div class="flex flex-col items-center pt-6 pb-4 px-5" style="background:var(--ios-yellow)">
       <div class="w-14 h-14 rounded-full bg-black bg-opacity-15 flex items-center justify-center mb-2">
