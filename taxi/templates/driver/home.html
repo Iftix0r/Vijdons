@@ -630,6 +630,13 @@ async function initPush(){
   if(!('serviceWorker' in navigator)||!('PushManager' in window)) return;
   try{
     const reg=await navigator.serviceWorker.register('{% url "driver:sw_js" %}',{scope:'/driver/'});
+    // Diqqat: brauzer/WebView yangi service worker versiyasini o'zi juda
+    // kamdan-kam (ba'zan ~24 soatda bir marta) tekshiradi. Agar qurilmada
+    // eski (avvalgi kunlardagi, HTML'ni keshlovchi) versiya hali ham faol
+    // bo'lib qolgan bo'lsa, foydalanuvchi serverga kiritilgan tuzatishlarni
+    // uzoq vaqt ko'rmasligi mumkin edi — shu sabab har sahifa ochilganda
+    // yangilanish bor-yo'qligini majburan tekshiramiz.
+    reg.update().catch(()=>{});
     await navigator.serviceWorker.ready;
     let sub=await reg.pushManager.getSubscription();
     if(!sub){

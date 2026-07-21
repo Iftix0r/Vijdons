@@ -562,7 +562,13 @@ const Audio = {
 // Push subscription home.html da (driver.is_on_duty bo'lganda) amalga oshiriladi.
 // Service Worker ni faqat ro'yxatdan o'tkazamiz:
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('{% url "driver:sw_js" %}', { scope: '/driver/' }).catch(() => {});
+  navigator.serviceWorker.register('{% url "driver:sw_js" %}', { scope: '/driver/' })
+    // Brauzer yangi versiya bor-yo'qligini o'zi kamdan-kam tekshiradi — har
+    // sahifa ochilganda (barcha bo'limlarda) majburan tekshirib qo'yamiz,
+    // aks holda qurilmada eski (avvalgi kunlardagi, HTML'ni keshlovchi)
+    // service worker versiyasi uzoq vaqt faol bo'lib qolishi mumkin edi.
+    .then(reg => reg.update().catch(() => {}))
+    .catch(() => {});
 }
 
 window.addEventListener('offline', () => {

@@ -75,7 +75,12 @@ def driver_service_worker(request):
     degan xato berardi, chunki /static/ ostidagi skript standart holda
     faqat /static/ doirasini boshqara oladi)."""
     with open(os.path.join(settings.BASE_DIR, 'taxi', 'static', 'driver', 'sw.js'), 'rb') as f:
-        return HttpResponse(f.read(), content_type='application/javascript')
+        response = HttpResponse(f.read(), content_type='application/javascript')
+    # Brauzer HTTP darajasida ushbu javobni keshlab qo'ymasin — aks holda
+    # reg.update() chaqiruvi ham eski (HTTP keshidagi) nusxani solishtirib,
+    # yangilanishni sezmay qolishi mumkin edi.
+    response['Cache-Control'] = 'no-cache'
+    return response
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────

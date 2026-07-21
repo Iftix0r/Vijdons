@@ -33,4 +33,13 @@ self.addEventListener('notificationclick', function(e) {
 });
 
 self.addEventListener('install',  () => self.skipWaiting());
-self.addEventListener('activate', e => e.waitUntil(clients.claim()));
+self.addEventListener('activate', e => e.waitUntil(
+  // Diqqat: avvalgi versiyalarda (bir necha kun oldin) bu SW HTML sahifalarni
+  // (Cache Storage'da 'vijdon-v1'/'vijdon-v3' nomi bilan) keshlagan edi. O'sha
+  // eski keshlar ba'zi qurilmalarda hali ham qolib ketgan bo'lishi mumkin —
+  // bu yerda ularni butunlay tozalaymiz, aks holda eski (server yangilagan
+  // shablonlardan OLDINGI) sahifalar tasodifan yana o'qilib qolishi mumkin edi.
+  caches.keys()
+    .then(keys => Promise.all(keys.map(k => caches.delete(k))))
+    .then(() => clients.claim())
+));
