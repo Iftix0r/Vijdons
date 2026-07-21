@@ -127,6 +127,7 @@
 {% block extra_js %}
 <script>
 const IS_ON_DUTY = {{ driver.is_on_duty|yesno:'true,false' }};
+const DRIVER_ID = {{ driver.id }};
 const DRIVER_NAME = "{{ driver.full_name|first|upper }}";
 let DRIVER_BALANCE = {{ driver_balance_int }};
 const DRIVER_CAR = "{{ driver.car_model }}";
@@ -151,7 +152,10 @@ let _timerIntervals = {};
 
 // Haydovchi joriy turgan tuman/hudud nomi ("Sergeli" kabi) — qidiruv
 // ekranida ko'rsatish uchun. trackDriverLocation() geokodlab shuni to'ldiradi.
-let _driverArea = sessionStorage.getItem('vijdon_area') || null;
+// Diqqat: sessionStorage kaliti DRIVER_ID bilan bog'langan — aks holda bir
+// qurilmada (masalan sinov paytida) haydovchi almashtirilganda oldingi
+// haydovchining eski (boshqa hududdagi) natijasi yangisiga "yopishib qolardi".
+let _driverArea = sessionStorage.getItem(`vijdon_area_${DRIVER_ID}`) || null;
 
 // Sahifa yuklanishi bilan darhol DOM ni render qilamiz
 renderOrdersDOM();
