@@ -744,6 +744,10 @@ document.addEventListener('visibilitychange', () => {
     _lastGeoLat = lat; _lastGeoLng = lng;
     sessionStorage.setItem(SS_LAT, lat);
     sessionStorage.setItem(SS_LNG, lng);
+    // Buyurtma sheet'idagi xarita (_initSheetMap) haydovchining hozirgi
+    // joylashuvini shu global o'zgaruvchilardan o'qiydi.
+    window._driverLat = lat;
+    window._driverLng = lng;
 
     // Koordinatni vaqtincha ko'rsatamiz (geocode kelgunga qadar)
     if (el && !sessionStorage.getItem(SS_ADDR)) {
@@ -863,7 +867,66 @@ function _tmxWidgetHTML(o){
   });
 }
 
+// ── Buyurtma sheet xaritasi ──────────────────────────────────────────────────
+// Haydovchining hozirgi joylashuvi (ko'k), olib ketish nuqtasi (yashil),
+// tushirish nuqtasi (qizil, bo'lsa) va ular orasidagi haydash marshrutini
+// ko'rsatadi. "Yo'lda" holatida marshrut mijozning tushish nuqtasigacha,
+// qolgan holatlarda olib ketish nuqtasigacha chiziladi.
+let _sheetMap = null;
+
+function _destroySheetMap(){
+  if (_sheetMap) {
+    try { _sheetMap.destroy(); } catch(_) {}
+    _sheetMap = null;
+  }
+}
+
+function _initSheetMap(o){
+  const el = document.getElementById('sheet-map');
+  if (!el || typeof ymaps === 'undefined' || !o.from_lat || !o.from_lng) return;
+  ymaps.ready(() => {
+    // Sheet qayta ochilganda (masalan boshqa buyurtma) eski xarita instance'ini tozalaymiz
+    _destroySheetMap();
+    if (!document.getElementById('sheet-map')) return; // sheet shu orada yopilgan bo'lishi mumkin
+
+    const fromCoords   = [o.from_lat, o.from_lng];
+    const toCoords     = (o.to_lat && o.to_lng) ? [o.to_lat, o.to_lng] : null;
+    const driverCoords = (window._driverLat && window._driverLng) ? [window._driverLat, window._driverLng] : null;
+
+    _sheetMap = new ymaps.Map('sheet-map', {
+      center: driverCoords || fromCoords, zoom: 13, controls: ['zoomControl'],
+    });
+
+    _sheetMap.geoObjects.add(new ymaps.Placemark(fromCoords, {}, {preset: 'islands#greenDotIcon'}));
+    if (toCoords) {
+      _sheetMap.geoObjects.add(new ymaps.Placemark(toCoords, {}, {preset: 'islands#redDotIcon'}));
+    }
+    if (driverCoords) {
+      _sheetMap.geoObjects.add(new ymaps.Placemark(driverCoords, {}, {preset: 'islands#blueCircleIcon'}));
+    }
+
+    // Yo'lda bo'lsa — mijozni tushirish nuqtasigacha, aks holda olib ketish nuqtasigacha
+    const nextStop = (o.status === 'on_way' && toCoords) ? toCoords : fromCoords;
+
+    if (driverCoords) {
+      const route = new ymaps.multiRouter.MultiRoute({
+        referencePoints: [driverCoords, nextStop],
+        params: { routingMode: 'auto' },
+      }, {
+        boundsAutoApply: true,
+        wayPointVisible: false,
+        routeActiveStrokeWidth: 4,
+        routeActiveStrokeColor: '#FFD600',
+      });
+      _sheetMap.geoObjects.add(route);
+    } else if (toCoords) {
+      _sheetMap.setBounds(ymaps.util.bounds.fromPoints([fromCoords, toCoords]), {checkZoomRange: true, zoomMargin: 30});
+    }
+  });
+}
+
 function _renderSheet(id, o){
+  _destroySheetMap();
   const pill={
     pending: 'pill-yellow', accepted:'pill-blue', on_way:'pill-purple', arrived:'pill-green'
   };
@@ -890,6 +953,9 @@ function _renderSheet(id, o){
         <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">#${o.id}</span>
       </div>
     </div>
+
+    <!-- Xarita: haydovchi joylashuvi + olib ketish/tushirish nuqtalari + marshrut -->
+    ${o.from_lat && o.from_lng ? `<div id="sheet-map" class="ios-card2 rounded-[14px] overflow-hidden" style="width:100%;height:170px"></div>` : ''}
 
     <!-- Route card — pastdan yuqoriga bog'lovchi chiziq bilan (pickup → dropoff) -->
     <div class="ios-card2 rounded-[14px] p-4">
@@ -1005,6 +1071,7 @@ function _renderSheet(id, o){
       _syncSheetTmx(o);
       setTimeout(() => _syncSheetTmx(o), 100);
     }
+    _initSheetMap(o);
   });
 }
 
@@ -1021,6 +1088,7 @@ function closeSheet(){
   // Overlay pointer-events ni darhol o'chiramiz — animatsiya tugashini kutmasdan
   ov.style.pointerEvents='none';
   _unlockDutyBtnSoon();
+  _destroySheetMap();
   clearTimeout(_sheetCloseTimer);
   _sheetCloseTimer = setTimeout(()=>{
     ov.classList.add('hidden');
