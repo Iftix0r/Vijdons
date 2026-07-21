@@ -147,11 +147,23 @@ def driver_home(request, driver):
     from django.db.models import Q
     from django.utils import timezone
     from .utils import haversine
+
+    _tariff = TariffSettings.get()
+
+    # Haydovchi "Asosiy" sahifani ochganda avtomatik navbatga chiqadi — buning
+    # uchun endi "Liniyaga chiqish" tugmasini bosish shart emas. Balans
+    # yetarli bo'lmasa (driver_duty_toggle'dagi bilan bir xil shart) avtomatik
+    # yoqilmaydi — bunday holda haydovchi baribir tugma orqali ham chiqa
+    # olmaydi, shuning uchun uni shu yerda ham chetlab o'tmaymiz.
+    if not driver.is_on_duty and driver.balance >= _tariff.commission:
+        driver.is_on_duty = True
+        driver.save(update_fields=['is_on_duty'])
+
     # Dispatch muddati o'tgan buyurtmalar (masalan, avtomatik qayta-yuborish
     # jarayoni server qayta ishga tushishi/ishchi jarayon almashinishi sababli
     # bajarilmay qolgan bo'lsa) hamma haydovchiga ko'rinadigan bo'lsin — aks
     # holda ular abadiy faqat bitta (javob bermagan) haydovchiga "osilib qoladi"
-    dispatch_cutoff = timezone.now() - timezone.timedelta(seconds=TariffSettings.get().dispatch_timeout)
+    dispatch_cutoff = timezone.now() - timezone.timedelta(seconds=_tariff.dispatch_timeout)
 
     # Haydovchi hozir biror buyurtmani bajarayotgan bo'lsa (accepted/on_way/
     # arrived) — uni bezovta qilmaslik uchun boshqa (hali hech kim olmagan)
@@ -229,7 +241,6 @@ def driver_home(request, driver):
             'tmx_paused_ms': o.tmx_paused_ms or 0,
         })
 
-    _tariff = TariffSettings.get()
     # Bugungi statistika
     from django.utils import timezone
     from django.db.models import Sum, Count, Q as DQ
