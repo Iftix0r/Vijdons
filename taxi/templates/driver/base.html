@@ -603,6 +603,16 @@ function getCookie(n) {
   const v = document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)');
   return v?v[2]:'';
 }
+
+// ── Tungi rejim (dark mode) ── Profil sahifasidagi toggle shuni chaqiradi.
+function toggleTheme() {
+  const dark = !document.documentElement.classList.contains('dark');
+  document.documentElement.classList.toggle('dark', dark);
+  localStorage.setItem('vijdon_theme', dark ? 'dark' : 'light');
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#000000' : '#F2F2F7');
+  const tog = document.getElementById('theme-tog');
+  if (tog) tog.classList.toggle('on', dark);
+}
 document.addEventListener('DOMContentLoaded', ()=>{ Native.getLocation().catch(()=>{}); });
 
 // ══════════════════════════════════════════════════════════════════════════════
