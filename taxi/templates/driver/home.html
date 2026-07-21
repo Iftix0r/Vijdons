@@ -318,6 +318,15 @@ async function loadOrders() {
       return;
     }
     _known = serverIds;
+    // Diqqat: qo'shilgan/olib tashlangan buyurtma bo'lmasa ham (eng ko'p
+    // uchraydigan holat), agar hozir faol (accepted/on_way/arrived) buyurtma
+    // bo'lsa — sheet DOM'da haqiqatan ochiqligini tekshirib qo'yamiz.
+    // Ilova fondan qaytganda (WebView'ning bizga noma'lum sabab bilan
+    // sheet'ni yashirib qo'yishi mumkin bo'lgan holatlarida) aynan shu poll
+    // ekranni "tiklaydigan" yagona joy bo'lishi mumkin — boshqa hech narsa
+    // o'zgarmagani uchun yuqoridagi tarmoqlarning birortasi ham ishlamaydi.
+    const _active = ORDERS.find(o => o.status === 'accepted' || o.status === 'on_way' || o.status === 'arrived');
+    if (_active) _ensureActiveSheet(_active);
   } catch(_){}
 }
 
@@ -887,7 +896,17 @@ let _sheetOpenForId = null;
 let _sheetOpenForStatus = null;
 
 function _ensureActiveSheet(o){
-  if (_sheetOpenForId === o.id && _sheetOpenForStatus === o.status) return;
+  // Diqqat: faqat ID/status'ga emas, sheet'ning DOM'dagi HAQIQIY holatiga ham
+  // qaraymiz. Aks holda — agar biror sabab bilan (masalan ilova fondan
+  // qaytganda, WebView kutilmagan tarzda sheet'ni yashirib qo'ysa, biz
+  // bashorat qila olmagan biror hodisa orqali) sheet DOM'da yashiringan, lekin
+  // _sheetOpenForId/Status hali "eski" (mos) qiymatda qolgan bo'lsa — bu
+  // funksiya "allaqachon ochiq" deb o'ylab, uni qayta ochmay, ekran butunlay
+  // bo'sh qolib ketardi. Shu sabab har safar DOM holatini ham tekshirib,
+  // mos kelmasa majburan qayta chizamiz.
+  const ov = document.getElementById('sheet-overlay');
+  const actuallyOpen = ov && !ov.classList.contains('hidden');
+  if (_sheetOpenForId === o.id && _sheetOpenForStatus === o.status && actuallyOpen) return;
   _renderSheet(o.id, o);
 }
 
