@@ -149,7 +149,7 @@
   <div id="sheet" class="ios-sheet absolute bottom-0 left-0 right-0 max-h-[92vh] overflow-y-auto"
        style="transform:translateY(100%);transition:transform .38s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom,34px)">
     <div class="ios-sheet-handle"></div>
-    <div id="sheet-body" class="px-4 pt-3 pb-4 space-y-3"></div>
+    <div id="sheet-body" class="px-4 pt-3 pb-4 space-y-2.5"></div>
   </div>
 </div>
 
@@ -931,6 +931,8 @@ function _renderSheet(id, o){
     pending: 'pill-yellow', accepted:'pill-blue', on_way:'pill-purple', arrived:'pill-green'
   };
   const label={pending:'Kutilmoqda',accepted:'Qabul qilindi',on_way:"Yo'lda",arrived:'Yetib keldim'};
+  const statusColor={pending:'#FFD600',accepted:'#409CFF',on_way:'#C77DFF',arrived:'#34C759'};
+  const hasMap = !!(o.from_lat && o.from_lng);
 
   const btns={
     pending: `<button onclick="doAction(${id},'accept')" class="ios-btn-primary">✓ Qabul qilish</button>
@@ -944,7 +946,21 @@ function _renderSheet(id, o){
   };
 
   document.getElementById('sheet-body').innerHTML=`
-    <!-- Status row -->
+    <!-- Xarita ustiga status/ID/to'lov cho'ntagi ustma-ust joylashadi — alohida
+         qator ajratmasdan, bitta ixcham blokka sig'diramiz. -->
+    ${hasMap ? `
+    <div class="ios-card2 rounded-[14px] overflow-hidden relative" style="width:100%;height:160px">
+      <div id="sheet-map" style="width:100%;height:100%"></div>
+      <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px]" style="background:rgba(20,20,22,.65);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
+        <span style="width:6px;height:6px;border-radius:50%;background:${statusColor[o.status]||'#fff'};flex-shrink:0"></span>
+        <span class="ios-caption2 font-bold" style="color:#fff">${label[o.status]||o.status}</span>
+        <span class="ios-caption2" style="color:rgba(255,255,255,.5)">#${o.id}</span>
+      </div>
+      <div class="absolute top-2.5 right-2.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px]" style="background:rgba(20,20,22,.65);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
+        <span class="ios-caption2 font-semibold" style="color:#fff">${o.payment_type==='cash'?'💵':'💳'}</span>
+        ${o.car_type_display?`<span class="ios-caption2 font-medium" style="color:rgba(255,255,255,.75)">${o.car_type_display}</span>`:''}
+      </div>
+    </div>` : `
     <div class="flex items-center justify-between">
       <span class="ios-caption2 font-semibold px-2.5 py-1 rounded-[8px] ${pill[o.status]||''}">${label[o.status]||o.status}</span>
       <div class="flex items-center gap-2">
@@ -952,36 +968,23 @@ function _renderSheet(id, o){
         <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">${o.car_type_display||''}</span>
         <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">#${o.id}</span>
       </div>
-    </div>
+    </div>`}
 
-    <!-- Xarita: haydovchi joylashuvi + olib ketish/tushirish nuqtalari + marshrut -->
-    ${o.from_lat && o.from_lng ? `<div id="sheet-map" class="ios-card2 rounded-[14px] overflow-hidden" style="width:100%;height:170px"></div>` : ''}
-
-    <!-- Route card — pastdan yuqoriga bog'lovchi chiziq bilan (pickup → dropoff) -->
-    <div class="ios-card2 rounded-[14px] p-4">
-      <div style="display:flex;gap:12px">
-        <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;padding-top:3px">
-          <div style="width:10px;height:10px;border-radius:50%;background:#34C759;box-shadow:0 0 0 4px rgba(52,199,89,.15)"></div>
-          ${o.to_address?`
-          <div style="width:2px;flex:1;min-height:22px;margin:4px 0;background:repeating-linear-gradient(180deg,var(--ios-sep) 0 4px,transparent 4px 8px)"></div>
-          <i class="fas fa-location-dot" style="color:#FF3B30;font-size:13px"></i>`:''}
-        </div>
-        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">
-          <div>
-            <div class="ios-caption2 font-semibold mb-0.5" style="color:var(--ios-label3)">QAYERDAN</div>
-            <div class="ios-subhead font-medium">${o.from_address}</div>
-          </div>
-          ${o.to_address?`
-          <div>
-            <div class="ios-caption2 font-semibold mb-0.5" style="color:var(--ios-label3)">QAYERGA</div>
-            <div class="ios-subhead font-medium" style="color:var(--ios-label2)">${o.to_address}</div>
-          </div>`:''}
-        </div>
+    <!-- Manzillar — ixcham, nuqta rangi xaritadagi markerlar bilan mos -->
+    <div class="ios-card2 rounded-[14px] px-3.5 py-3">
+      <div class="flex items-start gap-2.5">
+        <span style="width:8px;height:8px;border-radius:50%;background:#34C759;flex-shrink:0;margin-top:4px"></span>
+        <span class="ios-subhead font-medium flex-1 min-w-0">${o.from_address}</span>
       </div>
+      ${o.to_address?`
+      <div class="flex items-start gap-2.5 mt-2 pt-2" style="border-top:.5px solid var(--ios-sep)">
+        <i class="fas fa-location-dot flex-shrink-0" style="color:#FF3B30;font-size:9px;margin-top:5px;width:8px;text-align:center"></i>
+        <span class="ios-subhead font-medium flex-1 min-w-0" style="color:var(--ios-label2)">${o.to_address}</span>
+      </div>`:''}
     </div>
 
     <!-- Client card -->
-    <div class="ios-card2 rounded-[14px] p-4">
+    <div class="ios-card2 rounded-[14px] p-3.5">
       <div class="flex items-center gap-3 ${o.status!=='pending'?'mb-3':''}">
         <div class="w-11 h-11 rounded-full bg-[#007AFF] flex items-center justify-center flex-shrink-0">
           <i class="fas fa-user text-white text-base"></i>
@@ -1006,34 +1009,34 @@ function _renderSheet(id, o){
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
         <!-- Telefon -->
         <button onclick="Native.vibrate();Native.callPhone('${o.client_phone}')"
-                style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
-                       padding:10px 4px;border-radius:12px;background:rgba(52,199,89,.12);border:none;cursor:pointer;
+                style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+                       padding:8px 4px;border-radius:12px;background:rgba(52,199,89,.12);border:none;cursor:pointer;
                        -webkit-tap-highlight-color:transparent;transition:opacity .15s"
                 ontouchstart="this.style.opacity='.6'" ontouchend="this.style.opacity='1'">
-          <div style="width:34px;height:34px;border-radius:50%;background:#34C759;display:flex;align-items:center;justify-content:center">
-            <i class="fas fa-phone" style="color:#fff;font-size:14px"></i>
+          <div style="width:30px;height:30px;border-radius:50%;background:#34C759;display:flex;align-items:center;justify-content:center">
+            <i class="fas fa-phone" style="color:#fff;font-size:13px"></i>
           </div>
           <span style="font-size:11px;font-weight:600;color:#34C759">Qo'ng'iroq</span>
         </button>
         <!-- SMS / Chat -->
         <button onclick="Native.vibrate();window.location.href='sms:${o.client_phone}'"
-                style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
-                       padding:10px 4px;border-radius:12px;background:rgba(0,122,255,.1);border:none;cursor:pointer;
+                style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+                       padding:8px 4px;border-radius:12px;background:rgba(0,122,255,.1);border:none;cursor:pointer;
                        -webkit-tap-highlight-color:transparent;transition:opacity .15s"
                 ontouchstart="this.style.opacity='.6'" ontouchend="this.style.opacity='1'">
-          <div style="width:34px;height:34px;border-radius:50%;background:#007AFF;display:flex;align-items:center;justify-content:center">
-            <i class="fas fa-comment-sms" style="color:#fff;font-size:14px"></i>
+          <div style="width:30px;height:30px;border-radius:50%;background:#007AFF;display:flex;align-items:center;justify-content:center">
+            <i class="fas fa-comment-sms" style="color:#fff;font-size:13px"></i>
           </div>
           <span style="font-size:11px;font-weight:600;color:#007AFF">Xabar</span>
         </button>
         <!-- Telegram -->
         <button onclick="Native.vibrate();openTelegram('${o.client_phone}')"
-                style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
-                       padding:10px 4px;border-radius:12px;background:rgba(39,174,239,.12);border:none;cursor:pointer;
+                style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+                       padding:8px 4px;border-radius:12px;background:rgba(39,174,239,.12);border:none;cursor:pointer;
                        -webkit-tap-highlight-color:transparent;transition:opacity .15s"
                 ontouchstart="this.style.opacity='.6'" ontouchend="this.style.opacity='1'">
-          <div style="width:34px;height:34px;border-radius:50%;background:#27AEF0;display:flex;align-items:center;justify-content:center">
-            <i class="fab fa-telegram" style="color:#fff;font-size:16px"></i>
+          <div style="width:30px;height:30px;border-radius:50%;background:#27AEF0;display:flex;align-items:center;justify-content:center">
+            <i class="fab fa-telegram" style="color:#fff;font-size:15px"></i>
           </div>
           <span style="font-size:11px;font-weight:600;color:#27AEF0">Telegram</span>
         </button>
