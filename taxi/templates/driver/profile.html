@@ -181,6 +181,10 @@
 {% endblock %}
 {% block extra_js %}
 <script>
+// Tema toggle'ining boshlang'ich holati — server buni bilmaydi (localStorage
+// faqat brauzerda), shuning uchun sahifa yuklangach joriy holatga moslaymiz.
+document.getElementById('theme-tog')?.classList.toggle('on', document.documentElement.classList.contains('dark'));
+
 let _destActive = {{ driver.destination_mode|yesno:'true,false' }};
 
 async function toggleDestination() {
