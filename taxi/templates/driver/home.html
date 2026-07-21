@@ -366,14 +366,14 @@ function renderOrdersDOM() {
         <div class="skeleton" style="width:44px;height:12px"></div>
       </div>
     </div>`;
-  const scanHtml = `
-    <div class="space-y-3 anim-fade">
-      <div class="flex items-center gap-2 px-1">
-        <span class="search-dot w-2 h-2 rounded-full flex-shrink-0" style="background:#FFD600"></span>
-        <span class="ios-subhead font-semibold">Buyurtma qidirilmoqda</span>
-      </div>
-      ${_skeletonCard(false)}
-      ${_skeletonCard(true)}
+  // Qidiruv indikatori — buyurtma(lar) topilgan-topilmaganidan qat'i nazar
+  // HAR DOIM ko'rinadi: hali hech narsa topilmagan bo'lsa "Buyurtma
+  // qidirilmoqda", allaqachon 1+ buyurtma topilgan bo'lsa "Yana buyurtmalar
+  // qidirilmoqda" (chunki qidiruv davom etmoqda — topilganlar pastda turibdi).
+  const searchIndicatorHtml = `
+    <div class="flex items-center gap-2 px-1">
+      <span class="search-dot w-2 h-2 rounded-full flex-shrink-0" style="background:#FFD600"></span>
+      <span class="ios-subhead font-semibold">${pendingOrders.length ? 'Yana buyurtmalar qidirilmoqda' : 'Buyurtma qidirilmoqda'}</span>
     </div>`;
 
   // Diqqat: liniyaga chiqqandan keyin statsHtml (balans/statistika/mashina/tarix
@@ -381,7 +381,12 @@ function renderOrdersDOM() {
   // Ish vaqtida Asosiy sahifa faqat ishga tegishli narsani (qidiruv yoki kelgan
   // buyurtmalar) ko'rsatib, e'tiborni chalg'itmasin.
   if(!pendingOrders.length) {
-    wrap.innerHTML = scanHtml;
+    wrap.innerHTML = `
+      <div class="space-y-3 anim-fade">
+        ${searchIndicatorHtml}
+        ${_skeletonCard(false)}
+        ${_skeletonCard(true)}
+      </div>`;
     return;
   }
 
@@ -421,9 +426,11 @@ function renderOrdersDOM() {
       </div>
     </div>`).join('');
 
-  // statsHtml ham, scanHtml (qidiruv radari) ham qo'shilmaydi — buyurtma(lar)
-  // topilgan bo'lsa, Asosiy sahifa faqat o'shalarni ko'rsatadi.
-  wrap.innerHTML = `<div class="space-y-3 pt-1">${ordersHtml}</div>`;
+  // Yuqorida ixcham qidiruv indikatori (qidiruv davom etayotganini bildirish
+  // uchun), pastda esa topilgan buyurtmalar ro'yxati.
+  wrap.innerHTML = `
+    <div class="anim-fade">${searchIndicatorHtml}</div>
+    <div class="space-y-3 pt-3">${ordersHtml}</div>`;
   _startTimers();
 }
 
