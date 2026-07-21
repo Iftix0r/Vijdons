@@ -1058,9 +1058,11 @@ function _renderSheet(id, o){
   const ov=document.getElementById('sheet-overlay');
   const sh=document.getElementById('sheet');
 
-  // Buyurtma qabul qilingandan keyin (accepted/on_way/arrived) ekran TO'LIQ
-  // bekitilishi kerak — orqadagi tab-bar/xarita ko'rinmasin va tashqariga
-  // bosib yopib bo'lmasin, faqat "Yakunlash"/"Bekor qilish" orqali chiqiladi.
+  // Buyurtma qabul qilingandan keyin (accepted/on_way/arrived) tafsilotlar
+  // to'liq ekran holida qulflanadi — tashqariga bosib yopib bo'lmaydi, faqat
+  // "Yakunlash"/"Bekor qilish" orqali chiqiladi. Lekin tab-bar (Asosiy/Tarix)
+  // endi bundan mustasno — u sheet'dan balandroq qatlamda (z-index) qoladi,
+  // shu sabab haydovchi buyurtma faol bo'lsa ham Tarix bo'limiga o'ta oladi.
   // Hali qabul qilinmagan (pending) buyurtma esa oddiy bottom-sheet — uni
   // ko'rib chiqib, orqaga tashlab yuborish ham mumkin bo'lishi kerak.
   const isLocked = (o.status==='accepted'||o.status==='on_way'||o.status==='arrived');
@@ -1077,12 +1079,17 @@ function _renderSheet(id, o){
     sh.style.maxHeight = '';
     sh.style.height    = '';
     sh.style.borderRadius = '0';
+    // Pastdagi tugmalar (Yakunlash va h.k.) endi ustidan suzib turuvchi
+    // tab-bar bilan qoplanib qolmasligi uchun tab-bar balandligicha qo'shimcha
+    // bo'shliq qoldiramiz.
+    sh.style.paddingBottom = 'calc(env(safe-area-inset-bottom,16px) + 96px)';
     if (handle) handle.style.display = 'none';
   } else {
     sh.style.top = '';
     sh.style.maxHeight = '';
     sh.style.height    = '';
     sh.style.borderRadius = '';
+    sh.style.paddingBottom = '';
     if (handle) handle.style.display = '';
   }
 
