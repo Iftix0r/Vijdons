@@ -38,7 +38,7 @@
       <div class="ios-title font-semibold">{{ driver.full_name }}</div>
       <div class="ios-subhead mt-0.5" style="color:var(--ios-label3)">{{ driver.phone_number }}</div>
       <span class="inline-block mt-2 ios-caption2 font-semibold px-3 py-1 rounded-full
-        {% if driver.is_on_duty %}bg-[rgba(52,199,89,.12)] text-[#34C759]{% else %}bg-[rgba(142,142,147,.12)] text-[#8E8E93]{% endif %}">
+        {% if driver.is_on_duty %}pill-green{% else %}pill-gray{% endif %}">
         {% if driver.is_on_duty %}● Ish navbatida{% else %}○ Oflayn{% endif %}
       </span>
     </div>
@@ -46,7 +46,10 @@
 
   <!-- ── Balance ── -->
   <div class="ios-card rounded-[16px] p-5 anim-up" style="animation-delay:40ms">
-    <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">JORIY BALANS</div>
+    <div class="flex items-center gap-1.5 mb-1">
+      <i class="fas fa-wallet" style="color:#FFD600;font-size:10px"></i>
+      <div class="ios-caption2 font-semibold" style="color:var(--ios-label3)">JORIY BALANS</div>
+    </div>
     <div class="text-[34px] font-bold leading-tight {% if driver.balance < 0 %}text-[#FF3B30]{% else %}text-[#34C759]{% endif %}">
       {{ driver.balance|floatformat:0 }}<span class="ios-title font-medium ml-1" style="color:var(--ios-label3)">so'm</span>
     </div>
@@ -60,20 +63,20 @@
   <!-- ── Stats ── -->
   <div class="grid grid-cols-3 gap-2 anim-up" style="animation-delay:80ms">
     <div class="ios-card rounded-[14px] p-3.5 text-center">
+      <div class="flex items-center justify-center gap-1.5 mb-1"><i class="fas fa-flag-checkered" style="color:#FFD600;font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3)">Safarlar</span></div>
       <div class="ios-title font-bold text-[#FFD600]">{{ driver.trips_count|default:0 }}</div>
-      <div class="ios-caption2 mt-1" style="color:var(--ios-label3)">Safarlar</div>
     </div>
     <div class="ios-card rounded-[14px] p-3.5 text-center">
+      <div class="flex items-center justify-center gap-1.5 mb-1"><i class="fas fa-star" style="color:#FF9500;font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3)">Reyting</span></div>
       <div class="ios-title font-bold text-[#FF9500]">
-        {% if driver.rating %}{{ driver.rating|floatformat:1 }}⭐{% else %}—{% endif %}
+        {% if driver.rating %}{{ driver.rating|floatformat:1 }}{% else %}—{% endif %}
       </div>
-      <div class="ios-caption2 mt-1" style="color:var(--ios-label3)">Reyting</div>
     </div>
     <div class="ios-card rounded-[14px] p-3.5 text-center">
+      <div class="flex items-center justify-center gap-1.5 mb-1"><i class="fas fa-circle-dot" style="color:{% if driver.is_on_duty %}#34C759{% else %}#8E8E93{% endif %};font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3)">Navbat</span></div>
       <div class="ios-title font-bold {% if driver.is_on_duty %}text-[#34C759]{% else %}text-[#8E8E93]{% endif %}">
-        {% if driver.is_on_duty %}<i class="fas fa-circle text-[10px] animate-pulse"></i>{% else %}—{% endif %}
+        {% if driver.is_on_duty %}Faol{% else %}—{% endif %}
       </div>
-      <div class="ios-caption2 mt-1" style="color:var(--ios-label3)">Navbat</div>
     </div>
   </div>
 

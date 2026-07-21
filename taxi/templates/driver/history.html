@@ -66,23 +66,26 @@
       <div class="flex items-center justify-between mb-2">
         <span class="ios-caption2 font-semibold px-2.5 py-1 rounded-[8px]
           {% if order.status == 'completed' %}pill-green
-          {% elif order.status == 'cancelled' %}bg-[rgba(255,59,48,.1)] text-[#FF3B30]
-          {% else %}bg-[rgba(142,142,147,.12)] text-[#8E8E93]{% endif %}">
+          {% elif order.status == 'cancelled' %}pill-red
+          {% else %}pill-gray{% endif %}">
           {{ order.get_status_display }}
         </span>
         <span class="ios-caption2" style="color:var(--ios-label3)">#{{ order.id }} · {{ order.created_at|date:"d.m H:i" }}</span>
       </div>
-      <div class="space-y-1.5">
-        <div class="flex items-start gap-2.5">
-          <div class="w-2 h-2 rounded-full bg-[#34C759] mt-1.5 flex-shrink-0"></div>
-          <span class="ios-subhead font-medium leading-snug">{{ order.from_address }}</span>
+      <div class="flex items-stretch gap-2.5">
+        <div class="flex flex-col items-center flex-shrink-0" style="padding-top:4px">
+          <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#34C759"></span>
+          {% if order.to_address %}
+          <span style="width:2px;flex:1;min-height:16px;background:var(--ios-sep);margin:3px 0"></span>
+          <i class="fas fa-location-dot" style="font-size:10px;color:#FF3B30"></i>
+          {% endif %}
         </div>
-        {% if order.to_address %}
-        <div class="flex items-start gap-2.5">
-          <i class="fas fa-location-dot text-[#FF3B30] text-xs mt-1 flex-shrink-0"></i>
-          <span class="ios-subhead leading-snug" style="color:var(--ios-label3)">{{ order.to_address }}</span>
+        <div class="flex-1 space-y-1.5 min-w-0">
+          <span class="ios-subhead font-medium leading-snug block">{{ order.from_address }}</span>
+          {% if order.to_address %}
+          <span class="ios-subhead leading-snug block" style="color:var(--ios-label3)">{{ order.to_address }}</span>
+          {% endif %}
         </div>
-        {% endif %}
       </div>
       <div class="flex items-center justify-between mt-3 pt-3" style="border-top:.5px solid var(--ios-sep)">
         {% if order.price %}

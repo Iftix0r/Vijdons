@@ -134,23 +134,29 @@
 <div id="new-order-modal" class="fixed inset-0 z-[200] hidden flex items-center justify-center"
      onclick="if(event.target===this) closeNewOrderModal(false)"
      style="background:rgba(0,0,0,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)">
-  <div id="nom-card" class="ios-alert mx-4 w-full max-w-sm anim-scale" style="border-radius:20px;overflow:hidden">
-    <!-- Header -->
-    <div class="flex flex-col items-center pt-6 pb-4 px-5" style="background:var(--ios-yellow)">
-      <div class="w-14 h-14 rounded-full bg-black bg-opacity-15 flex items-center justify-center mb-2">
-        <i class="fas fa-bell text-black text-2xl"></i>
+  <div id="nom-card" class="ios-alert mx-4 w-full max-w-sm anim-scale" style="border-radius:24px;overflow:hidden">
+    <!-- Header — ixcham: chapda pulslanuvchi nuqta + sarlavha, o'ngda doiraviy
+         (halqa) sanoqli taymer. Avvalgi to'liq sariq blok + qo'ng'iroq ikonka +
+         chiziqli progress-bar o'rniga — zamonaviy, kamroq joy egallovchi shakl. -->
+    <div class="flex items-center justify-between px-5 pt-5 pb-3">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#FFD600;animation:pulse-dot 1s ease-in-out infinite"></span>
+        <span class="ios-title font-bold" style="color:var(--ios-label)">Yangi buyurtma</span>
       </div>
-      <div class="ios-title font-bold text-black">Yangi buyurtma!</div>
-      <div id="nom-timer" class="ios-caption font-semibold text-black mt-1 opacity-70">10s</div>
-      <!-- Progress bar -->
-      <div class="w-full mt-3 rounded-full overflow-hidden" style="height:3px;background:rgba(0,0,0,.15)">
-        <div id="nom-progress" class="h-full rounded-full bg-black" style="width:100%;transition:width 1s linear"></div>
+      <div class="relative w-11 h-11 flex-shrink-0">
+        <svg viewBox="0 0 44 44" style="transform:rotate(-90deg)">
+          <circle cx="22" cy="22" r="19" fill="none" stroke="var(--ios-fill)" stroke-width="4"></circle>
+          <circle id="nom-ring" cx="22" cy="22" r="19" fill="none" stroke="#FFD600" stroke-width="4"
+                  stroke-linecap="round" stroke-dasharray="119.4" stroke-dashoffset="0"
+                  style="transition:stroke-dashoffset 1s linear"></circle>
+        </svg>
+        <span id="nom-timer" class="absolute inset-0 flex items-center justify-center ios-footnote font-bold" style="color:var(--ios-label)">10</span>
       </div>
     </div>
     <!-- Body -->
-    <div class="px-5 py-4 space-y-2" id="nom-body"></div>
+    <div class="px-5 pb-2" id="nom-body"></div>
     <!-- Actions -->
-    <div class="px-5 pb-5 space-y-2">
+    <div class="px-5 pb-5 pt-3 space-y-2">
       <button id="nom-accept" class="ios-btn-primary">✓ Qabul qilish</button>
       <button id="nom-reject" class="ios-btn-destructive">Rad etish</button>
     </div>
@@ -483,30 +489,34 @@ function showNewOrderModal(orderId, order, originRect) {
   Native.vibrate([60,30,60,30,120]);
 
   // Body content — soddalik uchun: haydovchi 10 soniyada qaror qilishi kerak,
-  // shuning uchun ENG MUHIM raqam (narx) eng katta va markazda, qolgan
-  // ma'lumotlar (to'lov turi, mashina turi) pastda kichikroq ko'rinadi.
+  // shuning uchun ENG MUHIM raqam (narx) eng katta va markazda; yo'nalish esa
+  // Uber/Yandex uslubidagi "vaqt chizig'i" (nuqta→chiziq→pin) ko'rinishida,
+  // to'lov/mashina turi esa quyida kichik pillar (chip) sifatida ko'rsatiladi.
   const body = document.getElementById('nom-body');
   if (order) {
     body.innerHTML = `
-      <div class="text-center">
-        <div style="font-size:32px;font-weight:800;color:#34C759;letter-spacing:-.5px;line-height:1.1">
-          ${order.price?parseInt(order.price).toLocaleString():'—'}<span style="font-size:14px;font-weight:700;margin-left:4px;color:rgba(52,199,89,.6)">so'm</span>
+      <div class="text-center mb-1">
+        <div style="font-size:36px;font-weight:800;color:#34C759;letter-spacing:-.6px;line-height:1.1">
+          ${order.price?parseInt(order.price).toLocaleString():'—'}<span style="font-size:15px;font-weight:700;margin-left:4px;color:rgba(52,199,89,.6)">so'm</span>
         </div>
-        ${order.distance_km?`<div class="ios-caption font-semibold mt-0.5" style="color:var(--ios-label3)">${parseFloat(order.distance_km).toFixed(1)} km</div>`:''}
+        ${order.distance_km?`<div class="ios-caption font-semibold mt-1" style="color:var(--ios-label3)"><i class="fas fa-road" style="font-size:10px;margin-right:3px"></i>${parseFloat(order.distance_km).toFixed(1)} km</div>`:''}
       </div>
-      <div class="ios-card2 rounded-[14px] p-3 space-y-2" style="margin-top:10px">
-        <div class="flex items-start gap-2">
-          <div class="w-2 h-2 rounded-full bg-[#34C759] mt-1.5 flex-shrink-0"></div>
-          <span class="ios-subhead font-medium">${order.from_address||''}</span>
+      <div class="ios-card2 rounded-[16px] px-4 py-3.5" style="margin-top:12px">
+        <div class="flex items-stretch gap-3">
+          <div class="flex flex-col items-center flex-shrink-0" style="padding-top:4px">
+            <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:#34C759"></span>
+            ${order.to_address?`<span style="width:2px;flex:1;min-height:20px;background:var(--ios-sep);margin:4px 0"></span>
+            <i class="fas fa-location-dot" style="font-size:11px;color:#FF3B30"></i>`:''}
+          </div>
+          <div class="flex-1 space-y-3 min-w-0">
+            <span class="ios-subhead font-medium leading-snug block">${order.from_address||''}</span>
+            ${order.to_address?`<span class="ios-subhead leading-snug block" style="color:var(--ios-label3)">${order.to_address}</span>`:''}
+          </div>
         </div>
-        ${order.to_address?`<div class="flex items-start gap-2">
-          <i class="fas fa-location-dot text-[#FF3B30] text-xs mt-1 flex-shrink-0"></i>
-          <span class="ios-subhead" style="color:var(--ios-label3)">${order.to_address}</span>
-        </div>`:''}
       </div>
-      <div class="flex items-center justify-center gap-4">
-        <span class="ios-caption font-semibold" style="color:var(--ios-label3)">${order.payment_type==='cash'?'💵 Naqd':'💳 Karta'}</span>
-        <span class="ios-caption font-semibold" style="color:var(--ios-label3)">${order.car_type_display||''}</span>
+      <div class="flex items-center justify-center gap-2 mt-3">
+        <span class="ios-caption2 font-semibold px-2.5 py-1 rounded-[8px] pill-green">${order.payment_type==='cash'?'💵 Naqd':'💳 Karta'}</span>
+        ${order.car_type_display?`<span class="ios-caption2 font-semibold px-2.5 py-1 rounded-[8px] pill-yellow">🚗 ${order.car_type_display}</span>`:''}
       </div>`;
   } else {
     body.innerHTML = `<p class="ios-subhead text-center" style="color:var(--ios-label3)">#${orderId}</p>`;
@@ -549,17 +559,25 @@ function showNewOrderModal(orderId, order, originRect) {
     if(_nomOrderId) _renderSheet(_nomOrderId, order);
   };
 
-  // Countdown 10s with progress bar
+  // Countdown 10s — doiraviy (halqa) taymer sifatida
   const TOTAL = 10;
+  const RING_CIRC = 119.4;
   let sec = TOTAL;
   const timerEl = document.getElementById('nom-timer');
-  const progressEl = document.getElementById('nom-progress');
-  timerEl.textContent = sec + 's';
-  if(progressEl) progressEl.style.width = '100%';
+  const ringEl   = document.getElementById('nom-ring');
+  timerEl.textContent = sec;
+  if (ringEl) {
+    // Boshida animatsiyasiz to'liq halqa (aks holda avvalgi bekor qilingan
+    // taymerdan qolgan holatdan "sakrab" boshlanardi)
+    ringEl.style.transition = 'none';
+    ringEl.style.strokeDashoffset = '0';
+    void ringEl.getBoundingClientRect();
+    ringEl.style.transition = 'stroke-dashoffset 1s linear';
+  }
   _nomTimer = setInterval(() => {
     sec--;
-    timerEl.textContent = sec + 's';
-    if(progressEl) progressEl.style.width = (sec / TOTAL * 100) + '%';
+    timerEl.textContent = sec;
+    if (ringEl) ringEl.style.strokeDashoffset = (RING_CIRC * (1 - sec / TOTAL)) + '';
     if (sec <= 0) closeNewOrderModal(true);
   }, 1000);
 
