@@ -1079,17 +1079,19 @@ function _renderSheet(id, o){
     sh.style.maxHeight = '';
     sh.style.height    = '';
     sh.style.borderRadius = '0';
-    // Pastdagi tugmalar (Yakunlash va h.k.) endi ustidan suzib turuvchi
-    // tab-bar bilan qoplanib qolmasligi uchun tab-bar balandligicha qo'shimcha
-    // bo'shliq qoldiramiz.
-    sh.style.paddingBottom = 'calc(env(safe-area-inset-bottom,16px) + 96px)';
+    // Overlay (backdrop + sheet) pastdan tab-bar joylashgan joygacha qisqaradi
+    // — shu orqali tugmalar suzib turuvchi tab-bar ostida qolib ko'rinmay
+    // qolmaydi va bo'sh joyda shaffof sheet foni bilan qorong'i backdrop
+    // qo'shilib kulrang "dog'" hosil bo'lmaydi (chunki bu joy endi overlay'ga
+    // umuman kirmaydi — orqadagi sahifa foni tabiiy ko'rinadi).
+    ov.style.bottom = 'calc(env(safe-area-inset-bottom,16px) + 92px)';
     if (handle) handle.style.display = 'none';
   } else {
     sh.style.top = '';
     sh.style.maxHeight = '';
     sh.style.height    = '';
     sh.style.borderRadius = '';
-    sh.style.paddingBottom = '';
+    ov.style.bottom = '';
     if (handle) handle.style.display = '';
   }
 
