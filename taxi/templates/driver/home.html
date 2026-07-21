@@ -321,7 +321,7 @@ function renderOrdersDOM() {
     <div class="space-y-3 anim-fade">
       <div class="flex items-center gap-2 px-1">
         <span class="search-dot w-2 h-2 rounded-full flex-shrink-0" style="background:#FFD600"></span>
-        <span class="ios-subhead font-semibold">${_driverArea ? _driverArea + " bo'yicha buyurtmalar qidirilmoqda" : 'Buyurtma qidirilmoqda'}</span>
+        <span class="ios-subhead font-semibold">${_driverArea ? `Manzilingiz aniqlandi: ${_driverArea}. Shu bo'yicha buyurtma qidirilmoqda` : 'Buyurtma qidirilmoqda'}</span>
       </div>
       ${_skeletonCard(false)}
       ${_skeletonCard(true)}
