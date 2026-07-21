@@ -58,6 +58,7 @@ class Driver(models.Model):
 
 
 class Client(models.Model):
+    user         = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True, related_name='client_profile')
     full_name    = models.CharField(max_length=255, verbose_name="Mijoz ismi", null=True, blank=True)
     phone_number = models.CharField(max_length=20, unique=True, verbose_name="Telefon raqami")
     is_blocked   = models.BooleanField(default=False, verbose_name="Bloklangan")

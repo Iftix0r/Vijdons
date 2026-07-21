@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#F2F2F7">
+<title>{% block title %}Vijdon Taxi{% endblock %}</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class'}</script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<script src="https://api-maps.yandex.ru/2.1/?apikey=469e8d29-be0b-42da-9bd4-ed515dbdb741&lang=uz_UZ" type="text/javascript"></script>
+<style>
+* {
+  font-family: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+body { overscroll-behavior: none; -webkit-overflow-scrolling: touch; }
+::-webkit-scrollbar { display: none; }
+
+.safe-top    { height: env(safe-area-inset-top, 47px); }
+.safe-bottom { height: env(safe-area-inset-bottom, 34px); }
+.pb-safe     { padding-bottom: calc(env(safe-area-inset-bottom, 34px) + 83px); }
+
+:root {
+  --ios-bg:        #F2F2F7;
+  --ios-card:      #FFFFFF;
+  --ios-card2:     #F2F2F7;
+  --ios-label:     #000000;
+  --ios-label2:    #3C3C43;
+  --ios-label3:    rgba(60,60,67,.6);
+  --ios-sep:       rgba(60,60,67,.29);
+  --ios-fill:      rgba(120,120,128,.2);
+  --ios-yellow:    #FFD600;
+  --ios-green:     #34C759;
+  --ios-red:       #FF3B30;
+  --ios-blue:      #007AFF;
+  --ios-purple:    #AF52DE;
+  --ios-orange:    #FF9500;
+}
+.dark {
+  --ios-bg:        #000000;
+  --ios-card:      #1C1C1E;
+  --ios-card2:     #2C2C2E;
+  --ios-label:     #FFFFFF;
+  --ios-label2:    rgba(235,235,245,.6);
+  --ios-label3:    rgba(235,235,245,.3);
+  --ios-sep:       rgba(84,84,88,.65);
+  --ios-fill:      rgba(118,118,128,.24);
+}
+body { background: var(--ios-bg); color: var(--ios-label); }
+
+.ios-card  { background: var(--ios-card);  border-radius: 16px; }
+.ios-card2 { background: var(--ios-card2); border-radius: 16px; }
+
+.ios-tabbar {
+  background: rgba(255,255,255,.88);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border: .5px solid var(--ios-sep);
+  border-radius: 9999px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.08);
+}
+.dark .ios-tabbar {
+  background: rgba(18,18,20,.92);
+  box-shadow: 0 8px 28px rgba(0,0,0,.50), 0 2px 8px rgba(0,0,0,.30);
+}
+
+.ios-navbar {
+  background: rgba(242,242,247,.85);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border: .5px solid var(--ios-sep);
+  border-radius: 22px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.10), 0 2px 8px rgba(0,0,0,.05);
+}
+.dark .ios-navbar {
+  background: rgba(18,18,20,.92);
+  box-shadow: 0 8px 28px rgba(0,0,0,.40), 0 2px 8px rgba(0,0,0,.25);
+}
+
+.ios-large-title { font-size: 34px; font-weight: 700; letter-spacing: .37px; line-height: 1.1; }
+.ios-title    { font-size: 17px; font-weight: 600; letter-spacing: -.41px; }
+.ios-body     { font-size: 17px; font-weight: 400; letter-spacing: -.41px; }
+.ios-callout  { font-size: 16px; font-weight: 400; letter-spacing: -.32px; }
+.ios-subhead  { font-size: 15px; font-weight: 400; letter-spacing: -.24px; }
+.ios-footnote { font-size: 13px; font-weight: 400; letter-spacing: -.08px; }
+.ios-caption  { font-size: 12px; font-weight: 400; letter-spacing: 0; }
+.ios-caption2 { font-size: 11px; font-weight: 400; letter-spacing: .07px; }
+
+.ios-btn-primary {
+  background: var(--ios-yellow); color: #000;
+  font-size: 17px; font-weight: 600; letter-spacing: -.41px;
+  border-radius: 14px; padding: 18px 16px; min-height: 56px; width: 100%;
+  transition: opacity .15s, transform .1s; border: none;
+}
+.ios-btn-primary:active { opacity: .7; transform: scale(.98); }
+.ios-btn-primary:disabled { opacity: .4; }
+
+.ios-btn-destructive {
+  background: rgba(255,59,48,.12); color: var(--ios-red);
+  font-size: 17px; font-weight: 600; letter-spacing: -.41px;
+  border-radius: 14px; padding: 18px 16px; min-height: 56px; width: 100%;
+  transition: opacity .15s, transform .1s; border: none;
+}
+.ios-btn-destructive:active { opacity: .7; transform: scale(.98); }
+
+.ios-input {
+  background: var(--ios-fill); border-radius: 10px; padding: 11px 16px;
+  font-size: 17px; font-weight: 400; letter-spacing: -.41px; color: var(--ios-label);
+  width: 100%; border: none; outline: none; transition: background .2s;
+}
+.ios-input::placeholder { color: var(--ios-label3); }
+.ios-input:focus { background: rgba(120,120,128,.28); }
+
+.ios-group { background: var(--ios-card); border-radius: 12px; overflow: hidden; }
+.ios-row { display: flex; align-items: center; padding: 12px 16px; border-bottom: .5px solid var(--ios-sep); transition: background .1s; }
+.ios-row:last-child { border-bottom: none; }
+.ios-row:active { background: var(--ios-fill); }
+
+.ios-badge {
+  background: var(--ios-red); color: white; font-size: 12px; font-weight: 700;
+  min-width: 18px; height: 18px; border-radius: 9px; padding: 0 5px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+@keyframes ios-slide-up { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+@keyframes ios-fade     { from{opacity:0} to{opacity:1} }
+@keyframes ios-scale-in { from{transform:scale(.92);opacity:0} to{transform:scale(1);opacity:1} }
+@keyframes shimmer      { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+@keyframes pulse-ring   { 0%{transform:scale(1);opacity:.6} 100%{transform:scale(2.4);opacity:0} }
+
+.anim-up    { animation: ios-slide-up .36s cubic-bezier(.25,.46,.45,.94) both; }
+.anim-fade  { animation: ios-fade .25s ease both; }
+.anim-scale { animation: ios-scale-in .3s cubic-bezier(.34,1.56,.64,1) both; }
+
+.skeleton {
+  background: linear-gradient(90deg, var(--ios-fill) 25%, rgba(120,120,128,.12) 50%, var(--ios-fill) 75%);
+  background-size: 400px 100%; animation: shimmer 1.6s infinite; border-radius: 12px;
+}
+
+.ios-sheet {
+  border-radius: 20px 20px 0 0; background: rgba(255,255,255,.75);
+  backdrop-filter: saturate(180%) blur(28px); -webkit-backdrop-filter: saturate(180%) blur(28px);
+  box-shadow: 0 -8px 40px rgba(0,0,0,.14);
+}
+.dark .ios-sheet { background: rgba(28,28,30,.78); box-shadow: 0 -8px 40px rgba(0,0,0,.5); }
+.ios-sheet-handle { width: 36px; height: 5px; background: var(--ios-sep); border-radius: 3px; margin: 8px auto 0; }
+
+.ios-alert {
+  background: rgba(255,255,255,.78);
+  backdrop-filter: saturate(180%) blur(28px); -webkit-backdrop-filter: saturate(180%) blur(28px);
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+}
+.dark .ios-alert { background: rgba(28,28,30,.8); box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+
+.pill-yellow { background:rgba(255,214,0,.15); color:#B8860B; }
+.pill-blue   { background:rgba(0,122,255,.12); color:var(--ios-blue); }
+.pill-purple { background:rgba(175,82,222,.12); color:var(--ios-purple); }
+.pill-green  { background:rgba(52,199,89,.12); color:#1a7a35; }
+.dark .pill-yellow { color:#FFD600; }
+.dark .pill-green  { color:var(--ios-green); }
+</style>
+</head>
+<body>
+
+<div class="safe-top" style="background:var(--ios-bg)"></div>
+
+<div id="offline-bar" class="hidden fixed left-0 right-0 z-[500] text-center ios-caption2 font-semibold py-1.5 bg-[#FF3B30] text-white"
+     style="top:env(safe-area-inset-top,47px)">
+  Internet aloqasi yo'q
+</div>
+
+<div id="toast" class="fixed left-4 right-4 z-[400] hidden"
+     style="top:calc(env(safe-area-inset-top,47px) + 8px)">
+  <div id="toast-inner" class="ios-alert flex items-center gap-3 px-4 py-3.5" style="border-radius:14px">
+    <div id="toast-icon-wrap" class="w-10 h-10 rounded-[12px] flex items-center justify-center flex-shrink-0">
+      <i id="toast-icon" class="text-lg"></i>
+    </div>
+    <div class="flex-1 min-w-0">
+      <div id="toast-title" class="ios-footnote font-semibold leading-tight"></div>
+      <div id="toast-body"  class="ios-caption2 mt-0.5 leading-tight" style="color:var(--ios-label3)"></div>
+    </div>
+    <button onclick="hideToast()" style="color:var(--ios-label3);font-size:20px;line-height:1">×</button>
+  </div>
+</div>
+
+<main class="pb-safe overflow-y-auto" id="main-content" style="min-height:100vh">
+  {% block content %}{% endblock %}
+</main>
+
+<div class="ios-tabbar fixed left-5 right-5 z-50" style="bottom:calc(env(safe-area-inset-bottom,16px) + 10px)">
+  <div class="flex items-center justify-around px-1 py-1">
+    <a href="{% url 'client:home' %}" onclick="Native.vibrate()"
+       class="flex flex-col items-center gap-[3px] px-5 py-2 min-h-[56px] justify-center transition-all active:opacity-60 relative">
+      <i class="fas fa-house text-[22px] {% if active_tab == 'home' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+      <span class="ios-caption2 {% if active_tab == 'home' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Asosiy</span>
+    </a>
+    <a href="{% url 'client:history' %}" onclick="Native.vibrate()"
+       class="flex flex-col items-center gap-[3px] px-5 py-2 min-h-[56px] justify-center transition-all active:opacity-60 relative">
+      <i class="fas fa-clock-rotate-left text-[22px] {% if active_tab == 'history' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+      <span class="ios-caption2 {% if active_tab == 'history' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Tarix</span>
+    </a>
+    <a href="{% url 'client:profile' %}" onclick="Native.vibrate()"
+       class="flex flex-col items-center gap-[3px] px-5 py-2 min-h-[56px] justify-center transition-all active:opacity-60 relative">
+      <i class="fas fa-user text-[22px] {% if active_tab == 'profile' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+      <span class="ios-caption2 {% if active_tab == 'profile' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Profil</span>
+    </a>
+  </div>
+</div>
+
+<script>
+const Native = {
+  isApp: typeof NativeBridge !== 'undefined',
+  vibrate(p=10) {
+    if (this.isApp) NativeBridge.postMessage(JSON.stringify({action:'vibrate'}));
+    else if (navigator.vibrate) navigator.vibrate(p);
+  },
+  getLocation() {
+    return new Promise((res,rej) => {
+      if (this.isApp) {
+        NativeBridge.postMessage(JSON.stringify({action:'get_location'}));
+        window.addEventListener('vijdon_location', e=>res(e.detail), {once:true});
+        setTimeout(()=>rej('timeout'), 10000);
+      } else if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          p=>res({lat:p.coords.latitude,lng:p.coords.longitude}),
+          rej, {enableHighAccuracy:true,timeout:8000}
+        );
+      } else rej('no_gps');
+    });
+  },
+  callPhone(phone) { window.location.href='tel:'+phone; }
+};
+
+const OPERATOR_PHONE = '{{ operator_phone|default:"1351" }}';
+function callOperator() {
+  try { Native.vibrate(); } catch(_) {}
+  Native.callPhone(OPERATOR_PHONE);
+}
+
+let _tt;
+const _TS = {
+  order:   {bg:'#FFD600', ic:'#000', icon:'fa-bell',         label:''},
+  success: {bg:'#34C759', ic:'#fff', icon:'fa-check',        label:''},
+  error:   {bg:'#FF3B30', ic:'#fff', icon:'fa-xmark-circle', label:''},
+  info:    {bg:'#007AFF', ic:'#fff', icon:'fa-info',         label:''},
+};
+function showToast(title, body='', type='info', dur=3200) {
+  const s = _TS[type]||_TS.info;
+  const wrap = document.getElementById('toast-icon-wrap');
+  wrap.style.background = s.bg+'22';
+  document.getElementById('toast-icon').className = `fas ${s.icon} text-lg`;
+  document.getElementById('toast-icon').style.color = s.bg;
+  document.getElementById('toast-title').textContent = title;
+  document.getElementById('toast-body').textContent  = body;
+  const el = document.getElementById('toast');
+  el.classList.remove('hidden');
+  el.style.opacity='1'; el.style.transform='translateY(0)';
+  clearTimeout(_tt);
+  _tt = setTimeout(hideToast, dur);
+}
+function hideToast() {
+  const el = document.getElementById('toast');
+  el.style.transition='opacity .25s,transform .25s';
+  el.style.opacity='0'; el.style.transform='translateY(-8px)';
+  setTimeout(()=>{ el.classList.add('hidden'); el.style.transition=''; el.style.opacity=''; el.style.transform=''; }, 260);
+}
+
+window.addEventListener('offline', () => document.getElementById('offline-bar').classList.remove('hidden'));
+window.addEventListener('online',  () => {
+  document.getElementById('offline-bar').classList.add('hidden');
+  showToast('Aloqa tiklandi', '', 'success', 2000);
+});
+if (!navigator.onLine) document.getElementById('offline-bar').classList.remove('hidden');
+
+function getCookie(n) {
+  const v = document.cookie.match('(^|;) ?'+n+'=([^;]*)(;|$)');
+  return v?v[2]:'';
+}
+document.addEventListener('DOMContentLoaded', ()=>{ Native.getLocation().catch(()=>{}); });
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

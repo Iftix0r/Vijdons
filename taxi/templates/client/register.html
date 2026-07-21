@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#F2F2F7">
+<title>Vijdon Taxi — Ro'yxatdan o'tish</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<style>
+  *{font-family:-apple-system,'SF Pro Display','SF Pro Text','Helvetica Neue',sans-serif;-webkit-tap-highlight-color:transparent;box-sizing:border-box;}
+  body{overscroll-behavior:none;background:#F2F2F7;color:#000;}
+  .ios-input{background:rgba(120,120,128,.16);border-radius:10px;padding:13px 16px 13px 44px;font-size:17px;color:#000;width:100%;border:none;outline:none;transition:background .2s;}
+  .ios-input::placeholder{color:rgba(60,60,67,.3);}
+  .ios-input:focus{background:rgba(120,120,128,.24);}
+  @keyframes fadeUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .fu{animation:fadeUp .4s cubic-bezier(.25,.46,.45,.94) both;}
+</style>
+</head>
+<body style="padding-top:env(safe-area-inset-top,47px);padding-bottom:env(safe-area-inset-bottom,34px);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center">
+
+<div class="w-full max-w-sm px-5 space-y-6 py-8">
+
+  <div class="flex flex-col items-center gap-3 fu">
+    <div class="w-[72px] h-[72px] rounded-[20px] bg-[#FFD600] flex items-center justify-center"
+         style="box-shadow:0 8px 32px rgba(255,214,0,.4)">
+      <span style="font-size:34px;font-weight:800;color:#000">V</span>
+    </div>
+    <div class="text-center">
+      <div style="font-size:24px;font-weight:700;letter-spacing:.36px">Ro'yxatdan o'tish</div>
+      <div style="font-size:14px;color:rgba(60,60,67,.6);margin-top:2px">Bir necha soniyada tayyor</div>
+    </div>
+  </div>
+
+  <div class="space-y-3 fu" style="animation-delay:.1s">
+    {% if error %}
+    <div style="background:rgba(255,59,48,.15);border:1px solid rgba(255,59,48,.3);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px">
+      <i class="fas fa-circle-exclamation" style="color:#FF3B30;flex-shrink:0"></i>
+      <span style="font-size:15px;color:#FF3B30;font-weight:500">{{ error }}</span>
+    </div>
+    {% endif %}
+
+    <form method="POST" action="{% url 'client:register' %}" id="form" class="space-y-3">
+      {% csrf_token %}
+
+      <div class="relative">
+        <i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(60,60,67,.4);font-size:15px"></i>
+        <input type="text" name="full_name" required autofocus
+               placeholder="Ismingiz" class="ios-input">
+      </div>
+
+      <div class="relative">
+        <i class="fas fa-phone absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(60,60,67,.4);font-size:15px"></i>
+        <input type="tel" name="phone_number" required
+               placeholder="+998 90 000 00 00" class="ios-input">
+      </div>
+
+      <div class="relative">
+        <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(60,60,67,.4);font-size:15px"></i>
+        <input type="password" name="password" id="pwd" required minlength="6"
+               placeholder="Parol (kamida 6 belgi)" class="ios-input" style="padding-right:48px">
+        <button type="button" onclick="togglePwd()" class="absolute right-4 top-1/2 -translate-y-1/2 active:opacity-60"
+                style="color:rgba(60,60,67,.4);font-size:15px">
+          <i class="fas fa-eye" id="eye"></i>
+        </button>
+      </div>
+
+      <button type="submit" id="sbtn"
+              style="width:100%;background:#FFD600;color:#000;font-size:17px;font-weight:600;letter-spacing:-.41px;border-radius:14px;padding:16px;transition:opacity .15s,transform .1s;display:flex;align-items:center;justify-content:center;gap:8px">
+        <span id="btxt">Ro'yxatdan o'tish</span>
+        <i class="fas fa-arrow-right text-sm" id="bico"></i>
+      </button>
+    </form>
+  </div>
+
+  <div class="text-center fu" style="animation-delay:.2s">
+    <a href="{% url 'client:login' %}" style="font-size:15px;color:rgba(60,60,67,.6)">
+      Hisobingiz bormi? <span style="color:#B8860B;font-weight:600">Kirish</span>
+    </a>
+  </div>
+
+</div>
+
+<script>
+function togglePwd(){
+  const p=document.getElementById('pwd'),e=document.getElementById('eye');
+  p.type=p.type==='password'?'text':'password';
+  e.className=p.type==='password'?'fas fa-eye':'fas fa-eye-slash';
+}
+document.getElementById('form').addEventListener('submit',()=>{
+  const b=document.getElementById('sbtn');
+  b.style.opacity='.6'; b.disabled=true;
+  document.getElementById('btxt').textContent='Yuborilmoqda...';
+  document.getElementById('bico').className='fas fa-spinner fa-spin text-sm';
+});
+</script>
+</body>
+</html>

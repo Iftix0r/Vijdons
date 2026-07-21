@@ -1,0 +1,328 @@
+{% extends "client/base.html" %}
+{% block title %}Vijdon Taxi{% endblock %}
+{% block content %}
+
+<div class="ios-navbar sticky top-3 mx-4 z-20 px-4 py-3 flex items-center justify-between">
+  <div>
+    <div class="ios-title font-bold">Salom, {{ client.full_name|default:"Yo'lovchi" }} 👋</div>
+    <div class="ios-caption2 mt-0.5" style="color:var(--ios-label3)">Qayerga boramiz?</div>
+  </div>
+  <button onclick="callOperator()" class="w-10 h-10 rounded-full flex items-center justify-center" style="background:var(--ios-fill)">
+    <i class="fas fa-headset" style="color:var(--ios-blue)"></i>
+  </button>
+</div>
+
+<!-- ── Order request form ─────────────────────────────────────────────── -->
+<div id="order-form-wrap" class="px-4 pt-3 space-y-3 {% if active_order %}hidden{% endif %}">
+
+  <div class="ios-card rounded-[16px] overflow-hidden anim-up">
+    <div id="order_ymap" style="width:100%;height:260px"></div>
+    <div class="p-3 space-y-2" style="border-top:.5px solid var(--ios-sep)">
+      <button type="button" id="pick-from-btn" onclick="setPickMode('from')"
+              class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-left transition-all" style="background:rgba(52,199,89,.12)">
+        <span class="w-2.5 h-2.5 rounded-full bg-[#34C759] flex-shrink-0"></span>
+        <span class="ios-subhead font-medium flex-1 truncate" id="map_from_text">Xaritada belgilang yoki joriy manzil</span>
+        <i class="fas fa-crosshairs" style="color:var(--ios-label3)" onclick="event.stopPropagation();useCurrentLocation()"></i>
+      </button>
+      <button type="button" id="pick-to-btn" onclick="setPickMode('to')"
+              class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-left transition-all" style="background:var(--ios-fill)">
+        <i class="fas fa-location-dot text-[#FF3B30] flex-shrink-0" style="font-size:11px"></i>
+        <span class="ios-subhead flex-1 truncate" style="color:var(--ios-label3)" id="map_to_text">Qayerga (ixtiyoriy)</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="ios-card rounded-[16px] p-4 space-y-3 anim-up" style="animation-delay:60ms">
+    <div>
+      <div class="ios-caption2 font-semibold mb-1.5" style="color:var(--ios-label3)">MASHINA TURI</div>
+      <div class="flex gap-2" id="car-type-pills">
+        {% for val, label in car_type_choices %}
+        <button type="button" onclick="selectPill('car_type','{{ val }}')"
+                data-val="{{ val }}"
+                class="pill-btn flex-1 ios-caption font-semibold py-2 rounded-[10px] transition-all {% if forloop.first %}pill-active{% endif %}"
+                style="background:{% if forloop.first %}var(--ios-yellow){% else %}var(--ios-fill){% endif %};color:{% if forloop.first %}#000{% else %}var(--ios-label3){% endif %}">
+          {{ label }}
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+    <div>
+      <div class="ios-caption2 font-semibold mb-1.5" style="color:var(--ios-label3)">TO'LOV TURI</div>
+      <div class="flex gap-2" id="payment-pills">
+        <button type="button" onclick="selectPill('payment_type','cash')" data-val="cash"
+                class="pill-btn flex-1 ios-caption font-semibold py-2 rounded-[10px] transition-all pill-active"
+                style="background:var(--ios-yellow);color:#000">💵 Naqd</button>
+        <button type="button" onclick="selectPill('payment_type','card')" data-val="card"
+                class="pill-btn flex-1 ios-caption font-semibold py-2 rounded-[10px] transition-all"
+                style="background:var(--ios-fill);color:var(--ios-label3)">💳 Karta</button>
+      </div>
+    </div>
+    <input type="text" id="note-input" placeholder="Izoh (ixtiyoriy)" class="ios-input">
+  </div>
+
+  <div id="price-est-wrap" class="ios-card2 rounded-[14px] p-3 flex items-center justify-between hidden anim-up">
+    <span class="ios-subhead" style="color:var(--ios-label3)">Taxminiy narx</span>
+    <span class="ios-title font-bold" id="price-est-val" style="color:#34C759">—</span>
+  </div>
+
+  <div class="px-0 pb-4">
+    <button type="button" id="order-submit-btn" onclick="submitOrder()" class="ios-btn-primary" disabled>
+      <i class="fas fa-car-side mr-2"></i>Buyurtma chaqirish
+    </button>
+  </div>
+</div>
+
+<!-- ── Active order tracking ──────────────────────────────────────────── -->
+<div id="active-order-wrap" class="px-4 pt-3 space-y-3 {% if not active_order %}hidden{% endif %}">
+  <div id="active-order-body"></div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<style>
+.pill-active { }
+@keyframes pulse-dot2 { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.4; transform:scale(.75); } }
+.status-dot { animation: pulse-dot2 1.3s infinite; }
+</style>
+
+<script>
+let ACTIVE_ORDER = {{ active_order_json|safe }};
+const TARIFF_BASE   = {{ tariff_base_price|default:0 }};
+const TARIFF_PER_KM = {{ tariff_per_km|default:0 }};
+
+// ── Map / order form ─────────────────────────────────────────────────────
+let _omap = null, _fromPM = null, _toPM = null, _pickMode = 'from', _ymapsReady = false;
+let _fromLat=null, _fromLng=null, _toLat=null, _toLng=null;
+
+function haversineKm(lat1,lng1,lat2,lng2){
+  const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function setPickMode(mode){
+  _pickMode = mode;
+  const fromBtn = document.getElementById('pick-from-btn'), toBtn = document.getElementById('pick-to-btn');
+  fromBtn.style.background = mode==='from' ? 'rgba(52,199,89,.22)' : 'rgba(52,199,89,.12)';
+  toBtn.style.background   = mode==='to'   ? 'rgba(255,59,48,.18)' : 'var(--ios-fill)';
+}
+
+function updateEstimate(){
+  const wrap = document.getElementById('price-est-wrap');
+  if (_fromLat && _toLat) {
+    const km = haversineKm(_fromLat,_fromLng,_toLat,_toLng);
+    const price = Math.round(TARIFF_BASE + km*TARIFF_PER_KM);
+    document.getElementById('price-est-val').textContent = price.toLocaleString('uz-UZ') + " so'm (~" + km.toFixed(1) + " km)";
+    wrap.classList.remove('hidden');
+  } else {
+    wrap.classList.add('hidden');
+  }
+  document.getElementById('order-submit-btn').disabled = !_fromLat;
+}
+
+function _placeFrom(coords){
+  if (_fromPM) _omap.geoObjects.remove(_fromPM);
+  _fromPM = new ymaps.Placemark(coords, {}, {preset:'islands#greenDotIcon'});
+  _omap.geoObjects.add(_fromPM);
+  _fromLat = coords[0]; _fromLng = coords[1];
+  ymaps.geocode(coords, {results:1}).then(res=>{
+    const obj = res.geoObjects.get(0);
+    const addr = obj ? obj.getAddressLine() : `${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}`;
+    document.getElementById('map_from_text').textContent = addr;
+    document.getElementById('map_from_text').dataset.addr = addr;
+  });
+  updateEstimate();
+}
+function _placeTo(coords){
+  if (_toPM) _omap.geoObjects.remove(_toPM);
+  _toPM = new ymaps.Placemark(coords, {}, {preset:'islands#redDotIcon'});
+  _omap.geoObjects.add(_toPM);
+  _toLat = coords[0]; _toLng = coords[1];
+  ymaps.geocode(coords, {results:1}).then(res=>{
+    const obj = res.geoObjects.get(0);
+    const addr = obj ? obj.getAddressLine() : `${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}`;
+    document.getElementById('map_to_text').textContent = addr;
+    document.getElementById('map_to_text').dataset.addr = addr;
+  });
+  updateEstimate();
+}
+
+function _initOrderMap(){
+  if (!_ymapsReady || _omap || !document.getElementById('order_ymap')) return;
+  _omap = new ymaps.Map('order_ymap', { center:[41.2995,69.2401], zoom:12, controls:['zoomControl'] });
+  _omap.events.add('click', e=>{
+    const coords = e.get('coords');
+    if (_pickMode === 'from') { _placeFrom(coords); setPickMode('to'); }
+    else { _placeTo(coords); }
+  });
+  useCurrentLocation();
+}
+async function useCurrentLocation(){
+  try {
+    const loc = await Native.getLocation();
+    if (_omap) _omap.setCenter([loc.lat, loc.lng], 15);
+    _placeFrom([loc.lat, loc.lng]);
+  } catch(_) {}
+}
+
+if (typeof ymaps !== 'undefined') {
+  ymaps.ready(()=>{ _ymapsReady = true; if (!ACTIVE_ORDER) _initOrderMap(); });
+}
+
+// ── Pills ─────────────────────────────────────────────────────────────────
+const selectedPills = { car_type: '{% if car_type_choices %}{{ car_type_choices.0.0 }}{% endif %}', payment_type: 'cash' };
+function selectPill(group, val){
+  selectedPills[group] = val;
+  const wrap = group==='car_type' ? 'car-type-pills' : 'payment-pills';
+  document.querySelectorAll(`#${wrap} .pill-btn`).forEach(b=>{
+    const on = b.dataset.val === val;
+    b.style.background = on ? 'var(--ios-yellow)' : 'var(--ios-fill)';
+    b.style.color = on ? '#000' : 'var(--ios-label3)';
+  });
+}
+
+// ── Submit ────────────────────────────────────────────────────────────────
+async function submitOrder(){
+  const fromAddr = document.getElementById('map_from_text').dataset.addr || document.getElementById('map_from_text').textContent;
+  if (!_fromLat) { showToast('Xatolik', 'Qayerdan ekanligini xaritadan belgilang', 'error'); return; }
+  const btn = document.getElementById('order-submit-btn');
+  btn.disabled = true; btn.style.opacity='.6';
+  const fd = new FormData();
+  fd.append('from_address', fromAddr);
+  fd.append('from_lat', _fromLat); fd.append('from_lng', _fromLng);
+  if (_toLat) {
+    const toAddr = document.getElementById('map_to_text').dataset.addr || '';
+    fd.append('to_address', toAddr);
+    fd.append('to_lat', _toLat); fd.append('to_lng', _toLng);
+  }
+  fd.append('car_type', selectedPills.car_type);
+  fd.append('payment_type', selectedPills.payment_type);
+  fd.append('note', document.getElementById('note-input').value.trim());
+  try {
+    const r = await fetch('{% url "client:order_create" %}', { method:'POST', headers:{'X-CSRFToken':getCookie('csrftoken')}, body: fd });
+    const d = await r.json();
+    if (d.ok) {
+      Native.vibrate();
+      ACTIVE_ORDER = d.order; ACTIVE_ORDER.active = true;
+      showOrder(ACTIVE_ORDER);
+      startPolling();
+    } else {
+      showToast('Xatolik', d.error || "Qayta urinib ko'ring", 'error');
+      btn.disabled = false; btn.style.opacity='1';
+    }
+  } catch(_) {
+    showToast('Tarmoq xatosi', "Internetni tekshiring", 'error');
+    btn.disabled = false; btn.style.opacity='1';
+  }
+}
+
+// ── Active order tracking ────────────────────────────────────────────────
+const STATUS_INFO = {
+  pending:   { label: 'Haydovchi qidirilmoqda…', color:'#FFD600', icon:'fa-magnifying-glass' },
+  accepted:  { label: 'Haydovchi topildi',        color:'#007AFF', icon:'fa-circle-check' },
+  on_way:    { label: "Haydovchi yo'lda",         color:'#AF52DE', icon:'fa-car-side' },
+  arrived:   { label: 'Haydovchi yetib keldi',    color:'#34C759', icon:'fa-location-dot' },
+};
+
+function showOrder(o){
+  document.getElementById('order-form-wrap').classList.add('hidden');
+  document.getElementById('active-order-wrap').classList.remove('hidden');
+  const s = STATUS_INFO[o.status] || STATUS_INFO.pending;
+  const d = o.driver;
+
+  let driverBlock = '';
+  if (d) {
+    driverBlock = `
+    <div class="ios-card2 rounded-[14px] p-4 flex items-center gap-3 anim-up">
+      <div class="w-12 h-12 rounded-full bg-[#007AFF] flex items-center justify-center flex-shrink-0">
+        <i class="fas fa-user text-white text-lg"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="ios-subhead font-semibold truncate">${d.full_name}</div>
+        <div class="ios-caption mt-0.5" style="color:var(--ios-label3)">${d.car_model} · ${d.car_number}</div>
+        <div class="ios-caption mt-0.5" style="color:#FF9500"><i class="fas fa-star"></i> ${d.rating}</div>
+      </div>
+      <a href="tel:${d.phone}" onclick="Native.vibrate()" class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(52,199,89,.15)">
+        <i class="fas fa-phone" style="color:#34C759"></i>
+      </a>
+    </div>
+    ${(d.distance_km!=null) ? `<div class="ios-caption text-center" style="color:var(--ios-label3)">📍 ${d.distance_km} km · ~${d.eta_minutes} daq</div>` : ''}
+    `;
+  }
+
+  const cancelBlock = o.status === 'pending'
+    ? `<button onclick="cancelOrder(${o.id})" class="ios-btn-destructive">Bekor qilish</button>`
+    : `<button onclick="callOperator()" class="ios-btn-destructive"><i class="fas fa-phone mr-2"></i>Bekor qilish uchun operator: ${OPERATOR_PHONE}</button>`;
+
+  document.getElementById('active-order-body').innerHTML = `
+    <div class="ios-card rounded-[16px] p-4 anim-up">
+      <div class="flex items-center gap-2.5 mb-3">
+        <span class="w-2.5 h-2.5 rounded-full status-dot" style="background:${s.color}"></span>
+        <span class="ios-title font-bold">${s.label}</span>
+      </div>
+      <div class="space-y-1.5">
+        <div class="flex items-start gap-2.5">
+          <div class="w-2 h-2 rounded-full bg-[#34C759] mt-1.5 flex-shrink-0"></div>
+          <span class="ios-subhead font-medium leading-snug">${o.from_address}</span>
+        </div>
+        ${o.to_address ? `
+        <div class="flex items-start gap-2.5">
+          <i class="fas fa-location-dot text-[#FF3B30] text-xs mt-1 flex-shrink-0"></i>
+          <span class="ios-subhead leading-snug" style="color:var(--ios-label3)">${o.to_address}</span>
+        </div>` : ''}
+      </div>
+      ${o.price ? `<div class="mt-3 pt-3 flex items-center justify-between" style="border-top:.5px solid var(--ios-sep)">
+        <span class="ios-caption" style="color:var(--ios-label3)">${o.payment_type==='cash'?'💵 Naqd':'💳 Karta'}</span>
+        <span class="ios-title font-bold" style="color:#34C759">${Math.round(o.price).toLocaleString('uz-UZ')} so'm</span>
+      </div>` : ''}
+    </div>
+    ${driverBlock}
+    ${cancelBlock}
+  `;
+}
+
+async function cancelOrder(id){
+  if (!confirm("Buyurtmani bekor qilmoqchimisiz?")) return;
+  try {
+    const r = await fetch(`/client/order/${id}/cancel/`, { method:'POST', headers:{'X-CSRFToken':getCookie('csrftoken')} });
+    const d = await r.json();
+    if (d.ok) {
+      stopPolling();
+      showToast('Bekor qilindi', '', 'info');
+      location.reload();
+    } else {
+      showToast('Xatolik', d.error || '', 'error');
+    }
+  } catch(_) { showToast('Tarmoq xatosi', '', 'error'); }
+}
+
+let _pollTimer = null;
+function startPolling(){
+  stopPolling();
+  _pollTimer = setInterval(async ()=>{
+    try {
+      const r = await fetch('{% url "client:order_poll" %}', { cache:'no-store' });
+      const d = await r.json();
+      if (!d.active) {
+        stopPolling();
+        if (ACTIVE_ORDER && (ACTIVE_ORDER.status==='completed'||true)) {
+          showToast('Safar yakunlandi', "Tarix bo'limida ko'rishingiz mumkin", 'success', 4000);
+        }
+        setTimeout(()=>location.reload(), 1500);
+        return;
+      }
+      if (d.status !== ACTIVE_ORDER.status || (d.driver && !ACTIVE_ORDER.driver)) {
+        Native.vibrate();
+      }
+      ACTIVE_ORDER = d;
+      showOrder(d);
+    } catch(_) {}
+  }, 4000);
+}
+function stopPolling(){ if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; } }
+
+if (ACTIVE_ORDER) { showOrder(ACTIVE_ORDER); startPolling(); }
+selectPill('payment_type', 'cash');
+</script>
+{% endblock %}

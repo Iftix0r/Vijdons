@@ -63,6 +63,32 @@ class ClientSerializer(serializers.ModelSerializer):
         fields = ['id', 'full_name', 'phone_number']
 
 
+class ClientRegisterSerializer(serializers.Serializer):
+    """Yolovchi ilovasi — ro'yxatdan o'tish."""
+    full_name    = serializers.CharField(max_length=255)
+    phone_number = serializers.CharField(max_length=20)
+    password     = serializers.CharField(write_only=True, min_length=6)
+
+    def validate_phone_number(self, value):
+        if Client.objects.filter(phone_number=value, user__isnull=False).exists():
+            raise serializers.ValidationError("Bu telefon raqami allaqachon ro'yxatdan o'tgan.")
+        return value
+
+    def create(self, validated_data):
+        full_name = validated_data['full_name']
+        phone     = validated_data['phone_number']
+        password  = validated_data['password']
+        user = User.objects.create_user(username=phone, password=password)
+        # Telegram bot orqali avval band bo'lgan bo'lishi mumkin (user=None) — o'sha
+        # yozuvni akkauntga bog'laymiz, tarixi (safarlar, reyting) saqlanib qoladi.
+        client, _ = Client.objects.get_or_create(phone_number=phone)
+        client.user = user
+        if not client.full_name:
+            client.full_name = full_name
+        client.save(update_fields=['user', 'full_name'])
+        return client
+
+
 class OrderSerializer(serializers.ModelSerializer):
     client_name          = serializers.CharField(source='client.full_name', read_only=True)
     client_phone         = serializers.CharField(source='client.phone_number', read_only=True)
