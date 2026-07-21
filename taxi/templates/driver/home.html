@@ -149,6 +149,10 @@ let _known = new Set(ORDERS.map(o => o.id));
 // bag'dan kelib chiqqan.
 let _timerIntervals = {};
 
+// Haydovchi joriy turgan tuman/hudud nomi ("Sergeli" kabi) — qidiruv
+// ekranida ko'rsatish uchun. trackDriverLocation() geokodlab shuni to'ldiradi.
+let _driverArea = sessionStorage.getItem('vijdon_area') || null;
+
 // Sahifa yuklanishi bilan darhol DOM ni render qilamiz
 renderOrdersDOM();
 
@@ -317,7 +321,7 @@ function renderOrdersDOM() {
     <div class="space-y-3 anim-fade">
       <div class="flex items-center gap-2 px-1">
         <span class="search-dot w-2 h-2 rounded-full flex-shrink-0" style="background:#FFD600"></span>
-        <span class="ios-subhead font-semibold">Lokatsiya bo'yicha buyurtma qidirilmoqda</span>
+        <span class="ios-subhead font-semibold">${_driverArea ? _driverArea + " bo'yicha buyurtmalar qidirilmoqda" : 'Buyurtma qidirilmoqda'}</span>
       </div>
       ${_skeletonCard(false)}
       ${_skeletonCard(true)}
@@ -519,19 +523,38 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // ── Haydovchi joylashuvini kuzatish (serverga sinxronlash + sheet xaritasi
-// uchun) — manzil endi hech qayerda matn sifatida ko'rsatilmaydi ──────────────
+// uchun) va joriy tuman/hudud nomini ("Sergeli" kabi) qidiruv ekrani uchun
+// aniqlash — to'liq manzil (ko'cha/uy) hech qayerda ko'rsatilmaydi ───────────
 {% if driver.is_on_duty %}
 (function trackDriverLocation() {
-  const SS_LAT = 'vijdon_lat';
-  const SS_LNG = 'vijdon_lng';
+  const SS_LAT  = 'vijdon_lat';
+  const SS_LNG  = 'vijdon_lng';
+  const SS_AREA = 'vijdon_area';
 
   let _lastLat = parseFloat(sessionStorage.getItem(SS_LAT)) || null;
   let _lastLng = parseFloat(sessionStorage.getItem(SS_LNG)) || null;
   let _syncTimer = null;
 
+  // ── Reverse geocode — faqat tuman/hudud nomi (Nominatim) ─────────────────
+  async function reverseGeocodeArea(lat, lng) {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 6000);
+    try {
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=uz&zoom=14`,
+        { signal: ctrl.signal }
+      );
+      clearTimeout(tid);
+      const d = await r.json();
+      if (!d || d.error) return null;
+      const a = d.address || {};
+      return a.city_district || a.suburb || a.quarter || a.neighbourhood || a.town || a.city || a.village || null;
+    } catch (_) { clearTimeout(tid); return null; }
+  }
+
   // ── Koordinat keldi ───────────────────────────────────────────────────────
   function gotCoords(lat, lng) {
-    // 50m dan kam ko'chsa serverga qayta yubormaymiz
+    // 50m dan kam ko'chsa serverga qayta yubormaymiz, tuman nomini ham qayta so'ramaymiz
     if (_lastLat !== null) {
       const dlat = (lat - _lastLat) * 111320;
       const dlng = (lng - _lastLng) * 111320 * Math.cos(lat * Math.PI / 180);
@@ -546,7 +569,13 @@ document.addEventListener('visibilitychange', () => {
     window._driverLng = lng;
 
     clearTimeout(_syncTimer);
-    _syncTimer = setTimeout(() => {
+    _syncTimer = setTimeout(async () => {
+      const area = await reverseGeocodeArea(lat, lng);
+      if (area && area !== _driverArea) {
+        _driverArea = area;
+        sessionStorage.setItem(SS_AREA, area);
+        renderOrdersDOM();
+      }
       fetch('{% url "driver:location_sync" %}', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
