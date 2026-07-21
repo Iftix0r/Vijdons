@@ -145,7 +145,7 @@
 <!-- ── iOS Bottom Sheet ── -->
 <div id="sheet-overlay" class="fixed inset-0 z-[100] hidden">
   <div class="absolute inset-0" style="background:rgba(0,0,0,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)"
-       onclick="closeSheet()"></div>
+       onclick="_onBackdropTap()"></div>
   <div id="sheet" class="ios-sheet absolute bottom-0 left-0 right-0 max-h-[92vh] overflow-y-auto"
        style="transform:translateY(100%);transition:transform .38s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom,34px)">
     <div class="ios-sheet-handle"></div>
@@ -948,6 +948,16 @@ function _ensureActiveSheet(o){
   _renderSheet(o.id, o);
 }
 
+// Fon (backdrop) bosilganda: buyurtma hali qabul qilinmagan (pending)
+// bo'lsa — oddiy bottom-sheet kabi yopiladi. Lekin buyurtma qabul qilingan
+// bo'lsa (accepted/on_way/arrived) — ekran qulflangan, tashqariga bosib
+// yopib bo'lmaydi, faqat "Yakunlash"/"Bekor qilish" orqali chiqiladi.
+function _onBackdropTap(){
+  const locked = (_sheetOpenForStatus==='accepted'||_sheetOpenForStatus==='on_way'||_sheetOpenForStatus==='arrived');
+  if (locked) return;
+  closeSheet();
+}
+
 function _renderSheet(id, o){
   _sheetOpenForId = id;
   _sheetOpenForStatus = o.status;
@@ -1080,6 +1090,26 @@ function _renderSheet(id, o){
 
   const ov=document.getElementById('sheet-overlay');
   const sh=document.getElementById('sheet');
+
+  // Buyurtma qabul qilingandan keyin (accepted/on_way/arrived) ekran TO'LIQ
+  // bekitilishi kerak — orqadagi tab-bar/xarita ko'rinmasin va tashqariga
+  // bosib yopib bo'lmasin, faqat "Yakunlash"/"Bekor qilish" orqali chiqiladi.
+  // Hali qabul qilinmagan (pending) buyurtma esa oddiy bottom-sheet — uni
+  // ko'rib chiqib, orqaga tashlab yuborish ham mumkin bo'lishi kerak.
+  const isLocked = (o.status==='accepted'||o.status==='on_way'||o.status==='arrived');
+  const handle = sh.querySelector('.ios-sheet-handle');
+  if (isLocked) {
+    sh.style.maxHeight = '100vh';
+    sh.style.height    = '100vh';
+    sh.style.borderRadius = '0';
+    if (handle) handle.style.display = 'none';
+  } else {
+    sh.style.maxHeight = '';
+    sh.style.height    = '';
+    sh.style.borderRadius = '';
+    if (handle) handle.style.display = '';
+  }
+
   // closeSheet() yopilish animatsiyasi paytida overlay'ga vaqtincha
   // pointer-events:none qo'yadi va 380ms dan keyin uni qaytadan yashiradi
   // ('hidden' klassi bilan). Agar sheet shu 380ms ichida (masalan tez-tez
