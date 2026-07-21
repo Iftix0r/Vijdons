@@ -427,10 +427,12 @@ function renderOrdersDOM() {
     </div>`).join('');
 
   // Yuqorida ixcham qidiruv indikatori (qidiruv davom etayotganini bildirish
-  // uchun), pastda esa topilgan buyurtmalar ro'yxati.
+  // uchun), o'rtada topilgan buyurtmalar, oxirida esa yana bitta xira (soya)
+  // karta — bu qidiruv HALI HAM davom etayotganini (topilganlar bilan bir
+  // qatorda) vizual ravishda eslatib turadi.
   wrap.innerHTML = `
     <div class="anim-fade">${searchIndicatorHtml}</div>
-    <div class="space-y-3 pt-3">${ordersHtml}</div>`;
+    <div class="space-y-3 pt-3">${ordersHtml}${_skeletonCard(true)}</div>`;
   _startTimers();
 }
 
