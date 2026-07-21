@@ -16,18 +16,36 @@
 <div id="order-form-wrap" class="px-4 pt-3 space-y-3 {% if active_order %}hidden{% endif %}">
 
   <div class="ios-card rounded-[16px] overflow-hidden anim-up">
-    <div id="order_ymap" style="width:100%;height:260px"></div>
-    <div class="p-3 space-y-2" style="border-top:.5px solid var(--ios-sep)">
-      <button type="button" id="pick-from-btn" onclick="setPickMode('from')"
-              class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-left transition-all" style="background:rgba(52,199,89,.12)">
-        <span class="w-2.5 h-2.5 rounded-full bg-[#34C759] flex-shrink-0"></span>
-        <span class="ios-subhead font-medium flex-1 truncate" id="map_from_text">Xaritada belgilang yoki joriy manzil</span>
-        <i class="fas fa-crosshairs" style="color:var(--ios-label3)" onclick="event.stopPropagation();useCurrentLocation()"></i>
-      </button>
-      <button type="button" id="pick-to-btn" onclick="setPickMode('to')"
-              class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-left transition-all" style="background:var(--ios-fill)">
-        <i class="fas fa-location-dot text-[#FF3B30] flex-shrink-0" style="font-size:11px"></i>
-        <span class="ios-subhead flex-1 truncate" style="color:var(--ios-label3)" id="map_to_text">Qayerga (ixtiyoriy)</span>
+    <div id="order_ymap" style="width:100%;height:220px"></div>
+  </div>
+
+  <!-- Diqqat: bu karta overflow-hidden BO'LMASLIGI shart — Yandex SuggestView
+       (manzil takliflari) input ostida suzib chiquvchi ro'yxatni chizadi,
+       overflow-hidden ota-elementga o'ralib qolsa ro'yxat kesilib qolar edi. -->
+  <div class="ios-card rounded-[16px] p-3 anim-up" style="animation-delay:30ms">
+    <div class="flex items-center gap-2">
+      <div class="flex-1 space-y-2">
+        <div id="from-row" onclick="setPickMode('from')"
+             class="flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] transition-all" style="background:rgba(52,199,89,.12)">
+          <span class="w-2.5 h-2.5 rounded-full bg-[#34C759] flex-shrink-0"></span>
+          <input id="from-input" type="text" autocomplete="off" placeholder="Manzilni yozing yoki xaritadan belgilang"
+                 onfocus="setPickMode('from')"
+                 class="ios-subhead font-medium flex-1 min-w-0 bg-transparent border-none outline-none">
+          <button type="button" onclick="event.stopPropagation();useCurrentLocation()" class="flex-shrink-0">
+            <i class="fas fa-crosshairs" style="color:var(--ios-label3)"></i>
+          </button>
+        </div>
+        <div id="to-row" onclick="setPickMode('to')"
+             class="flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] transition-all" style="background:var(--ios-fill)">
+          <i class="fas fa-location-dot text-[#FF3B30] flex-shrink-0" style="font-size:11px"></i>
+          <input id="to-input" type="text" autocomplete="off" placeholder="Qayerga (ixtiyoriy)"
+                 onfocus="setPickMode('to')"
+                 class="ios-subhead flex-1 min-w-0 bg-transparent border-none outline-none">
+        </div>
+      </div>
+      <button type="button" onclick="swapAddresses()" title="Almashtirish"
+              class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style="background:var(--ios-fill)">
+        <i class="fas fa-arrow-up-arrow-down" style="color:var(--ios-label3);font-size:13px"></i>
       </button>
     </div>
   </div>
@@ -103,9 +121,9 @@ function haversineKm(lat1,lng1,lat2,lng2){
 
 function setPickMode(mode){
   _pickMode = mode;
-  const fromBtn = document.getElementById('pick-from-btn'), toBtn = document.getElementById('pick-to-btn');
-  fromBtn.style.background = mode==='from' ? 'rgba(52,199,89,.22)' : 'rgba(52,199,89,.12)';
-  toBtn.style.background   = mode==='to'   ? 'rgba(255,59,48,.18)' : 'var(--ios-fill)';
+  const fromRow = document.getElementById('from-row'), toRow = document.getElementById('to-row');
+  fromRow.style.background = mode==='from' ? 'rgba(52,199,89,.22)' : 'rgba(52,199,89,.12)';
+  toRow.style.background   = mode==='to'   ? 'rgba(255,59,48,.18)' : 'var(--ios-fill)';
 }
 
 function updateEstimate(){
@@ -121,31 +139,70 @@ function updateEstimate(){
   document.getElementById('order-submit-btn').disabled = !_fromLat;
 }
 
-function _placeFrom(coords){
+// Toshkent atrofi — Yandex manzil takliflarini (SuggestView) shu hudud
+// bo'yicha moslashtirish uchun (qat'iy cheklamaydi, faqat ustuvorlik beradi)
+const TASHKENT_BOUNDS = [[40.9, 68.9], [41.6, 69.7]];
+
+function _placeFrom(coords, addr){
   if (_fromPM) _omap.geoObjects.remove(_fromPM);
   _fromPM = new ymaps.Placemark(coords, {}, {preset:'islands#greenDotIcon'});
   _omap.geoObjects.add(_fromPM);
   _fromLat = coords[0]; _fromLng = coords[1];
-  ymaps.geocode(coords, {results:1}).then(res=>{
-    const obj = res.geoObjects.get(0);
-    const addr = obj ? obj.getAddressLine() : `${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}`;
-    document.getElementById('map_from_text').textContent = addr;
-    document.getElementById('map_from_text').dataset.addr = addr;
-  });
-  updateEstimate();
+  if (addr) {
+    document.getElementById('from-input').value = addr;
+    updateEstimate();
+  } else {
+    ymaps.geocode(coords, {results:1}).then(res=>{
+      const obj = res.geoObjects.get(0);
+      document.getElementById('from-input').value = obj ? obj.getAddressLine() : `${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}`;
+    });
+    updateEstimate();
+  }
 }
-function _placeTo(coords){
+function _placeTo(coords, addr){
   if (_toPM) _omap.geoObjects.remove(_toPM);
   _toPM = new ymaps.Placemark(coords, {}, {preset:'islands#redDotIcon'});
   _omap.geoObjects.add(_toPM);
   _toLat = coords[0]; _toLng = coords[1];
-  ymaps.geocode(coords, {results:1}).then(res=>{
-    const obj = res.geoObjects.get(0);
-    const addr = obj ? obj.getAddressLine() : `${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}`;
-    document.getElementById('map_to_text').textContent = addr;
-    document.getElementById('map_to_text').dataset.addr = addr;
-  });
-  updateEstimate();
+  if (addr) {
+    document.getElementById('to-input').value = addr;
+    updateEstimate();
+  } else {
+    ymaps.geocode(coords, {results:1}).then(res=>{
+      const obj = res.geoObjects.get(0);
+      document.getElementById('to-input').value = obj ? obj.getAddressLine() : `${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}`;
+    });
+    updateEstimate();
+  }
+}
+
+function swapAddresses(){
+  if (!_fromLat || !_toLat) return;
+  const fromInput = document.getElementById('from-input'), toInput = document.getElementById('to-input');
+  const fLat=_fromLat, fLng=_fromLng, fAddr=fromInput.value;
+  const tLat=_toLat, tLng=_toLng, tAddr=toInput.value;
+  _placeFrom([tLat, tLng], tAddr);
+  _placeTo([fLat, fLng], fAddr);
+  Native.vibrate();
+}
+
+// Manzilni yozganda Yandex'ning o'zidan takliflar (autocomplete) chiqadi —
+// tanlanganda forward-geocode qilib xaritaga pin qo'yamiz, shunda foydalanuvchi
+// har safar xaritani aniq bosishga majbur bo'lmaydi.
+function _attachSuggest(inputId, onSelect){
+  try {
+    const suggest = new ymaps.SuggestView(inputId, { results: 5, boundedBy: TASHKENT_BOUNDS });
+    suggest.events.add('select', e=>{
+      const value = e.get('item').value;
+      ymaps.geocode(value, {results:1}).then(res=>{
+        const obj = res.geoObjects.get(0);
+        if (!obj) return;
+        const coords = obj.geometry.getCoordinates();
+        onSelect(coords, value);
+        if (_omap) _omap.setCenter(coords, 16);
+      });
+    });
+  } catch(_) {}
 }
 
 function _initOrderMap(){
@@ -156,6 +213,8 @@ function _initOrderMap(){
     if (_pickMode === 'from') { _placeFrom(coords); setPickMode('to'); }
     else { _placeTo(coords); }
   });
+  _attachSuggest('from-input', (coords, addr)=>{ _placeFrom(coords, addr); setPickMode('to'); });
+  _attachSuggest('to-input',   (coords, addr)=>{ _placeTo(coords, addr); });
   useCurrentLocation();
 }
 async function useCurrentLocation(){
@@ -184,15 +243,15 @@ function selectPill(group, val){
 
 // ── Submit ────────────────────────────────────────────────────────────────
 async function submitOrder(){
-  const fromAddr = document.getElementById('map_from_text').dataset.addr || document.getElementById('map_from_text').textContent;
-  if (!_fromLat) { showToast('Xatolik', 'Qayerdan ekanligini xaritadan belgilang', 'error'); return; }
+  const fromAddr = document.getElementById('from-input').value.trim();
+  if (!_fromLat || !fromAddr) { showToast('Xatolik', 'Qayerdan ekanligini yozing yoki xaritadan belgilang', 'error'); return; }
   const btn = document.getElementById('order-submit-btn');
   btn.disabled = true; btn.style.opacity='.6';
   const fd = new FormData();
   fd.append('from_address', fromAddr);
   fd.append('from_lat', _fromLat); fd.append('from_lng', _fromLng);
   if (_toLat) {
-    const toAddr = document.getElementById('map_to_text').dataset.addr || '';
+    const toAddr = document.getElementById('to-input').value.trim();
     fd.append('to_address', toAddr);
     fd.append('to_lat', _toLat); fd.append('to_lng', _toLng);
   }

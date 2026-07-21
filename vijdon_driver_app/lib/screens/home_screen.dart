@@ -17,6 +17,9 @@ import 'profile_screen.dart';
 import 'chat_screen.dart';
 import 'map_screen.dart';
 
+/// Mijozni bepul kutish vaqti — "Yetib keldim" bosilgandan keyin.
+const Duration kFreeWaitDuration = Duration(minutes: 3);
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
   @override
@@ -60,6 +63,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   double? _destLat;
   double? _destLng;
   bool   _settingDest = false;
+
+  // ── Yangi buyurtma popup ─────────────────────────────────────────────────────
+  OrderModel? _popupOrder;
+
+  // ── "Yetib keldim" — bepul kutish taymeri ───────────────────────────────────
+  DateTime? _arrivedAt;
 
   @override
   void initState() {
@@ -605,6 +614,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   icon: Icons.cancel_rounded,
                 );
                 _stopTaximeter();
+                if (prev.isArrived) _arrivedAt = null;
               }
             }
           }
@@ -635,6 +645,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           if (newOrders.isNotEmpty) {
             await NotificationService.notifyNewOrder(newOrders.length);
             HapticFeedback.vibrate();
+
+            // Faol buyurtma bo'lmasa va popup allaqachon ochiq bo'lmasa — to'liq
+            // ekranli "Yangi buyurtma" popupini ko'rsatamiz (Accept/Skip + countdown).
+            if (_popupOrder == null &&
+                !orders.any((o) => o.isActive) &&
+                mounted) {
+              _showNewOrderPopup(newOrders.first);
+            }
           }
         }
 
@@ -735,6 +753,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _stopTaximeter();
       }
 
+      // ── Bepul kutish taymeri: yetib kelganda boshlanadi, yakunda tugaydi ──
+      if (action == 'arrived') {
+        if (mounted) setState(() => _arrivedAt = DateTime.now());
+      }
+      if (action == 'complete' || action == 'cancel') {
+        if (mounted) setState(() => _arrivedAt = null);
+      }
+
       await Future.wait([_loadOrders(silent: true), _loadProfile()]);
     } on ApiException catch (e) {
       if (e.statusCode == 409) {
@@ -821,6 +847,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             onTaxiPause:   _taxiRunning ? (_taxiPaused ? _resumeTaximeter : _pauseTaximeter) : null,
             activeOrderId: _taxiRunning
                 ? _orders.where((o) => o.isOnWay).firstOrNull?.id
+                : null,
+            arrivedAt: _arrivedAt,
+            arrivedOrderId: _arrivedAt != null
+                ? _orders.where((o) => o.isArrived).firstOrNull?.id
                 : null,
           ),
           const ChatScreen(),
@@ -1928,6 +1958,35 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  // ── Yangi buyurtma popup ─────────────────────────────────────────────────────
+
+  void _showNewOrderPopup(OrderModel order) {
+    setState(() => _popupOrder = order);
+    showGeneralDialog(
+      context: context,
+      barrierLabel: 'Yangi buyurtma',
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 260),
+      pageBuilder: (ctx, _, __) => _NewOrderPopup(
+        order: order,
+        onAccept: () {
+          Navigator.pop(ctx);
+          _orderAction(order, 'accept');
+        },
+        onSkip: () => Navigator.pop(ctx),
+        onExpire: () => Navigator.pop(ctx),
+      ),
+      transitionBuilder: (ctx, anim, __, child) => SlideTransition(
+        position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+            .animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+        child: child,
+      ),
+    ).then((_) {
+      if (mounted) setState(() => _popupOrder = null);
+    });
+  }
+
   void _showOrderDetail(OrderModel order) {
     HapticFeedback.selectionClick();
     showModalBottomSheet(
@@ -1962,6 +2021,9 @@ class ActiveOrderSheet extends StatefulWidget {
   final bool taxiPaused;
   final String? taxiDuration;
   final VoidCallback? onTaxiPause;
+  /// Bu buyurtmaga "Yetib keldim" bosilgan vaqt — bepul kutish taymerini
+  /// hisoblash uchun. Faqat shu buyurtma faol kutish holatida bo'lsa uzatiladi.
+  final DateTime? arrivedAt;
   const ActiveOrderSheet({
     required this.order,
     required this.onAction,
@@ -1971,6 +2033,7 @@ class ActiveOrderSheet extends StatefulWidget {
     this.taxiPaused = false,
     this.taxiDuration,
     this.onTaxiPause,
+    this.arrivedAt,
   });
   @override
   State<ActiveOrderSheet> createState() => _ActiveOrderSheetState();
@@ -1978,6 +2041,7 @@ class ActiveOrderSheet extends StatefulWidget {
 
 class _ActiveOrderSheetState extends State<ActiveOrderSheet> {
   late OrderModel order;
+  Timer? _waitTimer;
   void Function(String) get onAction => widget.onAction;
   VoidCallback? get onOpenMap => widget.onOpenMap;
   double? get liveKm => widget.liveKm;
@@ -1990,12 +2054,44 @@ class _ActiveOrderSheetState extends State<ActiveOrderSheet> {
   void initState() {
     super.initState();
     order = widget.order;
+    if (widget.arrivedAt != null) {
+      // Har soniyada qayta chizib, bepul/pullik kutish hisoblagichini yangilaymiz.
+      _waitTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    }
   }
 
   @override
   void didUpdateWidget(ActiveOrderSheet old) {
     super.didUpdateWidget(old);
     order = widget.order;
+  }
+
+  @override
+  void dispose() {
+    _waitTimer?.cancel();
+    super.dispose();
+  }
+
+  Duration? get _waitFreeRemaining {
+    final at = widget.arrivedAt;
+    if (at == null) return null;
+    final rem = kFreeWaitDuration - DateTime.now().difference(at);
+    return rem.isNegative ? Duration.zero : rem;
+  }
+
+  Duration? get _waitPaidElapsed {
+    final at = widget.arrivedAt;
+    if (at == null) return null;
+    final over = DateTime.now().difference(at) - kFreeWaitDuration;
+    return over.isNegative ? null : over;
+  }
+
+  String _fmtDuration(Duration d) {
+    final m = d.inMinutes;
+    final s = d.inSeconds % 60;
+    return '$m:${s.toString().padLeft(2, '0')}';
   }
 
   void _handleAction(BuildContext context, String action) {
@@ -2287,8 +2383,84 @@ class _ActiveOrderSheetState extends State<ActiveOrderSheet> {
           ),
           const SizedBox(height: 12),
 
+          // ⏱ Bepul/pullik kutish banneri (yetib kelgach, mijozni kutayotganda)
+          if (order.isArrived && widget.arrivedAt != null) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: _waitPaidElapsed != null
+                        ? [const Color(0xFFf59e0b), const Color(0xFFd97706)]
+                        : [const Color(0xFF1DB954), const Color(0xFF0d7c3b)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (_waitPaidElapsed != null
+                              ? const Color(0xFFf59e0b)
+                              : const Color(0xFF1DB954))
+                          .withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _waitPaidElapsed != null
+                          ? Icons.hourglass_bottom_rounded
+                          : Icons.timer_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _waitPaidElapsed != null
+                                ? 'PULLIK KUTISH'
+                                : 'BEPUL KUTISH',
+                            style: const TextStyle(
+                              color: Colors.white70, fontSize: 10,
+                              fontWeight: FontWeight.w900, letterSpacing: 1.5,
+                            ),
+                          ),
+                          Text(
+                            _fmtDuration(
+                                _waitPaidElapsed ?? _waitFreeRemaining ?? Duration.zero),
+                            style: const TextStyle(
+                              color: Colors.white, fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      _waitPaidElapsed != null
+                          ? "narx qo'shilmoqda"
+                          : 'mijozni kutmoqdasiz',
+                      style: const TextStyle(
+                        color: Colors.white70, fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
           // 🚖 Taximetr banner (yo'lda ketayotganda)
-          if (order.isOnWay && liveKm != null) ...[         
+          if (order.isOnWay && liveKm != null) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Container(
@@ -2736,6 +2908,345 @@ class _OfflinePulseButtonState extends State<_OfflinePulseButton>
       ),
     );
   }
+}
+
+// ── Yangi buyurtma popup (to'liq ekran, countdown + Accept/Skip) ──────────────
+class _NewOrderPopup extends StatefulWidget {
+  final OrderModel order;
+  final VoidCallback onAccept;
+  final VoidCallback onSkip;
+  final VoidCallback onExpire;
+  const _NewOrderPopup({
+    required this.order,
+    required this.onAccept,
+    required this.onSkip,
+    required this.onExpire,
+  });
+  @override
+  State<_NewOrderPopup> createState() => _NewOrderPopupState();
+}
+
+class _NewOrderPopupState extends State<_NewOrderPopup> {
+  late int _secondsLeft;
+  late final int _totalSeconds;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _totalSeconds = (widget.order.secondsLeft ?? 15).clamp(1, 999);
+    _secondsLeft  = _totalSeconds;
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _secondsLeft--);
+      if (_secondsLeft <= 0) {
+        _timer?.cancel();
+        widget.onExpire();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _accept() {
+    _timer?.cancel();
+    widget.onAccept();
+  }
+
+  void _skip() {
+    _timer?.cancel();
+    widget.onSkip();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dark  = Theme.of(context).brightness == Brightness.dark;
+    final order = widget.order;
+    final urgent = _secondsLeft <= 5;
+    final urgentColor = urgent ? AppColors.danger : AppColors.warning;
+
+    return Material(
+      color: Colors.transparent,
+      child: SafeArea(
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Container(
+              decoration: BoxDecoration(
+                color: dark ? AppColors.cardDark : Colors.white,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    blurRadius: 30,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header: sarlavha + countdown
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 16, 0),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.notifications_active_rounded,
+                            color: AppColors.primary, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Yangi buyurtma!',
+                            style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w900,
+                              color: dark ? Colors.white : AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: urgentColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.timer_rounded, size: 14, color: urgentColor),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${_secondsLeft}s',
+                                style: TextStyle(
+                                    fontSize: 13, fontWeight: FontWeight.w900,
+                                    color: urgentColor),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Countdown progress bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: (_secondsLeft / _totalSeconds).clamp(0.0, 1.0),
+                        minHeight: 5,
+                        backgroundColor:
+                            dark ? AppColors.surfaceDark : const Color(0xFFF0F0F0),
+                        color: urgentColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Narx + tarif
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Text(
+                          order.price != null ? "${order.price} so'm" : '—',
+                          style: TextStyle(
+                            fontSize: 26, fontWeight: FontWeight.w900,
+                            color: dark ? Colors.white : AppColors.textPrimary,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 9, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'Ekonom',
+                            style: TextStyle(
+                                fontSize: 11, fontWeight: FontWeight.w800,
+                                color: Colors.grey),
+                          ),
+                        ),
+                        const Spacer(),
+                        Icon(
+                          order.paymentType == 'card'
+                              ? Icons.credit_card_rounded
+                              : Icons.payments_rounded,
+                          size: 18,
+                          color: order.paymentType == 'card'
+                              ? AppColors.info
+                              : AppColors.success,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Divider(
+                      height: 1,
+                      color: dark ? AppColors.borderDark : AppColors.borderLight),
+                  const SizedBox(height: 14),
+
+                  // Manzillar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _routeLine(Icons.radio_button_checked_rounded,
+                            AppColors.success, order.fromAddress, dark),
+                        if (order.toAddress.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          _routeLine(Icons.location_on_rounded,
+                              AppColors.danger, order.toAddress, dark),
+                        ],
+                        if (order.distanceKm != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            '${order.distanceKm!.toStringAsFixed(1)} km',
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey.shade500,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Divider(
+                      height: 1,
+                      color: dark ? AppColors.borderDark : AppColors.borderLight),
+                  const SizedBox(height: 14),
+
+                  // Mijoz
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 36, height: 36,
+                          decoration: BoxDecoration(
+                            color: AppColors.info.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.person_rounded,
+                              color: AppColors.info, size: 18),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                order.clientName.isNotEmpty
+                                    ? order.clientName : 'Mijoz',
+                                style: TextStyle(
+                                    fontSize: 13, fontWeight: FontWeight.w800,
+                                    color: dark ? Colors.white : AppColors.textPrimary),
+                              ),
+                              if (order.clientPhone.isNotEmpty)
+                                Text(
+                                  order.clientPhone,
+                                  style: TextStyle(
+                                      fontSize: 11, color: Colors.grey.shade500,
+                                      fontFamily: 'monospace'),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Tugmalar: Skip / Accept
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 52,
+                            child: OutlinedButton(
+                              onPressed: _skip,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.grey.shade600,
+                                side: BorderSide(
+                                    color: dark
+                                        ? AppColors.borderDark
+                                        : AppColors.borderLight),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16)),
+                              ),
+                              child: const Text("O'tkazib yuborish",
+                                  style: TextStyle(
+                                      fontSize: 13, fontWeight: FontWeight.w800)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          flex: 2,
+                          child: SizedBox(
+                            height: 52,
+                            child: ElevatedButton.icon(
+                              onPressed: _accept,
+                              icon: const Icon(Icons.check_circle_rounded, size: 19),
+                              label: const Text('Qabul qilish',
+                                  style: TextStyle(
+                                      fontSize: 14, fontWeight: FontWeight.w900)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.success,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16)),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _routeLine(IconData icon, Color color, String text, bool dark) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Icon(icon, size: 15, color: color),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Text(
+          text,
+          style: TextStyle(
+              fontSize: 13, fontWeight: FontWeight.w700,
+              color: dark ? Colors.white : AppColors.textPrimary),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    ],
+  );
 }
 
 class _RadarScanner extends StatefulWidget {

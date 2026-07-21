@@ -5,7 +5,7 @@ import '../core/api_service.dart';
 import '../core/constants.dart';
 import '../core/theme.dart';
 import '../models/order_model.dart';
-import 'home_screen.dart' show ActiveOrderSheet;
+import 'home_screen.dart' show ActiveOrderSheet, kFreeWaitDuration;
 
 class HistoryScreen extends StatefulWidget {
   final Future<void> Function(OrderModel, String)? onOrderAction;
@@ -16,6 +16,9 @@ class HistoryScreen extends StatefulWidget {
   final String?      taxiDuration;
   final VoidCallback? onTaxiPause;
   final int?         activeOrderId; // qaysi buyurtmada taximetr ishlayapti
+  // Bepul/pullik kutish taymeri ("Yetib keldim" bosilgan vaqt)
+  final DateTime?    arrivedAt;
+  final int?         arrivedOrderId;
 
   const HistoryScreen({
     super.key,
@@ -26,6 +29,8 @@ class HistoryScreen extends StatefulWidget {
     this.taxiDuration,
     this.onTaxiPause,
     this.activeOrderId,
+    this.arrivedAt,
+    this.arrivedOrderId,
   });
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
@@ -125,7 +130,8 @@ class _HistoryScreenState extends State<HistoryScreen>
 
   void _showActiveOrderSheet(OrderModel order) {
     HapticFeedback.selectionClick();
-    final isThisActive = widget.activeOrderId == order.id;
+    final isThisActive  = widget.activeOrderId == order.id;
+    final isThisWaiting = widget.arrivedOrderId == order.id;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -138,6 +144,7 @@ class _HistoryScreenState extends State<HistoryScreen>
         taxiPaused:   isThisActive && widget.taxiPaused,
         taxiDuration: isThisActive ? widget.taxiDuration : null,
         onTaxiPause:  isThisActive ? widget.onTaxiPause  : null,
+        arrivedAt:    isThisWaiting ? widget.arrivedAt   : null,
       ),
     );
   }
@@ -602,6 +609,11 @@ class _HistoryScreenState extends State<HistoryScreen>
                                 color: AppColors.success),
                           ),
                         ],
+                        if (o.isArrived && widget.arrivedOrderId == o.id &&
+                            widget.arrivedAt != null) ...[
+                          const Spacer(),
+                          _waitBadge(widget.arrivedAt!),
+                        ],
                       ],
                     ),
                   ],
@@ -611,6 +623,36 @@ class _HistoryScreenState extends State<HistoryScreen>
           ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _waitBadge(DateTime arrivedAt) {
+    final elapsed = DateTime.now().difference(arrivedAt);
+    final paidOver = elapsed - kFreeWaitDuration;
+    final paid = !paidOver.isNegative;
+    final d = paid ? paidOver : (kFreeWaitDuration - elapsed);
+    final m = d.inMinutes;
+    final s = d.inSeconds % 60;
+    final color = paid ? AppColors.warning : AppColors.success;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(paid ? Icons.hourglass_bottom_rounded : Icons.timer_rounded,
+              size: 11, color: color),
+          const SizedBox(width: 3),
+          Text(
+            '$m:${s.toString().padLeft(2, '0')}',
+            style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w900, color: color),
+          ),
+        ],
       ),
     );
   }

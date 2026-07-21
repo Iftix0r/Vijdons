@@ -208,8 +208,8 @@ class _MapScreenState extends State<MapScreen> {
                     width: 44, height: 44,
                     decoration: BoxDecoration(
                       color: dark ? AppColors.cardDark : Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8)],
+                      shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, 3))],
                     ),
                     child: const Icon(Icons.arrow_back_rounded, size: 20),
                   ),
@@ -298,13 +298,24 @@ class _MapScreenState extends State<MapScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 44, height: 44,
+        width: 46, height: 46,
         decoration: BoxDecoration(
           color: active ? AppColors.primary : (dark ? AppColors.cardDark : Colors.white),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 8)],
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: active
+                ? Colors.transparent
+                : (dark ? AppColors.borderDark : AppColors.borderLight),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
-        child: Icon(icon, size: 20,
+        child: Icon(icon, size: 21,
           color: active ? Colors.black : (dark ? Colors.white : AppColors.textPrimary)),
       ),
     );
