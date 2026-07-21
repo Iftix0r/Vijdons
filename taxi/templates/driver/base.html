@@ -10,6 +10,18 @@
 <title>{% block title %}Vijdon Driver{% endblock %}</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config={darkMode:'class'}</script>
+<script>
+// Sahifa chizilishidan OLDIN ishga tushishi shart — aks holda birinchi kadrda
+// yorug' (light) rejim ko'rinib, keyin qorong'iga "miltillab" o'tib qolardi (FOUC).
+(function() {
+  var saved = localStorage.getItem('vijdon_theme');
+  var dark = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  if (dark) {
+    document.documentElement.classList.add('dark');
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', '#000000');
+  }
+})();
+</script>
 <script src="https://api-maps.yandex.ru/2.1/?apikey=469e8d29-be0b-42da-9bd4-ed515dbdb741&lang=uz_UZ" type="text/javascript"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 <style>
