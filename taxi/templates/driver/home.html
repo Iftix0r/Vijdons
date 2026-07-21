@@ -293,10 +293,10 @@ function _unlockDutyBtnSoon(delayMs = 700) {
   });
 })();
 
-// on_way yoki arrived buyurtma bo'lsa taximetr fonda ishga tushadi — lekin
-// Asosiy sahifada tafsilot oynasi ENDI avtomatik OCHILMAYDI. Buyurtmani
-// ko'rish/boshqarish (Yo'lga chiqdim/Yetib keldim/Bekor qilish/Yakunlash)
-// faqat Tarix bo'limi orqali amalga oshiriladi.
+// on_way yoki arrived buyurtma bo'lsa taximetr fonda ishga tushadi. Tafsilot
+// oynasi (sheet) esa renderOrdersDOM() -> _ensureActiveSheet() orqali
+// avtomatik ochiq turadi (bajarilayotgan buyurtma tugagunicha ekranni
+// to'liq bekitadi) — bu yerda faqat taximetrni tiklab qo'yamiz.
 (function(){
   _resetSheetOverlay();
   const active = ORDERS.find(o => o.status === 'on_way' || o.status === 'arrived');
@@ -395,60 +395,27 @@ function renderOrdersDOM() {
   const wrap = document.getElementById('orders-wrap');
   if(!wrap) return;
 
-  // Balans/statistika bloki — Stop holatida ham, Start holatida (buyurtma
-  // qidirilayotganda) ham bir xil ko'rinib turishi kerak, shuning uchun alohida
-  // qism sifatida ajratilgan.
-  const statsHtml = `
-      <div class="space-y-3 anim-fade">
-        <div class="ios-card rounded-[16px] p-5">
-          <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)">JORIY BALANS</div>
-          <div class="text-[34px] font-bold leading-tight ${DRIVER_BALANCE < 0 ? 'text-[#FF3B30]' : 'text-[#34C759]'}">
-            ${Number(DRIVER_BALANCE).toLocaleString()}<span class="ios-title font-medium ml-1" style="color:var(--ios-label3)">so'm</span>
-          </div>
-          ${DRIVER_BALANCE < 0 ? '<div class="flex items-center gap-1.5 mt-2 text-[#FF3B30] ios-caption font-medium"><i class="fas fa-exclamation-circle text-xs"></i> Navbat boshlash uchun balansni to\'ldiring</div>' : ''}
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div class="ios-card rounded-[14px] p-4">
-            <div class="flex items-center gap-1.5 mb-1.5"><i class="fas fa-flag-checkered" style="color:#FFD600;font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3)">BUGUN SAFARLAR</span></div>
-            <div style="font-size:22px;font-weight:800;color:#FFD600;letter-spacing:-.3px">${TODAY_TRIPS}</div>
-          </div>
-          <div class="ios-card rounded-[14px] p-4">
-            <div class="flex items-center gap-1.5 mb-1.5"><i class="fas fa-sack-dollar" style="color:#34C759;font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3)">BUGUN DAROMAD</span></div>
-            <div style="font-size:16px;font-weight:800;color:#34C759;letter-spacing:-.2px">${TODAY_EARNED > 0 ? TODAY_EARNED.toLocaleString() + " so'm" : '—'}</div>
-          </div>
-          <div class="ios-card rounded-[14px] p-4">
-            <div class="flex items-center gap-1.5 mb-1.5"><i class="fas fa-route" style="color:var(--ios-label3);font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3)">JAMI SAFARLAR</span></div>
-            <div style="font-size:22px;font-weight:800;color:var(--ios-label);letter-spacing:-.3px">${DRIVER_TRIPS}</div>
-          </div>
-          <div class="ios-card rounded-[14px] p-4">
-            <div class="flex items-center gap-1.5 mb-1.5"><i class="fas fa-star" style="color:#FF9500;font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3)">REYTING</span></div>
-            <div style="font-size:22px;font-weight:800;color:#FF9500;letter-spacing:-.3px">${DRIVER_RATING ? DRIVER_RATING : '—'}</div>
-          </div>
-        </div>
-        <div class="ios-card rounded-[16px] p-4 flex items-center gap-3">
-          <div class="w-10 h-10 rounded-[12px] bg-[rgba(0,122,255,.1)] flex items-center justify-center flex-shrink-0">
-            <i class="fas fa-car text-[#007AFF] text-lg"></i>
-          </div>
-          <div class="flex-1">
-            <div class="ios-subhead font-semibold">${DRIVER_CAR}</div>
-            <div class="ios-caption font-mono tracking-wider mt-0.5" style="color:var(--ios-label3)">${DRIVER_CAR_NUM}</div>
-          </div>
-          <a href="/driver/profile/" class="ios-caption font-medium text-[#007AFF]">Tahrirlash</a>
-        </div>
-        <a href="/driver/history/" class="ios-card rounded-[16px] p-4 flex items-center gap-3 active:opacity-70 transition-opacity">
-          <div class="w-10 h-10 rounded-[12px] bg-[rgba(255,214,0,.12)] flex items-center justify-center flex-shrink-0">
-            <i class="fas fa-clock-rotate-left text-[#FFD600] text-lg"></i>
-          </div>
-          <div class="flex-1">
-            <div class="ios-subhead font-semibold">Buyurtmalar tarixi</div>
-            <div class="ios-caption mt-0.5" style="color:var(--ios-label3)">O'tgan safarlarni ko'rish</div>
-          </div>
-          <i class="fas fa-chevron-right ios-caption" style="color:var(--ios-label3)"></i>
-        </a>
-      </div>`;
-
+  // Oflayn holat — balans/bugungi daromad/jami safarlar/mashina/tarix endi
+  // BU YERDA ko'rsatilmaydi (ular Profil va Tarix bo'limlarida allaqachon bor,
+  // takrorlash shart emas). Asosiy sahifaning yagona vazifasi — "Liniyaga
+  // chiqish" bosilgach nima bo'lishini (buyurtma qidiruvi) ko'rsatish, shuning
+  // uchun oflaynda ham shunga mos, chalg'itmaydigan ixcham holat qoladi.
   if(!IS_ON_DUTY) {
-    wrap.innerHTML = statsHtml;
+    wrap.innerHTML = `
+      <div class="flex flex-col items-center text-center anim-fade" style="padding:64px 24px 0">
+        <div class="w-16 h-16 rounded-full flex items-center justify-center mb-4" style="background:rgba(120,120,128,.12)">
+          <i class="fas fa-power-off" style="font-size:24px;color:var(--ios-label3)"></i>
+        </div>
+        <div class="ios-title font-bold mb-1.5">Siz oflaynsiz</div>
+        <div class="ios-subhead" style="color:var(--ios-label3);max-width:260px;line-height:1.5">
+          Buyurtma qabul qilish uchun pastdagi "Liniyaga chiqish" tugmasini bosing
+        </div>
+        ${DRIVER_BALANCE < 0 ? `
+        <div class="mt-4 flex items-center gap-1.5 px-3 py-2 rounded-[10px]" style="background:rgba(255,59,48,.1)">
+          <i class="fas fa-exclamation-circle text-xs" style="color:#FF3B30"></i>
+          <span class="ios-caption font-medium" style="color:#FF3B30">Navbat boshlash uchun balansni to'ldiring</span>
+        </div>` : ''}
+      </div>`;
     return;
   }
 
