@@ -1094,16 +1094,18 @@ function _renderSheet(id, o){
     sh.style.maxHeight = '';
     sh.style.height    = '';
     sh.style.borderRadius = '0';
-    // Diqqat: sheet HAMON bottom:0 gacha (haqiqiy ekran ostigacha) to'liq
-    // cho'zilgan holda qoladi — uni qisqartirmaymiz. Avval sheet/overlay'ni
-    // tab-bar joyigacha "qisqartirib", o'sha bo'sh joyda orqadagi sahifa yoki
-    // backdrop ko'rinishini sinab ko'rgan edik — ikkalasi ham sheet'ning
-    // o'zining uzluksiz foni bilan mos kelmay, tungi rejimda "dog'"/qop-qora
-    // chiziq bo'lib ko'rinib qolardi (rang chegarasi sezilib turardi). Endi
-    // shunchaki PASTKI BO'SHLIQ (padding) qo'shamiz — fon rangi boshidan
-    // oxirigacha bir xil (uzluksiz) bo'lib qoladi, faqat tugmalar tab-bar
-    // tagida qolib ko'rinmay qolmasligi uchun ular yuqoriroqqa suriladi.
     sh.style.paddingBottom = 'calc(env(safe-area-inset-bottom,16px) + 100px)';
+    // Diqqat: `.ios-sheet` foni default holda SHAFFOF (blur bilan) — bu
+    // orqasidagi qorong'i backdrop bilan qo'shilib, bo'sh (kontentsiz) joylarda
+    // (masalan pastdagi qo'shimcha bo'shliqda) ko'zga tashlanadigan kulrang/
+    // qop-qora "dog'" hosil qilardi (qayerda opaque kontent — tugma, karta —
+    // bo'lsa bilinmasdi, lekin bo'sh joyda aniq ko'rinib qolardi). Bu holat
+    // to'liq ekranli "qulflangan" sheet uchun umuman kerak emas — shu sabab
+    // uni shaffof "karta" emas, oddiy sahifa sifatida (qattiq fon, blursiz)
+    // ko'rsatamiz — endi hech qanday joyda rang aralashmaydi.
+    sh.style.background = 'var(--ios-bg)';
+    sh.style.backdropFilter = 'none';
+    sh.style.webkitBackdropFilter = 'none';
     if (handle) handle.style.display = 'none';
   } else {
     sh.style.top = '';
@@ -1111,6 +1113,9 @@ function _renderSheet(id, o){
     sh.style.height    = '';
     sh.style.borderRadius = '';
     sh.style.paddingBottom = '';
+    sh.style.background = '';
+    sh.style.backdropFilter = '';
+    sh.style.webkitBackdropFilter = '';
     if (handle) handle.style.display = '';
   }
 
