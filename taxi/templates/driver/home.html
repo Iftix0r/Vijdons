@@ -1066,11 +1066,20 @@ function _renderSheet(id, o){
   const isLocked = (o.status==='accepted'||o.status==='on_way'||o.status==='arrived');
   const handle = sh.querySelector('.ios-sheet-handle');
   if (isLocked) {
-    sh.style.maxHeight = '100vh';
-    sh.style.height    = '100vh';
+    // Diqqat: "height:100vh" ISHLATILMAYDI — mobil brauzer/WebView'larda
+    // 100vh haqiqiy ko'rinadigan balandlikdan farq qilishi mumkin (tizim
+    // panellari tufayli), shu sabab sheet ekran tepasidan "chiqib ketardi"
+    // (top chegarasi 0 dan yuqoriga o'tib ketardi). Buning o'rniga top:0
+    // ni ham bottom:0 (mavjud) bilan birga qo'yamiz — brauzer balandlikni
+    // ANIQ shu ikki chegara orasidagi masofa sifatida hisoblaydi, hech
+    // qanday vh xatosiga o'rin qolmaydi.
+    sh.style.top = '0';
+    sh.style.maxHeight = '';
+    sh.style.height    = '';
     sh.style.borderRadius = '0';
     if (handle) handle.style.display = 'none';
   } else {
+    sh.style.top = '';
     sh.style.maxHeight = '';
     sh.style.height    = '';
     sh.style.borderRadius = '';
