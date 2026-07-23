@@ -869,15 +869,23 @@ _ADMIN_MENU_KB = {
 }
 
 _LOCATION_KB = {
-    'keyboard': [[{'text': '📍 Joylashuvni yuborish', 'request_location': True}]],
+    'keyboard': [
+        [{'text': '📍 Joylashuvni yuborish', 'request_location': True}],
+        [{'text': "❌ Bekor qilish"}],
+    ],
     'resize_keyboard': True,
 }
 
 _LOCATION_OR_SKIP_KB = {
     'keyboard': [
         [{'text': '📍 Joylashuvni yuborish', 'request_location': True}],
-        [{'text': "O'tkazib yuborish ➡️"}],
+        [{'text': "O'tkazib yuborish ➡️"}, {'text': "❌ Bekor qilish"}],
     ],
+    'resize_keyboard': True,
+}
+
+_CANCEL_KB = {
+    'keyboard': [[{'text': "❌ Bekor qilish"}]],
     'resize_keyboard': True,
 }
 
@@ -916,7 +924,8 @@ def _admin_help_text():
         "/tarix &lt;id&gt; — haydovchi balans tarixi\n"
         "💳 To'lov so'rovlari — haydovchi yuborgan to'lov cheklarini ko'rish\n"
         "/tolovtasdiq &lt;id&gt; — to'lov chekini tasdiqlash (balansga qo'shiladi)\n"
-        "/tolovrad &lt;id&gt; — to'lov chekini rad etish"
+        "/tolovrad &lt;id&gt; — to'lov chekini rad etish\n"
+        "/cancel — joriy amalni bekor qilish (masalan buyurtma yaratishni to'xtatish)"
     )
 
 
@@ -927,11 +936,17 @@ def _handle_admin_message(token, chat_id, text, location=None):
     session = _admin_sessions.get(chat_id, {})
     step = session.get('step')
 
+    # ── Joriy amaldan chiqish — istalgan bosqichda ishlaydi ──
+    if step and text in ('/cancel', '❌ Bekor qilish'):
+        _admin_sessions.pop(chat_id, None)
+        _admin_bot_send(token, chat_id, "❌ Bekor qilindi.", _ADMIN_MENU_KB)
+        return
+
     # ── Yangi buyurtma yaratish oqimi ──
     if step == 'order_phone':
         phone = text.replace(' ', '')
         if len(phone) < 9:
-            _admin_bot_send(token, chat_id, "❌ Telefon raqam noto'g'ri. Qayta kiriting:")
+            _admin_bot_send(token, chat_id, "❌ Telefon raqam noto'g'ri. Qayta kiriting:", _CANCEL_KB)
         else:
             _admin_sessions[chat_id] = {'step': 'order_from', 'phone': phone}
             _admin_bot_send(token, chat_id,
@@ -1002,15 +1017,33 @@ def _handle_admin_message(token, chat_id, text, location=None):
     # ── Menyu / buyruqlar ──
     if text in ('/start', '/menu'):
         _admin_sessions.pop(chat_id, None)
-        _admin_bot_send(token, chat_id,
-            "👋 <b>Admin panel botiga xush kelibsiz!</b>\nQuyidagi menyudan tanlang:",
-            _ADMIN_MENU_KB)
+        pending_orders  = Order.objects.filter(status='pending').count()
+        active_orders   = Order.objects.filter(status__in=Order.ACTIVE_STATUSES).count()
+        on_duty         = Driver.objects.filter(is_active=True, is_on_duty=True, approval_status=Driver.APPROVAL_APPROVED).count()
+        pending_drivers = Driver.objects.filter(approval_status=Driver.APPROVAL_PENDING).count()
+        pending_topups  = BalanceTopupRequest.objects.filter(status=BalanceTopupRequest.STATUS_PENDING).count()
+        new_sos         = SosAlert.objects.filter(status=SosAlert.STATUS_NEW).count()
+
+        lines = ["👋 <b>Admin panel botiga xush kelibsiz!</b>\n"]
+        if new_sos:
+            lines.append(f"🆘 <b>{new_sos} ta hal qilinmagan SOS signal!</b>")
+        lines.append(f"🕐 Kutilayotgan buyurtmalar: <b>{pending_orders}</b>")
+        lines.append(f"⏳ Jarayondagi buyurtmalar: <b>{active_orders}</b>")
+        lines.append(f"🟢 Navbatdagi haydovchilar: <b>{on_duty}</b>")
+        if pending_drivers:
+            lines.append(f"🆕 Tasdiq kutayotgan haydovchilar: <b>{pending_drivers}</b>")
+        if pending_topups:
+            lines.append(f"💳 Kutilayotgan to'lov so'rovlari: <b>{pending_topups}</b>")
+        lines.append("\nQuyidagi menyudan tanlang:")
+
+        _admin_bot_send(token, chat_id, '\n'.join(lines), _ADMIN_MENU_KB)
         return
 
     if text in ('🆕 Yangi buyurtma', '/neworder'):
         _admin_sessions[chat_id] = {'step': 'order_phone'}
         _admin_bot_send(token, chat_id,
-            "📞 <b>Mijoz telefon raqamini yuboring:</b>\nMasalan: <code>+998901234567</code>")
+            "📞 <b>Mijoz telefon raqamini yuboring:</b>\nMasalan: <code>+998901234567</code>",
+            _CANCEL_KB)
         return
 
     if text in ('📋 Buyurtmalar', '/orders'):
