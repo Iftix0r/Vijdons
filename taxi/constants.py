@@ -15,6 +15,8 @@ PANEL_SOUND_EVENTS = [
     ('panel_driver_rejected',  '🚫 Haydovchi rad etildi'),
     ('panel_driver_blocked',   '🔒 Haydovchi bloklandi/ochildi'),
     ('panel_balance_changed',  "💰 Balans o'zgardi"),
+    ('panel_low_balance',      '⚠️ Balans kam'),
+    ('panel_topup_request',    "💳 Balans to'ldirish so'rovi"),
     ('panel_sos_alert',        '🆘 SOS signal'),
 ]
 

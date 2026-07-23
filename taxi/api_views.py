@@ -34,7 +34,7 @@ from .serializers import (
     DriverProfileSerializer,
     OrderSerializer,
 )
-from .utils import send_telegram, dispatch_order, tg_new_order, tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected, tg_driver_registered, tg_driver_login, tg_duty_changed, tg_sos_alert
+from .utils import send_telegram, dispatch_order, tg_new_order, tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected, tg_driver_registered, tg_driver_login, tg_duty_changed, tg_sos_alert, tg_low_balance_alert
 
 
 def _get_ip(request):
@@ -347,7 +347,9 @@ def _order_action(request, driver, pk, allowed_statuses, new_status):
             pass  # trips_count optional, buyurtma yakunlanishi bloklanmasin
 
     # Telegram xabarlari
-    if new_status == 'accepted':    tg_order_accepted(order, driver)
+    if new_status == 'accepted':
+        tg_order_accepted(order, driver)
+        tg_low_balance_alert(driver)
     elif new_status == 'on_way':    tg_order_on_way(order, driver)
     elif new_status == 'arrived':   tg_order_arrived(order, driver)
     elif new_status == 'completed': tg_order_completed(order, driver)

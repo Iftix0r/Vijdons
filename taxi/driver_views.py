@@ -14,8 +14,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .models import Driver, Order, ChatMessage, GroupMessage, TariffSettings, DriverActivityLog, BalanceLog, PanelSound, VoiceParticipant, VoiceSignal
-from .utils import tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected, tg_driver_login, tg_duty_changed
+from .models import Driver, Order, ChatMessage, GroupMessage, TariffSettings, DriverActivityLog, BalanceLog, BalanceTopupRequest, PanelSound, VoiceParticipant, VoiceSignal
+from .utils import tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected, tg_driver_login, tg_duty_changed, tg_low_balance_alert, tg_topup_request
 
 
 def _get_ip(request):
@@ -433,6 +433,7 @@ def driver_order_action(request, driver, pk, action):
             locked.dispatched_to = None
             locked.save(update_fields=['status', 'driver', 'dispatched_to', 'updated_at'])
         tg_order_accepted(locked, driver)
+        tg_low_balance_alert(driver)
         return JsonResponse({'ok': True, 'new_balance': float(driver.balance)})
 
     if order.driver_id and order.driver_id != driver.id:
@@ -665,6 +666,27 @@ def driver_profile_photo(request, driver):
     driver.photo = photo
     driver.save(update_fields=['photo'])
     return JsonResponse({'ok': True, 'url': request.build_absolute_uri(driver.photo.url)})
+
+
+@driver_login_required
+@require_POST
+def driver_balance_topup(request, driver):
+    """Haydovchi to'lov chekini yuklab balans to'ldirishni so'raydi —
+    admin operator botdan chekni ko'rib tasdiqlaydi yoki rad etadi."""
+    receipt = request.FILES.get('receipt')
+    amount  = request.POST.get('amount', '').strip()
+    if not receipt:
+        return JsonResponse({'ok': False, 'error': 'Chek rasmi tanlanmadi'}, status=400)
+    try:
+        amount = Decimal(amount)
+        if amount <= 0:
+            raise ValueError
+    except (ValueError, TypeError):
+        return JsonResponse({'ok': False, 'error': "Summani to'g'ri kiriting"}, status=400)
+
+    topup = BalanceTopupRequest.objects.create(driver=driver, amount=amount, receipt=receipt)
+    tg_topup_request(topup, request.build_absolute_uri(topup.receipt.url))
+    return JsonResponse({'ok': True})
 
 
 @driver_login_required

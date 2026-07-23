@@ -58,6 +58,11 @@
       <i class="fas fa-exclamation-circle text-xs"></i> Balansni to'ldiring
     </div>
     {% endif %}
+    <button onclick="showTopupSheet()"
+       class="w-full mt-3 text-center ios-subhead font-semibold text-black py-3 rounded-[14px] active:opacity-70 transition-opacity"
+       style="background:#FFD600">
+      <i class="fas fa-plus-circle mr-1.5"></i>Balansni to'ldirish
+    </button>
   </div>
 
   <!-- ── Stats ── -->
@@ -166,6 +171,29 @@
     </div>
   </div>
 
+  <!-- ── Balans to'ldirish sheet ── -->
+  <div id="topup-overlay" class="fixed inset-0 z-[150] hidden" onclick="hideTopupSheet()">
+    <div class="absolute inset-0" style="background:rgba(0,0,0,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)"></div>
+  </div>
+  <div id="topup-sheet" class="ios-sheet fixed bottom-0 left-0 right-0 z-[160]"
+       style="transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom,34px)">
+    <div class="ios-sheet-handle"></div>
+    <div class="px-4 pt-4 pb-4 space-y-3">
+      <div class="ios-title font-semibold mb-1">Balansni to'ldirish</div>
+      <div class="ios-caption" style="color:var(--ios-label3)">To'lov chekini yuklang — admin tekshirib tasdiqlagach balansingizga qo'shiladi.</div>
+      <input id="topup-amount" type="number" inputmode="numeric" placeholder="Summa (so'm)" class="ios-input">
+      <label class="ios-group ios-row gap-3 cursor-pointer">
+        <div class="w-10 h-10 rounded-[12px] bg-[rgba(255,214,0,.15)] flex items-center justify-center flex-shrink-0">
+          <i class="fas fa-receipt text-[#FFD600] text-sm"></i>
+        </div>
+        <div class="flex-1 ios-subhead font-medium" id="topup-file-label">Chek rasmini tanlash</div>
+        <input id="topup-receipt" type="file" accept="image/*" class="hidden"
+               onchange="document.getElementById('topup-file-label').textContent = this.files[0]?.name || 'Chek rasmini tanlash'">
+      </label>
+      <button onclick="submitTopup()" class="ios-btn-primary">Yuborish</button>
+    </div>
+  </div>
+
   <!-- ── SOS ── -->
   <button onclick="sendSOS()"
      class="block w-full text-center ios-subhead font-semibold text-white py-4 rounded-[16px] active:opacity-60 transition-opacity anim-up"
@@ -254,6 +282,32 @@ async function uploadPhoto(input) {
     if (d.ok) location.reload();
     else { loading.classList.add('hidden'); showToast('Xatolik', d.error||'', 'error'); }
   } catch(_) { loading.classList.add('hidden'); showToast('Tarmoq xatosi','','error'); }
+}
+
+function showTopupSheet() {
+  Native.vibrate();
+  document.getElementById('topup-overlay').classList.remove('hidden');
+  requestAnimationFrame(()=>{ document.getElementById('topup-sheet').style.transform='translateY(0)'; });
+}
+function hideTopupSheet() {
+  document.getElementById('topup-sheet').style.transform='translateY(100%)';
+  setTimeout(()=>document.getElementById('topup-overlay').classList.add('hidden'),360);
+}
+async function submitTopup() {
+  const amount  = document.getElementById('topup-amount').value.trim();
+  const receipt = document.getElementById('topup-receipt').files[0];
+  if (!amount || Number(amount) <= 0) return showToast('Xatolik', "Summani to'g'ri kiriting", 'error');
+  if (!receipt) return showToast('Xatolik', 'Chek rasmini tanlang', 'error');
+  const fd = new FormData();
+  fd.append('amount', amount);
+  fd.append('receipt', receipt);
+  fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+  try {
+    const r = await fetch('{% url "driver:balance_topup" %}', {method:'POST', body:fd});
+    const d = await r.json();
+    if (d.ok) { hideTopupSheet(); showToast("So'rov yuborildi", 'Admin tekshirgach balansingizga qo\'shiladi', 'success', 3000); }
+    else showToast('Xatolik', d.error||'', 'error');
+  } catch(_) { showToast('Tarmoq xatosi','','error'); }
 }
 
 function showPasswordSheet() {

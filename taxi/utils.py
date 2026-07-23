@@ -114,6 +114,42 @@ def send_telegram(text, token=None, chat_ids=None, reply_markup=None):
             pass
 
 
+def send_telegram_photo(photo_url, caption='', token=None, chat_ids=None, reply_markup=None):
+    """Telegram guruh(lar)iga/chat(lar)iga rasm yuborish (masalan to'lov cheki)."""
+    try:
+        from taxi.models import BotSettings
+        cfg = BotSettings.get()
+        _token = token or cfg.bot_token.strip()
+        _ids   = chat_ids or cfg.get_all_group_ids()
+    except Exception:
+        _token = token or ''
+        _ids   = chat_ids or []
+
+    if not _token or not _ids:
+        return
+
+    for chat_id in _ids:
+        if not chat_id:
+            continue
+        try:
+            payload = {
+                'chat_id':    chat_id,
+                'photo':      photo_url,
+                'caption':    caption,
+                'parse_mode': 'HTML',
+            }
+            if reply_markup:
+                payload['reply_markup'] = json.dumps(reply_markup)
+            data = urllib.parse.urlencode(payload).encode()
+            req = urllib.request.Request(
+                f'https://api.telegram.org/bot{_token}/sendPhoto',
+                data=data,
+            )
+            urllib.request.urlopen(req, timeout=8)
+        except Exception:
+            pass
+
+
 def edit_telegram_message(chat_id, message_id, text, token=None, reply_markup=None):
     """Mavjud Telegram xabarini tahrirlash."""
     try:
@@ -420,6 +456,49 @@ def tg_balance_changed(driver, amount, action):
         f"📊 Joriy balans: <b>{driver.balance} UZS</b>",
         reply_markup=_driver_inline(driver.id),
     )
+
+
+def tg_low_balance_alert(driver):
+    """Komissiya yechilgandan keyin balans yetarli bo'lmasa (haydovchi endi
+    yangi buyurtma qabul qila olmaydi/navbatga kira olmaydi), adminni ogohlantiradi."""
+    from taxi.models import TariffSettings
+    tariff = TariffSettings.get()
+    if driver.balance >= tariff.commission:
+        return
+    log_panel_event('panel_low_balance', f"{driver.full_name} — balans kam: {driver.balance} UZS")
+    cfg = _cfg()
+    if cfg and not cfg.notify_low_balance:
+        return
+    send_telegram(
+        f"⚠️ <b>Balans kam</b>\n"
+        f"👤 <b>{driver.full_name}</b> | <code>{driver.phone_number}</code>\n"
+        f"💰 Joriy balans: <b>{driver.balance} UZS</b> (komissiya: {tariff.commission} UZS)\n"
+        f"Haydovchi endi yangi buyurtma qabul qila olmaydi.",
+        reply_markup=_driver_inline(driver.id),
+    )
+
+
+def tg_topup_request(request_obj, receipt_url):
+    """Haydovchi balans to'ldirish uchun chek yuklaganda adminlarga rasm bilan xabar yuboradi."""
+    driver = request_obj.driver
+    log_panel_event('panel_topup_request', f"{driver.full_name} — {request_obj.amount} UZS to'lov cheki")
+    caption = (
+        f"💳 <b>Balans to'ldirish so'rovi #{request_obj.id}</b>\n"
+        f"👤 <b>{driver.full_name}</b> | <code>{driver.phone_number}</code>\n"
+        f"💰 So'ralgan summa: <b>{request_obj.amount} UZS</b>\n\n"
+        f"Tasdiqlash uchun operator botga: /tolovtasdiq {request_obj.id}\n"
+        f"Rad etish uchun: /tolovrad {request_obj.id}"
+    )
+    send_telegram_photo(receipt_url, caption=caption)
+
+    try:
+        from taxi.models import BotAdmin
+        cfg = _cfg()
+        admin_ids = list(BotAdmin.objects.filter(is_active=True).values_list('chat_id', flat=True))
+        if cfg and admin_ids:
+            send_telegram_photo(receipt_url, caption=caption, token=cfg.bot_token.strip(), chat_ids=admin_ids)
+    except Exception:
+        pass
 
 
 def tg_duty_changed(driver, is_on_duty):

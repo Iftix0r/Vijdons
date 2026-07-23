@@ -4,7 +4,7 @@ from django.http import JsonResponse, HttpResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, GroupMessage, PanelEvent, PanelSound
+from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound
 from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address
 import csv
 
@@ -510,6 +510,7 @@ def bot_settings(request):
         bot.notify_driver_login    = 'notify_driver_login'    in request.POST
         bot.notify_duty_changed    = 'notify_duty_changed'    in request.POST
         bot.notify_balance_changed = 'notify_balance_changed' in request.POST
+        bot.notify_low_balance     = 'notify_low_balance'     in request.POST
         bot.save()
         # SITE_URL ni settings ga yozish
         site_url = request.POST.get('site_url', '').strip()
@@ -539,6 +540,7 @@ def bot_settings(request):
         ('notify_driver_login',    'Haydovchi kirdi (login)',           '🔑', bot.notify_driver_login),
         ('notify_duty_changed',    "Navbat holati o'zgardi",            '🟢', bot.notify_duty_changed),
         ('notify_balance_changed', "Balans o'zgardi",                   '💰', bot.notify_balance_changed),
+        ('notify_low_balance',     'Balans kam ogohlantirish',          '⚠️', bot.notify_low_balance),
     ]
     return render(request, 'taxi/bot_settings.html', {
         'bot': bot,
@@ -816,7 +818,7 @@ _ADMIN_MENU_KB = {
         [{'text': '🆕 Yangi buyurtma'}],
         [{'text': '📋 Buyurtmalar'}, {'text': '🚖 Haydovchilar'}],
         [{'text': '🆕 Yangi haydovchilar'}, {'text': '📊 Statistika'}],
-        [{'text': '❓ Yordam'}],
+        [{'text': "💳 To'lov so'rovlari"}, {'text': '❓ Yordam'}],
     ],
     'resize_keyboard': True,
 }
@@ -865,7 +867,11 @@ def _admin_help_text():
         "/rad &lt;id&gt; — yangi haydovchini rad etish\n"
         "/blok &lt;id&gt; — haydovchini bloklash\n"
         "/blokoch &lt;id&gt; — haydovchini blokdan chiqarish\n"
-        "/balans &lt;id&gt; &lt;miqdor&gt; — balans qo'shish (ayirish uchun manfiy son, masalan -20000)"
+        "/balans &lt;id&gt; &lt;miqdor&gt; — balans qo'shish (ayirish uchun manfiy son, masalan -20000)\n"
+        "/tarix &lt;id&gt; — haydovchi balans tarixi\n"
+        "💳 To'lov so'rovlari — haydovchi yuborgan to'lov cheklarini ko'rish\n"
+        "/tolovtasdiq &lt;id&gt; — to'lov chekini tasdiqlash (balansga qo'shiladi)\n"
+        "/tolovrad &lt;id&gt; — to'lov chekini rad etish"
     )
 
 
@@ -1196,6 +1202,67 @@ def _handle_admin_message(token, chat_id, text, location=None):
         )
         tg_balance_changed(driver, abs(amount), action)
         _admin_bot_send(token, chat_id, f"💰 {driver.full_name} balansi yangilandi: {driver.balance} UZS", _ADMIN_MENU_KB)
+        return
+
+    if len(parts) == 2 and parts[0] in ('/tarix', '/balanstarix') and parts[1].isdigit():
+        driver = Driver.objects.filter(pk=int(parts[1])).first()
+        if not driver:
+            _admin_bot_send(token, chat_id, "❌ Haydovchi topilmadi.", _ADMIN_MENU_KB)
+            return
+        logs = driver.balance_logs.all()[:10]
+        if not logs:
+            _admin_bot_send(token, chat_id, f"📄 {driver.full_name} — balans tarixi bo'sh.", _ADMIN_MENU_KB)
+            return
+        lines = [f"📄 <b>{driver.full_name} — balans tarixi</b>\n"]
+        for log in logs:
+            sign = '+' if log.action == BalanceLog.ACTION_ADD else '-'
+            lines.append(f"{sign}{log.amount} UZS → {log.balance_after} UZS | {log.created_at.strftime('%d.%m %H:%M')}" + (f" | {log.note}" if log.note else ''))
+        _admin_bot_send(token, chat_id, '\n'.join(lines), _ADMIN_MENU_KB)
+        return
+
+    if text in ('💳 To\'lov so\'rovlari', '/tolovlar'):
+        qs = BalanceTopupRequest.objects.filter(status=BalanceTopupRequest.STATUS_PENDING).select_related('driver')[:10]
+        if not qs:
+            _admin_bot_send(token, chat_id, "✅ Kutilayotgan to'lov so'rovlari yo'q.", _ADMIN_MENU_KB)
+            return
+        lines = []
+        for t in qs:
+            lines.append(
+                f"<b>#{t.id}</b> {t.driver.full_name} | <code>{t.driver.phone_number}</code>\n"
+                f"💰 {t.amount} UZS | {t.created_at.strftime('%d.%m.%Y %H:%M')}"
+            )
+        lines.append("\n<i>/tolovtasdiq id — tasdiqlash, /tolovrad id — rad etish</i>")
+        _admin_bot_send(token, chat_id, "💳 <b>To'lov so'rovlari:</b>\n\n" + '\n\n'.join(lines), _ADMIN_MENU_KB)
+        return
+
+    if len(parts) == 2 and parts[0] in ('/tolovtasdiq', '/tolovrad') and parts[1].isdigit():
+        topup = BalanceTopupRequest.objects.filter(pk=int(parts[1]), status=BalanceTopupRequest.STATUS_PENDING).select_related('driver').first()
+        if not topup:
+            _admin_bot_send(token, chat_id, "❌ Kutilayotgan to'lov so'rovi topilmadi.", _ADMIN_MENU_KB)
+            return
+        from django.utils import timezone
+        driver = topup.driver
+        if parts[0] == '/tolovtasdiq':
+            driver.balance += topup.amount
+            driver.save(update_fields=['balance'])
+            BalanceLog.objects.create(
+                driver=driver, action=BalanceLog.ACTION_ADD, amount=topup.amount,
+                balance_after=driver.balance, note=f"To'lov cheki tasdiqlandi #{topup.id}",
+            )
+            DriverActivityLog.objects.create(
+                driver=driver, action=DriverActivityLog.ACTION_BALANCE,
+                detail=f"Admin (bot): to'lov cheki #{topup.id} tasdiqlandi, +{topup.amount} UZS",
+            )
+            topup.status = BalanceTopupRequest.STATUS_APPROVED
+            topup.resolved_at = timezone.now()
+            topup.save(update_fields=['status', 'resolved_at'])
+            tg_balance_changed(driver, topup.amount, BalanceLog.ACTION_ADD)
+            _admin_bot_send(token, chat_id, f"✅ To'lov #{topup.id} tasdiqlandi. {driver.full_name} balansi: {driver.balance} UZS", _ADMIN_MENU_KB)
+        else:
+            topup.status = BalanceTopupRequest.STATUS_REJECTED
+            topup.resolved_at = timezone.now()
+            topup.save(update_fields=['status', 'resolved_at'])
+            _admin_bot_send(token, chat_id, f"🚫 To'lov #{topup.id} rad etildi.", _ADMIN_MENU_KB)
         return
 
     _admin_bot_send(token, chat_id, "Tushunmadim 🤔\n/help — buyruqlar ro'yxati", _ADMIN_MENU_KB)

@@ -199,6 +199,7 @@ class BotSettings(models.Model):
     notify_driver_login   = models.BooleanField(default=False, verbose_name='Haydovchi kirdi (login)')
     notify_duty_changed   = models.BooleanField(default=False, verbose_name='Navbat holati o\'zgardi')
     notify_balance_changed= models.BooleanField(default=True,  verbose_name='Balans o\'zgardi')
+    notify_low_balance    = models.BooleanField(default=True,  verbose_name='Balans kam ogohlantirish')
 
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -432,6 +433,34 @@ class BalanceLog(models.Model):
 
     def __str__(self):
         return f"{self.driver.full_name} {self.action} {self.amount}"
+
+
+class BalanceTopupRequest(models.Model):
+    """Haydovchi saytdan to'lov chekini yuklab balans to'ldirishni so'raydi —
+    admin operator botdan chekni ko'rib tasdiqlaydi yoki rad etadi."""
+    STATUS_PENDING  = 'pending'
+    STATUS_APPROVED = 'approved'
+    STATUS_REJECTED = 'rejected'
+    STATUS_CHOICES = (
+        (STATUS_PENDING,  'Kutilmoqda'),
+        (STATUS_APPROVED, 'Tasdiqlandi'),
+        (STATUS_REJECTED, 'Rad etildi'),
+    )
+
+    driver      = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='topup_requests', verbose_name='Haydovchi')
+    amount      = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="So'ralgan summa")
+    receipt     = models.ImageField(upload_to='topup_receipts/', verbose_name='Chek rasmi')
+    status      = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_PENDING, verbose_name='Holati')
+    created_at  = models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')
+    resolved_at = models.DateTimeField(null=True, blank=True, verbose_name='Hal qilingan vaqti')
+
+    def __str__(self):
+        return f"{self.driver.full_name} — {self.amount} UZS ({self.get_status_display()})"
+
+    class Meta:
+        verbose_name = "Balans to'ldirish so'rovi"
+        verbose_name_plural = "Balans to'ldirish so'rovlari"
+        ordering = ['-created_at']
 
 
 class TariffSettings(models.Model):
