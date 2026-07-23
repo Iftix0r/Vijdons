@@ -90,6 +90,10 @@ urlpatterns = [
     path('sos/count/', views.sos_count, name='sos_count'),
     path('sos/<int:pk>/resolve/', views.sos_resolve, name='sos_resolve'),
 
+    # ── Balans to'ldirish so'rovlari (admin panel) ──
+    path('topups/', views.topup_list, name='topup_list'),
+    path('topups/<int:pk>/resolve/', views.topup_resolve, name='topup_resolve'),
+
     # ── Ovozli bildirishnomalar ──
     path('api/events/', views.panel_events_api, name='panel_events_api'),
     path('sounds/', views.sound_settings, name='sound_settings'),
