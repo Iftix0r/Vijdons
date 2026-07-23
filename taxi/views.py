@@ -787,6 +787,51 @@ def sos_count(request):
     return JsonResponse({'count': count})
 
 
+# ── Balans to'ldirish so'rovlari (admin panel) ──────────────────────────────
+
+@login_required(login_url='taxi:panel_login')
+def topup_list(request):
+    status_filter = request.GET.get('status', BalanceTopupRequest.STATUS_PENDING)
+    qs = BalanceTopupRequest.objects.select_related('driver').order_by('-created_at')
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+    return render(request, 'taxi/topup_list.html', {
+        'requests':      qs,
+        'status_filter': status_filter,
+        'pending_count': BalanceTopupRequest.objects.filter(status=BalanceTopupRequest.STATUS_PENDING).count(),
+    })
+
+
+@login_required(login_url='taxi:panel_login')
+def topup_resolve(request, pk):
+    topup = get_object_or_404(BalanceTopupRequest, pk=pk)
+    if request.method == 'POST' and topup.status == BalanceTopupRequest.STATUS_PENDING:
+        from django.utils import timezone
+        action = request.POST.get('action')
+        driver = topup.driver
+        if action == 'approve':
+            driver.balance += topup.amount
+            driver.save(update_fields=['balance'])
+            BalanceLog.objects.create(
+                driver=driver, action=BalanceLog.ACTION_ADD, amount=topup.amount,
+                balance_after=driver.balance, note=f"To'lov cheki tasdiqlandi #{topup.id} (panel)",
+            )
+            DriverActivityLog.objects.create(
+                driver=driver, action=DriverActivityLog.ACTION_BALANCE,
+                detail=f"Admin (panel): to'lov cheki #{topup.id} tasdiqlandi, +{topup.amount} UZS",
+                ip_address=_get_client_ip(request), user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            )
+            topup.status = BalanceTopupRequest.STATUS_APPROVED
+            tg_balance_changed(driver, topup.amount, BalanceLog.ACTION_ADD)
+            messages.success(request, f"To'lov #{topup.id} tasdiqlandi — {driver.full_name} balansi: {driver.balance} UZS")
+        elif action == 'reject':
+            topup.status = BalanceTopupRequest.STATUS_REJECTED
+            messages.success(request, f"To'lov #{topup.id} rad etildi.")
+        topup.resolved_at = timezone.now()
+        topup.save(update_fields=['status', 'resolved_at'])
+    return redirect(request.META.get('HTTP_REFERER', 'taxi:topup_list'))
+
+
 @login_required(login_url='taxi:panel_login')
 def panel_events_api(request):
     """Operator panel ovozli bildirishnomasi uchun polling endpoint.

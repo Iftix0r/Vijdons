@@ -233,6 +233,14 @@
            class="nav-link {% if request.resolver_match.url_name == 'client_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-users w-5 text-center"></i> Mijozlar
         </a>
+        <a href="{% url 'taxi:topup_list' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'topup_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-money-bill-transfer w-5 text-center"></i>
+            <span class="flex-1">To'lov so'rovlari</span>
+            {% if pending_topup_count > 0 %}
+            <span class="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center pulse-dot">{{ pending_topup_count }}</span>
+            {% endif %}
+        </a>
 
         <p class="px-3 pt-4 pb-1 text-[10px] uppercase tracking-widest font-bold text-gray-400 dark:text-gray-600">Tizim</p>
         <a href="/panel/tariff/"
