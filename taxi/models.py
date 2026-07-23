@@ -171,6 +171,9 @@ class BotSettings(models.Model):
                                        help_text='Har bir ID yangi qatorda. Bot qo\'shilgan barcha guruhlarga yuboradi.')
     client_bot_token = models.CharField(max_length=200, blank=True, default='', verbose_name='Mijoz Bot Token',
                                         help_text='Mijozlar buyurtma beruvchi bot tokeni')
+    admin_chat_ids = models.TextField(blank=True, default='', verbose_name="Admin Telegram ID'lar",
+                                      help_text="Operator bot orqali buyurtma yaratish va boshqarish huquqiga ega "
+                                                "shaxsiy Telegram ID'lar. Har biri yangi qatorda.")
 
     def get_all_group_ids(self):
         """Barcha guruh IDlarini list sifatida qaytaradi."""
@@ -181,6 +184,15 @@ class BotSettings(models.Model):
             gid = line.strip()
             if gid and gid not in ids:
                 ids.append(gid)
+        return ids
+
+    def get_admin_chat_ids(self):
+        """Operator bot orqali admin buyruqlarini yuborishga ruxsati bor chat IDlar."""
+        ids = []
+        for line in self.admin_chat_ids.splitlines():
+            cid = line.strip()
+            if cid and cid not in ids:
+                ids.append(cid)
         return ids
 
     # Bildirishnoma toggle lar

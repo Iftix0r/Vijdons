@@ -495,6 +495,7 @@ def bot_settings(request):
         bot.group_id  = request.POST.get('group_id', '').strip()
         bot.extra_group_ids = request.POST.get('extra_group_ids', '').strip()
         bot.client_bot_token = request.POST.get('client_bot_token', '').strip()
+        bot.admin_chat_ids   = request.POST.get('admin_chat_ids', '').strip()
         bot.notify_new_order       = 'notify_new_order'       in request.POST
         bot.notify_dispatched      = 'notify_dispatched'      in request.POST
         bot.notify_accepted        = 'notify_accepted'        in request.POST
@@ -778,9 +779,203 @@ def panel_events_api(request):
     return JsonResponse({'events': data, 'last_id': last_id})
 
 
+# ── Operator Bot — Admin buyruqlari (shaxsiy chat) ────────────────────────────
+
+# Admin bilan buyurtma yaratish suhbati holati: {chat_id: {'step': ..., ...}}
+_admin_sessions = {}
+
+_ADMIN_MENU_KB = {
+    'keyboard': [
+        [{'text': '🆕 Yangi buyurtma'}],
+        [{'text': '📋 Buyurtmalar'}, {'text': '🚖 Haydovchilar'}],
+        [{'text': '❓ Yordam'}],
+    ],
+    'resize_keyboard': True,
+}
+
+
+def _admin_bot_send(token, chat_id, text, keyboard=None):
+    import urllib.request, urllib.parse, json as _j
+    payload = {'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'}
+    if keyboard:
+        payload['reply_markup'] = _j.dumps(keyboard)
+    data = urllib.parse.urlencode(payload).encode()
+    try:
+        urllib.request.urlopen(
+            f'https://api.telegram.org/bot{token}/sendMessage',
+            data=data, timeout=5
+        )
+    except Exception:
+        pass
+
+
+def _admin_help_text():
+    return (
+        "🤖 <b>Admin buyruqlari</b>\n\n"
+        "🆕 Yangi buyurtma — mijoz uchun buyurtma yaratish\n"
+        "📋 Buyurtmalar — oxirgi faol buyurtmalar\n"
+        "🚖 Haydovchilar — tasdiqlangan haydovchilar ro'yxati\n"
+        "/blok &lt;id&gt; — haydovchini bloklash\n"
+        "/blokoch &lt;id&gt; — haydovchini blokdan chiqarish\n"
+        "/balans &lt;id&gt; &lt;miqdor&gt; — balans qo'shish (ayirish uchun manfiy son, masalan -20000)"
+    )
+
+
+def _handle_admin_message(token, chat_id, text):
+    """Admin (whitelist'dagi) shaxsiy chatdan yuborgan xabarni qayta ishlaydi."""
+    from decimal import Decimal, InvalidOperation
+
+    session = _admin_sessions.get(chat_id, {})
+    step = session.get('step')
+
+    # ── Yangi buyurtma yaratish oqimi ──
+    if step == 'order_phone':
+        phone = text.replace(' ', '')
+        if len(phone) < 9:
+            _admin_bot_send(token, chat_id, "❌ Telefon raqam noto'g'ri. Qayta kiriting:")
+        else:
+            _admin_sessions[chat_id] = {'step': 'order_from', 'phone': phone}
+            _admin_bot_send(token, chat_id, "📍 <b>Qayerdan yo'lga chiqadi?</b>\nManzilni yozing:")
+        return
+
+    if step == 'order_from':
+        _admin_sessions[chat_id] = dict(session, step='order_to', from_address=text)
+        _admin_bot_send(token, chat_id,
+            "🏁 <b>Qayerga boradi?</b>\nManzilni yozing yoki o'tkazib yuboring:",
+            {'keyboard': [[{'text': "O'tkazib yuborish ➡️"}]], 'resize_keyboard': True})
+        return
+
+    if step == 'order_to':
+        to_address   = '' if text == "O'tkazib yuborish ➡️" else text
+        phone        = session.get('phone', '')
+        from_address = session.get('from_address', '')
+
+        client, _created = Client.objects.get_or_create(phone_number=phone)
+        tariff = TariffSettings.get()
+        order = Order.objects.create(
+            client=client,
+            from_address=from_address,
+            to_address=to_address,
+            commission=tariff.commission,
+            status='pending',
+        )
+        tg_new_order(order)
+        if tariff.auto_dispatch:
+            import threading
+            threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
+
+        _admin_sessions.pop(chat_id, None)
+        _admin_bot_send(token, chat_id,
+            f"✅ <b>Buyurtma #{order.id} yaratildi!</b>\n"
+            f"📍 Qayerdan: {from_address}\n"
+            + (f"🏁 Qayerga: {to_address}\n" if to_address else ''),
+            _ADMIN_MENU_KB)
+        return
+
+    # ── Menyu / buyruqlar ──
+    if text in ('/start', '/menu'):
+        _admin_sessions.pop(chat_id, None)
+        _admin_bot_send(token, chat_id,
+            "👋 <b>Admin panel botiga xush kelibsiz!</b>\nQuyidagi menyudan tanlang:",
+            _ADMIN_MENU_KB)
+        return
+
+    if text in ('🆕 Yangi buyurtma', '/neworder'):
+        _admin_sessions[chat_id] = {'step': 'order_phone'}
+        _admin_bot_send(token, chat_id,
+            "📞 <b>Mijoz telefon raqamini yuboring:</b>\nMasalan: <code>+998901234567</code>")
+        return
+
+    if text in ('📋 Buyurtmalar', '/orders'):
+        qs = (Order.objects.exclude(status__in=['completed', 'cancelled'])
+              .select_related('client', 'driver').order_by('-created_at')[:10])
+        if not qs:
+            _admin_bot_send(token, chat_id, "📋 Hozircha faol buyurtmalar yo'q.", _ADMIN_MENU_KB)
+            return
+        status_labels = dict(Order.STATUS_CHOICES)
+        blocks = []
+        for o in qs:
+            driver_name = o.driver.full_name if o.driver else '—'
+            blocks.append(
+                f"<b>#{o.id}</b> — {status_labels.get(o.status, o.status)}\n"
+                f"👤 {o.client.phone_number} | 🚖 {driver_name}\n"
+                f"📍 {o.from_address}" + (f" → 🏁 {o.to_address}" if o.to_address else '')
+            )
+        _admin_bot_send(token, chat_id, '📋 <b>Faol buyurtmalar:</b>\n\n' + '\n\n'.join(blocks), _ADMIN_MENU_KB)
+        return
+
+    if text in ('🚖 Haydovchilar', '/drivers'):
+        qs = Driver.objects.filter(approval_status=Driver.APPROVAL_APPROVED).order_by('-is_on_duty', 'full_name')[:20]
+        if not qs:
+            _admin_bot_send(token, chat_id, "🚖 Haydovchilar topilmadi.", _ADMIN_MENU_KB)
+            return
+        lines = []
+        for d in qs:
+            status  = "🟢 Navbatda" if d.is_on_duty else "⚪ Navbatda emas"
+            blocked = " 🔒 BLOKLANGAN" if not d.is_active else ''
+            lines.append(f"<b>#{d.id}</b> {d.full_name} ({d.car_number}) — {status}{blocked}\n💰 {d.balance} UZS")
+        lines.append("\n<i>/blok id, /blokoch id, /balans id miqdor</i>")
+        _admin_bot_send(token, chat_id, '🚖 <b>Haydovchilar:</b>\n\n' + '\n\n'.join(lines), _ADMIN_MENU_KB)
+        return
+
+    if text in ('❓ Yordam', '/help'):
+        _admin_bot_send(token, chat_id, _admin_help_text(), _ADMIN_MENU_KB)
+        return
+
+    parts = text.split()
+
+    if len(parts) == 2 and parts[0] in ('/blok', '/blokoch') and parts[1].isdigit():
+        driver = Driver.objects.filter(pk=int(parts[1])).first()
+        if not driver:
+            _admin_bot_send(token, chat_id, "❌ Haydovchi topilmadi.")
+            return
+        unblock = parts[0] == '/blokoch'
+        driver.is_active = unblock
+        driver.save(update_fields=['is_active'])
+        DriverActivityLog.objects.create(
+            driver=driver,
+            action=DriverActivityLog.ACTION_UNBLOCK if unblock else DriverActivityLog.ACTION_BLOCK,
+            detail='Admin (bot) tomonidan ' + ('blok ochildi' if unblock else 'bloklandi'),
+        )
+        if unblock:
+            tg_driver_unblocked(driver)
+            _admin_bot_send(token, chat_id, f"🔓 {driver.full_name} blokdan chiqarildi.", _ADMIN_MENU_KB)
+        else:
+            tg_driver_blocked(driver)
+            _admin_bot_send(token, chat_id, f"🔒 {driver.full_name} bloklandi.", _ADMIN_MENU_KB)
+        return
+
+    if len(parts) == 3 and parts[0] == '/balans' and parts[1].isdigit():
+        driver = Driver.objects.filter(pk=int(parts[1])).first()
+        if not driver:
+            _admin_bot_send(token, chat_id, "❌ Haydovchi topilmadi.")
+            return
+        try:
+            amount = Decimal(parts[2])
+        except InvalidOperation:
+            _admin_bot_send(token, chat_id, "❌ Miqdor noto'g'ri. Masalan: /balans 5 50000")
+            return
+        action = BalanceLog.ACTION_DEDUCT if amount < 0 else BalanceLog.ACTION_ADD
+        driver.balance += amount
+        driver.save(update_fields=['balance'])
+        BalanceLog.objects.create(
+            driver=driver, action=action, amount=abs(amount),
+            balance_after=driver.balance, note='Admin (bot)',
+        )
+        DriverActivityLog.objects.create(
+            driver=driver, action=DriverActivityLog.ACTION_BALANCE,
+            detail=f"Admin (bot): {'+' if amount >= 0 else ''}{amount} UZS",
+        )
+        tg_balance_changed(driver, abs(amount), action)
+        _admin_bot_send(token, chat_id, f"💰 {driver.full_name} balansi yangilandi: {driver.balance} UZS", _ADMIN_MENU_KB)
+        return
+
+    _admin_bot_send(token, chat_id, "Tushunmadim 🤔\n/help — buyruqlar ro'yxati", _ADMIN_MENU_KB)
+
+
 @csrf_exempt
 def operator_bot_webhook(request):
-    """Operator bot webhook — guruhdan callback_query qayta ishlash."""
+    """Operator bot webhook — guruhdan callback_query va admin shaxsiy buyruqlarini qayta ishlash."""
     import json as _json
     if request.method != 'POST':
         from django.http import HttpResponse
@@ -788,6 +983,19 @@ def operator_bot_webhook(request):
     try:
         data = _json.loads(request.body)
     except Exception:
+        from django.http import HttpResponse
+        return HttpResponse('ok')
+
+    # Shaxsiy chatdan kelgan matnli xabar — whitelist'dagi adminlar uchun buyruqlar
+    msg = data.get('message')
+    if msg and msg.get('chat', {}).get('type') == 'private':
+        from .models import BotSettings
+        bot   = BotSettings.get()
+        token = bot.bot_token.strip()
+        chat_id = str(msg.get('chat', {}).get('id', ''))
+        text    = (msg.get('text') or '').strip()
+        if token and text and chat_id in bot.get_admin_chat_ids():
+            _handle_admin_message(token, chat_id, text)
         from django.http import HttpResponse
         return HttpResponse('ok')
 
