@@ -454,7 +454,19 @@ def tg_sos_alert(alert):
     markup = {'inline_keyboard': [[
         {'text': '👤 Haydovchi', 'url': _driver_url(driver.id)},
     ]]}
-    send_telegram('\n'.join(lines), reply_markup=markup)
+    text = '\n'.join(lines)
+    send_telegram(text, reply_markup=markup)
+
+    # Bot adminlarga shaxsiy DM ham yuboriladi — SOS xavfsizlik uchun muhim,
+    # operator guruhida bo'lmagan adminlar ham darhol xabardor bo'lishi kerak.
+    try:
+        from taxi.models import BotAdmin
+        cfg = _cfg()
+        admin_ids = list(BotAdmin.objects.filter(is_active=True).values_list('chat_id', flat=True))
+        if cfg and admin_ids:
+            send_telegram(text, token=cfg.bot_token.strip(), chat_ids=admin_ids, reply_markup=markup)
+    except Exception:
+        pass
 
 
 def send_fcm(fcm_token, title, body, data=None):

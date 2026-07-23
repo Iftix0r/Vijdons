@@ -815,7 +815,8 @@ _ADMIN_MENU_KB = {
     'keyboard': [
         [{'text': '🆕 Yangi buyurtma'}],
         [{'text': '📋 Buyurtmalar'}, {'text': '🚖 Haydovchilar'}],
-        [{'text': '📊 Statistika'}, {'text': '❓ Yordam'}],
+        [{'text': '🆕 Yangi haydovchilar'}, {'text': '📊 Statistika'}],
+        [{'text': '❓ Yordam'}],
     ],
     'resize_keyboard': True,
 }
@@ -855,10 +856,13 @@ def _admin_help_text():
         "🆕 Yangi buyurtma — mijoz uchun buyurtma yaratish (manzilni yozish yoki 📍 joylashuv yuborish mumkin)\n"
         "📋 Buyurtmalar — oxirgi faol buyurtmalar\n"
         "🚖 Haydovchilar — tasdiqlangan haydovchilar ro'yxati\n"
+        "🆕 Yangi haydovchilar — tasdiqlanishi kerak bo'lgan haydovchilar\n"
         "📊 Statistika — bugungi buyurtmalar va tushum hisoboti\n"
         "/buyurtma &lt;id&gt; — buyurtma haqida to'liq ma'lumot\n"
         "/bekor &lt;id&gt; — buyurtmani bekor qilish\n"
         "/qayta &lt;id&gt; — buyurtmani qayta ochish va eng yaqin haydovchiga qayta yuborish\n"
+        "/tasdiq &lt;id&gt; — yangi haydovchini tasdiqlash\n"
+        "/rad &lt;id&gt; — yangi haydovchini rad etish\n"
         "/blok &lt;id&gt; — haydovchini bloklash\n"
         "/blokoch &lt;id&gt; — haydovchini blokdan chiqarish\n"
         "/balans &lt;id&gt; &lt;miqdor&gt; — balans qo'shish (ayirish uchun manfiy son, masalan -20000)"
@@ -992,6 +996,21 @@ def _handle_admin_message(token, chat_id, text, location=None):
 
     if text in ('❓ Yordam', '/help'):
         _admin_bot_send(token, chat_id, _admin_help_text(), _ADMIN_MENU_KB)
+        return
+
+    if text in ('🆕 Yangi haydovchilar', '/pending'):
+        qs = Driver.objects.filter(approval_status=Driver.APPROVAL_PENDING).order_by('-registered_at')[:20]
+        if not qs:
+            _admin_bot_send(token, chat_id, "✅ Tasdiqlanishi kerak bo'lgan haydovchilar yo'q.", _ADMIN_MENU_KB)
+            return
+        lines = []
+        for d in qs:
+            lines.append(
+                f"<b>#{d.id}</b> {d.full_name} | <code>{d.phone_number}</code>\n"
+                f"🚗 {d.car_model} | {d.car_number}"
+            )
+        lines.append("\n<i>/tasdiq id — tasdiqlash, /rad id — rad etish</i>")
+        _admin_bot_send(token, chat_id, '🆕 <b>Yangi haydovchilar:</b>\n\n' + '\n\n'.join(lines), _ADMIN_MENU_KB)
         return
 
     parts = text.split()
@@ -1130,6 +1149,28 @@ def _handle_admin_message(token, chat_id, text, location=None):
             import threading
             threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
         _admin_bot_send(token, chat_id, f"🔄 Buyurtma #{order.id} qayta ochildi va eng yaqin haydovchiga yuborilmoqda.", _ADMIN_MENU_KB)
+        return
+
+    if len(parts) == 2 and parts[0] in ('/tasdiq', '/rad') and parts[1].isdigit():
+        driver = Driver.objects.filter(pk=int(parts[1]), approval_status=Driver.APPROVAL_PENDING).first()
+        if not driver:
+            _admin_bot_send(token, chat_id, "❌ Kutilayotgan haydovchi topilmadi.", _ADMIN_MENU_KB)
+            return
+        if parts[0] == '/tasdiq':
+            driver.approval_status = Driver.APPROVAL_APPROVED
+            driver.is_active = True
+            if driver.user:
+                driver.user.is_active = True
+                driver.user.save(update_fields=['is_active'])
+            driver.save(update_fields=['approval_status', 'is_active'])
+            tg_driver_approved(driver)
+            _admin_bot_send(token, chat_id, f"✅ {driver.full_name} tasdiqlandi.", _ADMIN_MENU_KB)
+        else:
+            driver.approval_status = Driver.APPROVAL_REJECTED
+            driver.is_active = False
+            driver.save(update_fields=['approval_status', 'is_active'])
+            tg_driver_rejected(driver)
+            _admin_bot_send(token, chat_id, f"🚫 {driver.full_name} rad etildi.", _ADMIN_MENU_KB)
         return
 
     if len(parts) == 3 and parts[0] == '/balans' and parts[1].isdigit():

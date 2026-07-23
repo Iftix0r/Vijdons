@@ -15,7 +15,21 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from .models import Driver, Order, ChatMessage, GroupMessage, TariffSettings, DriverActivityLog, BalanceLog, PanelSound, VoiceParticipant, VoiceSignal
-from .utils import tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected
+from .utils import tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected, tg_driver_login, tg_duty_changed
+
+
+def _get_ip(request):
+    x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded:
+        return x_forwarded.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR')
+
+
+def _log_activity(driver, action, detail, request):
+    DriverActivityLog.objects.create(
+        driver=driver, action=action, detail=detail,
+        ip_address=_get_ip(request), user_agent=request.META.get('HTTP_USER_AGENT', ''),
+    )
 
 
 # ── Auth decorator ────────────────────────────────────────────────────────────
@@ -105,14 +119,24 @@ def driver_login_view(request):
                     error = "Hisobingiz rad etilgan."
                 elif driver.approval_status == Driver.APPROVAL_PENDING:
                     login(request, user)
+                    _log_activity(driver, DriverActivityLog.ACTION_LOGIN, 'Saytdan kirdi', request)
+                    tg_driver_login(driver, ip=_get_ip(request))
                     return redirect('driver:home')
                 else:
                     login(request, user)
+                    _log_activity(driver, DriverActivityLog.ACTION_LOGIN, 'Saytdan kirdi', request)
+                    tg_driver_login(driver, ip=_get_ip(request))
                     return redirect('driver:home')
     return render(request, 'driver/login.html', {'error': error})
 
 
 def driver_logout_view(request):
+    if request.user.is_authenticated:
+        try:
+            driver = request.user.driver_profile
+            _log_activity(driver, DriverActivityLog.ACTION_LOGOUT, 'Saytdan chiqdi', request)
+        except Driver.DoesNotExist:
+            pass
     logout(request)
     return redirect('driver:login')
 
@@ -747,6 +771,9 @@ def driver_duty_toggle(request, driver):
             }, status=400)
     driver.is_on_duty = not driver.is_on_duty
     driver.save(update_fields=['is_on_duty'])
+    action = DriverActivityLog.ACTION_DUTY_ON if driver.is_on_duty else DriverActivityLog.ACTION_DUTY_OFF
+    _log_activity(driver, action, 'Saytdan', request)
+    tg_duty_changed(driver, driver.is_on_duty)
     return JsonResponse({'ok': True, 'is_on_duty': driver.is_on_duty})
 
 
