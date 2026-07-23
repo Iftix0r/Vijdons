@@ -171,9 +171,6 @@ class BotSettings(models.Model):
                                        help_text='Har bir ID yangi qatorda. Bot qo\'shilgan barcha guruhlarga yuboradi.')
     client_bot_token = models.CharField(max_length=200, blank=True, default='', verbose_name='Mijoz Bot Token',
                                         help_text='Mijozlar buyurtma beruvchi bot tokeni')
-    admin_chat_ids = models.TextField(blank=True, default='', verbose_name="Admin Telegram ID'lar",
-                                      help_text="Operator bot orqali buyurtma yaratish va boshqarish huquqiga ega "
-                                                "shaxsiy Telegram ID'lar. Har biri yangi qatorda.")
 
     def get_all_group_ids(self):
         """Barcha guruh IDlarini list sifatida qaytaradi."""
@@ -184,15 +181,6 @@ class BotSettings(models.Model):
             gid = line.strip()
             if gid and gid not in ids:
                 ids.append(gid)
-        return ids
-
-    def get_admin_chat_ids(self):
-        """Operator bot orqali admin buyruqlarini yuborishga ruxsati bor chat IDlar."""
-        ids = []
-        for line in self.admin_chat_ids.splitlines():
-            cid = line.strip()
-            if cid and cid not in ids:
-                ids.append(cid)
         return ids
 
     # Bildirishnoma toggle lar
@@ -229,6 +217,23 @@ class BotSettings(models.Model):
     class Meta:
         verbose_name = 'Bot sozlamalari'
         verbose_name_plural = 'Bot sozlamalari'
+
+
+class BotAdmin(models.Model):
+    """Operator bot bilan shaxsiy chatda admin buyruqlaridan (buyurtma yaratish,
+    haydovchilarni boshqarish va h.k.) foydalanishga ruxsati bor Telegram foydalanuvchi."""
+    chat_id    = models.CharField(max_length=50, unique=True, verbose_name='Telegram Chat ID')
+    full_name  = models.CharField(max_length=255, blank=True, default='', verbose_name='Ism (ixtiyoriy)')
+    is_active  = models.BooleanField(default=True, verbose_name='Faol')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Qo'shilgan vaqti")
+
+    def __str__(self):
+        return f"{self.full_name or 'Admin'} ({self.chat_id})"
+
+    class Meta:
+        verbose_name = 'Bot admin'
+        verbose_name_plural = 'Bot adminlari'
+        ordering = ['-created_at']
 
 
 class MapsSettings(models.Model):

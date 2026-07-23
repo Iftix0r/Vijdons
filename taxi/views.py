@@ -4,8 +4,8 @@ from django.http import JsonResponse, HttpResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, SosAlert, BalanceLog, GroupMessage, PanelEvent, PanelSound
-from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, log_panel_event
+from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, GroupMessage, PanelEvent, PanelSound
+from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address
 import csv
 
 
@@ -495,7 +495,6 @@ def bot_settings(request):
         bot.group_id  = request.POST.get('group_id', '').strip()
         bot.extra_group_ids = request.POST.get('extra_group_ids', '').strip()
         bot.client_bot_token = request.POST.get('client_bot_token', '').strip()
-        bot.admin_chat_ids   = request.POST.get('admin_chat_ids', '').strip()
         bot.notify_new_order       = 'notify_new_order'       in request.POST
         bot.notify_dispatched      = 'notify_dispatched'      in request.POST
         bot.notify_accepted        = 'notify_accepted'        in request.POST
@@ -546,7 +545,35 @@ def bot_settings(request):
         'site_url': site_url,
         'order_notifs': order_notifs,
         'driver_notifs': driver_notifs,
+        'admins': BotAdmin.objects.all(),
     })
+
+
+@login_required(login_url='taxi:panel_login')
+def bot_admin_add(request):
+    if request.method == 'POST':
+        chat_id   = request.POST.get('chat_id', '').strip()
+        full_name = request.POST.get('full_name', '').strip()
+        if chat_id.isdigit():
+            BotAdmin.objects.get_or_create(chat_id=chat_id, defaults={'full_name': full_name})
+    return redirect('taxi:bot_settings')
+
+
+@login_required(login_url='taxi:panel_login')
+def bot_admin_delete(request, pk):
+    admin = get_object_or_404(BotAdmin, pk=pk)
+    if request.method == 'POST':
+        admin.delete()
+    return redirect('taxi:bot_settings')
+
+
+@login_required(login_url='taxi:panel_login')
+def bot_admin_toggle(request, pk):
+    admin = get_object_or_404(BotAdmin, pk=pk)
+    if request.method == 'POST':
+        admin.is_active = not admin.is_active
+        admin.save(update_fields=['is_active'])
+    return redirect('taxi:bot_settings')
 
 
 @login_required(login_url='taxi:panel_login')
@@ -788,7 +815,20 @@ _ADMIN_MENU_KB = {
     'keyboard': [
         [{'text': '🆕 Yangi buyurtma'}],
         [{'text': '📋 Buyurtmalar'}, {'text': '🚖 Haydovchilar'}],
-        [{'text': '❓ Yordam'}],
+        [{'text': '📊 Statistika'}, {'text': '❓ Yordam'}],
+    ],
+    'resize_keyboard': True,
+}
+
+_LOCATION_KB = {
+    'keyboard': [[{'text': '📍 Joylashuvni yuborish', 'request_location': True}]],
+    'resize_keyboard': True,
+}
+
+_LOCATION_OR_SKIP_KB = {
+    'keyboard': [
+        [{'text': '📍 Joylashuvni yuborish', 'request_location': True}],
+        [{'text': "O'tkazib yuborish ➡️"}],
     ],
     'resize_keyboard': True,
 }
@@ -812,16 +852,20 @@ def _admin_bot_send(token, chat_id, text, keyboard=None):
 def _admin_help_text():
     return (
         "🤖 <b>Admin buyruqlari</b>\n\n"
-        "🆕 Yangi buyurtma — mijoz uchun buyurtma yaratish\n"
+        "🆕 Yangi buyurtma — mijoz uchun buyurtma yaratish (manzilni yozish yoki 📍 joylashuv yuborish mumkin)\n"
         "📋 Buyurtmalar — oxirgi faol buyurtmalar\n"
         "🚖 Haydovchilar — tasdiqlangan haydovchilar ro'yxati\n"
+        "📊 Statistika — bugungi buyurtmalar va tushum hisoboti\n"
+        "/buyurtma &lt;id&gt; — buyurtma haqida to'liq ma'lumot\n"
+        "/bekor &lt;id&gt; — buyurtmani bekor qilish\n"
+        "/qayta &lt;id&gt; — buyurtmani qayta ochish va eng yaqin haydovchiga qayta yuborish\n"
         "/blok &lt;id&gt; — haydovchini bloklash\n"
         "/blokoch &lt;id&gt; — haydovchini blokdan chiqarish\n"
         "/balans &lt;id&gt; &lt;miqdor&gt; — balans qo'shish (ayirish uchun manfiy son, masalan -20000)"
     )
 
 
-def _handle_admin_message(token, chat_id, text):
+def _handle_admin_message(token, chat_id, text, location=None):
     """Admin (whitelist'dagi) shaxsiy chatdan yuborgan xabarni qayta ishlaydi."""
     from decimal import Decimal, InvalidOperation
 
@@ -835,27 +879,54 @@ def _handle_admin_message(token, chat_id, text):
             _admin_bot_send(token, chat_id, "❌ Telefon raqam noto'g'ri. Qayta kiriting:")
         else:
             _admin_sessions[chat_id] = {'step': 'order_from', 'phone': phone}
-            _admin_bot_send(token, chat_id, "📍 <b>Qayerdan yo'lga chiqadi?</b>\nManzilni yozing:")
+            _admin_bot_send(token, chat_id,
+                "📍 <b>Qayerdan yo'lga chiqadi?</b>\nManzilni yozing yoki joylashuvni yuboring:",
+                _LOCATION_KB)
         return
 
     if step == 'order_from':
-        _admin_sessions[chat_id] = dict(session, step='order_to', from_address=text)
+        if location:
+            lat, lng = location.get('latitude'), location.get('longitude')
+            address = reverse_geocode_address(lat, lng) or f"{lat:.5f}, {lng:.5f}"
+            _admin_sessions[chat_id] = dict(session, step='order_to', from_address=address, from_lat=lat, from_lng=lng)
+        else:
+            _admin_sessions[chat_id] = dict(session, step='order_to', from_address=text)
         _admin_bot_send(token, chat_id,
-            "🏁 <b>Qayerga boradi?</b>\nManzilni yozing yoki o'tkazib yuboring:",
-            {'keyboard': [[{'text': "O'tkazib yuborish ➡️"}]], 'resize_keyboard': True})
+            "🏁 <b>Qayerga boradi?</b>\nManzilni yozing, joylashuvni yuboring yoki o'tkazib yuboring:",
+            _LOCATION_OR_SKIP_KB)
         return
 
     if step == 'order_to':
-        to_address   = '' if text == "O'tkazib yuborish ➡️" else text
+        to_lat, to_lng = None, None
+        if location:
+            to_lat, to_lng = location.get('latitude'), location.get('longitude')
+            to_address = reverse_geocode_address(to_lat, to_lng) or f"{to_lat:.5f}, {to_lng:.5f}"
+        elif text == "O'tkazib yuborish ➡️":
+            to_address = ''
+        else:
+            to_address = text
+
         phone        = session.get('phone', '')
         from_address = session.get('from_address', '')
+        from_lat     = session.get('from_lat')
+        from_lng     = session.get('from_lng')
 
         client, _created = Client.objects.get_or_create(phone_number=phone)
         tariff = TariffSettings.get()
+
+        distance_km = None
+        price = None
+        if from_lat and from_lng and to_lat and to_lng:
+            distance_km = haversine(from_lat, from_lng, to_lat, to_lng)
+            if distance_km:
+                price = tariff.calc_price(distance_km)
+
         order = Order.objects.create(
             client=client,
-            from_address=from_address,
-            to_address=to_address,
+            from_address=from_address, from_lat=from_lat, from_lng=from_lng,
+            to_address=to_address, to_lat=to_lat, to_lng=to_lng,
+            distance_km=distance_km,
+            price=price,
             commission=tariff.commission,
             status='pending',
         )
@@ -868,7 +939,8 @@ def _handle_admin_message(token, chat_id, text):
         _admin_bot_send(token, chat_id,
             f"✅ <b>Buyurtma #{order.id} yaratildi!</b>\n"
             f"📍 Qayerdan: {from_address}\n"
-            + (f"🏁 Qayerga: {to_address}\n" if to_address else ''),
+            + (f"🏁 Qayerga: {to_address}\n" if to_address else '')
+            + (f"💰 Narx: {price:.0f} UZS\n" if price else ''),
             _ADMIN_MENU_KB)
         return
 
@@ -945,6 +1017,121 @@ def _handle_admin_message(token, chat_id, text):
             _admin_bot_send(token, chat_id, f"🔒 {driver.full_name} bloklandi.", _ADMIN_MENU_KB)
         return
 
+    if text in ('📊 Statistika', '/stat', '/statistika', '/hisobot'):
+        from django.utils import timezone
+        from django.db.models import Sum, Count
+        today_start = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
+        todays = Order.objects.filter(created_at__gte=today_start)
+        agg = todays.aggregate(
+            total=Count('id'),
+            completed=Count('id', filter=Q(status='completed')),
+            cancelled=Count('id', filter=Q(status='cancelled')),
+            active=Count('id', filter=Q(status__in=Order.ACTIVE_STATUSES)),
+            pending=Count('id', filter=Q(status='pending')),
+            revenue=Sum('price', filter=Q(status='completed')),
+        )
+        on_duty = Driver.objects.filter(is_active=True, is_on_duty=True, approval_status=Driver.APPROVAL_APPROVED).count()
+        approved_total = Driver.objects.filter(approval_status=Driver.APPROVAL_APPROVED).count()
+        _admin_bot_send(token, chat_id,
+            f"📊 <b>Bugungi statistika</b> ({today_start.strftime('%d.%m.%Y')})\n\n"
+            f"🆕 Jami buyurtmalar: {agg['total']}\n"
+            f"✅ Yakunlangan: {agg['completed']}\n"
+            f"❌ Bekor qilingan: {agg['cancelled']}\n"
+            f"⏳ Jarayonda: {agg['active']}\n"
+            f"🕐 Kutilmoqda: {agg['pending']}\n"
+            f"💰 Tushum: {agg['revenue'] or 0} UZS\n\n"
+            f"🚖 Navbatda: {on_duty} / {approved_total} haydovchi",
+            _ADMIN_MENU_KB)
+        return
+
+    if len(parts) == 2 and parts[0] in ('/buyurtma', '/qidir') and parts[1].isdigit():
+        order = Order.objects.filter(pk=int(parts[1])).select_related('client', 'driver').first()
+        if not order:
+            _admin_bot_send(token, chat_id, "❌ Buyurtma topilmadi.", _ADMIN_MENU_KB)
+            return
+        status_labels = dict(Order.STATUS_CHOICES)
+        lines = [
+            f"📄 <b>Buyurtma #{order.id}</b> — {status_labels.get(order.status, order.status)}",
+            f"👤 Mijoz: {order.client.full_name or '—'} | <code>{order.client.phone_number}</code>",
+            f"🚖 Haydovchi: {order.driver.full_name if order.driver else '—'}",
+            f"📍 {order.from_address}" + (f" → 🏁 {order.to_address}" if order.to_address else ''),
+        ]
+        if order.distance_km:
+            lines.append(f"📏 Masofa: {order.distance_km:.1f} km")
+        if order.price:
+            lines.append(f"💰 Narx: {order.price} UZS")
+        lines.append(f"💳 To'lov: {'Naqd' if order.payment_type == 'cash' else 'Karta'}")
+        lines.append(f"🕐 {order.created_at.strftime('%d.%m.%Y %H:%M')}")
+        _admin_bot_send(token, chat_id, '\n'.join(lines), _ADMIN_MENU_KB)
+        return
+
+    if len(parts) == 2 and parts[0] == '/bekor' and parts[1].isdigit():
+        order = Order.objects.filter(pk=int(parts[1])).select_related('driver').first()
+        if not order:
+            _admin_bot_send(token, chat_id, "❌ Buyurtma topilmadi.", _ADMIN_MENU_KB)
+            return
+        if order.status in ('completed', 'cancelled'):
+            _admin_bot_send(token, chat_id,
+                f"⚠️ Buyurtma #{order.id} allaqachon {dict(Order.STATUS_CHOICES).get(order.status)}.",
+                _ADMIN_MENU_KB)
+            return
+        order.status = 'cancelled'
+        order.save(update_fields=['status', 'updated_at'])
+        if order.driver:
+            from .utils import send_fcm
+            send_fcm(
+                order.driver.fcm_token,
+                title='Buyurtma bekor qilindi',
+                body=f"Buyurtma #{order.id} bekor qilindi.",
+                data={'type': 'order_cancelled', 'order_id': str(order.id)},
+            )
+            tg_order_cancelled(order, order.driver)
+        else:
+            log_panel_event('panel_order_cancelled', f"Buyurtma #{order.id} — admin (bot) tomonidan bekor qilindi")
+        _admin_bot_send(token, chat_id, f"❌ Buyurtma #{order.id} bekor qilindi.", _ADMIN_MENU_KB)
+        return
+
+    if len(parts) == 2 and parts[0] == '/qayta' and parts[1].isdigit():
+        order = Order.objects.filter(pk=int(parts[1])).select_related('driver').first()
+        if not order:
+            _admin_bot_send(token, chat_id, "❌ Buyurtma topilmadi.", _ADMIN_MENU_KB)
+            return
+        reassignable = order.status == 'pending' or (order.driver_id and order.status in Order.ACTIVE_STATUSES)
+        if not reassignable:
+            _admin_bot_send(token, chat_id,
+                f"⚠️ Buyurtma #{order.id} qayta yuborib bo'lmaydi ({dict(Order.STATUS_CHOICES).get(order.status)}).",
+                _ADMIN_MENU_KB)
+            return
+        from .utils import send_fcm
+        if order.driver_id and order.status in Order.ACTIVE_STATUSES:
+            old_driver = order.driver
+            commission = order.commission or TariffSettings.get().commission
+            old_driver.balance += Decimal(str(commission))
+            old_driver.save(update_fields=['balance'])
+            BalanceLog.objects.create(
+                driver=old_driver, action=BalanceLog.ACTION_ADD, amount=commission,
+                balance_after=old_driver.balance,
+                note=f"Komissiya qaytarildi — buyurtma #{order.id} admin (bot) tomonidan qayta ochildi",
+            )
+            order.rejected_by.add(old_driver)
+            order.driver = None
+            send_fcm(
+                old_driver.fcm_token,
+                title='Buyurtma bekor qilindi',
+                body=f"Buyurtma #{order.id} qayta ochildi. {commission} so'm balansingizga qaytarildi.",
+                data={'type': 'order_cancelled', 'order_id': str(order.id)},
+            )
+        order.dispatched_to = None
+        order.dispatched_at = None
+        order.status = 'pending'
+        order.save(update_fields=['driver', 'dispatched_to', 'dispatched_at', 'status', 'updated_at'])
+        log_panel_event('panel_order_cancelled', f"Buyurtma #{order.id} — admin (bot) tomonidan qayta ochildi")
+        if TariffSettings.get().auto_dispatch:
+            import threading
+            threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
+        _admin_bot_send(token, chat_id, f"🔄 Buyurtma #{order.id} qayta ochildi va eng yaqin haydovchiga yuborilmoqda.", _ADMIN_MENU_KB)
+        return
+
     if len(parts) == 3 and parts[0] == '/balans' and parts[1].isdigit():
         driver = Driver.objects.filter(pk=int(parts[1])).first()
         if not driver:
@@ -992,10 +1179,11 @@ def operator_bot_webhook(request):
         from .models import BotSettings
         bot   = BotSettings.get()
         token = bot.bot_token.strip()
-        chat_id = str(msg.get('chat', {}).get('id', ''))
-        text    = (msg.get('text') or '').strip()
-        if token and text and chat_id in bot.get_admin_chat_ids():
-            _handle_admin_message(token, chat_id, text)
+        chat_id  = str(msg.get('chat', {}).get('id', ''))
+        text     = (msg.get('text') or '').strip()
+        location = msg.get('location')
+        if token and (text or location) and BotAdmin.objects.filter(chat_id=chat_id, is_active=True).exists():
+            _handle_admin_message(token, chat_id, text, location=location)
         from django.http import HttpResponse
         return HttpResponse('ok')
 
