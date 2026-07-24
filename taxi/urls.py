@@ -12,6 +12,7 @@ urlpatterns = [
     path('', views.panel_dashboard, name='panel_dashboard'),
 
     path('orders/', views.order_list, name='order_list'),
+    path('orders/aging/count/', views.aging_orders_count, name='aging_orders_count'),
     path('orders/add/', views.order_create, name='order_create'),
     path('orders/<int:pk>/', views.order_detail, name='order_detail'),
     path('orders/<int:pk>/status/', views.order_update_status, name='order_update_status'),

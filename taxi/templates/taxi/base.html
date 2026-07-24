@@ -200,7 +200,9 @@
         </a>
         <a href="{% url 'taxi:order_list' %}"
            class="nav-link {% if request.resolver_match.url_name == 'order_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-route w-5 text-center"></i> Buyurtmalar
+            <i class="fas fa-route w-5 text-center"></i>
+            <span class="flex-1">Buyurtmalar</span>
+            <span id="aging-orders-badge" class="hidden bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center animate-pulse"></span>
         </a>
         <a href="{% url 'taxi:driver_list' %}"
            class="nav-link {% if request.resolver_match.url_name == 'driver_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
@@ -893,6 +895,24 @@
     }
     updateSosCount();
     setInterval(updateSosCount, 20000);
+
+    // ── Kutib qolgan (haydovchisiz) buyurtmalar badge ──
+    function updateAgingOrdersBadge() {
+        fetch('{% url "taxi:aging_orders_count" %}')
+            .then(r => r.json())
+            .then(d => {
+                const badge = document.getElementById('aging-orders-badge');
+                if (!badge) return;
+                if (d.count > 0) {
+                    badge.textContent = d.count;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }).catch(() => {});
+    }
+    updateAgingOrdersBadge();
+    setInterval(updateAgingOrdersBadge, 15000);
 
     // ── Panel ovozli bildirishnomalar ──────────────────────────────────────────
     // Fayl yuklanmagan hodisalar uchun standart sintez qilingan ohanglar

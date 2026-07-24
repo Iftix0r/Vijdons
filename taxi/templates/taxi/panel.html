@@ -1,4 +1,5 @@
 {% extends 'taxi/base.html' %}
+{% load taxi_extras %}
 {% block title %}Dashboard — Vijdon Taxi{% endblock %}
 
 {% block content %}
@@ -146,6 +147,45 @@
         <kbd class="bg-emerald-400/30 text-white/80 text-[10px] px-1.5 py-0.5 rounded font-mono ml-1">Ctrl+M</kbd>
     </button>
 </div>
+
+<!-- Aging pending orders alert -->
+{% if aging_order_count > 0 %}
+<div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-2xl p-4 mb-6">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/50 text-red-600 flex items-center justify-center flex-shrink-0">
+                <span class="relative flex h-3 w-3">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <i class="fas fa-triangle-exclamation relative text-xs"></i>
+                </span>
+            </div>
+            <div>
+                <p class="font-bold text-red-800 dark:text-red-300 text-sm">
+                    {{ aging_order_count }} ta buyurtma {{ aging_threshold_minutes }} daqiqadan ortiq haydovchisiz kutmoqda
+                </p>
+                <p class="text-xs text-red-600 dark:text-red-400 mt-0.5">Diqqat talab qiladi — mijoz uzoq kutmasligi uchun tezroq haydovchi biriktiring.</p>
+            </div>
+        </div>
+        <a href="{% url 'taxi:order_list' %}?status=pending"
+           class="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl transition-colors">
+            Barchasini ko'rish <i class="fas fa-arrow-right text-xs"></i>
+        </a>
+    </div>
+    <div class="divide-y divide-red-100 dark:divide-red-800/30 bg-white/60 dark:bg-black/10 rounded-xl overflow-hidden">
+        {% for order in aging_orders|slice:":5" %}
+        {% seconds_since order.created_at as secs %}
+        <a href="{% url 'taxi:order_list' %}?q={{ order.id }}" class="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+            <div class="flex items-center gap-2 min-w-0">
+                <span class="font-bold text-xs text-gray-900 dark:text-white flex-shrink-0">#{{ order.id }}</span>
+                <span class="text-xs text-gray-600 dark:text-gray-300 truncate">{{ order.client.full_name|default:order.client.phone_number }}</span>
+                <span class="text-[11px] text-gray-400 truncate hidden sm:inline">· {{ order.from_address }}</span>
+            </div>
+            <span class="text-[11px] font-bold text-red-600 dark:text-red-400 flex-shrink-0">{{ secs|div:60 }} daqiqa kutmoqda</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
 
 <!-- Pending driver approvals alert -->
 {% if pending_driver_count > 0 %}

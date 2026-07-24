@@ -11,6 +11,7 @@ from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order
 import csv
 
 ONLINE_THRESHOLD_SECONDS = 120  # last_seen shundan yangi bo'lsa — online (yashil)
+PENDING_ORDER_AGING_SECONDS = 120  # buyurtma shuncha vaqt haydovchisiz tursa — operator e'tiboriga chiqadi
 
 
 def _get_client_ip(request):
@@ -368,7 +369,11 @@ def panel_dashboard(request):
 
     today = timezone.now().date()
     online_threshold = timezone.now() - timezone.timedelta(minutes=2)
+    aging_cutoff = timezone.now() - timezone.timedelta(seconds=PENDING_ORDER_AGING_SECONDS)
     orders = Order.objects.select_related('client', 'driver').order_by('-created_at')[:10]
+    aging_orders = Order.objects.select_related('client').filter(
+        status='pending', created_at__lte=aging_cutoff
+    ).order_by('created_at')
     pending_drivers = Driver.objects.filter(approval_status=Driver.APPROVAL_PENDING).order_by('-registered_at')
     on_duty_drivers = Driver.objects.filter(
         is_active=True, is_on_duty=True, approval_status=Driver.APPROVAL_APPROVED
@@ -410,6 +415,9 @@ def panel_dashboard(request):
         'active_drivers':       Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED),
         'pending_drivers':      pending_drivers,
         'pending_driver_count': pending_drivers.count(),
+        'aging_orders':         aging_orders,
+        'aging_order_count':    aging_orders.count(),
+        'aging_threshold_minutes': PENDING_ORDER_AGING_SECONDS // 60,
         'tariff':               TariffSettings.get(),
         'total_revenue':        total_revenue,
         'today_revenue':        today_revenue,
@@ -420,6 +428,14 @@ def panel_dashboard(request):
         'weekly_counts':        weekly_counts,
     }
     return render(request, 'taxi/panel.html', context)
+
+
+@login_required(login_url='taxi:panel_login')
+def aging_orders_count(request):
+    from django.utils import timezone
+    cutoff = timezone.now() - timezone.timedelta(seconds=PENDING_ORDER_AGING_SECONDS)
+    count = Order.objects.filter(status='pending', created_at__lte=cutoff).count()
+    return JsonResponse({'count': count})
 
 
 @login_required(login_url='taxi:panel_login')
