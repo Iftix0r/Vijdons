@@ -783,12 +783,14 @@ def driver_fcm_sync(request, driver):
 @require_POST
 def driver_location_sync(request, driver):
     try:
+        from django.utils import timezone
         data = json.loads(request.body)
         lat = float(data.get('lat', 0))
         lng = float(data.get('lng', 0))
         driver.latitude  = lat
         driver.longitude = lng
-        driver.save(update_fields=['latitude', 'longitude'])
+        driver.last_seen = timezone.now()
+        driver.save(update_fields=['latitude', 'longitude', 'last_seen'])
     except Exception:
         pass
     return JsonResponse({'ok': True})
