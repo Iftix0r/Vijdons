@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.db.models import Q, Count
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth import authenticate, login, logout
@@ -1665,14 +1666,22 @@ def panel_logout(request):
 def driver_edit(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == 'POST':
-        driver.full_name    = request.POST.get('full_name', driver.full_name).strip()
-        driver.phone_number = request.POST.get('phone_number', driver.phone_number).strip()
-        driver.car_model    = request.POST.get('car_model', driver.car_model).strip()
-        driver.car_number   = request.POST.get('car_number', driver.car_number).strip()
-        driver.car_type     = request.POST.get('car_type', driver.car_type)
-        driver.save(update_fields=['full_name', 'phone_number', 'car_model', 'car_number', 'car_type'])
-        messages.success(request, "Haydovchi ma'lumotlari yangilandi.")
-    return redirect('taxi:driver_detail', pk=pk)
+        full_name    = request.POST.get('full_name', driver.full_name).strip()
+        phone_number = request.POST.get('phone_number', driver.phone_number).strip()
+        car_model    = request.POST.get('car_model', driver.car_model).strip()
+        car_number   = request.POST.get('car_number', driver.car_number).strip()
+        car_type     = request.POST.get('car_type', driver.car_type)
+        if Driver.objects.filter(phone_number=phone_number).exclude(pk=driver.pk).exists():
+            messages.error(request, f"Telefon raqami {phone_number} boshqa haydovchiga tegishli.")
+        else:
+            driver.full_name    = full_name
+            driver.phone_number = phone_number
+            driver.car_model    = car_model
+            driver.car_number   = car_number
+            driver.car_type     = car_type
+            driver.save(update_fields=['full_name', 'phone_number', 'car_model', 'car_number', 'car_type'])
+            messages.success(request, "Haydovchi ma'lumotlari yangilandi.")
+    return redirect(request.META.get('HTTP_REFERER') or reverse('taxi:driver_detail', args=[pk]))
 
 
 # ── Order price edit ───────────────────────────────────────────────────────────

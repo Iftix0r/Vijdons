@@ -305,6 +305,13 @@
                                 <i class="fas fa-wallet text-xs"></i>
                             </button>
 
+                            <!-- Edit button -->
+                            <button onclick="openDriverEditModal({{ driver.pk }}, '{{ driver.full_name|escapejs }}', '{{ driver.phone_number|escapejs }}', '{{ driver.car_model|escapejs }}', '{{ driver.car_number|escapejs }}', '{{ driver.car_type|escapejs }}')"
+                                    title="Tahrirlash"
+                                    class="flex items-center justify-center w-8 h-8 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-500 hover:bg-yellow-100 hover:text-yellow-600 dark:hover:bg-yellow-900/30 dark:hover:text-yellow-400 transition-colors">
+                                <i class="fas fa-pen text-xs"></i>
+                            </button>
+
                             <!-- Detail button -->
                             <a href="{% url 'taxi:driver_detail' driver.pk %}"
                                     title="Batafsil"

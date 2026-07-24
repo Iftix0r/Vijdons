@@ -334,6 +334,17 @@
 
     <!-- page content -->
     <main class="flex-1 overflow-y-auto p-6">
+        {% if messages %}
+        <div class="space-y-2 mb-4">
+            {% for message in messages %}
+            <div class="px-4 py-3 rounded-xl text-sm font-semibold border
+                {% if message.tags == 'error' %}bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/40 text-red-600 dark:text-red-400
+                {% else %}bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400{% endif %}">
+                <i class="fas {% if message.tags == 'error' %}fa-circle-exclamation{% else %}fa-circle-check{% endif %} mr-2"></i>{{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
         {% block content %}{% endblock %}
     </main>
 </div>
@@ -542,6 +553,62 @@
     </div>
 </div>
 
+<!-- Driver edit modal -->
+<div id="driverEditModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white"><i class="fas fa-user-pen text-blue-500 mr-2"></i>Haydovchi profilini tahrirlash</h2>
+            <button onclick="closeModal('driverEditModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form id="driverEditForm" method="POST" class="px-6 py-5 space-y-4">
+            {% csrf_token %}
+            <div class="grid grid-cols-2 gap-4">
+                <div class="col-span-2">
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">To'liq ismi</label>
+                    <input type="text" name="full_name" id="de_full_name" required placeholder="Ism Familya"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Telefon raqami</label>
+                    <input type="text" name="phone_number" id="de_phone_number" required placeholder="+998 90 000 00 00"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Mashina modeli</label>
+                    <input type="text" name="car_model" id="de_car_model" required placeholder="Cobalt 2"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Mashina raqami</label>
+                    <input type="text" name="car_number" id="de_car_number" required placeholder="01 A 123 AA"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Mashina turi</label>
+                    <select name="car_type" id="de_car_type"
+                            class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition">
+                        {% for value, label in car_type_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('driverEditModal')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold shadow-md shadow-blue-200 dark:shadow-none transition">
+                    <i class="fas fa-save mr-1.5"></i>Saqlash
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Client modal -->
 <div id="clientModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
     <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800">
@@ -648,6 +715,17 @@
     function openDriverModal() { openModal('driverModal'); }
     function closeDriverModal(){ closeModal('driverModal');}
     function closeClientModal(){ closeModal('clientModal');}
+
+    // ── Driver edit modal ──
+    function openDriverEditModal(id, fullName, phone, carModel, carNumber, carType) {
+        document.getElementById('driverEditForm').action = `/panel/drivers/${id}/edit/`;
+        document.getElementById('de_full_name').value    = fullName || '';
+        document.getElementById('de_phone_number').value = phone || '';
+        document.getElementById('de_car_model').value     = carModel || '';
+        document.getElementById('de_car_number').value    = carNumber || '';
+        document.getElementById('de_car_type').value      = carType || '';
+        openModal('driverEditModal');
+    }
 
     // ── Yandex Map Logic ──
     let _omap = null;
