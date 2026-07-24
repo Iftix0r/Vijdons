@@ -18,7 +18,7 @@
   var dark = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
   if (dark) {
     document.documentElement.classList.add('dark');
-    document.querySelector('meta[name="theme-color"]').setAttribute('content', '#000000');
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0E1621');
   }
 })();
 </script>
@@ -57,14 +57,14 @@ body { overscroll-behavior: none; -webkit-overflow-scrolling: touch; }
   --ios-orange:    #FF9500;
 }
 .dark {
-  --ios-bg:        #000000;
-  --ios-card:      #1C1C1E;
-  --ios-card2:     #2C2C2E;
+  --ios-bg:        #0E1621;
+  --ios-card:      #17212B;
+  --ios-card2:     #1C2733;
   --ios-label:     #FFFFFF;
-  --ios-label2:    rgba(235,235,245,.6);
-  --ios-label3:    rgba(235,235,245,.3);
-  --ios-sep:       rgba(84,84,88,.65);
-  --ios-fill:      rgba(118,118,128,.24);
+  --ios-label2:    rgba(255,255,255,.65);
+  --ios-label3:    rgba(255,255,255,.45);
+  --ios-sep:       rgba(255,255,255,.09);
+  --ios-fill:      rgba(255,255,255,.08);
 }
 body { background: var(--ios-bg); color: var(--ios-label); }
 
@@ -89,7 +89,7 @@ body { background: var(--ios-bg); color: var(--ios-label); }
   box-shadow: 0 8px 28px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.08);
 }
 .dark .ios-tabbar {
-  background: rgba(18,18,20,.92);
+  background: rgba(23,33,43,.92);
   box-shadow: 0 8px 28px rgba(0,0,0,.50), 0 2px 8px rgba(0,0,0,.30);
 }
 
@@ -104,7 +104,7 @@ body { background: var(--ios-bg); color: var(--ios-label); }
   box-shadow: 0 8px 28px rgba(0,0,0,.10), 0 2px 8px rgba(0,0,0,.05);
 }
 .dark .ios-navbar {
-  background: rgba(18,18,20,.92);
+  background: rgba(23,33,43,.92);
   box-shadow: 0 8px 28px rgba(0,0,0,.40), 0 2px 8px rgba(0,0,0,.25);
 }
 
@@ -194,7 +194,7 @@ body { background: var(--ios-bg); color: var(--ios-label); }
   transition: background .3s;
   flex-shrink: 0;
 }
-.dark .ios-toggle { background: #39393d; }
+.dark .ios-toggle { background: #263542; }
 .ios-toggle.on { background: var(--ios-green); }
 .ios-toggle::after {
   content: '';
@@ -252,7 +252,7 @@ body { background: var(--ios-bg); color: var(--ios-label); }
   box-shadow: 0 -8px 40px rgba(0,0,0,.14);
 }
 .dark .ios-sheet {
-  background: rgba(28,28,30,.78);
+  background: rgba(23,33,43,.82);
   box-shadow: 0 -8px 40px rgba(0,0,0,.5);
 }
 .ios-sheet-handle {
@@ -270,7 +270,7 @@ body { background: var(--ios-bg); color: var(--ios-label); }
   box-shadow: 0 20px 60px rgba(0,0,0,.25);
 }
 .dark .ios-alert {
-  background: rgba(28,28,30,.8);
+  background: rgba(28,39,51,.85);
   box-shadow: 0 20px 60px rgba(0,0,0,.6);
 }
 
@@ -618,7 +618,7 @@ function toggleTheme() {
   const dark = !document.documentElement.classList.contains('dark');
   document.documentElement.classList.toggle('dark', dark);
   localStorage.setItem('vijdon_theme', dark ? 'dark' : 'light');
-  document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#000000' : '#F2F2F7');
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#0E1621' : '#F2F2F7');
   const tog = document.getElementById('theme-tog');
   if (tog) tog.classList.toggle('on', dark);
 }
