@@ -440,9 +440,10 @@ def aging_orders_count(request):
 
 @login_required(login_url='taxi:panel_login')
 def order_list(request):
-    qs = Order.objects.select_related('client', 'driver').order_by('-created_at')
+    qs = Order.objects.select_related('client', 'driver')
     q      = request.GET.get('q', '').strip()
     status = request.GET.get('status', '')
+    sort   = request.GET.get('sort', '').strip()
     if q:
         qs = qs.filter(
             Q(client__full_name__icontains=q) |
@@ -453,11 +454,18 @@ def order_list(request):
         )
     if status:
         qs = qs.filter(status=status)
+
+    if sort == 'top_price':
+        qs = qs.order_by('-price', '-created_at')
+    else:
+        qs = qs.order_by('-created_at')
+
     context = {
         'orders':   qs,
         'drivers':  Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED),
         'q':        q,
         'status':   status,
+        'sort':     sort,
         'statuses': Order.STATUS_CHOICES,
     }
     return render(request, 'taxi/order_list.html', context)
