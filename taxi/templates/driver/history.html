@@ -6,9 +6,9 @@
   <div class="ios-large-title font-bold mb-2">Tarix</div>
   <!-- Status filter -->
   <div class="flex gap-1 p-1 rounded-[10px] mb-2" style="background:var(--ios-fill)">
-    <button onclick="filter('all')"       id="f-all"       class="seg-btn flex-1 ios-caption2 font-semibold py-1.5 rounded-[8px] transition-all">Hammasi</button>
-    <button onclick="filter('completed')" id="f-completed" class="seg-btn flex-1 ios-caption2 font-semibold py-1.5 rounded-[8px] transition-all" style="color:var(--ios-label3)">Yakunlangan</button>
-    <button onclick="filter('cancelled')" id="f-cancelled" class="seg-btn flex-1 ios-caption2 font-semibold py-1.5 rounded-[8px] transition-all" style="color:var(--ios-label3)">Bekor</button>
+    <button onclick="filter('all')"       id="f-all"       class="seg-btn flex-1 ios-caption2 font-semibold py-1.5 rounded-[8px] transition-all" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:2px;padding-right:2px">Hammasi</button>
+    <button onclick="filter('completed')" id="f-completed" class="seg-btn flex-1 ios-caption2 font-semibold py-1.5 rounded-[8px] transition-all" style="color:var(--ios-label3);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:2px;padding-right:2px">Yakunlangan</button>
+    <button onclick="filter('cancelled')" id="f-cancelled" class="seg-btn flex-1 ios-caption2 font-semibold py-1.5 rounded-[8px] transition-all" style="color:var(--ios-label3);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:2px;padding-right:2px">Bekor</button>
   </div>
   <!-- Davr filter -->
   <div class="flex gap-1.5 overflow-x-auto pb-1" style="scrollbar-width:none">
@@ -24,19 +24,19 @@
 {% if orders %}
 <!-- Stats -->
 <div class="px-4 pt-3 pb-1 grid grid-cols-3 gap-2">
-  <div class="ios-card rounded-[14px] p-3 text-center">
-    <div class="flex items-center justify-center gap-1.5 mb-1"><i class="fas fa-flag-checkered" style="color:#FFD600;font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3)">Jami</span></div>
-    <div style="font-size:20px;font-weight:800;color:#FFD600;letter-spacing:-.3px" id="s-count">{{ orders|length }}</div>
+  <div class="ios-card rounded-[14px] p-3 text-center" style="min-width:0">
+    <div class="flex items-center justify-center gap-1.5 mb-1" style="min-width:0"><i class="fas fa-flag-checkered flex-shrink-0" style="color:#FFD600;font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3);white-space:nowrap">Jami</span></div>
+    <div style="font-size:20px;font-weight:800;color:#FFD600;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="s-count">{{ orders|length }}</div>
   </div>
-  <div class="ios-card rounded-[14px] p-3 text-center">
-    <div class="flex items-center justify-center gap-1.5 mb-1"><i class="fas fa-sack-dollar" style="color:#34C759;font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3)">Daromad</span></div>
-    <div style="font-size:15px;font-weight:800;color:#34C759;letter-spacing:-.2px" id="s-earned">
+  <div class="ios-card rounded-[14px] p-3 text-center" style="min-width:0">
+    <div class="flex items-center justify-center gap-1.5 mb-1" style="min-width:0"><i class="fas fa-sack-dollar flex-shrink-0" style="color:#34C759;font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3);white-space:nowrap">Daromad</span></div>
+    <div style="font-size:13px;font-weight:800;color:#34C759;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="s-earned">
       {% if total_earned %}{{ total_earned|floatformat:0 }} so'm{% else %}&mdash;{% endif %}
     </div>
   </div>
-  <div class="ios-card rounded-[14px] p-3 text-center">
-    <div class="flex items-center justify-center gap-1.5 mb-1"><i class="fas fa-route" style="color:#007AFF;font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3)">Km</span></div>
-    <div style="font-size:20px;font-weight:800;color:#007AFF;letter-spacing:-.3px" id="s-km">—</div>
+  <div class="ios-card rounded-[14px] p-3 text-center" style="min-width:0">
+    <div class="flex items-center justify-center gap-1.5 mb-1" style="min-width:0"><i class="fas fa-route flex-shrink-0" style="color:#007AFF;font-size:10px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3);white-space:nowrap">Km</span></div>
+    <div style="font-size:20px;font-weight:800;color:#007AFF;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="s-km">—</div>
   </div>
 </div>
 {% endif %}
@@ -63,14 +63,14 @@
        onclick="openDetail(this)"
        style="animation-delay:{{ forloop.counter0 }}0ms;box-shadow:0 1px 3px rgba(0,0,0,.07)">
     <div class="p-4">
-      <div class="flex items-center justify-between mb-2">
-        <span class="ios-caption2 font-semibold px-2.5 py-1 rounded-[8px]
+      <div class="flex items-center justify-between mb-2" style="gap:8px">
+        <span class="ios-caption2 font-semibold px-2.5 py-1 rounded-[8px] flex-shrink-0
           {% if order.status == 'completed' %}pill-green
           {% elif order.status == 'cancelled' %}pill-red
-          {% else %}pill-gray{% endif %}">
+          {% else %}pill-gray{% endif %}" style="white-space:nowrap">
           {{ order.get_status_display }}
         </span>
-        <span class="ios-caption2" style="color:var(--ios-label3)">#{{ order.id }} · {{ order.created_at|date:"d.m H:i" }}</span>
+        <span class="ios-caption2" style="color:var(--ios-label3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">#{{ order.id }} · {{ order.created_at|date:"d.m H:i" }}</span>
       </div>
       <div class="flex items-stretch gap-2.5">
         <div class="flex flex-col items-center flex-shrink-0" style="padding-top:4px">
@@ -87,19 +87,19 @@
           {% endif %}
         </div>
       </div>
-      <div class="flex items-center justify-between mt-3 pt-3" style="border-top:.5px solid var(--ios-sep)">
+      <div class="flex items-center justify-between mt-3 pt-3" style="border-top:.5px solid var(--ios-sep);gap:8px">
         {% if order.price %}
-        <div {% if order.status == 'completed' %}style="font-size:18px;font-weight:800;color:#34C759;letter-spacing:-.3px"{% else %}class="ios-subhead font-semibold line-through" style="color:var(--ios-label3)"{% endif %}>
+        <div class="flex-shrink-0{% if order.status != 'completed' %} ios-subhead font-semibold line-through{% endif %}" style="white-space:nowrap{% if order.status == 'completed' %};font-size:18px;font-weight:800;color:#34C759;letter-spacing:-.3px{% else %};color:var(--ios-label3){% endif %}">
           {{ order.price|floatformat:0 }}<span class="ios-caption font-semibold" style="margin-left:3px;{% if order.status == 'completed' %}color:rgba(52,199,89,.6){% else %}color:var(--ios-label3){% endif %}">so'm</span>
         </div>
         {% else %}
         <div></div>
         {% endif %}
-        <div class="flex items-center gap-2.5">
+        <div class="flex items-center gap-2.5" style="min-width:0;overflow:hidden">
           {% if order.distance_km %}
-          <span class="ios-caption font-medium" style="color:var(--ios-label3)">{{ order.distance_km|floatformat:1 }} km</span>
+          <span class="ios-caption font-medium flex-shrink-0" style="color:var(--ios-label3);white-space:nowrap">{{ order.distance_km|floatformat:1 }} km</span>
           {% endif %}
-          <span class="ios-caption2" style="color:var(--ios-label3)">
+          <span class="ios-caption2" style="color:var(--ios-label3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">
             {% if order.payment_type == 'cash' %}💵{% else %}💳{% endif %} {{ order.client.phone_number }}
           </span>
         </div>
@@ -123,7 +123,7 @@
 </style>
 
 <!-- Bottom Sheet -->
-<div id="sheet-overlay" class="fixed inset-0 z-[100] hidden">
+<div id="sheet-overlay" class="fixed inset-0 z-[200] hidden">
   <div class="absolute inset-0" style="background:rgba(0,0,0,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)" onclick="closeDetail()"></div>
   <div id="sheet" class="ios-sheet absolute bottom-0 left-0 right-0 max-h-[92vh] overflow-y-auto"
        style="transform:translateY(100%);transition:transform .38s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom,34px)">
@@ -236,9 +236,9 @@ function openDetail(el) {
   }) : '';
 
   document.getElementById('sheet-body').innerHTML = `
-    <div class="flex items-center justify-between">
-      <span style="font-size:12px;font-weight:600;padding:4px 10px;border-radius:8px;background:${color}22;color:${color}">${statusLabel[d.status]||d.status}</span>
-      <span class="ios-caption2" style="color:var(--ios-label3)">#${d.id} · ${d.date}</span>
+    <div class="flex items-center justify-between" style="gap:8px">
+      <span style="font-size:12px;font-weight:600;padding:4px 10px;border-radius:8px;background:${color}22;color:${color};white-space:nowrap;flex-shrink:0">${statusLabel[d.status]||d.status}</span>
+      <span class="ios-caption2" style="color:var(--ios-label3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">#${d.id} · ${d.date}</span>
     </div>
 
     <div class="ios-card2 rounded-[14px] p-4">
@@ -268,33 +268,33 @@ function openDetail(el) {
         <div class="w-11 h-11 rounded-full bg-[#007AFF] flex items-center justify-center flex-shrink-0">
           <i class="fas fa-user text-white text-base"></i>
         </div>
-        <div class="flex-1">
-          <div class="ios-subhead font-semibold">${d.client}</div>
-          <div class="ios-caption mt-0.5" style="color:var(--ios-label3)">${d.phone}</div>
+        <div class="flex-1" style="min-width:0">
+          <div class="ios-subhead font-semibold" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.client}</div>
+          <div class="ios-caption mt-0.5" style="color:var(--ios-label3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.phone}</div>
         </div>
-        <div class="text-right">
-          <div class="ios-caption" style="color:var(--ios-label3)">${d.payment==='cash'?'💵 Naqd':'💳 Karta'}</div>
-          <div class="ios-caption" style="color:var(--ios-label3)">${d.carType||''}</div>
+        <div class="text-right flex-shrink-0">
+          <div class="ios-caption" style="color:var(--ios-label3);white-space:nowrap">${d.payment==='cash'?'💵 Naqd':'💳 Karta'}</div>
+          <div class="ios-caption" style="color:var(--ios-label3);white-space:nowrap">${d.carType||''}</div>
         </div>
       </div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <div class="ios-card2 rounded-[12px] p-3 text-center">
-        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)"><i class="fas fa-sack-dollar" style="font-size:9px;margin-right:3px"></i>NARX</div>
-        <div class="ios-footnote font-bold" style="color:${d.status==='completed'?'#34C759':d.status==='cancelled'?'var(--ios-label3)':'var(--ios-label)'}">${displayPrice ? displayPrice + " so'm" : '—'}</div>
+      <div class="ios-card2 rounded-[12px] p-3 text-center" style="min-width:0">
+        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3);white-space:nowrap"><i class="fas fa-sack-dollar" style="font-size:9px;margin-right:3px"></i>NARX</div>
+        <div class="ios-footnote font-bold" style="color:${d.status==='completed'?'#34C759':d.status==='cancelled'?'var(--ios-label3)':'var(--ios-label)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${displayPrice ? displayPrice + " so'm" : '—'}</div>
       </div>
-      <div class="ios-card2 rounded-[12px] p-3 text-center">
-        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)"><i class="fas fa-route" style="font-size:9px;margin-right:3px"></i>MASOFA</div>
-        <div class="ios-footnote font-bold">${parseFloat(displayDist) > 0 ? parseFloat(displayDist).toFixed(1) + ' km' : '—'}</div>
+      <div class="ios-card2 rounded-[12px] p-3 text-center" style="min-width:0">
+        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3);white-space:nowrap"><i class="fas fa-route" style="font-size:9px;margin-right:3px"></i>MASOFA</div>
+        <div class="ios-footnote font-bold" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${parseFloat(displayDist) > 0 ? parseFloat(displayDist).toFixed(1) + ' km' : '—'}</div>
       </div>
-      <div class="ios-card2 rounded-[12px] p-3 text-center">
-        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)"><i class="fas fa-percent" style="font-size:9px;margin-right:3px"></i>KOMISSIYA</div>
-        <div class="ios-footnote font-bold text-[#FF9500]">${commission>0?Math.round(commission).toLocaleString()+" so'm":'—'}</div>
+      <div class="ios-card2 rounded-[12px] p-3 text-center" style="min-width:0">
+        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3);white-space:nowrap"><i class="fas fa-percent" style="font-size:9px;margin-right:3px"></i>KOMISSIYA</div>
+        <div class="ios-footnote font-bold text-[#FF9500]" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${commission>0?Math.round(commission).toLocaleString()+" so'm":'—'}</div>
       </div>
-      <div class="ios-card2 rounded-[12px] p-3 text-center">
-        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3)"><i class="fas fa-flag-checkered" style="font-size:9px;margin-right:3px"></i>YAKUNLANDI</div>
-        <div class="ios-footnote font-bold">${durationVal}</div>
+      <div class="ios-card2 rounded-[12px] p-3 text-center" style="min-width:0">
+        <div class="ios-caption2 font-semibold mb-1" style="color:var(--ios-label3);white-space:nowrap"><i class="fas fa-flag-checkered" style="font-size:9px;margin-right:3px"></i>YAKUNLANDI</div>
+        <div class="ios-footnote font-bold" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${durationVal}</div>
       </div>
     </div>
 
