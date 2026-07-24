@@ -1504,13 +1504,17 @@ def operator_bot_set_webhook(request):
         return JsonResponse({'ok': False, 'message': str(e)})
 
 
+ONLINE_THRESHOLD_SECONDS = 120  # last_seen shundan yangi bo'lsa — online (yashil)
+
+
 @login_required(login_url='taxi:panel_login')
 def driver_map(request):
     from taxi.models import MapsSettings
     drivers = Driver.objects.filter(
         is_active=True,
-        is_on_duty=True,
-        approval_status=Driver.APPROVAL_APPROVED
+        approval_status=Driver.APPROVAL_APPROVED,
+        latitude__isnull=False,
+        longitude__isnull=False,
     )
     maps = MapsSettings.get()
     return render(request, 'taxi/driver_map.html', {
@@ -1521,15 +1525,17 @@ def driver_map(request):
 
 @login_required(login_url='taxi:panel_login')
 def active_drivers_locations(request):
+    from django.utils import timezone
     drivers = Driver.objects.filter(
         is_active=True,
-        is_on_duty=True,
         approval_status=Driver.APPROVAL_APPROVED,
         latitude__isnull=False,
         longitude__isnull=False
     )
+    now = timezone.now()
     data = []
     for d in drivers:
+        is_online = bool(d.last_seen) and (now - d.last_seen).total_seconds() < ONLINE_THRESHOLD_SECONDS
         data.append({
             'id': d.id,
             'full_name': d.full_name,
@@ -1541,6 +1547,8 @@ def active_drivers_locations(request):
             'balance': str(d.balance),
             'last_address': d.last_address or '',
             'photo_url': d.photo.url if d.photo else '',
+            'is_online': is_online,
+            'is_on_duty': d.is_on_duty,
         })
     return JsonResponse({'drivers': data})
 
