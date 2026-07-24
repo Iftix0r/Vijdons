@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -475,14 +475,17 @@ def driver_list(request):
 def client_list(request):
     q      = request.GET.get('q', '').strip()
     filter_ = request.GET.get('filter', '').strip()
-    qs = Client.objects.all()
+    sort    = request.GET.get('sort', '').strip()
+    qs = Client.objects.annotate(orders_count=Count('orders'))
     if q:
         qs = qs.filter(Q(full_name__icontains=q) | Q(phone_number__icontains=q))
     if filter_ == 'blocked':
         qs = qs.filter(is_blocked=True)
     elif filter_ == 'active':
         qs = qs.filter(is_blocked=False)
-    return render(request, 'taxi/client_list.html', {'clients': qs, 'q': q, 'filter': filter_})
+    if sort == 'top_orders':
+        qs = qs.order_by('-orders_count')
+    return render(request, 'taxi/client_list.html', {'clients': qs, 'q': q, 'filter': filter_, 'sort': sort})
 
 
 # ── Tariff Settings ────────────────────────────────────────────────────────────

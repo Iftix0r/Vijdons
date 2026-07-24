@@ -28,10 +28,14 @@
             <option value="blocked" {% if filter == 'blocked' %}selected{% endif %}>🚫 Bloklangan</option>
             <option value="active" {% if filter == 'active' %}selected{% endif %}>✅ Faol</option>
         </select>
+        <select name="sort" class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+            <option value="" {% if not sort %}selected{% endif %}>Saralash: standart</option>
+            <option value="top_orders" {% if sort == 'top_orders' %}selected{% endif %}>🏆 Eng ko'p buyurtma bergan</option>
+        </select>
         <button type="submit" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl transition-colors">
             <i class="fas fa-search mr-1"></i> Qidirish
         </button>
-        {% if q or filter %}
+        {% if q or filter or sort %}
         <a href="{% url 'taxi:client_list' %}" class="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-semibold rounded-xl transition-colors">
             <i class="fas fa-times mr-1"></i> Tozalash
         </a>
@@ -83,7 +87,7 @@
                     <td class="px-5 py-3.5">
                         <a href="{% url 'taxi:order_list' %}?q={{ client.phone_number }}"
                            class="inline-flex items-center gap-1.5 text-xs bg-gray-100 dark:bg-gray-800 hover:bg-yellow-100 hover:text-yellow-700 dark:hover:bg-yellow-900/20 dark:hover:text-yellow-400 text-gray-500 dark:text-gray-400 px-2.5 py-1 rounded-full transition-colors font-semibold">
-                            <i class="fas fa-route text-[10px]"></i>{{ client.orders.count }} ta
+                            <i class="fas fa-route text-[10px]"></i>{{ client.orders_count }} ta
                         </a>
                     </td>
 
