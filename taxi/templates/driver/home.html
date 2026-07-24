@@ -1,4 +1,5 @@
 {% extends "driver/base.html" %}
+{% load taxi_extras %}
 {% block title %}Asosiy{% endblock %}
 {% block content %}
 
@@ -12,9 +13,9 @@
         <img src="{{ driver.photo.url }}" alt=""
              class="w-9 h-9 rounded-full object-cover ring-2 ring-[#FFD600]">
         {% else %}
-        <div class="w-9 h-9 rounded-full bg-[#FFD600] flex items-center justify-center"
-             style="box-shadow:0 2px 8px rgba(255,214,0,.4)">
-          <span class="ios-caption font-bold text-black">{{ driver.full_name|first|upper }}</span>
+        <div class="w-9 h-9 rounded-full flex items-center justify-center"
+             style="background:{{ driver.full_name|avatar_gradient }};box-shadow:0 2px 8px rgba(0,0,0,.25)">
+          <span class="ios-caption font-bold text-white">{{ driver.full_name|first|upper }}</span>
         </div>
         {% endif %}
       </a>
@@ -215,6 +216,23 @@ let _sheetCloseTimer = null;
 
 // Sahifa yuklanishi bilan darhol DOM ni render qilamiz
 renderOrdersDOM();
+
+// Kutilayotgan buyurtma kartasini uzoq bosganda tezkor menyu (manzilni
+// nusxalash / xaritada ochish) — kartalar renderOrdersDOM() orqali qayta
+// chizilib turgani uchun #orders-wrap ustida delegatsiya qilingan.
+attachLongPress(document.getElementById('orders-wrap'), '.po-card', el => {
+  const o = ORDERS.find(x => x.id === Number(el.dataset.orderId));
+  if (!o) return [];
+  const items = [
+    { label: "Manzillarni nusxalash", icon: 'fa-copy',
+      onClick: () => copyText([o.from_address, o.to_address].filter(Boolean).join(' → ')) },
+  ];
+  if (o.from_lat && o.from_lng) {
+    items.push({ label: "Xaritada ochish", icon: 'fa-map-location-dot',
+      onClick: () => window.open(`https://maps.google.com/?q=${o.from_lat},${o.from_lng}`, '_blank') });
+  }
+  return items;
+});
 
 // on_way yoki arrived buyurtma bo'lsa taximetr fonda ishga tushadi. Tafsilot
 // oynasi (sheet) esa renderOrdersDOM() -> _ensureActiveSheet() orqali
@@ -436,7 +454,8 @@ function renderOrdersDOM() {
   // qaraydigan raqam), to'lov turi/mashina turi esa masofa yonida kichikroq
   // ko'rinadi — haydovchi bir qarashda "qancha pul, qayerga" deb bilib olsin.
   const ordersHtml = pendingOrders.map((o,i) => `
-    <div class="ios-card active:opacity-70 transition-opacity cursor-pointer anim-up"
+    <div class="ios-card po-card active:opacity-70 transition-opacity cursor-pointer anim-up"
+         data-order-id="${o.id}"
          onclick="openOrder(${o.id})"
          style="animation-delay:${i*50}ms;box-shadow:0 1px 3px rgba(0,0,0,.08)">
       <div class="p-4">
@@ -800,14 +819,7 @@ function tmxCancel() {
   callOperator();
 }
 // ─────────────────────────────────────────────────────────────────────────────
-
-function openTelegram(phone) {
-  // +998901234567 → https://t.me/+998901234567
-  // raqamdan faqat raqamlar va + belgisini olamiz
-  let p = phone.replace(/[^\d+]/g, '');
-  if (!p.startsWith('+')) p = '+' + p;
-  window.open('https://t.me/' + encodeURIComponent(p), '_blank');
-}
+// Diqqat: openTelegram() endi base.html'da (barcha sahifalarda umumiy).
 
 function openOrder(id){
   Native.vibrate();

@@ -43,6 +43,14 @@
 
 <div class="px-4 py-3 space-y-2.5" id="list">
   {% for order in orders %}
+  <div class="swipe-row" style="position:relative;overflow:hidden;border-radius:16px">
+    <div class="swipe-action" onclick="callOperator()"
+         style="position:absolute;top:0;right:0;bottom:0;width:76px;display:flex;align-items:center;justify-content:center;background:#FF3B30;color:#fff;cursor:pointer">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <i class="fas fa-phone" style="font-size:15px"></i>
+        <span style="font-size:11px;font-weight:700">Operator</span>
+      </div>
+    </div>
   <div class="order-item ios-card rounded-[16px] anim-up cursor-pointer active:opacity-70 transition-opacity"
        data-status="{{ order.status }}"
        data-price="{% if order.price %}{{ order.price }}{% else %}0{% endif %}"
@@ -106,6 +114,7 @@
       </div>
     </div>
   </div>
+  </div>
   {% empty %}
   <div class="text-center py-20 anim-fade">
     <i class="fas fa-clock-rotate-left text-[48px] mb-4" style="color:var(--ios-label3)"></i>
@@ -145,6 +154,74 @@ function calcStats(vis){
   const sk=document.getElementById('s-km');    if(sk) sk.textContent=k>0?k.toFixed(1):'—';
 }
 calcStats(items);
+
+// ── Swipe-to-action (Telegram/iOS uslubi): qatorni chapga suring — operatorga
+// qo'ng'iroq tugmasi ochiladi. Faqat aniq gorizontal harakatda ishga tushadi,
+// aks holda ro'yxatni tepaga/pastga scroll qilishga xalaqit bermaydi.
+(function initSwipeRows(){
+  const SWIPE_W = 76;
+  let openCard = null;
+  function closeCard(card){
+    if(!card) return;
+    card.style.transition = 'transform .25s cubic-bezier(.25,.46,.45,.94)';
+    card.style.transform = 'translateX(0)';
+    if(openCard === card) openCard = null;
+  }
+  items.forEach(card => {
+    let startX=0, startY=0, baseX=0, dragging=false, horizontal=false;
+    card.addEventListener('touchstart', e => {
+      if(openCard && openCard !== card) closeCard(openCard);
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      baseX = card === openCard ? -SWIPE_W : 0;
+      dragging = true; horizontal = false;
+    }, {passive:true});
+    card.addEventListener('touchmove', e => {
+      if(!dragging) return;
+      const dx = e.touches[0].clientX - startX;
+      const dy = e.touches[0].clientY - startY;
+      if(!horizontal){
+        if(Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        horizontal = Math.abs(dx) > Math.abs(dy);
+        if(!horizontal){ dragging=false; return; }
+      }
+      e.preventDefault();
+      const tx = Math.max(-SWIPE_W, Math.min(0, baseX + dx));
+      card.style.transition = 'none';
+      card.style.transform = `translateX(${tx}px)`;
+    }, {passive:false});
+    card.addEventListener('touchend', () => {
+      if(!dragging) return;
+      dragging = false;
+      if(!horizontal) return;
+      card.style.transition = 'transform .25s cubic-bezier(.25,.46,.45,.94)';
+      const cur = parseInt((card.style.transform.match(/-?\d+/)||[0])[0]) || 0;
+      if(cur < -SWIPE_W/2){ card.style.transform = `translateX(-${SWIPE_W}px)`; openCard = card; }
+      else { card.style.transform = 'translateX(0)'; if(openCard===card) openCard=null; }
+    });
+  });
+  document.addEventListener('touchstart', e => {
+    if(openCard && !openCard.parentElement.contains(e.target)) closeCard(openCard);
+  }, {passive:true});
+})();
+
+// Buyurtma qatorini uzoq bosganda tezkor menyu (manzilni nusxalash, mijozga
+// qo'ng'iroq/Telegram) — pastga suring (swipe) bilan bir vaqtda ham to'g'ri
+// ishlaydi, chunki ikkalasi ham gorizontal/harakat holatini alohida kuzatadi.
+attachLongPress(document.getElementById('list'), '.order-item', el => {
+  const d = el.dataset;
+  const items = [
+    { label: "Manzilni nusxalash", icon: 'fa-copy',
+      onClick: () => copyText([d.from, d.to].filter(Boolean).join(' → ')) },
+  ];
+  if (d.phone) {
+    items.push({ label: "Mijozga qo'ng'iroq", icon: 'fa-phone',
+      onClick: () => Native.callPhone(d.phone) });
+    items.push({ label: "Telegram orqali yozish", icon: 'fa-paper-plane',
+      onClick: () => openTelegram(d.phone) });
+  }
+  return items;
+});
 
 function filter(s){
   document.querySelectorAll('.seg-btn').forEach(b=>{

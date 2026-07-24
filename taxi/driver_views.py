@@ -595,14 +595,32 @@ def driver_chat_poll(request, driver):
     last_id = int(request.GET.get('last_id', 0))
     msgs = ChatMessage.objects.filter(driver=driver, id__gt=last_id).order_by('created_at')
     msgs.filter(sender=ChatMessage.SENDER_OPERATOR).update(is_read=True)
-    return JsonResponse({'messages': [
-        {
-            'id': m.id, 'sender': m.sender, 'text': m.text,
-            'audio_url': request.build_absolute_uri(m.audio.url) if m.audio else None,
-            'created_at': m.created_at.isoformat()
-        }
-        for m in msgs
-    ]})
+    # Operator o'qib chiqqan (haydovchi yuborgan) xabarlar — check-double
+    # belgisini jonli yangilash uchun (haydovchi hali sahifani qayta
+    # yuklamagan bo'lsa ham, operator xabarni o'qiganini darhol ko'rsatish).
+    read_ids = list(
+        ChatMessage.objects
+        .filter(driver=driver, sender=ChatMessage.SENDER_DRIVER, is_read=True, id__lte=last_id)
+        .order_by('-id').values_list('id', flat=True)[:50]
+    )
+    # Operator hozir yozayotgan bo'lsa ("Yozmoqda..." indikatori uchun) — so'nggi
+    # 4 soniya ichida belgi qo'yilgan bo'lsa hali ham "yozmoqda" deb hisoblanadi.
+    typing = bool(
+        driver.operator_typing_at and
+        (timezone.now() - driver.operator_typing_at).total_seconds() < 4
+    )
+    return JsonResponse({
+        'messages': [
+            {
+                'id': m.id, 'sender': m.sender, 'text': m.text,
+                'audio_url': request.build_absolute_uri(m.audio.url) if m.audio else None,
+                'created_at': m.created_at.isoformat()
+            }
+            for m in msgs
+        ],
+        'read_ids': read_ids,
+        'operator_typing': typing,
+    })
 
 
 @driver_login_required

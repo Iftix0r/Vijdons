@@ -27,6 +27,7 @@ urlpatterns = [
     path('drivers/<int:pk>/detail/', views.driver_detail, name='driver_detail'),
     path('chat/', views.operator_chat, name='operator_chat'),
     path('chat/unread/', views.operator_chat_unread, name='operator_chat_unread'),
+    path('chat/typing/', views.operator_chat_typing, name='operator_chat_typing'),
     path('maps/', views.maps_settings, name='maps_settings'),
     path('bot/', views.bot_settings, name='bot_settings'),
     path('bot/admins/add/', views.bot_admin_add, name='bot_admin_add'),

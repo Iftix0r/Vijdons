@@ -362,6 +362,25 @@ function submitAudio(blob) {
         .then(() => location.reload());
 }
 
+// ── Typing indicator (haydovchiga "Operator yozmoqda..." ko'rsatish uchun) ──
+{% if selected_driver %}
+(function(){
+  const input = document.getElementById('msg-input');
+  if (!input) return;
+  let lastPing = 0;
+  input.addEventListener('input', () => {
+    const now = Date.now();
+    if (now - lastPing < 2000) return;
+    lastPing = now;
+    fetch('{% url "taxi:operator_chat_typing" %}', {
+      method: 'POST',
+      headers: {'X-CSRFToken': '{{ csrf_token }}'},
+      body: new URLSearchParams({driver_id: '{{ selected_id }}'}),
+    }).catch(() => {});
+  });
+})();
+{% endif %}
+
 // ── Auto refresh ──
 {% if selected_driver %}
 setInterval(function() {

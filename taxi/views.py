@@ -3,6 +3,7 @@ from django.db.models import Q
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.contrib import messages
 from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound
 from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address
@@ -1538,6 +1539,19 @@ def operator_chat_unread(request):
     """AJAX: jami o'qilmagan xabarlar soni."""
     count = ChatMessage.objects.filter(sender=ChatMessage.SENDER_DRIVER, is_read=False).count()
     return JsonResponse({'unread': count})
+
+
+@login_required(login_url='taxi:panel_login')
+@require_POST
+def operator_chat_typing(request):
+    """AJAX: operator xabar yozayotganini haydovchi ilovasiga bildirish uchun belgi qo'yadi."""
+    from django.utils import timezone
+    driver_id = request.POST.get('driver_id')
+    driver = Driver.objects.filter(pk=driver_id).first()
+    if driver:
+        driver.operator_typing_at = timezone.now()
+        driver.save(update_fields=['operator_typing_at'])
+    return JsonResponse({'ok': True})
 
 
 def _send_fcm_to_driver(driver, title, body):

@@ -1,4 +1,5 @@
 {% extends "driver/base.html" %}
+{% load taxi_extras %}
 {% block title %}Profil{% endblock %}
 {% block content %}
 
@@ -16,9 +17,9 @@
            class="w-[88px] h-[88px] rounded-full object-cover"
            style="box-shadow:0 4px 20px rgba(255,214,0,.4)">
       {% else %}
-      <div class="w-[88px] h-[88px] rounded-full bg-[#FFD600] flex items-center justify-center"
-           style="box-shadow:0 4px 20px rgba(255,214,0,.4)">
-        <span class="text-[36px] font-bold text-black">{{ driver.full_name|first|upper }}</span>
+      <div class="w-[88px] h-[88px] rounded-full flex items-center justify-center"
+           style="background:{{ driver.full_name|avatar_gradient }};box-shadow:0 4px 20px rgba(0,0,0,.25)">
+        <span class="text-[36px] font-bold text-white">{{ driver.full_name|first|upper }}</span>
       </div>
       {% endif %}
       <label for="photo-input"
