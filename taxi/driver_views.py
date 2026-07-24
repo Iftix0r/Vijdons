@@ -15,7 +15,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from .models import Driver, Order, ChatMessage, GroupMessage, TariffSettings, DriverActivityLog, BalanceLog, BalanceTopupRequest, PanelSound, VoiceParticipant, VoiceSignal
-from .utils import tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected, tg_driver_login, tg_duty_changed, tg_low_balance_alert, tg_topup_request
+from .utils import tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected, tg_driver_login, tg_duty_changed, tg_low_balance_alert, tg_topup_request, sms_order_status
 
 
 def _get_ip(request):
@@ -434,6 +434,7 @@ def driver_order_action(request, driver, pk, action):
             locked.save(update_fields=['status', 'driver', 'dispatched_to', 'updated_at'])
         tg_order_accepted(locked, driver)
         tg_low_balance_alert(driver)
+        sms_order_status(locked, 'accepted')
         return JsonResponse({'ok': True, 'new_balance': float(driver.balance)})
 
     if order.driver_id and order.driver_id != driver.id:
@@ -511,6 +512,8 @@ def driver_order_action(request, driver, pk, action):
     }
     if new_status in tg_map:
         tg_map[new_status](order, driver)
+    if new_status in ('arrived', 'completed', 'cancelled'):
+        sms_order_status(order, new_status)
 
     return JsonResponse({'ok': True})
 

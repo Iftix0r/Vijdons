@@ -5,8 +5,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
-from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound
-from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address
+from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings
+from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms
 import csv
 
 
@@ -138,6 +138,8 @@ def order_update_status(request, pk):
         if driver_id:
             order.driver = Driver.objects.filter(pk=driver_id).first()
         order.save()
+        if new_status in ('accepted', 'arrived', 'completed', 'cancelled'):
+            sms_order_status(order, new_status)
         # Haydovchiga FCM yuborish — buyurtma bekor qilinsa yoki yakunlansa
         if new_status in ('cancelled', 'completed') and order.driver:
             from .utils import send_fcm
@@ -444,9 +446,13 @@ def order_list(request):
 
 @login_required(login_url='taxi:panel_login')
 def driver_list(request):
-    q   = request.GET.get('q', '').strip()
-    tab = request.GET.get('tab', 'approved')
-    qs  = Driver.objects.all()
+    q    = request.GET.get('q', '').strip()
+    tab  = request.GET.get('tab', 'approved')
+    sort = request.GET.get('sort', '').strip()
+    qs  = Driver.objects.annotate(
+        completed_count=Count('orders', filter=Q(orders__status='completed')),
+        cancelled_count=Count('orders', filter=Q(orders__status='cancelled')),
+    )
     if q:
         qs = qs.filter(
             Q(full_name__icontains=q) |
@@ -461,10 +467,22 @@ def driver_list(request):
     else:
         qs = qs.filter(approval_status=Driver.APPROVAL_APPROVED)
 
+    if sort == 'top_completed':
+        qs = qs.order_by('-completed_count')
+    elif sort == 'top_cancelled':
+        qs = qs.order_by('-cancelled_count')
+    elif sort == 'top_rating':
+        qs = qs.order_by('-rating')
+    elif sort == 'top_balance':
+        qs = qs.order_by('-balance')
+    elif sort == 'newest':
+        qs = qs.order_by('-registered_at')
+
     return render(request, 'taxi/driver_list.html', {
         'drivers':        qs,
         'q':              q,
         'tab':            tab,
+        'sort':           sort,
         'pending_count':  Driver.objects.filter(approval_status=Driver.APPROVAL_PENDING).count(),
         'approved_count': Driver.objects.filter(approval_status=Driver.APPROVAL_APPROVED).count(),
         'rejected_count': Driver.objects.filter(approval_status=Driver.APPROVAL_REJECTED).count(),
@@ -552,6 +570,46 @@ def bot_settings(request):
         'order_notifs': order_notifs,
         'driver_notifs': driver_notifs,
         'admins': BotAdmin.objects.all(),
+    })
+
+
+@login_required(login_url='taxi:panel_login')
+def sms_settings(request):
+    sms = SmsSettings.get()
+    saved = False
+    test_result = None
+    if request.method == 'POST':
+        if 'test' in request.POST:
+            test_phone = request.POST.get('test_phone', '').strip()
+            ok, message = send_sms(test_phone, 'Vijdon Taxi: bu test SMS xabari.')
+            test_result = {'ok': ok, 'message': message}
+        else:
+            new_email    = request.POST.get('email', '').strip()
+            new_password = request.POST.get('password', '').strip()
+            if new_email != sms.email or new_password != sms.password:
+                # Kirish ma'lumotlari o'zgardi — eski token endi yaroqsiz
+                sms.token = ''
+                sms.token_updated_at = None
+            sms.email    = new_email
+            sms.password = new_password
+            sms.nickname = request.POST.get('nickname', '').strip() or '4546'
+            sms.sms_accepted  = 'sms_accepted'  in request.POST
+            sms.sms_arrived   = 'sms_arrived'   in request.POST
+            sms.sms_completed = 'sms_completed' in request.POST
+            sms.sms_cancelled = 'sms_cancelled' in request.POST
+            sms.save()
+            saved = True
+    sms_notifs = [
+        ('sms_accepted',  'Buyurtma qabul qilindi',  '✅', sms.sms_accepted),
+        ('sms_arrived',   'Haydovchi yetib keldi',   '📍', sms.sms_arrived),
+        ('sms_completed', 'Buyurtma yakunlandi',     '🏁', sms.sms_completed),
+        ('sms_cancelled', 'Buyurtma bekor qilindi',  '❌', sms.sms_cancelled),
+    ]
+    return render(request, 'taxi/sms_settings.html', {
+        'sms': sms,
+        'saved': saved,
+        'test_result': test_result,
+        'sms_notifs': sms_notifs,
     })
 
 
@@ -1184,6 +1242,7 @@ def _handle_admin_message(token, chat_id, text, location=None):
             return
         order.status = 'cancelled'
         order.save(update_fields=['status', 'updated_at'])
+        sms_order_status(order, 'cancelled')
         if order.driver:
             from .utils import send_fcm
             send_fcm(

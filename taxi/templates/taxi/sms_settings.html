@@ -1,0 +1,140 @@
+{% extends 'taxi/base.html' %}
+{% block title %}SMS Sozlamalari — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-end gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Eskiz SMS 💬</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Mijozlarga buyurtma holati bo'yicha avtomatik SMS yuborish sozlamalari.</p>
+    </div>
+    <span class="text-xs text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-700">
+        <i class="fas fa-clock mr-1"></i>{{ sms.updated_at|date:"d.m.Y H:i" }}
+    </span>
+</div>
+
+{% if saved %}
+<div class="mb-4 px-4 py-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 rounded-xl text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+    <i class="fas fa-check-circle mr-2"></i>Sozlamalar saqlandi!
+</div>
+{% endif %}
+
+{% if test_result %}
+<div class="mb-4 px-4 py-3 rounded-xl text-sm font-semibold
+    {% if test_result.ok %}bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400
+    {% else %}bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 text-red-600 dark:text-red-400{% endif %}">
+    <i class="fas {% if test_result.ok %}fa-check-circle{% else %}fa-times-circle{% endif %} mr-2"></i>{{ test_result.message }}
+</div>
+{% endif %}
+
+<div class="max-w-2xl space-y-5">
+  <form method="POST">
+    {% csrf_token %}
+
+    <!-- Ulanish -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden mb-5">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
+                <i class="fas fa-comment-sms text-emerald-500"></i>
+            </div>
+            <div class="flex-1">
+                <p class="text-sm font-bold text-gray-800 dark:text-white">Eskiz.uz ulanish</p>
+                <p class="text-xs text-gray-400">
+                    <a href="https://eskiz.uz" target="_blank" class="text-blue-500 hover:underline">eskiz.uz</a> kabinetingiz ma'lumotlari
+                </p>
+            </div>
+            {% if sms.token %}
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot"></span>Ulangan
+            </span>
+            {% else %}
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>Ulanmagan
+            </span>
+            {% endif %}
+        </div>
+        <div class="px-6 py-5 space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                    <i class="fas fa-envelope text-blue-500 mr-1"></i>Email
+                </label>
+                <input type="text" name="email" value="{{ sms.email }}" autocomplete="off"
+                       placeholder="you@example.com"
+                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-400 dark:text-white transition">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                    <i class="fas fa-key text-yellow-500 mr-1"></i>Parol
+                </label>
+                <input type="password" name="password" value="{{ sms.password }}" autocomplete="new-password"
+                       placeholder="••••••••"
+                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-400 dark:text-white transition">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                    <i class="fas fa-signature text-purple-500 mr-1"></i>Sender nomi (nickname)
+                </label>
+                <input type="text" name="nickname" value="{{ sms.nickname }}"
+                       placeholder="4546"
+                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-400 dark:text-white transition">
+                <p class="text-xs text-gray-400 mt-1">Test rejimida <code>4546</code>. Ishlab chiqarish uchun Eskiz kabinetida tasdiqlangan alfa-nom kiriting.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bildirishnomalar -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden mb-5">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+            <p class="text-sm font-bold text-gray-800 dark:text-white"><i class="fas fa-bell text-yellow-500 mr-2"></i>Mijozga SMS yuboriladigan hodisalar</p>
+            <p class="text-xs text-gray-400 mt-0.5">Buyurtma holati o'zgarganda mijozning telefoniga SMS boradi</p>
+        </div>
+        <div class="px-6 py-5 space-y-2">
+            {% for field, label, icon, checked in sms_notifs %}
+            <label class="flex items-center justify-between p-3 rounded-xl border cursor-pointer transition
+                {% if checked %}border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-900/10{% else %}border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/40{% endif %}">
+                <div class="flex items-center gap-3">
+                    <span class="text-lg w-6 text-center">{{ icon }}</span>
+                    <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ label }}</span>
+                </div>
+                <input type="checkbox" name="{{ field }}" {% if checked %}checked{% endif %}
+                       class="w-4 h-4 accent-emerald-500 cursor-pointer">
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Tugmalar -->
+    <div class="flex gap-3">
+        <button type="submit"
+                class="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm rounded-xl shadow-sm transition-all hover:-translate-y-0.5">
+            <i class="fas fa-save mr-2"></i>Saqlash
+        </button>
+        <a href="{% url 'taxi:panel_dashboard' %}"
+           class="px-5 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-semibold text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+            Bekor
+        </a>
+    </div>
+  </form>
+
+    <!-- Test SMS -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                <i class="fas fa-paper-plane text-blue-500"></i>
+            </div>
+            <div>
+                <p class="text-sm font-bold text-gray-800 dark:text-white">Test SMS yuborish</p>
+                <p class="text-xs text-gray-400">Ulanishni tekshirish uchun istalgan raqamga test xabar yuboring</p>
+            </div>
+        </div>
+        <form method="POST" class="px-6 py-5 flex flex-wrap gap-2">
+            {% csrf_token %}
+            <input type="text" name="test_phone" placeholder="+998901234567" required
+                   class="flex-1 min-w-[200px] px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition">
+            <button type="submit" name="test" value="1"
+                    class="px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-bold text-sm rounded-xl shadow-sm transition-all hover:-translate-y-0.5">
+                <i class="fas fa-paper-plane mr-1"></i>Yuborish
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

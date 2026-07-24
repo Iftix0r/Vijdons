@@ -1,6 +1,7 @@
 import math
 import urllib.request
 import urllib.parse
+import urllib.error
 import json
 
 def reverse_geocode_address(lat, lng):
@@ -197,6 +198,133 @@ def log_panel_event(event_type, message=''):
         PanelEvent.objects.create(event_type=event_type, message=message[:500])
     except Exception:
         pass
+
+
+# ── Eskiz.uz SMS ──────────────────────────────────────────────────────────────
+
+def normalize_phone_uz(raw):
+    """Telefon raqamni Eskiz uchun 998XXXXXXXXX (9 xonali, kod bilan 12 xona) formatiga keltiradi."""
+    digits = ''.join(ch for ch in (raw or '') if ch.isdigit())
+    if digits.startswith('00998'):
+        digits = digits[2:]
+    if digits.startswith('998') and len(digits) == 12:
+        return digits
+    if len(digits) == 9:
+        return '998' + digits
+    return None
+
+
+def _eskiz_login(cfg):
+    """Eskiz.uz'dan yangi auth token oladi va DB'ga saqlaydi."""
+    if not cfg.email or not cfg.password:
+        return ''
+    try:
+        from django.utils import timezone
+        data = urllib.parse.urlencode({'email': cfg.email, 'password': cfg.password}).encode()
+        req = urllib.request.Request('https://notify.eskiz.uz/api/auth/login', data=data)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            result = json.loads(resp.read().decode())
+        token = result.get('data', {}).get('token', '')
+        if token:
+            cfg.token = token
+            cfg.token_updated_at = timezone.now()
+            cfg.save(update_fields=['token', 'token_updated_at'])
+        return token
+    except Exception:
+        return ''
+
+
+def send_sms(phone, text):
+    """Mijozga Eskiz.uz orqali SMS yuboradi. (ok, message) qaytaradi."""
+    try:
+        from taxi.models import SmsSettings
+        cfg = SmsSettings.get()
+    except Exception:
+        return False, 'SMS sozlamalari topilmadi'
+
+    if not cfg.email or not cfg.password:
+        return False, "Eskiz email/parol kiritilmagan"
+
+    mobile = normalize_phone_uz(phone)
+    if not mobile:
+        return False, f"Telefon raqam formati noto'g'ri: {phone}"
+
+    token = cfg.token or _eskiz_login(cfg)
+    if not token:
+        return False, 'Eskiz tokeni olinmadi — email/parolni tekshiring'
+
+    def _send(tok):
+        payload = json.dumps({
+            'mobile_phone': mobile,
+            'message': text,
+            'from': cfg.nickname or '4546',
+        }).encode()
+        req = urllib.request.Request(
+            'https://notify.eskiz.uz/api/message/sms/send',
+            data=payload,
+            headers={'Authorization': f'Bearer {tok}', 'Content-Type': 'application/json'},
+            method='POST',
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.status
+
+    try:
+        _send(token)
+        return True, 'SMS yuborildi'
+    except urllib.error.HTTPError as e:
+        if e.code == 401:
+            # Token muddati o'tgan bo'lishi mumkin — qayta login qilib bir marta urinib ko'ramiz
+            new_token = _eskiz_login(cfg)
+            if new_token:
+                try:
+                    _send(new_token)
+                    return True, 'SMS yuborildi'
+                except Exception as e2:
+                    return False, f'Eskiz xatoligi: {e2}'
+            return False, 'Eskiz tokeni yaroqsiz — email/parolni tekshiring'
+        return False, f'Eskiz xatoligi: {e}'
+    except Exception as e:
+        return False, f'Xatolik: {e}'
+
+
+def sms_order_status(order, event):
+    """Mijozga buyurtma holati o'zgarganda SMS yuboradi.
+    event: 'accepted' | 'arrived' | 'completed' | 'cancelled'"""
+    try:
+        from taxi.models import SmsSettings
+        cfg = SmsSettings.get()
+    except Exception:
+        return
+
+    toggle = {
+        'accepted':  cfg.sms_accepted,
+        'arrived':   cfg.sms_arrived,
+        'completed': cfg.sms_completed,
+        'cancelled': cfg.sms_cancelled,
+    }.get(event)
+    if not toggle:
+        return
+
+    client = getattr(order, 'client', None)
+    if not client or not client.phone_number:
+        return
+
+    driver = getattr(order, 'driver', None)
+    if event == 'accepted':
+        car = f"{driver.car_model} {driver.car_number}".strip() if driver else ''
+        text = (f"Vijdon Taxi: Buyurtmangiz (#{order.id}) qabul qilindi."
+                + (f" Haydovchi: {driver.full_name}, {car}." if driver else "")
+                + " Iltimos kuting.")
+    elif event == 'arrived':
+        text = (f"Vijdon Taxi: Haydovchi{f' ({driver.full_name})' if driver else ''} "
+                f"manzilingizga yetib keldi. Buyurtma #{order.id}.")
+    elif event == 'completed':
+        text = (f"Vijdon Taxi: Buyurtmangiz (#{order.id}) yakunlandi. "
+                f"Narxi: {order.price or '—'} so'm. Xizmatimizdan foydalanganingiz uchun rahmat!")
+    else:  # cancelled
+        text = f"Vijdon Taxi: Buyurtmangiz (#{order.id}) bekor qilindi."
+
+    send_sms(client.phone_number, text)
 
 
 # ── Telegram xabar shablonlari ────────────────────────────────────────────────

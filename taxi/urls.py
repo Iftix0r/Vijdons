@@ -30,6 +30,7 @@ urlpatterns = [
     path('chat/typing/', views.operator_chat_typing, name='operator_chat_typing'),
     path('maps/', views.maps_settings, name='maps_settings'),
     path('bot/', views.bot_settings, name='bot_settings'),
+    path('sms/', views.sms_settings, name='sms_settings'),
     path('bot/admins/add/', views.bot_admin_add, name='bot_admin_add'),
     path('bot/admins/<int:pk>/delete/', views.bot_admin_delete, name='bot_admin_delete'),
     path('bot/admins/<int:pk>/toggle/', views.bot_admin_toggle, name='bot_admin_toggle'),

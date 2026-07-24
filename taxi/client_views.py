@@ -13,7 +13,7 @@ from django.views.decorators.http import require_POST
 
 from .models import Client, Order, TariffSettings
 from .serializers import ClientRegisterSerializer
-from .utils import haversine, dispatch_order, tg_new_order, log_panel_event
+from .utils import haversine, dispatch_order, tg_new_order, log_panel_event, sms_order_status
 
 ACTIVE_STATUSES = ('pending', 'accepted', 'on_way', 'arrived')
 
@@ -231,6 +231,7 @@ def client_order_cancel(request, client, pk):
     order.status = 'cancelled'
     order.save(update_fields=['status', 'updated_at'])
     log_panel_event('panel_order_cancelled', f"Buyurtma #{order.id} — mijoz bekor qildi")
+    sms_order_status(order, 'cancelled')
     return JsonResponse({'ok': True})
 
 

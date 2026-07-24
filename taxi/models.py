@@ -238,6 +238,41 @@ class BotAdmin(models.Model):
         ordering = ['-created_at']
 
 
+class SmsSettings(models.Model):
+    """Singleton: Eskiz.uz SMS sozlamalari."""
+    email      = models.CharField(max_length=255, blank=True, default='', verbose_name='Eskiz Email',
+                                   help_text='Eskiz.uz kabinetiga kirish emaili')
+    password   = models.CharField(max_length=255, blank=True, default='', verbose_name='Eskiz Parol')
+    nickname   = models.CharField(max_length=50, blank=True, default='4546', verbose_name='Sender nomi (nickname)',
+                                   help_text="Eskiz'da tasdiqlangan alfa-nom. Test rejimida 4546")
+    token      = models.TextField(blank=True, default='', verbose_name='Auth token (avtomatik)')
+    token_updated_at = models.DateTimeField(null=True, blank=True, verbose_name='Token yangilangan vaqt')
+
+    # Bildirishnoma toggle lar (mijozga SMS)
+    sms_accepted  = models.BooleanField(default=True, verbose_name='Buyurtma qabul qilindi')
+    sms_arrived   = models.BooleanField(default=True, verbose_name='Haydovchi yetib keldi')
+    sms_completed = models.BooleanField(default=True, verbose_name='Buyurtma yakunlandi')
+    sms_cancelled = models.BooleanField(default=True, verbose_name='Buyurtma bekor qilindi')
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return 'SMS Sozlamalari'
+
+    class Meta:
+        verbose_name = 'SMS sozlamalari'
+        verbose_name_plural = 'SMS sozlamalari'
+
+
 class MapsSettings(models.Model):
     """Singleton: admin paneldan geocoding API sozlamalari."""
     PROVIDER_NOMINATIM = 'nominatim'
