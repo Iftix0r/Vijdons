@@ -10,6 +10,8 @@ from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSett
 from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms
 import csv
 
+ONLINE_THRESHOLD_SECONDS = 120  # last_seen shundan yangi bo'lsa — online (yashil)
+
 
 def _get_client_ip(request):
     x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -447,12 +449,21 @@ def order_list(request):
 
 @login_required(login_url='taxi:panel_login')
 def driver_list(request):
+    from django.db.models import Case, When, Value, IntegerField
+    from django.utils import timezone
+
     q    = request.GET.get('q', '').strip()
     tab  = request.GET.get('tab', 'approved')
     sort = request.GET.get('sort', '').strip()
+    online_cutoff = timezone.now() - timezone.timedelta(seconds=ONLINE_THRESHOLD_SECONDS)
     qs  = Driver.objects.annotate(
         completed_count=Count('orders', filter=Q(orders__status='completed')),
         cancelled_count=Count('orders', filter=Q(orders__status='cancelled')),
+        is_online=Case(
+            When(last_seen__gte=online_cutoff, then=Value(1)),
+            default=Value(0),
+            output_field=IntegerField(),
+        ),
     )
     if q:
         qs = qs.filter(
@@ -469,15 +480,17 @@ def driver_list(request):
         qs = qs.filter(approval_status=Driver.APPROVAL_APPROVED)
 
     if sort == 'top_completed':
-        qs = qs.order_by('-completed_count')
+        qs = qs.order_by('-is_online', '-completed_count')
     elif sort == 'top_cancelled':
-        qs = qs.order_by('-cancelled_count')
+        qs = qs.order_by('-is_online', '-cancelled_count')
     elif sort == 'top_rating':
-        qs = qs.order_by('-rating')
+        qs = qs.order_by('-is_online', '-rating')
     elif sort == 'top_balance':
-        qs = qs.order_by('-balance')
+        qs = qs.order_by('-is_online', '-balance')
     elif sort == 'newest':
-        qs = qs.order_by('-registered_at')
+        qs = qs.order_by('-is_online', '-registered_at')
+    else:
+        qs = qs.order_by('-is_online', '-last_seen')
 
     return render(request, 'taxi/driver_list.html', {
         'drivers':        qs,
@@ -1502,9 +1515,6 @@ def operator_bot_set_webhook(request):
         return JsonResponse({'ok': False, 'message': result.get('description', 'Xatolik')})
     except Exception as e:
         return JsonResponse({'ok': False, 'message': str(e)})
-
-
-ONLINE_THRESHOLD_SECONDS = 120  # last_seen shundan yangi bo'lsa — online (yashil)
 
 
 @login_required(login_url='taxi:panel_login')
