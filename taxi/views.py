@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
-from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task
+from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature
 from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights
 import csv
 
@@ -320,10 +320,13 @@ def driver_detail(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     logs   = driver.activity_logs.all()[:100]
     orders = driver.orders.select_related('client').order_by('-created_at')[:20]
+    contract = ContractSettings.get()
+    contract_signature = driver.contract_signatures.filter(version=contract.version).first()
     return render(request, 'taxi/driver_detail.html', {
         'driver': driver,
         'logs':   logs,
         'orders': orders,
+        'contract_signature': contract_signature,
     })
 
 
@@ -2004,6 +2007,29 @@ def statistics(request):
         'total_drivers': Driver.objects.filter(approval_status='approved').count(),
         'total_clients': Client.objects.count(),
         'blocked_clients': Client.objects.filter(is_blocked=True).count(),
+    })
+
+
+# ── Haydovchi shartnomasi ──────────────────────────────────────────────────────
+
+@login_required(login_url='taxi:panel_login')
+def contract_settings(request):
+    contract = ContractSettings.get()
+    saved = False
+    if request.method == 'POST':
+        contract.title   = request.POST.get('title', contract.title).strip()
+        contract.content = request.POST.get('content', contract.content).strip()
+        contract.save()
+        saved = True
+
+    total_approved = Driver.objects.filter(approval_status=Driver.APPROVAL_APPROVED).count()
+    signed_current = DriverContractSignature.objects.filter(version=contract.version).values('driver').distinct().count()
+
+    return render(request, 'taxi/contract_settings.html', {
+        'contract': contract,
+        'saved': saved,
+        'total_approved': total_approved,
+        'signed_current': signed_current,
     })
 
 

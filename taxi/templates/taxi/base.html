@@ -261,6 +261,10 @@
            class="nav-link {% if request.resolver_match.url_name == 'task_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-list-check w-5 text-center"></i> Vazifalar
         </a>
+        <a href="{% url 'taxi:contract_settings' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'contract_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-file-signature w-5 text-center"></i> Shartnoma
+        </a>
         <a href="{% url 'taxi:bot_settings' %}"
            class="nav-link {% if request.resolver_match.url_name == 'bot_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fab fa-telegram w-5 text-center"></i> Telegram Bot

@@ -20,6 +20,8 @@ urlpatterns = [
     path('profile/photo/',    driver_views.driver_profile_photo,    name='profile_photo'),
     path('profile/topup/',    driver_views.driver_balance_topup,    name='balance_topup'),
     path('profile/password/', driver_views.driver_profile_password, name='profile_password'),
+    path('profile/contract/', driver_views.driver_contract,      name='contract'),
+    path('profile/contract/sign/', driver_views.driver_contract_sign, name='contract_sign'),
 
     path('orders/json/',              driver_views.driver_orders_json,   name='orders_json'),
 

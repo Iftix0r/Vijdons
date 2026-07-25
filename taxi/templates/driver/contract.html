@@ -1,0 +1,142 @@
+{% extends "driver/base.html" %}
+{% block title %}Shartnoma{% endblock %}
+{% block content %}
+
+<div class="ios-navbar sticky top-3 mx-4 z-20 px-4 pt-3 pb-3">
+  <div class="flex items-center gap-3 mb-1">
+    <a href="{% url 'driver:profile' %}" class="text-[17px]" style="color:#007AFF">
+      <i class="fas fa-chevron-left"></i>
+    </a>
+    <div class="ios-title font-bold">{{ contract.title }}</div>
+  </div>
+</div>
+
+<div class="px-4 py-3 space-y-4">
+
+  {% if signature %}
+  <!-- ── Imzolangan holat ── -->
+  <div class="ios-card rounded-[16px] p-5 anim-fade flex items-start gap-3" style="background:rgba(52,199,89,.08)">
+    <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(52,199,89,.18)">
+      <i class="fas fa-check text-[#34C759]"></i>
+    </div>
+    <div>
+      <div class="ios-subhead font-semibold" style="color:#34C759">Shartnoma imzolangan</div>
+      <div class="ios-caption mt-0.5" style="color:var(--ios-label3)">{{ signature.signed_at|date:"d.m.Y H:i" }} da, v{{ signature.version }}</div>
+    </div>
+  </div>
+  <div class="ios-card rounded-[16px] p-4 anim-fade">
+    <div class="ios-caption2 font-semibold mb-2" style="color:var(--ios-label3)">SIZNING IMZOINGIZ</div>
+    <img src="{{ signature.signature.url }}" alt="Imzo" class="w-full max-h-[140px] object-contain rounded-[10px]" style="background:#fff">
+  </div>
+  {% else %}
+  <div class="ios-card rounded-[16px] p-4 anim-fade flex items-start gap-3" style="background:rgba(255,149,0,.08)">
+    <i class="fas fa-triangle-exclamation text-[#FF9500] mt-0.5"></i>
+    <div class="ios-subhead font-medium" style="color:var(--ios-label2)">Ishlashni davom ettirish uchun shartnomani o'qib chiqib, pastda imzolang.</div>
+  </div>
+  {% endif %}
+
+  <!-- ── Shartnoma matni ── -->
+  <div class="ios-card rounded-[16px] p-5 anim-fade">
+    <div class="ios-body whitespace-pre-line leading-relaxed" style="color:var(--ios-label2)">{{ contract.content }}</div>
+  </div>
+
+  {% if not signature %}
+  <!-- ── Imzo paneli ── -->
+  <div class="ios-card rounded-[16px] p-5 anim-fade space-y-4">
+    <label class="flex items-start gap-3 cursor-pointer">
+      <input type="checkbox" id="agree-check" class="w-5 h-5 mt-0.5 accent-[#34C759] flex-shrink-0">
+      <span class="ios-subhead font-medium" style="color:var(--ios-label2)">Men yuqoridagi shartnoma shartlarini to'liq o'qib chiqdim va ularga roziman.</span>
+    </label>
+
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <div class="ios-caption2 font-semibold" style="color:var(--ios-label3)">PASTGA IMZO CHIZING</div>
+        <button type="button" onclick="clearSignature()" class="ios-caption font-semibold" style="color:#FF3B30">Tozalash</button>
+      </div>
+      <canvas id="sig-canvas" class="w-full rounded-[12px]" style="height:160px;background:#fff;border:1.5px dashed var(--ios-sep);touch-action:none"></canvas>
+    </div>
+
+    <button id="sign-btn" onclick="submitSignature()" class="ios-btn-primary">
+      <i class="fas fa-signature mr-1.5"></i>Roziman va imzolayman
+    </button>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+{% if not signature %}
+const canvas = document.getElementById('sig-canvas');
+const ctx = canvas.getContext('2d');
+let drawing = false, hasDrawn = false;
+
+function resizeCanvas() {
+  const rect = canvas.getBoundingClientRect();
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width = rect.width * ratio;
+  canvas.height = rect.height * ratio;
+  ctx.scale(ratio, ratio);
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#1c1c1e';
+}
+resizeCanvas();
+
+function pointerPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+}
+function start(e) { drawing = true; hasDrawn = true; const p = pointerPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); }
+function move(e)  { if (!drawing) return; const p = pointerPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); }
+function stop()    { drawing = false; }
+
+canvas.addEventListener('mousedown', start);
+canvas.addEventListener('mousemove', move);
+window.addEventListener('mouseup', stop);
+canvas.addEventListener('touchstart', start, { passive: false });
+canvas.addEventListener('touchmove', move, { passive: false });
+canvas.addEventListener('touchend', stop);
+
+function clearSignature() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  hasDrawn = false;
+}
+
+async function submitSignature() {
+  Native.vibrate();
+  if (!document.getElementById('agree-check').checked) {
+    return showToast('Diqqat', 'Shartlarga rozilik belgisini qo\'ying', 'error');
+  }
+  if (!hasDrawn) {
+    return showToast('Diqqat', 'Iltimos, imzo chizing', 'error');
+  }
+  const btn = document.getElementById('sign-btn');
+  btn.disabled = true;
+  btn.style.opacity = '.6';
+  canvas.toBlob(async function(blob) {
+    try {
+      const fd = new FormData();
+      fd.append('signature', blob, 'signature.png');
+      fd.append('agree', '1');
+      fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+      const r = await fetch('{% url "driver:contract_sign" %}', { method: 'POST', body: fd });
+      const d = await r.json();
+      if (d.ok) {
+        showToast('Imzolandi!', 'Shartnoma muvaffaqiyatli imzolandi', 'success');
+        setTimeout(() => location.reload(), 900);
+      } else {
+        btn.disabled = false; btn.style.opacity = '1';
+        showToast('Xatolik', d.error || '', 'error');
+      }
+    } catch (e) {
+      btn.disabled = false; btn.style.opacity = '1';
+      showToast('Tarmoq xatosi', '', 'error');
+    }
+  }, 'image/png');
+}
+{% endif %}
+</script>
+{% endblock %}

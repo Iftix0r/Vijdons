@@ -14,7 +14,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .models import Driver, Order, ChatMessage, GroupMessage, TariffSettings, DriverActivityLog, BalanceLog, BalanceTopupRequest, PanelSound, VoiceParticipant, VoiceSignal
+from .models import Driver, Order, ChatMessage, GroupMessage, TariffSettings, DriverActivityLog, BalanceLog, BalanceTopupRequest, PanelSound, VoiceParticipant, VoiceSignal, ContractSettings, DriverContractSignature
 from .utils import tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected, tg_driver_login, tg_duty_changed, tg_low_balance_alert, tg_topup_request, sms_order_status
 
 
@@ -667,12 +667,15 @@ def driver_chat_send_audio(request, driver):
 
 @driver_login_required
 def driver_profile(request, driver):
+    contract = ContractSettings.get()
+    signed = driver.contract_signatures.filter(version=contract.version).exists()
     return render(request, 'driver/profile.html', {
         'driver':      driver,
         'active_tab':  'profile',
         'chat_unread': _chat_unread(driver),
         'pending_orders_count': _pending_orders_count(driver),
         'active_orders_count': _active_orders_count(driver),
+        'contract_needs_signature': not signed,
     })
 
 
@@ -725,6 +728,46 @@ def driver_profile_password(request, driver):
     driver.user.save()
     from django.contrib.auth import update_session_auth_hash
     update_session_auth_hash(request, driver.user)
+    return JsonResponse({'ok': True})
+
+
+# ── Shartnoma ─────────────────────────────────────────────────────────────────
+
+@driver_login_required
+def driver_contract(request, driver):
+    contract = ContractSettings.get()
+    signature = driver.contract_signatures.filter(version=contract.version).first()
+    return render(request, 'driver/contract.html', {
+        'driver':      driver,
+        'active_tab':  'profile',
+        'contract':    contract,
+        'signature':   signature,
+        'chat_unread': _chat_unread(driver),
+        'pending_orders_count': _pending_orders_count(driver),
+        'active_orders_count': _active_orders_count(driver),
+    })
+
+
+@driver_login_required
+@require_POST
+def driver_contract_sign(request, driver):
+    contract = ContractSettings.get()
+    if driver.contract_signatures.filter(version=contract.version).exists():
+        return JsonResponse({'ok': False, 'error': 'Siz bu versiyani allaqachon imzolagansiz'}, status=400)
+
+    signature_file = request.FILES.get('signature')
+    if not signature_file:
+        return JsonResponse({'ok': False, 'error': 'Imzo chizilmagan'}, status=400)
+    if request.POST.get('agree') != '1':
+        return JsonResponse({'ok': False, 'error': "Shartlarga rozilik belgilanmagan"}, status=400)
+
+    DriverContractSignature.objects.create(
+        driver=driver,
+        version=contract.version,
+        full_name=driver.full_name,
+        signature=signature_file,
+        ip_address=_get_ip(request),
+    )
     return JsonResponse({'ok': True})
 
 

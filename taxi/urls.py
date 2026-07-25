@@ -103,6 +103,7 @@ urlpatterns = [
     # ── Ovozli bildirishnomalar ──
     path('api/events/', views.panel_events_api, name='panel_events_api'),
     path('sounds/', views.sound_settings, name='sound_settings'),
+    path('contract/', views.contract_settings, name='contract_settings'),
 
     # ── Vazifalar ──
     path('tasks/', views.task_list, name='task_list'),

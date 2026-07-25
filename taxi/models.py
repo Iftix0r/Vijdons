@@ -640,6 +640,98 @@ class PanelSound(models.Model):
         verbose_name_plural = 'Ovoz sozlamalari'
 
 
+DEFAULT_CONTRACT_TEXT = """VIJDON TAXI SERVISI BILAN HAYDOVCHI O'RTASIDA TUZILADIGAN SHARTNOMA
+
+1. UMUMIY QOIDALAR
+1.1. Ushbu shartnoma "Vijdon Taxi" xizmati (bundan buyon — Kompaniya) bilan platformaga ro'yxatdan o'tgan haydovchi (bundan buyon — Haydovchi) o'rtasidagi hamkorlik shartlarini belgilaydi.
+1.2. Haydovchi ushbu shartnoma shartlarini to'liq o'qib chiqqach, ilova orqali elektron imzo qo'yish yo'li bilan shartnoma shartlariga rozilik bildiradi. Elektron imzo qog'ozdagi imzo bilan teng huquqiy kuchga ega.
+1.3. Haydovchi Kompaniyaning shtatdagi xodimi emas, balki mustaqil hamkor sifatida buyurtmalarni bajaradi.
+
+2. HAYDOVCHIGA QO'YILADIGAN TALABLAR
+2.1. Haydovchida amaldagi haydovchilik guvohnomasi, transport vositasi esa texnik ko'rikdan o'tgan va sug'urtalangan bo'lishi shart.
+2.2. Haydovchi mashinani toza va ishlaydigan holatda saqlashi, buyurtmani belgilangan vaqtda qabul qilishi shart.
+2.3. Yo'lovchilar bilan xushmuomala, hurmatli munosabatda bo'lish, haydash chog'ida telefon bilan chalg'imaslik, tezlik chegaralariga va yo'l harakati qoidalariga qat'iy rioya qilish majburiy.
+2.4. Ish vaqtida spirtli ichimlik yoki boshqa mast qiluvchi vositalar iste'mol qilish qat'iyan taqiqlanadi — bunday holat aniqlansa, Haydovchi platformadan darhol va butunlay chetlashtiriladi.
+
+3. BUYURTMALAR VA TO'LOVLAR
+3.1. Buyurtmalar tizim orqali avtomatik taqsimlanadi, Haydovchi sababsiz buyurtmani tez-tez rad etmasligi lozim.
+3.2. Har bir yakunlangan buyurtmadan tizim komissiyasi joriy tarif sozlamalariga muvofiq ushlab qolinadi.
+3.3. Haydovchi balansi manfiy bo'lib qolgan taqdirda yangi buyurtmalar qabul qila olmaydi, balansni ilova orqali o'z vaqtida to'ldirishi lozim.
+
+4. JARIMALAR VA CHEKLOVLAR
+4.1. Sababsiz buyurtmani bekor qilish, mijozdan qo'shimcha pul talab qilish, buyurtmani chetlab o'tish kabi holatlar aniqlansa, Kompaniya Haydovchiga ogohlantirish berish, vaqtinchalik yoki butunlay platformadan chetlashtirish huquqiga ega.
+4.2. Mijozlar tomonidan takroran asosli shikoyatlar tushgan taqdirda Kompaniya Haydovchi profilini ko'rib chiqadi va tegishli chora ko'radi.
+
+5. MAXFIYLIK
+5.1. Haydovchi buyurtma davomida olingan mijoz ma'lumotlarini (telefon raqami, manzili va h.k.) faqat buyurtmani bajarish maqsadida ishlatishi, uchinchi shaxslarga bermasligi shart.
+
+6. SHARTNOMANI BEKOR QILISH
+6.1. Har ikki tomon istalgan vaqtda hamkorlikni to'xtatishi mumkin — Haydovchi profilini o'chirish yoki faoliyatsizlantirish orqali.
+6.2. Kompaniya ushbu qoidalarni jiddiy buzgan Haydovchini oldindan ogohlantirmasdan platformadan chetlashtirish huquqini o'zida saqlab qoladi.
+
+7. MAS'ULIYAT
+7.1. Yo'l harakati qoidalarini buzish, transport vositasining texnik holati va yo'l-transport hodisalari yuzasidan to'liq mas'uliyat Haydovchi zimmasida bo'ladi.
+7.2. Kompaniya faqat buyurtmalarni taqsimlovchi platforma bo'lib, tomonlar o'rtasidagi nizolarni imkon qadar adolatli hal qilishga ko'maklashadi.
+
+8. YAKUNIY QOIDALAR
+8.1. Ushbu shartnoma matni Kompaniya tomonidan yangilanishi mumkin — yangilangan taqdirda Haydovchidan shartnomani qayta ko'rib chiqib, qayta imzolashi so'raladi.
+8.2. Elektron imzo qo'yish orqali Haydovchi yuqoridagi barcha shartlarni o'qigan, tushungan va ularga to'liq rozi ekanligini tasdiqlaydi.
+
+Eslatma: ushbu matn namunaviy hamkorlik shartnomasi bo'lib, joriy qonunchilikka moslashtirish uchun yurist bilan maslahatlashish tavsiya etiladi."""
+
+
+class ContractSettings(models.Model):
+    """Singleton: haydovchi shartnomasi matni. Matn o'zgartirilsa versiya avtomatik
+    oshadi va barcha haydovchilar shartnomani qayta imzolashi so'raladi."""
+    title   = models.CharField(max_length=255, default='Haydovchi shartnomasi', verbose_name='Sarlavha')
+    content = models.TextField(default=DEFAULT_CONTRACT_TEXT, verbose_name='Shartnoma matni')
+    version = models.PositiveIntegerField(default=1, verbose_name='Versiya')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        try:
+            old = ContractSettings.objects.get(pk=1)
+            if old.content != self.content or old.title != self.title:
+                self.version = old.version + 1
+        except ContractSettings.DoesNotExist:
+            pass
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return f'{self.title} (v{self.version})'
+
+    class Meta:
+        verbose_name = 'Shartnoma sozlamalari'
+        verbose_name_plural = 'Shartnoma sozlamalari'
+
+
+class DriverContractSignature(models.Model):
+    """Haydovchi ma'lum bir shartnoma versiyasini imzolagani haqidagi yozuv."""
+    driver     = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='contract_signatures')
+    version    = models.PositiveIntegerField()
+    full_name  = models.CharField(max_length=255, verbose_name="Imzolagan payt to'liq ismi")
+    signature  = models.ImageField(upload_to='signatures/', verbose_name="Imzo rasmi")
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    signed_at  = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.driver.full_name} — v{self.version} ({self.signed_at:%d.%m.%Y})'
+
+    class Meta:
+        verbose_name = "Shartnoma imzosi"
+        verbose_name_plural = "Shartnoma imzolari"
+        constraints = [
+            models.UniqueConstraint(fields=['driver', 'version'], name='unique_driver_contract_version'),
+        ]
+        ordering = ['-signed_at']
+
+
 class Task(models.Model):
     """Admin panel uchun ichki vazifalar taxtasi (rejada / bajarilmoqda / bajarildi)."""
     STATUS_TODO = 'todo'
