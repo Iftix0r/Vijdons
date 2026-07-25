@@ -490,6 +490,7 @@ def tg_order_arrived(order, driver):
 
 def tg_order_completed(order, driver):
     log_panel_event('panel_order_completed', f"Buyurtma #{order.id} — {driver.full_name}")
+    _check_driver_milestone(driver)
     cfg = _cfg()
     if cfg and not cfg.notify_completed:
         return
@@ -709,37 +710,200 @@ def tg_morning_greeting():
     _notify_driver_group(text)
 
 
+def _top_drivers_for_period(date_from, date_to):
+    """`date_from`—`date_to` (ikkalasi ham kiritiladi) oralig'ida yakunlangan
+    buyurtmalar soni bo'yicha TOP-10 haydovchilarni qaytaradi."""
+    from django.db.models import Count, Sum, Q
+    from taxi.models import Driver
+
+    return (
+        Driver.objects.filter(is_active=True)
+        .annotate(
+            completed=Count('orders', filter=Q(
+                orders__status='completed',
+                orders__created_at__date__gte=date_from,
+                orders__created_at__date__lte=date_to,
+            )),
+            earned=Sum('orders__price', filter=Q(
+                orders__status='completed',
+                orders__created_at__date__gte=date_from,
+                orders__created_at__date__lte=date_to,
+            )),
+        )
+        .filter(completed__gt=0)
+        .order_by('-completed')[:10]
+    )
+
+
+def _format_top_drivers(title, subtitle, top):
+    medals = ['🥇', '🥈', '🥉']
+    lines = [f"🏆 <b>{title}</b>", subtitle, ""]
+    for i, d in enumerate(top):
+        rank = medals[i] if i < 3 else f"{i + 1}."
+        earned = d.earned or 0
+        lines.append(f"{rank} <b>{d.full_name}</b> — {d.completed} ta buyurtma | {earned:,.0f} UZS".replace(',', ' '))
+    return lines
+
+
 def tg_evening_top_drivers():
     """Kechqurun haydovchilar guruhiga o'sha kunning eng ko'p ishlagan TOP-10
     haydovchilari ro'yxatini yuboradi (yakunlangan buyurtmalar soni bo'yicha)."""
     cfg = _cfg()
     if not cfg or not cfg.notify_evening_top_drivers:
         return
-    from django.db.models import Count, Sum, Q
+    from django.utils import timezone
+
+    today = timezone.localdate()
+    top = _top_drivers_for_period(today, today)
+    if not top:
+        return
+    lines = _format_top_drivers("Bugungi TOP-10 haydovchilar", f"📅 {today.strftime('%d.%m.%Y')}", top)
+    lines.append("\nAjoyib mehnat uchun rahmat! Ertaga ham shu ruhda davom etamiz 💪")
+    _notify_driver_group('\n'.join(lines))
+
+
+def tg_weekly_top_drivers():
+    """Har hafta yakshanba kuni shu haftaning (dushanbadan bugungi kungacha)
+    TOP-10 haydovchilari ro'yxatini yuboradi."""
+    cfg = _cfg()
+    if not cfg or not cfg.notify_weekly_top_drivers:
+        return
+    from datetime import timedelta
+    from django.utils import timezone
+
+    today = timezone.localdate()
+    week_start = today - timedelta(days=today.weekday())
+    top = _top_drivers_for_period(week_start, today)
+    if not top:
+        return
+    lines = _format_top_drivers(
+        "Haftalik TOP-10 haydovchilar",
+        f"📅 {week_start.strftime('%d.%m')} — {today.strftime('%d.%m.%Y')}",
+        top,
+    )
+    lines.append("\nShu hafta ajoyib mehnat uchun rahmat! 💪")
+    _notify_driver_group('\n'.join(lines))
+
+
+def tg_monthly_top_drivers():
+    """Har oyning oxirgi kuni shu oyning (1-kunidan bugungi kungacha) TOP-10
+    haydovchilari ro'yxatini yuboradi."""
+    cfg = _cfg()
+    if not cfg or not cfg.notify_monthly_top_drivers:
+        return
+    from django.utils import timezone
+
+    today = timezone.localdate()
+    month_start = today.replace(day=1)
+    top = _top_drivers_for_period(month_start, today)
+    if not top:
+        return
+    lines = _format_top_drivers("Oylik TOP-10 haydovchilar", f"📅 {month_start.strftime('%m.%Y')}", top)
+    lines.append("\nShu oy ajoyib mehnat uchun rahmat! 🏆")
+    _notify_driver_group('\n'.join(lines))
+
+
+def tg_inactive_drivers_report():
+    """Bir necha kundir faol bo'lmagan (navbatga chiqmagan) haydovchilar
+    ro'yxatini operatorlar guruhiga yuboradi — qayta bog'lanish uchun."""
+    cfg = _cfg()
+    if not cfg or not cfg.notify_inactive_drivers:
+        return
+    from datetime import timedelta
+    from django.db.models import Q
     from django.utils import timezone
     from taxi.models import Driver
 
-    today = timezone.localdate()
-    top = (
-        Driver.objects.filter(is_active=True)
-        .annotate(
-            completed=Count('orders', filter=Q(orders__status='completed', orders__created_at__date=today)),
-            earned=Sum('orders__price', filter=Q(orders__status='completed', orders__created_at__date=today)),
-        )
-        .filter(completed__gt=0)
-        .order_by('-completed')[:10]
+    days = 3
+    cutoff = timezone.now() - timedelta(days=days)
+    inactive = (
+        Driver.objects.filter(is_active=True, approval_status='approved', is_on_duty=False)
+        .filter(Q(last_seen__lt=cutoff) | Q(last_seen__isnull=True))
+        .order_by('last_seen')[:30]
     )
-    if not top:
+    if not inactive:
         return
 
-    medals = ['🥇', '🥈', '🥉']
-    lines = ["🏆 <b>Bugungi TOP-10 haydovchilar</b>", f"📅 {today.strftime('%d.%m.%Y')}", ""]
-    for i, d in enumerate(top):
-        rank = medals[i] if i < 3 else f"{i + 1}."
-        earned = d.earned or 0
-        lines.append(f"{rank} <b>{d.full_name}</b> — {d.completed} ta buyurtma | {earned:,.0f} UZS".replace(',', ' '))
-    lines.append("\nAjoyib mehnat uchun rahmat! Ertaga ham shu ruhda davom etamiz 💪")
-    _notify_driver_group('\n'.join(lines))
+    lines = [f"😴 <b>{days}+ kundan beri faol bo'lmagan haydovchilar</b>", ""]
+    for d in inactive:
+        last = d.last_seen.strftime('%d.%m.%Y') if d.last_seen else 'hech qachon'
+        lines.append(f"👤 <b>{d.full_name}</b> | <code>{d.phone_number}</code> — oxirgi faollik: {last}")
+    send_telegram('\n'.join(lines))
+
+
+_SURGE_ALERT_COOLDOWN_MINUTES = 20
+_SURGE_ALERT_MIN_MULTIPLIER = 1.5
+
+
+def tg_surge_alert_check():
+    """Talab keskin oshganda (surge) haydovchilar guruhiga navbatga chiqishni
+    taklif qiluvchi xabar yuboradi. Ketma-ket spam bo'lmasligi uchun oxirgi
+    yuborilgandan _SURGE_ALERT_COOLDOWN_MINUTES o'tmagan bo'lsa jim turadi."""
+    cfg = _cfg()
+    if not cfg or not cfg.notify_surge_alert:
+        return
+    multiplier, label = get_surge_multiplier()
+    if multiplier < _SURGE_ALERT_MIN_MULTIPLIER:
+        return
+
+    from datetime import timedelta
+    from django.db.models import Q
+    from django.utils import timezone
+    from taxi.models import BotSettings
+
+    now = timezone.now()
+    cutoff = now - timedelta(minutes=_SURGE_ALERT_COOLDOWN_MINUTES)
+    claimed = BotSettings.objects.filter(pk=1).filter(
+        Q(last_surge_alert_at__isnull=True) | Q(last_surge_alert_at__lt=cutoff)
+    ).update(last_surge_alert_at=now)
+    if not claimed:
+        return
+
+    _notify_driver_group(
+        f"📈 <b>Talab yuqori — {label}!</b>\n"
+        f"Hozir navbatga chiqsangiz, ko'proq buyurtma tegishi mumkin. Omad! 🚕"
+    )
+
+
+def tg_low_rating_alert(driver):
+    """Haydovchining o'rtacha reytingi belgilangan chegaradan pastga
+    tushganda operatorlar guruhini ogohlantiradi."""
+    cfg = _cfg()
+    if cfg and not cfg.notify_low_rating:
+        return
+    send_telegram(
+        f"⚠️ <b>Reyting pasaydi</b>\n"
+        f"👤 <b>{driver.full_name}</b> | <code>{driver.phone_number}</code>\n"
+        f"⭐ Joriy reyting: <b>{driver.rating}</b> ({driver.rating_count} ta baho)\n"
+        f"Xizmat sifatiga e'tibor qaratish tavsiya etiladi.",
+        reply_markup=_driver_inline(driver.id),
+    )
+
+
+_MILESTONE_TRIPS = (1, 10, 50, 100, 250, 500, 1000, 2500, 5000, 10000)
+
+
+def _check_driver_milestone(driver):
+    """Haydovchi jami yakunlagan safarlari muhim raqamga (masalan 100, 500,
+    1000) yetganda haydovchilar guruhida tabriklaydi."""
+    cfg = _cfg()
+    if not cfg or not cfg.notify_driver_milestone:
+        return
+    from taxi.models import Order
+
+    completed = Order.objects.filter(driver=driver, status='completed').count()
+    if completed not in _MILESTONE_TRIPS:
+        return
+    _notify_driver_group(
+        f"🎉 <b>Tabriklaymiz!</b>\n"
+        f"👤 <b>{driver.full_name}</b> jami <b>{completed}</b> ta safarni muvaffaqiyatli yakunladi!\n"
+        f"Ajoyib mehnatingiz uchun rahmat 🚕💪"
+    )
+
+
+def tg_group_announcement(text):
+    """Operator panelidan haydovchilar guruhiga erkin matnli e'lon yuboradi."""
+    _notify_driver_group(f"📢 <b>E'lon</b>\n\n{text}")
 
 
 def tg_night_greeting():
@@ -797,6 +961,11 @@ def tg_sos_alert(alert):
             send_telegram(text, token=cfg.bot_token.strip(), chat_ids=admin_ids, reply_markup=markup)
     except Exception:
         pass
+
+    # Haydovchilar guruhiga ham — yaqin atrofdagi haydovchilar yordam bera olishi uchun
+    cfg = _cfg()
+    if cfg and cfg.notify_sos_to_driver_group:
+        _notify_driver_group(text, reply_markup=markup)
 
 
 def send_fcm(fcm_token, title, body, data=None):

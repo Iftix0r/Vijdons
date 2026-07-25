@@ -218,16 +218,29 @@ class BotSettings(models.Model):
     notify_balance_changed= models.BooleanField(default=True,  verbose_name='Balans o\'zgardi')
     notify_low_balance    = models.BooleanField(default=True,  verbose_name='Balans kam ogohlantirish')
 
-    # Kunlik jadval bo'yicha xabarlar (ilova ichidagi scheduler orqali chaqiriladi)
+    # Kunlik/haftalik/oylik jadval bo'yicha xabarlar (ilova ichidagi scheduler orqali chaqiriladi)
     notify_morning_greeting    = models.BooleanField(default=True, verbose_name='Ertalabki salomlashuv')
     notify_evening_top_drivers = models.BooleanField(default=True, verbose_name="Kechqurungi TOP-10 haydovchilar")
     notify_night_greeting      = models.BooleanField(default=True, verbose_name='Tungi navbatchilarga salom')
+    notify_weekly_top_drivers  = models.BooleanField(default=True, verbose_name="Haftalik TOP-10 haydovchilar")
+    notify_monthly_top_drivers = models.BooleanField(default=True, verbose_name="Oylik TOP-10 haydovchilar")
+    notify_inactive_drivers    = models.BooleanField(default=True, verbose_name="Uzoq faol bo'lmagan haydovchilar hisoboti")
 
-    # Har bir kunlik xabar oxirgi marta yuborilgan sana — bir kunda ikki marta
+    # Voqea asosida (event-based) yangi bildirishnomalar
+    notify_low_rating         = models.BooleanField(default=True, verbose_name='Reyting pasayganda ogohlantirish')
+    notify_surge_alert        = models.BooleanField(default=True, verbose_name='Talab yuqori bo\'lganda ogohlantirish')
+    notify_driver_milestone   = models.BooleanField(default=True, verbose_name='Haydovchi yubileyi (safarlar soni)')
+    notify_sos_to_driver_group= models.BooleanField(default=True, verbose_name='SOS signalini haydovchilar guruhiga ham yuborish')
+
+    # Har bir kunlik/haftalik/oylik xabar oxirgi marta yuborilgan sana — bir marta
     # yuborilib ketmasligi uchun (masalan bir nechta worker jarayoni bo'lsa)
-    last_morning_greeting_date    = models.DateField(null=True, blank=True)
-    last_evening_top_drivers_date = models.DateField(null=True, blank=True)
-    last_night_greeting_date      = models.DateField(null=True, blank=True)
+    last_morning_greeting_date       = models.DateField(null=True, blank=True)
+    last_evening_top_drivers_date    = models.DateField(null=True, blank=True)
+    last_night_greeting_date         = models.DateField(null=True, blank=True)
+    last_weekly_top_drivers_date     = models.DateField(null=True, blank=True)
+    last_monthly_top_drivers_date    = models.DateField(null=True, blank=True)
+    last_inactive_drivers_report_date= models.DateField(null=True, blank=True)
+    last_surge_alert_at              = models.DateTimeField(null=True, blank=True)
 
     updated_at = models.DateTimeField(auto_now=True)
 

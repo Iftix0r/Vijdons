@@ -580,6 +580,13 @@ def bot_settings(request):
         bot.notify_morning_greeting    = 'notify_morning_greeting'    in request.POST
         bot.notify_evening_top_drivers = 'notify_evening_top_drivers' in request.POST
         bot.notify_night_greeting      = 'notify_night_greeting'      in request.POST
+        bot.notify_weekly_top_drivers  = 'notify_weekly_top_drivers'  in request.POST
+        bot.notify_monthly_top_drivers = 'notify_monthly_top_drivers' in request.POST
+        bot.notify_inactive_drivers    = 'notify_inactive_drivers'    in request.POST
+        bot.notify_low_rating          = 'notify_low_rating'          in request.POST
+        bot.notify_surge_alert         = 'notify_surge_alert'         in request.POST
+        bot.notify_driver_milestone    = 'notify_driver_milestone'    in request.POST
+        bot.notify_sos_to_driver_group = 'notify_sos_to_driver_group' in request.POST
         bot.save()
         # SITE_URL ni settings ga yozish
         site_url = request.POST.get('site_url', '').strip()
@@ -589,6 +596,11 @@ def bot_settings(request):
         if 'test' in request.POST and bot.bot_token and bot.group_id:
             from .utils import send_telegram
             send_telegram('✅ <b>VijdonTaxi bot ulanishi muvaffaqiyatli!</b>\nBu test xabari.')
+        # Haydovchilar guruhiga erkin matnli e'lon yuborish
+        announce_text = request.POST.get('announce_text', '').strip()
+        if 'announce' in request.POST and announce_text and bot.bot_token:
+            from .utils import tg_group_announcement
+            tg_group_announcement(announce_text)
         return redirect('taxi:bot_settings')
     site_url = getattr(django_settings, 'SITE_URL', '')
     order_notifs = [
@@ -613,6 +625,13 @@ def bot_settings(request):
         ('notify_morning_greeting',    'Ertalabki salomlashuv (07:00)',        '🌅', bot.notify_morning_greeting),
         ('notify_evening_top_drivers', 'Kechqurungi TOP-10 (20:00)',           '🏆', bot.notify_evening_top_drivers),
         ('notify_night_greeting',      'Tungi navbatchilarga salom (23:00)',   '🌙', bot.notify_night_greeting),
+        ('notify_weekly_top_drivers',  'Haftalik TOP-10 (yakshanba 21:00)',    '📅', bot.notify_weekly_top_drivers),
+        ('notify_monthly_top_drivers', 'Oylik TOP-10 (oy oxiri 21:00)',        '🗓️', bot.notify_monthly_top_drivers),
+        ('notify_inactive_drivers',    "Faol bo'lmagan haydovchilar (10:00)",  '😴', bot.notify_inactive_drivers),
+        ('notify_low_rating',          'Reyting pasayganda ogohlantirish',     '⭐', bot.notify_low_rating),
+        ('notify_surge_alert',         'Talab yuqori bo\'lganda ogohlantirish','📈', bot.notify_surge_alert),
+        ('notify_driver_milestone',    'Haydovchi yubileyi (safarlar soni)',   '🎉', bot.notify_driver_milestone),
+        ('notify_sos_to_driver_group', 'SOS ni haydovchilar guruhiga ham yuborish', '🆘', bot.notify_sos_to_driver_group),
     ]
     return render(request, 'taxi/bot_settings.html', {
         'bot': bot,

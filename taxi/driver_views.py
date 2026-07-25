@@ -943,6 +943,7 @@ def driver_order_rate(request, driver, pk):
     # Haydovchi o'rtacha reytingini yangilash
     if order.driver:
         d = order.driver
+        old_rating = d.rating
         rated_orders = Order.objects.filter(
             driver=d, status='completed', client_rating__isnull=False
         )
@@ -953,6 +954,11 @@ def driver_order_rate(request, driver, pk):
             d.rating = round(avg, 2)
             d.rating_count = count
             d.save(update_fields=['rating', 'rating_count'])
+            # Reyting 4.0 chegarasidan pastga endigina o'tgan bo'lsa ogohlantirish
+            # yuboriladi (har safar emas) — kamida 5 ta baho to'plangandan keyin.
+            if count >= 5 and old_rating >= 4.0 > d.rating:
+                from .utils import tg_low_rating_alert
+                tg_low_rating_alert(d)
     return JsonResponse({'ok': True})
 
 
