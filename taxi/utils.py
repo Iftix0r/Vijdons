@@ -823,8 +823,10 @@ def dispatch_order(order):
 
 def generate_growth_insights(stats):
     """Joriy statistika asosida OpenAI'dan taksi biznesini rivojlantirish bo'yicha
-    qadam-baqadam tavsiyalar so'raydi. (ok, items_yoki_xato_matni) qaytaradi.
-    items — [{'sarlavha': str, 'tavsif': str}, ...] ro'yxati."""
+    qadam-baqadam tavsiyalar, top haydovchi/mijoz uchun sovg'a taklifi va orqaga
+    ketish bo'lsa ogohlantirish so'raydi. (ok, dict_yoki_xato_matni) qaytaradi.
+    dict — {'tavsiyalar': [{'sarlavha','tavsif'}...], 'top_haydovchi_sovrini': str,
+    'top_mijoz_sovrini': str, 'ogohlantirish': str}."""
     try:
         from taxi.models import AiSettings
         cfg = AiSettings.get()
@@ -835,12 +837,27 @@ def generate_growth_insights(stats):
         return False, 'OpenAI API kalit kiritilmagan — AI sozlamalari sahifasidan kiriting'
 
     prompt = (
-        "Sen taksi xizmati uchun o'sish bo'yicha maslahatchisan. Quyidagi joriy statistika asosida "
-        "buyurtmalar va qo'ng'iroqlar sonini oshirish, biznesni rivojlantirish uchun 4-6 ta aniq, "
-        "amaliy va qadama-qadam bajarish mumkin bo'lgan tavsiya ber. Faqat o'zbek tilida yoz. "
+        "Sen taksi xizmati uchun o'sish va operatsion samaradorlik bo'yicha tajribali maslahatchisan. "
+        "Quyidagi joriy statistika asosida to'rtta narsani tayyorla. Faqat o'zbek tilida yoz. "
         "Matn ichida markdown belgilaridan (**, #, -, *) foydalanma — oddiy tekst yoz.\n\n"
+        "1) tavsiyalar: buyurtmalar va qo'ng'iroqlar sonini oshirish, biznesni rivojlantirish uchun "
+        "4-6 ta aniq, amaliy va qadama-qadam bajarish mumkin bo'lgan tavsiya. Har biri qisqa sarlavha "
+        "va 1-2 gapli aniq tushuntirishdan iborat bo'lsin. Statistikaning turli qirralariga tegishli "
+        "bo'lsin (marketing, haydovchilarni rag'batlantirish, narxlash, mijozlarni ushlab qolish, "
+        "bekor qilishlarni kamaytirish va h.k.) — bir xil g'oyani takrorlama.\n"
+        "2) top_haydovchi_sovrini: 'oyning_eng_faol_haydovchisi' maydonidagi haydovchi uchun aniq, "
+        "amalga oshirish mumkin bo'lgan rag'batlantirish/sovg'a taklifi (masalan bonus miqdori yoki "
+        "unvon) — 1-2 gap. Agar bu maydon bo'sh bo'lsa, bo'sh satr qaytar.\n"
+        "3) top_mijoz_sovrini: 'oyning_eng_faol_mijozi' maydonidagi mijoz uchun xuddi shunday sovg'a/"
+        "chegirma taklifi — 1-2 gap. Agar bu maydon bo'sh bo'lsa, bo'sh satr qaytar.\n"
+        "4) ogohlantirish: agar 'buyurtmalar_ozgarish_foizi' yoki 'daromad_ozgarish_foizi' manfiy va "
+        "sezilarli (taxminan -10% yoki undan yomon) bo'lsa, aniq nima orqaga ketayotganini va nega "
+        "shoshilinch chora ko'rish kerakligini tushuntiruvchi qisqa va keskin ogohlantirish matni yoz "
+        "(2-3 gap). Agar orqaga ketish bo'lmasa yoki ma'lumot yetarli bo'lmasa (None), bo'sh satr "
+        "qaytar — soxta ogohlantirish yozma.\n\n"
         "Javobni faqat quyidagi JSON formatda qaytar, boshqa hech narsa yozma:\n"
-        '{"tavsiyalar": [{"sarlavha": "qisqa sarlavha (3-6 so\'z)", "tavsif": "1-2 gapli aniq tushuntirish"}]}\n\n'
+        '{"tavsiyalar": [{"sarlavha": "...", "tavsif": "..."}], '
+        '"top_haydovchi_sovrini": "...", "top_mijoz_sovrini": "...", "ogohlantirish": "..."}\n\n'
         f"Statistika:\n{json.dumps(stats, ensure_ascii=False, indent=2)}"
     )
 
@@ -864,15 +881,20 @@ def generate_growth_insights(stats):
             data = json.loads(resp.read().decode())
         content = data['choices'][0]['message']['content'].strip()
         parsed = json.loads(content)
-        items = parsed.get('tavsiyalar') or []
+        raw_items = parsed.get('tavsiyalar') or []
         items = [
             {'sarlavha': str(it.get('sarlavha', '')).strip(),
              'tavsif':   str(it.get('tavsif', '')).strip()}
-            for it in items if isinstance(it, dict) and (it.get('sarlavha') or it.get('tavsif'))
+            for it in raw_items if isinstance(it, dict) and (it.get('sarlavha') or it.get('tavsif'))
         ]
         if not items:
             return False, "AI javobini o'qib bo'lmadi, qayta urinib ko'ring"
-        return True, items
+        return True, {
+            'tavsiyalar':            items,
+            'top_haydovchi_sovrini': str(parsed.get('top_haydovchi_sovrini') or '').strip(),
+            'top_mijoz_sovrini':     str(parsed.get('top_mijoz_sovrini') or '').strip(),
+            'ogohlantirish':         str(parsed.get('ogohlantirish') or '').strip(),
+        }
     except urllib.error.HTTPError as e:
         try:
             err = json.loads(e.read().decode())

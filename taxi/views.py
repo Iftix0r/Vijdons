@@ -675,7 +675,8 @@ def panel_ai_insights(request):
     from django.db.models import Sum, Count, Avg
     from datetime import timedelta
 
-    today = timezone.now().date()
+    now   = timezone.now()
+    today = now.date()
     completed_qs = Order.objects.filter(status='completed')
     total_orders = Order.objects.count()
     cancelled_orders = Order.objects.filter(status='cancelled').count()
@@ -686,10 +687,23 @@ def panel_ai_insights(request):
         day = today - timedelta(days=i)
         weekly_counts.append(Order.objects.filter(created_at__date=day).count())
 
+    # ── Shu hafta / o'tgan hafta taqqoslash — orqaga ketishni aniqlash uchun ──
+    this_week_start = today - timedelta(days=6)
+    prev_week_start  = today - timedelta(days=13)
+    prev_week_end    = today - timedelta(days=7)
+    this_week_qs = Order.objects.filter(created_at__date__gte=this_week_start, created_at__date__lte=today)
+    prev_week_qs = Order.objects.filter(created_at__date__gte=prev_week_start, created_at__date__lte=prev_week_end)
+    this_week_orders  = this_week_qs.count()
+    prev_week_orders  = prev_week_qs.count()
+    this_week_revenue = float(this_week_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or 0)
+    prev_week_revenue = float(prev_week_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or 0)
+    orders_change_pct  = round((this_week_orders - prev_week_orders) / prev_week_orders * 100, 1) if prev_week_orders else None
+    revenue_change_pct = round((this_week_revenue - prev_week_revenue) / prev_week_revenue * 100, 1) if prev_week_revenue else None
+
     online_threshold = timezone.now() - timezone.timedelta(minutes=2)
-    top_drivers = Driver.objects.annotate(
+    top_drivers = list(Driver.objects.annotate(
         completed=Count('orders', filter=Q(orders__status='completed'))
-    ).filter(completed__gt=0).order_by('-completed')[:5]
+    ).filter(completed__gt=0).order_by('-completed')[:5])
     bottom_drivers = Driver.objects.filter(
         is_active=True, approval_status=Driver.APPROVAL_APPROVED
     ).annotate(
@@ -700,6 +714,39 @@ def panel_ai_insights(request):
     repeat_clients = Client.objects.annotate(total=Count('orders')).filter(total__gt=1).count()
     repeat_rate = round(repeat_clients / total_clients * 100, 1) if total_clients else 0
 
+    # ── Eng ko'p ishlagan haydovchi va eng faol mijoz (shu oy, bo'lmasa umumiy) ──
+    month_start = today.replace(day=1)
+    top_driver_month = Driver.objects.annotate(
+        completed=Count('orders', filter=Q(orders__status='completed', orders__created_at__date__gte=month_start)),
+        earned=Sum('orders__price', filter=Q(orders__status='completed', orders__created_at__date__gte=month_start)),
+    ).filter(completed__gt=0).order_by('-completed').first()
+    top_driver = top_driver_month or (top_drivers[0] if top_drivers else None)
+
+    top_client_month = Client.objects.annotate(
+        total=Count('orders', filter=Q(orders__created_at__date__gte=month_start)),
+        spent=Sum('orders__price', filter=Q(orders__status='completed', orders__created_at__date__gte=month_start)),
+    ).filter(total__gt=0).order_by('-total').first()
+    top_client = top_client_month or Client.objects.annotate(
+        total=Count('orders'), spent=Sum('orders__price', filter=Q(orders__status='completed'))
+    ).filter(total__gt=0).order_by('-total').first()
+
+    top_driver_data = None
+    if top_driver:
+        top_driver_data = {
+            'id': top_driver.id,
+            'ism': top_driver.full_name,
+            'yakunlangan_safar': getattr(top_driver, 'completed', None),
+            'daromad_keltirdi_som': float(getattr(top_driver, 'earned', None) or 0),
+        }
+    top_client_data = None
+    if top_client:
+        top_client_data = {
+            'id': top_client.id,
+            'ism': top_client.full_name or top_client.phone_number,
+            'buyurtmalar_soni': getattr(top_client, 'total', None),
+            'sarflagan_pul_som': float(getattr(top_client, 'spent', None) or 0),
+        }
+
     stats = {
         'jami_buyurtmalar':              total_orders,
         'yakunlangan_buyurtmalar':       completed_qs.count(),
@@ -708,10 +755,18 @@ def panel_ai_insights(request):
         'jami_daromad_som':              float(completed_qs.aggregate(s=Sum('price'))['s'] or 0),
         'ortacha_narx_som':              float(completed_qs.aggregate(a=Avg('price'))['a'] or 0),
         'songgi_7_kun_buyurtmalar_soni': weekly_counts,
+        'shu_hafta_buyurtmalar':         this_week_orders,
+        'otgan_hafta_buyurtmalar':       prev_week_orders,
+        'buyurtmalar_ozgarish_foizi':    orders_change_pct,
+        'shu_hafta_daromad_som':         this_week_revenue,
+        'otgan_hafta_daromad_som':       prev_week_revenue,
+        'daromad_ozgarish_foizi':        revenue_change_pct,
         'faol_haydovchilar_soni':        Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED).count(),
         'online_haydovchilar_soni':      Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED, last_seen__gte=online_threshold).count(),
         'eng_faol_haydovchilar':         [{'ism': d.full_name, 'yakunlangan_safar': d.completed} for d in top_drivers],
         'kam_faol_haydovchilar':         [{'ism': d.full_name, 'yakunlangan_safar': d.completed} for d in bottom_drivers],
+        'oyning_eng_faol_haydovchisi':   top_driver_data,
+        'oyning_eng_faol_mijozi':        top_client_data,
         'jami_mijozlar':                 total_clients,
         'qaytib_kelgan_mijozlar_foizi':  repeat_rate,
         'bloklangan_mijozlar':           Client.objects.filter(is_blocked=True).count(),
@@ -719,7 +774,15 @@ def panel_ai_insights(request):
 
     ok, result = generate_growth_insights(stats)
     if ok:
-        return JsonResponse({'ok': True, 'items': result})
+        return JsonResponse({
+            'ok': True,
+            'items': result['tavsiyalar'],
+            'warning': result.get('ogohlantirish') or '',
+            'top_driver': top_driver_data,
+            'top_driver_reward': result.get('top_haydovchi_sovrini') or '',
+            'top_client': top_client_data,
+            'top_client_reward': result.get('top_mijoz_sovrini') or '',
+        })
     return JsonResponse({'ok': False, 'error': result}, status=400)
 
 
