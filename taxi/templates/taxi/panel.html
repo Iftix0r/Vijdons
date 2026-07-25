@@ -65,10 +65,11 @@
 
 <!-- Weekly chart -->
 <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 mb-6">
-    <div class="flex justify-between items-center mb-4">
+    <div class="flex justify-between items-center mb-3">
         <h3 class="font-bold text-gray-900 dark:text-white text-sm">So'nggi 7 kunlik daromad</h3>
         <span class="text-xs text-gray-400">UZS</span>
     </div>
+    <div id="weekly-compare-chips" class="flex flex-wrap gap-2 mb-4"></div>
     <canvas id="weeklyChart" height="80"></canvas>
 </div>
 
@@ -391,6 +392,48 @@
             }
         }
     });
+
+    // ── Bugun vs kecha taqqoslash chiplari ──
+    function pctChange(curr, prev) {
+        if (!prev) return null;
+        return Math.round((curr - prev) / prev * 1000) / 10;
+    }
+    function compareChip(label, curr, prev) {
+        const pct = pctChange(curr, prev);
+        let cls = 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400';
+        let icon = 'fa-minus';
+        let text;
+        if (pct === null) {
+            text = `${label}: kecha ma'lumoti yo'q`;
+        } else if (pct > 0) {
+            cls = 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400';
+            icon = 'fa-arrow-trend-up';
+            text = `${label}: kechadan ${pct}% yaxshi`;
+        } else if (pct < 0) {
+            cls = 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400';
+            icon = 'fa-arrow-trend-down';
+            text = `${label}: kechadan ${Math.abs(pct)}% yomon`;
+        } else {
+            icon = 'fa-equals';
+            text = `${label}: kecha bilan bir xil`;
+        }
+        return `<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${cls}"><i class="fas ${icon}"></i>${text}</span>`;
+    }
+
+    if (revenue.length >= 2) {
+        const todayRevenue = revenue[revenue.length - 1];
+        const yestRevenue  = revenue[revenue.length - 2];
+        const todayCount   = counts[counts.length - 1];
+        const yestCount    = counts[counts.length - 2];
+        const weeklyAvg    = Math.round(revenue.reduce((a, b) => a + b, 0) / revenue.length);
+        const bestIdx      = revenue.indexOf(Math.max(...revenue));
+
+        document.getElementById('weekly-compare-chips').innerHTML =
+            compareChip('Daromad', todayRevenue, yestRevenue) +
+            compareChip('Buyurtmalar', todayCount, yestCount) +
+            `<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400"><i class="fas fa-chart-simple"></i>O'rtacha: ${weeklyAvg.toLocaleString('ru-RU')} so'm/kun</span>` +
+            `<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400"><i class="fas fa-crown"></i>Eng kuchli kun: ${labels[bestIdx]}</span>`;
+    }
 })();
 
 function getCookie(name) {

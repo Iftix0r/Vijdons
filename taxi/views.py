@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
-from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog
+from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task
 from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights
 import csv
 
@@ -2005,3 +2005,42 @@ def statistics(request):
         'total_clients': Client.objects.count(),
         'blocked_clients': Client.objects.filter(is_blocked=True).count(),
     })
+
+
+# ── Vazifalar (Task board) ────────────────────────────────────────────────────
+
+@login_required(login_url='taxi:panel_login')
+def task_list(request):
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        if title:
+            Task.objects.create(title=title, created_by=request.user)
+        return redirect('taxi:task_list')
+
+    tasks = Task.objects.select_related('created_by').all()
+    return render(request, 'taxi/tasks.html', {
+        'todo_tasks':  tasks.filter(status=Task.STATUS_TODO),
+        'doing_tasks': tasks.filter(status=Task.STATUS_DOING),
+        'done_tasks':  tasks.filter(status=Task.STATUS_DONE),
+    })
+
+
+@login_required(login_url='taxi:panel_login')
+@require_POST
+def task_set_status(request, pk):
+    from django.utils import timezone
+    task = get_object_or_404(Task, pk=pk)
+    status = request.POST.get('status', '')
+    if status not in dict(Task.STATUS_CHOICES):
+        return JsonResponse({'ok': False, 'error': "Noto'g'ri holat"}, status=400)
+    task.status = status
+    task.completed_at = timezone.now() if status == Task.STATUS_DONE else None
+    task.save(update_fields=['status', 'completed_at', 'updated_at'])
+    return JsonResponse({'ok': True})
+
+
+@login_required(login_url='taxi:panel_login')
+@require_POST
+def task_delete(request, pk):
+    Task.objects.filter(pk=pk).delete()
+    return JsonResponse({'ok': True})

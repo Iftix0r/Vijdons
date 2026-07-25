@@ -1,0 +1,116 @@
+{% extends 'taxi/base.html' %}
+{% block title %}Vazifalar — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-end gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Vazifalar ✅</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Qilinadigan ishlarni yozib boring, jarayonini kuzating.</p>
+    </div>
+</div>
+
+<!-- Yangi vazifa qo'shish -->
+<form method="POST" class="flex gap-3 mb-6">
+    {% csrf_token %}
+    <input type="text" name="title" required placeholder="Yangi vazifa yozing..." autocomplete="off"
+           class="flex-1 px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 dark:text-white transition">
+    <button type="submit"
+            class="px-5 py-3 bg-green-500 hover:bg-green-600 text-white font-bold text-sm rounded-xl shadow-sm transition-all hover:-translate-y-0.5 whitespace-nowrap">
+        <i class="fas fa-plus mr-1.5"></i>Qo'shish
+    </button>
+</form>
+
+<!-- Kanban taxta -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <!-- Rejada -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-gray-800">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+                <h3 class="font-bold text-gray-900 dark:text-white text-sm">Rejada</h3>
+            </div>
+            <span class="text-xs font-bold text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">{{ todo_tasks|length }}</span>
+        </div>
+        <div id="col-todo" class="p-3 space-y-2 min-h-[80px]">
+            {% for t in todo_tasks %}
+            {% include 'taxi/partials/task_card.html' with task=t %}
+            {% empty %}
+            <p class="text-xs text-gray-400 text-center py-6">Vazifa yo'q</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Bajarilmoqda -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-gray-800">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-amber-400 pulse-dot"></span>
+                <h3 class="font-bold text-gray-900 dark:text-white text-sm">Bajarilmoqda</h3>
+            </div>
+            <span class="text-xs font-bold text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">{{ doing_tasks|length }}</span>
+        </div>
+        <div id="col-in_progress" class="p-3 space-y-2 min-h-[80px]">
+            {% for t in doing_tasks %}
+            {% include 'taxi/partials/task_card.html' with task=t %}
+            {% empty %}
+            <p class="text-xs text-gray-400 text-center py-6">Vazifa yo'q</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Bajarildi -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-gray-800">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <h3 class="font-bold text-gray-900 dark:text-white text-sm">Bajarildi</h3>
+            </div>
+            <span class="text-xs font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">{{ done_tasks|length }}</span>
+        </div>
+        <div id="col-done" class="p-3 space-y-2 min-h-[80px]">
+            {% for t in done_tasks %}
+            {% include 'taxi/partials/task_card.html' with task=t %}
+            {% empty %}
+            <p class="text-xs text-gray-400 text-center py-6">Vazifa yo'q</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getCookie(name) {
+    const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+    return v ? v[2] : '';
+}
+
+async function setTaskStatus(id, status, cardEl) {
+    try {
+        const fd = new FormData();
+        fd.append('status', status);
+        fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+        const r = await fetch(`/panel/tasks/${id}/status/`, { method: 'POST', body: fd });
+        const d = await r.json();
+        if (d.ok) location.reload();
+        else alert(d.error || 'Xatolik yuz berdi');
+    } catch (e) {
+        alert('Tarmoq xatosi');
+    }
+}
+
+async function deleteTask(id) {
+    if (!confirm("Vazifani o'chirmoqchimisiz?")) return;
+    try {
+        const fd = new FormData();
+        fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+        const r = await fetch(`/panel/tasks/${id}/delete/`, { method: 'POST', body: fd });
+        const d = await r.json();
+        if (d.ok) location.reload();
+        else alert(d.error || 'Xatolik yuz berdi');
+    } catch (e) {
+        alert('Tarmoq xatosi');
+    }
+}
+</script>
+{% endblock %}

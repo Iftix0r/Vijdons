@@ -638,3 +638,30 @@ class PanelSound(models.Model):
     class Meta:
         verbose_name = 'Ovoz sozlamasi'
         verbose_name_plural = 'Ovoz sozlamalari'
+
+
+class Task(models.Model):
+    """Admin panel uchun ichki vazifalar taxtasi (rejada / bajarilmoqda / bajarildi)."""
+    STATUS_TODO = 'todo'
+    STATUS_DOING = 'in_progress'
+    STATUS_DONE = 'done'
+    STATUS_CHOICES = [
+        (STATUS_TODO,  'Rejada'),
+        (STATUS_DOING, 'Bajarilmoqda'),
+        (STATUS_DONE,  'Bajarildi'),
+    ]
+
+    title       = models.CharField(max_length=255, verbose_name='Vazifa')
+    status      = models.CharField(max_length=15, choices=STATUS_CHOICES, default=STATUS_TODO)
+    created_by  = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='tasks')
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        verbose_name = 'Vazifa'
+        verbose_name_plural = 'Vazifalar'
+        ordering = ['-created_at']

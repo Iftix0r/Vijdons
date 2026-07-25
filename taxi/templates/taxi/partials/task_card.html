@@ -1,0 +1,35 @@
+<div class="group bg-gray-50 dark:bg-gray-800/60 rounded-xl p-3 border border-gray-100 dark:border-gray-700/50 hover:border-gray-200 dark:hover:border-gray-600 transition-colors">
+    <p class="text-sm text-gray-800 dark:text-gray-100 font-medium leading-snug mb-2 {% if task.status == 'done' %}line-through text-gray-400 dark:text-gray-500{% endif %}">{{ task.title }}</p>
+    <div class="flex items-center justify-between gap-2">
+        <span class="text-[10px] text-gray-400">
+            {% if task.created_by %}{{ task.created_by.get_full_name|default:task.created_by.username }} ·{% endif %}
+            {{ task.created_at|date:"d.m H:i" }}
+        </span>
+        <div class="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            {% if task.status == 'todo' %}
+            <button onclick="setTaskStatus({{ task.id }}, 'in_progress', this)" title="Boshlash"
+                    class="w-6 h-6 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors">
+                <i class="fas fa-play text-[10px]"></i>
+            </button>
+            {% elif task.status == 'in_progress' %}
+            <button onclick="setTaskStatus({{ task.id }}, 'todo', this)" title="Ortga"
+                    class="w-6 h-6 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                <i class="fas fa-rotate-left text-[10px]"></i>
+            </button>
+            <button onclick="setTaskStatus({{ task.id }}, 'done', this)" title="Bajarildi"
+                    class="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors">
+                <i class="fas fa-check text-[10px]"></i>
+            </button>
+            {% elif task.status == 'done' %}
+            <button onclick="setTaskStatus({{ task.id }}, 'todo', this)" title="Qayta ochish"
+                    class="w-6 h-6 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                <i class="fas fa-rotate-left text-[10px]"></i>
+            </button>
+            {% endif %}
+            <button onclick="deleteTask({{ task.id }})" title="O'chirish"
+                    class="w-6 h-6 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
+                <i class="fas fa-trash text-[10px]"></i>
+            </button>
+        </div>
+    </div>
+</div>
