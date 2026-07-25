@@ -218,10 +218,16 @@ class BotSettings(models.Model):
     notify_balance_changed= models.BooleanField(default=True,  verbose_name='Balans o\'zgardi')
     notify_low_balance    = models.BooleanField(default=True,  verbose_name='Balans kam ogohlantirish')
 
-    # Kunlik jadval bo'yicha xabarlar (cron orqali chaqiriladi)
+    # Kunlik jadval bo'yicha xabarlar (ilova ichidagi scheduler orqali chaqiriladi)
     notify_morning_greeting    = models.BooleanField(default=True, verbose_name='Ertalabki salomlashuv')
     notify_evening_top_drivers = models.BooleanField(default=True, verbose_name="Kechqurungi TOP-10 haydovchilar")
     notify_night_greeting      = models.BooleanField(default=True, verbose_name='Tungi navbatchilarga salom')
+
+    # Har bir kunlik xabar oxirgi marta yuborilgan sana — bir kunda ikki marta
+    # yuborilib ketmasligi uchun (masalan bir nechta worker jarayoni bo'lsa)
+    last_morning_greeting_date    = models.DateField(null=True, blank=True)
+    last_evening_top_drivers_date = models.DateField(null=True, blank=True)
+    last_night_greeting_date      = models.DateField(null=True, blank=True)
 
     updated_at = models.DateTimeField(auto_now=True)
 
