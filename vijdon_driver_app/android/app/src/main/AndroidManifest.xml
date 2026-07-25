@@ -57,6 +57,20 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <!-- Android App Link: Telegramdagi "Ilovaga kirish" tugmasi
+                 https://vijdontaxi.uz/driver/... havolasini brauzerda emas,
+                 to'g'ridan-to'g'ri shu ilovada ochsin. Tasdiqlash uchun
+                 https://vijdontaxi.uz/.well-known/assetlinks.json fayli kerak. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="vijdontaxi.uz"
+                    android:pathPrefix="/driver"/>
+            </intent-filter>
         </activity>
         <meta-data
             android:name="flutterEmbedding"
