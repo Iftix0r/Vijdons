@@ -913,25 +913,44 @@ def build_contract_pdf(contract, driver=None, signature=None):
     berilsa — haydovchi ma'lumotlari va imzo rasmi hujjat oxiriga qo'shiladi,
     aks holda bo'sh (namunaviy) shartnoma hosil bo'ladi."""
     from io import BytesIO
+    from django.utils import timezone
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, HRFlowable
 
     def esc(text):
         return (text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
                     .replace('\n', '<br/>'))
 
+    def draw_footer(canvas_obj, doc_obj):
+        canvas_obj.saveState()
+        canvas_obj.setFont('Helvetica', 8)
+        canvas_obj.setFillColor(colors.grey)
+        canvas_obj.drawString(20 * mm, 12 * mm, "Vijdon Taxi — avtomatik generatsiya qilingan hujjat")
+        canvas_obj.drawRightString(A4[0] - 20 * mm, 12 * mm, f"Sahifa {doc_obj.page}")
+        canvas_obj.restoreState()
+
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=20 * mm, bottomMargin=20 * mm,
                              leftMargin=20 * mm, rightMargin=20 * mm)
     styles = getSampleStyleSheet()
-    title_style = ParagraphStyle('ContractTitle', parent=styles['Title'], fontSize=14, spaceAfter=14)
+    brand_style = ParagraphStyle('ContractBrand', parent=styles['Normal'], fontSize=9,
+                                  textColor=colors.HexColor('#f59e0b'), spaceAfter=2)
+    title_style = ParagraphStyle('ContractTitle', parent=styles['Title'], fontSize=15, spaceAfter=4)
     body_style  = ParagraphStyle('ContractBody', parent=styles['Normal'], fontSize=10, leading=14, spaceAfter=8)
     meta_style  = ParagraphStyle('ContractMeta', parent=styles['Normal'], fontSize=9, textColor=colors.grey)
 
-    elements = [Paragraph(esc(contract.title), title_style)]
+    elements = [
+        Paragraph('VIJDON TAXI', brand_style),
+        Paragraph(esc(contract.title), title_style),
+        Paragraph(esc(f"Hujjat generatsiya qilingan sana: {timezone.now().strftime('%d.%m.%Y %H:%M')} | "
+                       f"Shartnoma versiyasi: {contract.version}"), meta_style),
+        Spacer(1, 6),
+        HRFlowable(width='100%', thickness=0.75, color=colors.HexColor('#d1d5db')),
+        Spacer(1, 12),
+    ]
 
     if driver:
         elements.append(Paragraph(
@@ -944,7 +963,9 @@ def build_contract_pdf(contract, driver=None, signature=None):
             elements.append(Paragraph(esc(para), body_style))
 
     if signature:
-        elements.append(Spacer(1, 16))
+        elements.append(Spacer(1, 10))
+        elements.append(HRFlowable(width='100%', thickness=0.75, color=colors.HexColor('#d1d5db')))
+        elements.append(Spacer(1, 10))
         elements.append(Paragraph(
             esc(f"Imzolangan sana: {signature.signed_at.strftime('%d.%m.%Y %H:%M')} | "
                 f"Versiya: {signature.version} | IP: {signature.ip_address or '-'}"), meta_style))
@@ -955,7 +976,7 @@ def build_contract_pdf(contract, driver=None, signature=None):
             pass
         elements.append(Paragraph(esc(f"Imzolagan: {signature.full_name}"), meta_style))
 
-    doc.build(elements)
+    doc.build(elements, onFirstPage=draw_footer, onLaterPages=draw_footer)
     buf.seek(0)
     return buf
 

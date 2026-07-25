@@ -640,44 +640,69 @@ class PanelSound(models.Model):
         verbose_name_plural = 'Ovoz sozlamalari'
 
 
-DEFAULT_CONTRACT_TEXT = """VIJDON TAXI SERVISI BILAN HAYDOVCHI O'RTASIDA TUZILADIGAN SHARTNOMA
+DEFAULT_CONTRACT_TEXT = """VIJDON TAXI SERVISI BILAN HAYDOVCHI O'RTASIDA TUZILADIGAN HAMKORLIK SHARTNOMASI
 
-1. UMUMIY QOIDALAR
-1.1. Ushbu shartnoma "Vijdon Taxi" xizmati (bundan buyon — Kompaniya) bilan platformaga ro'yxatdan o'tgan haydovchi (bundan buyon — Haydovchi) o'rtasidagi hamkorlik shartlarini belgilaydi.
-1.2. Haydovchi ushbu shartnoma shartlarini to'liq o'qib chiqqach, ilova orqali elektron imzo qo'yish yo'li bilan shartnoma shartlariga rozilik bildiradi. Elektron imzo qog'ozdagi imzo bilan teng huquqiy kuchga ega.
-1.3. Haydovchi Kompaniyaning shtatdagi xodimi emas, balki mustaqil hamkor sifatida buyurtmalarni bajaradi.
+0. SHARTNOMA PREDMETI
+0.1. Ushbu shartnoma "Vijdon Taxi" xizmati (bundan buyon — Kompaniya) bilan Kompaniyaning "Vijdon Driver" mobil ilovasi/platformasiga (bundan buyon — Platforma) ro'yxatdan o'tgan haydovchi (bundan buyon — Haydovchi) o'rtasida yo'lovchi tashish buyurtmalarini taqsimlash bo'yicha hamkorlik shartlarini belgilaydi.
+0.2. Kompaniya yaqinda faoliyat yuritishni boshlagan taksi xizmati bo'lib, Platforma va ish jarayonlari doimiy takomillashtirilib boriladi. Shu sababli ushbu shartnoma vaqti-vaqti bilan yangilanishi mumkin (8-bandga qarang).
 
-2. HAYDOVCHIGA QO'YILADIGAN TALABLAR
-2.1. Haydovchida amaldagi haydovchilik guvohnomasi, transport vositasi esa texnik ko'rikdan o'tgan va sug'urtalangan bo'lishi shart.
-2.2. Haydovchi mashinani toza va ishlaydigan holatda saqlashi, buyurtmani belgilangan vaqtda qabul qilishi shart.
-2.3. Yo'lovchilar bilan xushmuomala, hurmatli munosabatda bo'lish, haydash chog'ida telefon bilan chalg'imaslik, tezlik chegaralariga va yo'l harakati qoidalariga qat'iy rioya qilish majburiy.
-2.4. Ish vaqtida spirtli ichimlik yoki boshqa mast qiluvchi vositalar iste'mol qilish qat'iyan taqiqlanadi — bunday holat aniqlansa, Haydovchi platformadan darhol va butunlay chetlashtiriladi.
+1. ATAMALAR
+1.1. Kompaniya — "Vijdon Taxi" xizmatini yurituvchi tomon, buyurtmalarni Platforma orqali haydovchilarga taqsimlaydi.
+1.2. Haydovchi — Platformaga ro'yxatdan o'tgan, mustaqil ravishda o'z transport vositasida buyurtmalarni bajaruvchi shaxs.
+1.3. Platforma — buyurtmalarni qabul qilish, taqsimlash va hisob-kitob yuritish uchun mo'ljallangan "Vijdon Driver" ilovasi va unga bog'liq tizimlar.
+1.4. Elektron imzo — Haydovchi tomonidan Platforma orqali barmoq yoki sichqoncha yordamida chizilgan raqamli imzo, sanasi va IP-manzili bilan birga qayd etiladi.
 
-3. BUYURTMALAR VA TO'LOVLAR
-3.1. Buyurtmalar tizim orqali avtomatik taqsimlanadi, Haydovchi sababsiz buyurtmani tez-tez rad etmasligi lozim.
-3.2. Har bir yakunlangan buyurtmadan tizim komissiyasi joriy tarif sozlamalariga muvofiq ushlab qolinadi.
-3.3. Haydovchi balansi manfiy bo'lib qolgan taqdirda yangi buyurtmalar qabul qila olmaydi, balansni ilova orqali o'z vaqtida to'ldirishi lozim.
+2. UMUMIY QOIDALAR
+2.1. Haydovchi ushbu shartnoma shartlarini to'liq o'qib chiqqach, Platforma orqali elektron imzo qo'yish yo'li bilan shartnoma shartlariga rozilik bildiradi. Elektron imzo qog'ozdagi imzo bilan teng huquqiy kuchga ega.
+2.2. Haydovchi Kompaniyaning shtatdagi xodimi emas, balki mustaqil hamkor sifatida buyurtmalarni bajaradi va o'z soliq/huquqiy majburiyatlari uchun mustaqil javobgar hisoblanadi.
+2.3. Ushbu shartnoma Haydovchini faqat Kompaniya bilan ishlashga majburlamaydi — Haydovchi istalgan boshqa xizmat yoki ish bilan parallel shug'ullanishi mumkin.
 
-4. JARIMALAR VA CHEKLOVLAR
-4.1. Sababsiz buyurtmani bekor qilish, mijozdan qo'shimcha pul talab qilish, buyurtmani chetlab o'tish kabi holatlar aniqlansa, Kompaniya Haydovchiga ogohlantirish berish, vaqtinchalik yoki butunlay platformadan chetlashtirish huquqiga ega.
-4.2. Mijozlar tomonidan takroran asosli shikoyatlar tushgan taqdirda Kompaniya Haydovchi profilini ko'rib chiqadi va tegishli chora ko'radi.
+3. HAYDOVCHIGA QO'YILADIGAN TALABLAR
+3.1. Haydovchida amaldagi haydovchilik guvohnomasi, transport vositasi esa texnik ko'rikdan o'tgan va sug'urtalangan bo'lishi shart.
+3.2. Haydovchi mashinani toza va ishlaydigan holatda saqlashi, buyurtmani belgilangan vaqtda qabul qilishi shart.
+3.3. Yo'lovchilar bilan xushmuomala, hurmatli munosabatda bo'lish, haydash chog'ida telefon bilan chalg'imaslik, tezlik chegaralariga va yo'l harakati qoidalariga qat'iy rioya qilish majburiy.
+3.4. Ish vaqtida spirtli ichimlik yoki boshqa mast qiluvchi vositalar iste'mol qilish qat'iyan taqiqlanadi — bunday holat aniqlansa, Haydovchi Platformadan darhol va butunlay chetlashtiriladi.
+3.5. Haydovchi Kompaniyaning nomi, logotipi va boshqa belgilarini Kompaniyaning yozma roziligisiz tijorat maqsadida ishlatmasligi shart.
 
-5. MAXFIYLIK
-5.1. Haydovchi buyurtma davomida olingan mijoz ma'lumotlarini (telefon raqami, manzili va h.k.) faqat buyurtmani bajarish maqsadida ishlatishi, uchinchi shaxslarga bermasligi shart.
+4. BUYURTMALAR VA TO'LOVLAR
+4.1. Buyurtmalar tizim orqali avtomatik taqsimlanadi, Haydovchi sababsiz buyurtmani tez-tez rad etmasligi lozim.
+4.2. Har bir yakunlangan buyurtmadan tizim komissiyasi joriy tarif sozlamalariga muvofiq ushlab qolinadi. Komissiya miqdori Platforma ichida ochiq ko'rsatiladi va o'zgargan taqdirda Haydovchiga ilova orqali oldindan xabar beriladi.
+4.3. Haydovchi balansi manfiy bo'lib qolgan taqdirda yangi buyurtmalar qabul qila olmaydi, balansni ilova orqali o'z vaqtida to'ldirishi lozim.
 
-6. SHARTNOMANI BEKOR QILISH
-6.1. Har ikki tomon istalgan vaqtda hamkorlikni to'xtatishi mumkin — Haydovchi profilini o'chirish yoki faoliyatsizlantirish orqali.
-6.2. Kompaniya ushbu qoidalarni jiddiy buzgan Haydovchini oldindan ogohlantirmasdan platformadan chetlashtirish huquqini o'zida saqlab qoladi.
+5. JARIMALAR VA CHEKLOVLAR
+5.1. Sababsiz buyurtmani bekor qilish, mijozdan qo'shimcha pul talab qilish, buyurtmani chetlab o'tish kabi holatlar aniqlansa, Kompaniya Haydovchiga ogohlantirish berish, vaqtinchalik yoki butunlay Platformadan chetlashtirish huquqiga ega.
+5.2. Mijozlar tomonidan takroran asosli shikoyatlar tushgan taqdirda Kompaniya Haydovchi profilini ko'rib chiqadi va tegishli chora ko'radi. Har qanday cheklov haqida Haydovchiga sababini ko'rsatgan holda xabar beriladi.
 
-7. MAS'ULIYAT
-7.1. Yo'l harakati qoidalarini buzish, transport vositasining texnik holati va yo'l-transport hodisalari yuzasidan to'liq mas'uliyat Haydovchi zimmasida bo'ladi.
-7.2. Kompaniya faqat buyurtmalarni taqsimlovchi platforma bo'lib, tomonlar o'rtasidagi nizolarni imkon qadar adolatli hal qilishga ko'maklashadi.
+6. TEXNIK NOSOZLIKLAR VA FORS-MAJOR
+6.1. Platforma yangi ishga tushirilgani sababli vaqti-vaqti bilan texnik uzilishlar yoki nosozliklar yuzaga kelishi mumkin. Kompaniya bunday vaqtinchalik texnik nosozliklar tufayli Haydovchi ko'rgan bilvosita zararlar uchun javobgar bo'lmaydi, lekin muammoni imkon qadar tezroq bartaraf etishga harakat qiladi.
+6.2. Tabiiy ofat, internet/aloqa uzilishi, davlat organlari qarorlari va boshqa tomonlar nazoratidan tashqari holatlar (fors-major) yuzasidan hech bir tomon ikkinchi tomon oldida javobgar bo'lmaydi.
 
-8. YAKUNIY QOIDALAR
-8.1. Ushbu shartnoma matni Kompaniya tomonidan yangilanishi mumkin — yangilangan taqdirda Haydovchidan shartnomani qayta ko'rib chiqib, qayta imzolashi so'raladi.
-8.2. Elektron imzo qo'yish orqali Haydovchi yuqoridagi barcha shartlarni o'qigan, tushungan va ularga to'liq rozi ekanligini tasdiqlaydi.
+7. MAXFIYLIK
+7.1. Haydovchi buyurtma davomida olingan mijoz ma'lumotlarini (telefon raqami, manzili va h.k.) faqat buyurtmani bajarish maqsadida ishlatishi, uchinchi shaxslarga bermasligi shart.
+7.2. Kompaniya Haydovchining shaxsiy ma'lumotlarini (jumladan elektron imzosini) faqat ushbu shartnoma doirasida, hisobot va huquqiy talablarni bajarish maqsadida saqlaydi va uchinchi shaxslarga oshkor qilmaydi.
 
-Eslatma: ushbu matn namunaviy hamkorlik shartnomasi bo'lib, joriy qonunchilikka moslashtirish uchun yurist bilan maslahatlashish tavsiya etiladi."""
+8. TOMONLARNING HUQUQ VA MAJBURIYATLARI
+8.1. Kompaniya buyurtmalarni imkon qadar adolatli taqsimlash, Haydovchi bilan qo'llab-quvvatlash aloqasini (chat, bot) ta'minlash, hisob-kitoblarni o'z vaqtida amalga oshirishga majburdir.
+8.2. Ushbu shartnoma matni Kompaniya tomonidan yangilanishi mumkin — yangilangan taqdirda Haydovchidan shartnomani qayta ko'rib chiqib, qayta imzolashi so'raladi. Eski versiya bo'yicha qilingan harakatlar o'z kuchida qoladi.
+
+9. MAS'ULIYAT CHEGARASI
+9.1. Yo'l harakati qoidalarini buzish, transport vositasining texnik holati va yo'l-transport hodisalari yuzasidan to'liq mas'uliyat Haydovchi zimmasida bo'ladi.
+9.2. Kompaniya faqat buyurtmalarni taqsimlovchi platforma bo'lib, Haydovchi va yo'lovchi o'rtasidagi bevosita xizmat ko'rsatish jarayoniga aralashmaydi va shu jarayonda yuzaga kelgan to'g'ridan-to'g'ri bo'lmagan (bilvosita) zararlar uchun javobgar emas.
+
+10. NIZOLARNI HAL QILISH TARTIBI
+10.1. Ushbu shartnoma yuzasidan kelib chiqadigan barcha kelishmovchiliklar avvalo tomonlar o'rtasida muzokaralar yo'li bilan hal qilinadi.
+10.2. Muzokaralar orqali kelishuvga erishilmasa, nizo O'zbekiston Respublikasining amaldagi qonunchiligiga muvofiq hal qilinadi.
+
+11. SHARTNOMANING AMAL QILISH MUDDATI VA BEKOR QILISH
+11.1. Shartnoma Haydovchi elektron imzo qo'ygan kundan boshlab kuchga kiradi va muddatsiz amal qiladi.
+11.2. Har ikki tomon istalgan vaqtda, kamida bildirishnoma asosida hamkorlikni to'xtatishi mumkin — Haydovchi tomonidan profilni faoliyatsizlantirish, Kompaniya tomonidan esa Platformadan chetlashtirish orqali.
+11.3. Kompaniya ushbu shartnoma qoidalarini jiddiy buzgan (3.4-band kabi) Haydovchini oldindan ogohlantirmasdan Platformadan chetlashtirish huquqini o'zida saqlab qoladi.
+
+12. YAKUNIY QOIDALAR
+12.1. Elektron imzo qo'yish orqali Haydovchi yuqoridagi barcha shartlarni o'qigan, tushungan va ularga to'liq rozi ekanligini tasdiqlaydi.
+12.2. Ushbu shartnomada nazarda tutilmagan masalalar O'zbekiston Respublikasining amaldagi qonunchiligi asosida tartibga solinadi.
+
+Eslatma: ushbu matn namunaviy hamkorlik shartnomasi bo'lib, joriy qonunchilikka to'liq moslashtirish uchun yurist bilan maslahatlashish tavsiya etiladi."""
 
 
 class ContractSettings(models.Model):
