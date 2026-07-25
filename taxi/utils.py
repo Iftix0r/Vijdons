@@ -909,10 +909,11 @@ def generate_growth_insights(stats):
 
 
 def build_contract_pdf(contract, driver=None, signature=None):
-    """Shartnoma matnidan bitta sahifaga sig'adigan ikki ustunli (gazeta uslubi)
-    PDF quradi (BytesIO qaytaradi). `driver`/`signature` berilsa — haydovchi
-    ma'lumotlari va imzo rasmi hujjat oxiriga qo'shiladi, aks holda bo'sh
-    (namunaviy) shartnoma hosil bo'ladi."""
+    """Shartnoma matnidan bitta sahifaga sig'adigan, chop etishga mos ikki
+    ustunli (gazeta uslubi) PDF quradi (BytesIO qaytaradi). `driver`/`signature`
+    berilsa — haydovchi ma'lumotlari va raqamli imzo rasmi hujjat oxiriga
+    qo'shiladi. Aks holda (imzosiz namuna) hujjat oxirida qog'ozda qo'lda
+    to'ldirish uchun bo'sh imzo qatorlari chiziladi."""
     from io import BytesIO
     from django.utils import timezone
     from reportlab.lib.pagesizes import A4
@@ -920,6 +921,9 @@ def build_contract_pdf(contract, driver=None, signature=None):
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer, Image
+
+    ACCENT = colors.HexColor('#f59e0b')
+    LINE   = colors.HexColor('#d1d5db')
 
     def esc(text):
         return (text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
@@ -937,9 +941,17 @@ def build_contract_pdf(contract, driver=None, signature=None):
 
     def draw_chrome(canvas_obj, doc_obj):
         canvas_obj.saveState()
+        # Nafis tashqi ramka — chop etilganda hujjatga "rasmiy" ko'rinish beradi
+        canvas_obj.setStrokeColor(LINE)
+        canvas_obj.setLineWidth(0.8)
+        canvas_obj.rect(margin - 5, margin - 5, page_w - 2 * (margin - 5), page_h - 2 * (margin - 5))
+        # Tepadagi brend chizig'i
+        canvas_obj.setFillColor(ACCENT)
+        canvas_obj.rect(margin - 5, page_h - margin + 5, page_w - 2 * (margin - 5), 2.2, stroke=0, fill=1)
+
         top = page_h - margin
         canvas_obj.setFont('Helvetica-Bold', 9)
-        canvas_obj.setFillColor(colors.HexColor('#f59e0b'))
+        canvas_obj.setFillColor(ACCENT)
         canvas_obj.drawString(margin, top - 10, 'VIJDON TAXI')
         canvas_obj.setFont('Helvetica-Bold', 13)
         canvas_obj.setFillColor(colors.black)
@@ -950,7 +962,7 @@ def build_contract_pdf(contract, driver=None, signature=None):
         if driver:
             meta += f"  |  Haydovchi: {driver.full_name}  |  Tel: {driver.phone_number}  |  Mashina: {driver.car_model} ({driver.car_number})"
         canvas_obj.drawString(margin, top - 34, meta)
-        canvas_obj.setStrokeColor(colors.HexColor('#d1d5db'))
+        canvas_obj.setStrokeColor(LINE)
         canvas_obj.setLineWidth(0.6)
         canvas_obj.line(margin, top - 38, page_w - margin, top - 38)
 
@@ -967,15 +979,31 @@ def build_contract_pdf(contract, driver=None, signature=None):
     doc.addPageTemplates(PageTemplate(id='two-col', frames=[frame1, frame2], onPage=draw_chrome))
 
     styles = getSampleStyleSheet()
-    body_style = ParagraphStyle('ContractBody', parent=styles['Normal'], fontSize=8, leading=10.3, spaceAfter=4.5)
+    body_style = ParagraphStyle('ContractBody', parent=styles['Normal'], fontSize=8, leading=10.2, spaceAfter=4)
     meta_style = ParagraphStyle('ContractMeta', parent=styles['Normal'], fontSize=7.5, textColor=colors.grey, leading=9.5)
+    sign_style = ParagraphStyle('ContractSignLine', parent=styles['Normal'], fontSize=8.5, leading=15, spaceAfter=2)
+
+    def render_paragraph(raw):
+        """Bo'lim sarlavhasi (butunlay bosh harfli birinchi qator) bo'lsa,
+        uni qalin va rangli qilib ajratib ko'rsatadi."""
+        lines = raw.split('\n')
+        first, rest = lines[0], lines[1:]
+        is_header = bool(first.strip()) and first.strip() == first.strip().upper() and any(c.isalpha() for c in first)
+        if is_header:
+            head_html = f"<font color='#f59e0b'><b>{esc(first)}</b></font>"
+            body_html = '<br/>'.join(esc(l) for l in rest)
+            html = head_html + ('<br/>' + body_html if body_html else '')
+        else:
+            html = esc(raw)
+        return Paragraph(html, body_style)
 
     elements = []
     for para in contract.content.split('\n\n'):
         if para.strip():
-            elements.append(Paragraph(esc(para), body_style))
+            elements.append(render_paragraph(para))
 
     if signature:
+        # Raqamli imzo bilan tasdiqlangan — imzo rasmi va metama'lumot ko'rsatiladi
         elements.append(Spacer(1, 6))
         elements.append(Paragraph(
             esc(f"Imzolangan sana: {signature.signed_at.strftime('%d.%m.%Y %H:%M')} | "
@@ -986,6 +1014,17 @@ def build_contract_pdf(contract, driver=None, signature=None):
         except Exception:
             pass
         elements.append(Paragraph(esc(f"Imzolagan: {signature.full_name}"), meta_style))
+    else:
+        # Namunaviy (imzosiz) hujjat — qog'ozda qo'lda to'ldirish uchun bo'sh qatorlar
+        blank = '.' * 34
+        elements.append(Spacer(1, 8))
+        elements.append(Paragraph("<b>TOMONLARNING IMZOLARI</b>", meta_style))
+        elements.append(Spacer(1, 4))
+        elements.append(Paragraph(f"Haydovchi F.I.Sh: {blank}", sign_style))
+        elements.append(Paragraph(f"Imzo: {'.' * 18}&nbsp;&nbsp;&nbsp;&nbsp;Sana: {'.' * 12}", sign_style))
+        elements.append(Spacer(1, 6))
+        elements.append(Paragraph(f"Kompaniya vakili: {blank}", sign_style))
+        elements.append(Paragraph(f"Imzo: {'.' * 18}&nbsp;&nbsp;&nbsp;&nbsp;Sana: {'.' * 12}", sign_style))
 
     doc.build(elements)
     buf.seek(0)
