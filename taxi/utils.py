@@ -1112,20 +1112,48 @@ def build_flyer_pdf():
         c.setFont('Helvetica', 8.5)
         c.drawCentredString(block_w / 2, 8 * mm, "Ishonchli va tez taksi xizmati")
 
+        # Qorong'i blok bilan oq maydonni ajratuvchi rangli chiziq
+        c.setFillColor(AMBER)
+        c.rect(block_w, 0, 2.2 * mm, strip_h, stroke=0, fill=1)
+
         c.setFillColor(DARK)
         c.setFont('Helvetica-Bold', 14.5)
-        c.drawString(block_w + 8 * mm, strip_h - 16 * mm, "Buyurtma bering —")
-        c.drawString(block_w + 8 * mm, strip_h - 26 * mm, "5 000 so'm sovg'a oling!")
+        c.drawString(block_w + 9 * mm, strip_h - 16 * mm, "Buyurtma bering —")
+        c.drawString(block_w + 9 * mm, strip_h - 26 * mm, "5 000 so'm sovg'a oling!")
         c.setFont('Helvetica', 9)
         c.setFillColor(GREY_TEXT)
-        c.drawString(block_w + 8 * mm, strip_h - 37 * mm, "Ushbu flayerni haydovchimizga ko'rsating —")
-        c.drawString(block_w + 8 * mm, strip_h - 43 * mm, "safaringiz 5 000 so'mga arzonlashadi.")
+        c.drawString(block_w + 9 * mm, strip_h - 37 * mm, "Ushbu flayerni haydovchimizga ko'rsating —")
+        c.drawString(block_w + 9 * mm, strip_h - 43 * mm, "safaringiz 5 000 so'mga arzonlashadi.")
+
+        # Bo'sh joyni to'ldiruvchi qiyshiq "chegirma muhri"
+        stamp_x, stamp_y, stamp_r = page_w - 42 * mm, 40 * mm, 21 * mm
+        c.saveState()
+        c.translate(stamp_x, stamp_y)
+        c.rotate(-12)
+        c.setFillColor(AMBER)
+        c.setFillAlpha(0.13)
+        c.setStrokeColor(AMBER)
+        c.setLineWidth(1.3)
+        c.circle(0, 0, stamp_r, stroke=1, fill=1)
+        c.setFillAlpha(1)
+        c.setFillColor(AMBER)
+        c.setFont('Helvetica-Bold', 15)
+        c.drawCentredString(0, 5, "5 000")
+        c.setFont('Helvetica-Bold', 7.5)
+        c.drawCentredString(0, -7, "SO'M CHEGIRMA")
+        c.restoreState()
+
         c.setFont('Helvetica', 9)
         c.setFillColor(GREY_TEXT)
-        c.drawString(block_w + 8 * mm, 13 * mm, "Buyurtma berish uchun qo'ng'iroq qiling:")
+        c.drawString(block_w + 9 * mm, 13 * mm, "Buyurtma berish uchun qo'ng'iroq qiling:")
         c.setFont('Helvetica-Bold', 16)
         c.setFillColor(AMBER)
-        c.drawString(block_w + 8 * mm, 4 * mm, "1356")
+        c.drawString(block_w + 9 * mm, 4 * mm, "1356")
+
+        # Tashqi ramka
+        c.setStrokeColor(AMBER)
+        c.setLineWidth(1.2)
+        c.rect(2 * mm, 2 * mm, page_w - 4 * mm, strip_h - 4 * mm, stroke=1, fill=0)
         c.restoreState()
     cut_lines()
     c.showPage()
@@ -1138,6 +1166,17 @@ def build_flyer_pdf():
 
         c.setFillColor(GREEN_LIGHT)
         c.rect(0, 0, page_w, strip_h, stroke=0, fill=1)
+
+        # Fon suvbelgisi — nafis, deyarli sezilmas tarzda "VIJDON" so'zi
+        c.saveState()
+        c.translate(page_w / 2, strip_h / 2)
+        c.rotate(-16)
+        c.setFillColor(GREEN)
+        c.setFillAlpha(0.055)
+        c.setFont('Helvetica-Bold', 70)
+        c.drawCentredString(0, -20, "VIJDON")
+        c.restoreState()
+
         c.setStrokeColor(GREEN)
         c.setLineWidth(1.6)
         c.rect(4 * mm, 4 * mm, page_w - 8 * mm, strip_h - 8 * mm, stroke=1, fill=0)
@@ -1155,9 +1194,20 @@ def build_flyer_pdf():
         c.setFillColor(GREEN_TEXT)
         c.drawCentredString(page_w / 2, 18.5 * mm, "Faqat bitta safar uchun amal qiladi.")
         c.drawCentredString(page_w / 2, 14 * mm, "Boshqa aksiyalar bilan birlashtirilmaydi.")
+
+        foot_text = "VIJDON TAXI"
         c.setFont('Helvetica-Bold', 9)
+        text_w = c.stringWidth(foot_text, 'Helvetica-Bold', 9)
+        logo_sz = 7 * mm
+        gap = 1.8 * mm
+        total_w = (logo_sz + gap if logo_path else 0) + text_w
+        start_x = page_w / 2 - total_w / 2
+        if logo_path:
+            c.drawImage(logo_path, start_x, 9 * mm - logo_sz / 2 + 1, width=logo_sz, height=logo_sz,
+                        preserveAspectRatio=True, anchor='c', mask='auto')
+            start_x += logo_sz + gap
         c.setFillColor(GREEN)
-        c.drawCentredString(page_w / 2, 9 * mm, "VIJDON TAXI")
+        c.drawString(start_x, 9 * mm - 3, foot_text)
         c.restoreState()
     cut_lines()
     c.showPage()
