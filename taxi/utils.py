@@ -921,9 +921,11 @@ def build_contract_pdf(contract, driver=None, signature=None):
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer, Image
+    from django.contrib.staticfiles import finders
 
     ACCENT = colors.HexColor('#f59e0b')
     LINE   = colors.HexColor('#d1d5db')
+    logo_path = finders.find('taxi/img/logo.png')
 
     def esc(text):
         return (text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
@@ -962,6 +964,13 @@ def build_contract_pdf(contract, driver=None, signature=None):
         if driver:
             meta += f"  |  Haydovchi: {driver.full_name}  |  Tel: {driver.phone_number}  |  Mashina: {driver.car_model} ({driver.car_number})"
         canvas_obj.drawString(margin, top - 34, meta)
+
+        if logo_path:
+            logo_size = 26
+            canvas_obj.drawImage(logo_path, page_w - margin - logo_size, top - logo_size - 2,
+                                  width=logo_size, height=logo_size, preserveAspectRatio=True,
+                                  anchor='c', mask='auto')
+
         canvas_obj.setStrokeColor(LINE)
         canvas_obj.setLineWidth(0.6)
         canvas_obj.line(margin, top - 38, page_w - margin, top - 38)
@@ -1058,6 +1067,9 @@ def build_flyer_pdf():
     GREEN_TEXT  = colors.HexColor('#166534')
     GREY_TEXT   = colors.HexColor('#374151')
 
+    from django.contrib.staticfiles import finders
+    logo_path = finders.find('taxi/img/logo.png')
+
     buf = BytesIO()
     c = pdfcanvas.Canvas(buf, pagesize=A4)
 
@@ -1080,13 +1092,25 @@ def build_flyer_pdf():
         block_w = 62 * mm
         c.setFillColor(DARK)
         c.rect(0, 0, block_w, strip_h, stroke=0, fill=1)
-        c.setFillColor(AMBER)
-        c.setFont('Helvetica-Bold', 22)
-        c.drawString(8 * mm, strip_h / 2 + 8 * mm, 'VIJDON')
-        c.drawString(8 * mm, strip_h / 2 - 8 * mm, 'TAXI')
+
+        if logo_path:
+            badge = 52 * mm
+            badge_x = (block_w - badge) / 2
+            badge_y = strip_h - badge - 9 * mm
+            c.setFillColor(colors.white)
+            c.roundRect(badge_x, badge_y, badge, badge, 4 * mm, stroke=0, fill=1)
+            pad = 3 * mm
+            c.drawImage(logo_path, badge_x + pad, badge_y + pad, width=badge - 2 * pad,
+                        height=badge - 2 * pad, preserveAspectRatio=True, anchor='c', mask='auto')
+        else:
+            c.setFillColor(AMBER)
+            c.setFont('Helvetica-Bold', 22)
+            c.drawString(8 * mm, strip_h / 2 + 8 * mm, 'VIJDON')
+            c.drawString(8 * mm, strip_h / 2 - 8 * mm, 'TAXI')
+
         c.setFillColor(colors.white)
         c.setFont('Helvetica', 8.5)
-        c.drawString(8 * mm, 8 * mm, "Ishonchli va tez taksi xizmati")
+        c.drawCentredString(block_w / 2, 8 * mm, "Ishonchli va tez taksi xizmati")
 
         c.setFillColor(DARK)
         c.setFont('Helvetica-Bold', 14.5)

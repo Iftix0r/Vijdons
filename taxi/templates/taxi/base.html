@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="uz" class="light">
 <head>
@@ -185,9 +186,8 @@
 <aside id="sidebar" class="w-64 flex-shrink-0 flex flex-col z-30">
     <!-- logo -->
     <div class="h-16 flex items-center gap-3 px-5 border-b border-white/50 dark:border-white/5 flex-shrink-0">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center logo-glow">
-            <i class="fas fa-taxi text-white text-base"></i>
-        </div>
+        <img src="{% static 'taxi/img/logo.png' %}" alt="Vijdon"
+             class="w-9 h-9 rounded-full object-cover logo-glow flex-shrink-0">
         <span class="font-extrabold text-lg tracking-tight text-gray-900 dark:text-white">Vijdon<span class="text-green-500">Taxi</span></span>
     </div>
 
