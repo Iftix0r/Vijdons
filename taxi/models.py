@@ -172,6 +172,11 @@ class BotSettings(models.Model):
                                        help_text='Har bir ID yangi qatorda. Bot qo\'shilgan barcha guruhlarga yuboradi.')
     client_bot_token = models.CharField(max_length=200, blank=True, default='', verbose_name='Mijoz Bot Token',
                                         help_text='Mijozlar buyurtma beruvchi bot tokeni')
+    driver_group_id = models.CharField(max_length=50, blank=True, default='', verbose_name='Haydovchilar Guruhi Chat ID',
+                                       help_text="Yangi buyurtmalar shu guruhga ham yuboriladi — mijoz telefon raqamisiz")
+    driver_extra_group_ids = models.TextField(blank=True, default='', verbose_name="Qo'shimcha haydovchilar guruhlari",
+                                              help_text='Har bir ID yangi qatorda')
+    notify_driver_group   = models.BooleanField(default=True, verbose_name='Haydovchilar guruhiga yuborish')
 
     def get_all_group_ids(self):
         """Barcha guruh IDlarini list sifatida qaytaradi."""
@@ -179,6 +184,17 @@ class BotSettings(models.Model):
         if self.group_id.strip():
             ids.append(self.group_id.strip())
         for line in self.extra_group_ids.splitlines():
+            gid = line.strip()
+            if gid and gid not in ids:
+                ids.append(gid)
+        return ids
+
+    def get_all_driver_group_ids(self):
+        """Haydovchilar guruhi(lari) IDlarini list sifatida qaytaradi."""
+        ids = []
+        if self.driver_group_id.strip():
+            ids.append(self.driver_group_id.strip())
+        for line in self.driver_extra_group_ids.splitlines():
             gid = line.strip()
             if gid and gid not in ids:
                 ids.append(gid)
