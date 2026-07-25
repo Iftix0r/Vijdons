@@ -138,11 +138,15 @@
         <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
             <p class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3"><i class="fas fa-file-signature text-blue-500 mr-1"></i>Shartnoma</p>
             {% if contract_signature %}
-            <div class="flex items-center gap-2 mb-3">
+            <div class="flex items-center gap-2 mb-3 flex-wrap">
                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
                     <i class="fas fa-check-circle"></i>Imzolangan
                 </span>
                 <span class="text-[11px] text-gray-400">{{ contract_signature.signed_at|date:"d.m.Y H:i" }}</span>
+                <a href="{% url 'taxi:driver_contract_download' driver.pk %}"
+                   class="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-blue-500 hover:bg-blue-600 text-white transition-colors">
+                    <i class="fas fa-download"></i>Yuklab olish
+                </a>
             </div>
             <img src="{{ contract_signature.signature.url }}" alt="Imzo" class="w-full max-h-[100px] object-contain rounded-lg border border-gray-100 dark:border-gray-800" style="background:#fff">
             {% else %}

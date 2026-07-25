@@ -907,3 +907,55 @@ def generate_growth_insights(stats):
     except Exception as e:
         return False, f'Tarmoq xatosi: {e}'
 
+
+def build_contract_pdf(contract, driver=None, signature=None):
+    """Shartnoma matnidan PDF quradi (BytesIO qaytaradi). `driver`/`signature`
+    berilsa — haydovchi ma'lumotlari va imzo rasmi hujjat oxiriga qo'shiladi,
+    aks holda bo'sh (namunaviy) shartnoma hosil bo'ladi."""
+    from io import BytesIO
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
+
+    def esc(text):
+        return (text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                    .replace('\n', '<br/>'))
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=20 * mm, bottomMargin=20 * mm,
+                             leftMargin=20 * mm, rightMargin=20 * mm)
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('ContractTitle', parent=styles['Title'], fontSize=14, spaceAfter=14)
+    body_style  = ParagraphStyle('ContractBody', parent=styles['Normal'], fontSize=10, leading=14, spaceAfter=8)
+    meta_style  = ParagraphStyle('ContractMeta', parent=styles['Normal'], fontSize=9, textColor=colors.grey)
+
+    elements = [Paragraph(esc(contract.title), title_style)]
+
+    if driver:
+        elements.append(Paragraph(
+            esc(f"Haydovchi: {driver.full_name} | Tel: {driver.phone_number} | "
+                f"Mashina: {driver.car_model} ({driver.car_number})"), meta_style))
+        elements.append(Spacer(1, 10))
+
+    for para in contract.content.split('\n\n'):
+        if para.strip():
+            elements.append(Paragraph(esc(para), body_style))
+
+    if signature:
+        elements.append(Spacer(1, 16))
+        elements.append(Paragraph(
+            esc(f"Imzolangan sana: {signature.signed_at.strftime('%d.%m.%Y %H:%M')} | "
+                f"Versiya: {signature.version} | IP: {signature.ip_address or '-'}"), meta_style))
+        elements.append(Spacer(1, 6))
+        try:
+            elements.append(Image(signature.signature.path, width=100 * mm, height=35 * mm, kind='proportional'))
+        except Exception:
+            pass
+        elements.append(Paragraph(esc(f"Imzolagan: {signature.full_name}"), meta_style))
+
+    doc.build(elements)
+    buf.seek(0)
+    return buf
+

@@ -104,6 +104,8 @@ urlpatterns = [
     path('api/events/', views.panel_events_api, name='panel_events_api'),
     path('sounds/', views.sound_settings, name='sound_settings'),
     path('contract/', views.contract_settings, name='contract_settings'),
+    path('contract/download/', views.contract_download_blank, name='contract_download_blank'),
+    path('drivers/<int:pk>/contract/download/', views.driver_contract_download, name='driver_contract_download'),
 
     # ── Vazifalar ──
     path('tasks/', views.task_list, name='task_list'),

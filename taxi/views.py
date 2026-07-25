@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature
-from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights
+from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf
 import csv
 
 ONLINE_THRESHOLD_SECONDS = 120  # last_seen shundan yangi bo'lsa — online (yashil)
@@ -2031,6 +2031,33 @@ def contract_settings(request):
         'total_approved': total_approved,
         'signed_current': signed_current,
     })
+
+
+@login_required(login_url='taxi:panel_login')
+def contract_download_blank(request):
+    from django.utils.text import slugify
+    contract = ContractSettings.get()
+    buf = build_contract_pdf(contract)
+    response = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="shartnoma_namunasi_v{contract.version}.pdf"'
+    return response
+
+
+@login_required(login_url='taxi:panel_login')
+def driver_contract_download(request, pk):
+    from django.utils.text import slugify
+    driver = get_object_or_404(Driver, pk=pk)
+    contract = ContractSettings.get()
+    signature = driver.contract_signatures.filter(version=contract.version).first()
+    if not signature:
+        messages.error(request, "Bu haydovchi hali joriy shartnomani imzolamagan.")
+        return redirect('taxi:driver_detail', pk=pk)
+
+    buf = build_contract_pdf(contract, driver=driver, signature=signature)
+    filename = f"shartnoma_{slugify(driver.full_name) or driver.pk}.pdf"
+    response = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
 
 
 # ── Vazifalar (Task board) ────────────────────────────────────────────────────
