@@ -107,6 +107,9 @@ urlpatterns = [
     path('contract/download/', views.contract_download_blank, name='contract_download_blank'),
     path('drivers/<int:pk>/contract/download/', views.driver_contract_download, name='driver_contract_download'),
 
+    path('flyer/', views.flyer_page, name='flyer_page'),
+    path('flyer/download/', views.flyer_download, name='flyer_download'),
+
     # ── Vazifalar ──
     path('tasks/', views.task_list, name='task_list'),
     path('tasks/<int:pk>/status/', views.task_set_status, name='task_set_status'),

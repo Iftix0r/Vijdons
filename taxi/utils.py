@@ -1030,3 +1030,112 @@ def build_contract_pdf(contract, driver=None, signature=None):
     buf.seek(0)
     return buf
 
+
+def build_flyer_pdf():
+    """Reklama flayeri: A4 sahifaga 3 tadan flayer (gorizontal chiziqlar bo'ylab
+    kesiladi). 1-sahifa — flayerlarning old tomoni (Vijdon Taxi reklamasi),
+    2-sahifa — orqa tomoni (5 000 so'mlik chegirma sertifikati dizayni).
+    Ikki tomonlama chop etganda "uzun tomondan aylantirish" (flip on long edge)
+    rejimida old/orqa tomonlar to'g'ri mos tushadi. BytesIO qaytaradi.
+
+    Diqqat: bu haqiqiy banknota tasvirining nusxasi emas — valyuta dizaynini
+    aniq takrorlash huquqiy jihatdan xavfli, shuning uchun pul uslubidagi,
+    lekin aniq "CHEGIRMA SERTIFIKATI" deb belgilangan dizayn ishlatilgan."""
+    from io import BytesIO
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    from reportlab.pdfgen import canvas as pdfcanvas
+
+    page_w, page_h = A4
+    n = 3
+    strip_h = page_h / n
+
+    DARK        = colors.HexColor('#111827')
+    AMBER       = colors.HexColor('#f59e0b')
+    GREEN       = colors.HexColor('#15803d')
+    GREEN_LIGHT = colors.HexColor('#ecfdf5')
+    GREEN_TEXT  = colors.HexColor('#166534')
+    GREY_TEXT   = colors.HexColor('#374151')
+
+    buf = BytesIO()
+    c = pdfcanvas.Canvas(buf, pagesize=A4)
+
+    def cut_lines():
+        c.saveState()
+        c.setDash([3, 3])
+        c.setStrokeColor(colors.grey)
+        c.setLineWidth(0.5)
+        for i in range(1, n):
+            y = page_h - i * strip_h
+            c.line(0, y, page_w, y)
+        c.restoreState()
+
+    # ── OLD TOMON — reklama ──
+    for i in range(n):
+        y0 = page_h - (i + 1) * strip_h
+        c.saveState()
+        c.translate(0, y0)
+
+        block_w = 62 * mm
+        c.setFillColor(DARK)
+        c.rect(0, 0, block_w, strip_h, stroke=0, fill=1)
+        c.setFillColor(AMBER)
+        c.setFont('Helvetica-Bold', 22)
+        c.drawString(8 * mm, strip_h / 2 + 8 * mm, 'VIJDON')
+        c.drawString(8 * mm, strip_h / 2 - 8 * mm, 'TAXI')
+        c.setFillColor(colors.white)
+        c.setFont('Helvetica', 8.5)
+        c.drawString(8 * mm, 8 * mm, "Ishonchli va tez taksi xizmati")
+
+        c.setFillColor(DARK)
+        c.setFont('Helvetica-Bold', 14.5)
+        c.drawString(block_w + 8 * mm, strip_h - 16 * mm, "Buyurtma bering —")
+        c.drawString(block_w + 8 * mm, strip_h - 26 * mm, "5 000 so'm sovg'a oling!")
+        c.setFont('Helvetica', 9)
+        c.setFillColor(GREY_TEXT)
+        c.drawString(block_w + 8 * mm, strip_h - 37 * mm, "Ushbu flayerni haydovchimizga ko'rsating —")
+        c.drawString(block_w + 8 * mm, strip_h - 43 * mm, "safaringiz 5 000 so'mga arzonlashadi.")
+        c.setFont('Helvetica-Bold', 10.5)
+        c.setFillColor(DARK)
+        c.drawString(block_w + 8 * mm, 8 * mm, "Buyurtma: @vijdon_taxi_bot")
+        c.restoreState()
+    cut_lines()
+    c.showPage()
+
+    # ── ORQA TOMON — chegirma sertifikati ──
+    for i in range(n):
+        y0 = page_h - (i + 1) * strip_h
+        c.saveState()
+        c.translate(0, y0)
+
+        c.setFillColor(GREEN_LIGHT)
+        c.rect(0, 0, page_w, strip_h, stroke=0, fill=1)
+        c.setStrokeColor(GREEN)
+        c.setLineWidth(1.6)
+        c.rect(4 * mm, 4 * mm, page_w - 8 * mm, strip_h - 8 * mm, stroke=1, fill=0)
+        c.setLineWidth(0.5)
+        c.setDash([1, 2])
+        c.rect(7 * mm, 7 * mm, page_w - 14 * mm, strip_h - 14 * mm, stroke=1, fill=0)
+        c.setDash([])
+
+        c.setFillColor(GREEN)
+        c.setFont('Helvetica-Bold', 11)
+        c.drawCentredString(page_w / 2, strip_h - 15 * mm, "CHEGIRMA SERTIFIKATI")
+        c.setFont('Helvetica-Bold', 32)
+        c.drawCentredString(page_w / 2, strip_h / 2 - 4 * mm, "5 000 SO'M")
+        c.setFont('Helvetica', 8.3)
+        c.setFillColor(GREEN_TEXT)
+        c.drawCentredString(page_w / 2, 18.5 * mm, "Faqat bitta safar uchun amal qiladi.")
+        c.drawCentredString(page_w / 2, 14 * mm, "Boshqa aksiyalar bilan birlashtirilmaydi.")
+        c.setFont('Helvetica-Bold', 9)
+        c.setFillColor(GREEN)
+        c.drawCentredString(page_w / 2, 9 * mm, "VIJDON TAXI")
+        c.restoreState()
+    cut_lines()
+    c.showPage()
+
+    c.save()
+    buf.seek(0)
+    return buf
+

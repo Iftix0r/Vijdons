@@ -1,0 +1,47 @@
+{% extends 'taxi/base.html' %}
+{% block title %}Reklama flayeri — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-end gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Reklama Flayeri 📣</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Yangi mijozlarni jalb qilish uchun chop etiladigan chegirma flayeri.</p>
+    </div>
+    <a href="{% url 'taxi:flyer_download' %}"
+       class="flex items-center gap-2 px-5 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm rounded-xl shadow-sm transition-all hover:-translate-y-0.5">
+        <i class="fas fa-download"></i> PDF yuklab olish
+    </a>
+</div>
+
+<div class="max-w-3xl space-y-5">
+
+    <!-- Qanday ishlaydi -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+            <p class="text-sm font-bold text-gray-800 dark:text-white"><i class="fas fa-circle-info text-blue-500 mr-2"></i>Jarayon qanday ishlaydi</p>
+        </div>
+        <div class="px-6 py-5">
+            <ol class="space-y-3 text-sm text-gray-600 dark:text-gray-300">
+                <li class="flex gap-3"><span class="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>Flayerlarni chop etib, haydovchilarga tarqatish uchun beriladi.</li>
+                <li class="flex gap-3"><span class="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>Mijoz flayerni haydovchiga ko'rsatib, safarini <b>5 000 so'mga</b> arzon oladi.</li>
+                <li class="flex gap-3"><span class="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>Haydovchi ishlatilgan flayerlarni ofisga olib keladi.</li>
+                <li class="flex gap-3"><span class="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xs font-bold flex-shrink-0">4</span>Har bir flayer uchun <b>5 000 so'm</b> haydovchining balansiga qo'shiladi — bu haydovchi profilidagi <a href="{% url 'taxi:driver_list' %}" class="text-blue-500 hover:underline">"Balans → Qo'shish"</a> orqali amalga oshiriladi.</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Dizayn haqida -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+            <p class="text-sm font-bold text-gray-800 dark:text-white"><i class="fas fa-print text-emerald-500 mr-2"></i>Chop etish bo'yicha ko'rsatma</p>
+        </div>
+        <div class="px-6 py-5 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+            <p><i class="fas fa-file-lines text-gray-400 mr-1.5"></i>PDF 2 sahifadan iborat: <b>1-sahifa</b> — flayerning old tomoni (reklama), <b>2-sahifa</b> — orqa tomoni (5 000 so'mlik chegirma sertifikati).</p>
+            <p><i class="fas fa-copy text-gray-400 mr-1.5"></i>Bitta A4 varaqqa <b>3 ta flayer</b> joylashadi — chop etgandan so'ng chiziq bo'ylab qirqib bo'lish kifoya.</p>
+            <p><i class="fas fa-rotate text-gray-400 mr-1.5"></i>Ikki tomonlama (duplex) chop etayotganda printerda <b>"uzun tomondan aylantirish"</b> rejimini tanlang — shunda old va orqa tomonlar to'g'ri mos tushadi.</p>
+            <p class="text-xs text-gray-400 mt-2"><i class="fas fa-shield-halved mr-1.5"></i>Diqqat: dizayn haqiqiy banknota tasvirining nusxasi emas — bu aniq "Chegirma sertifikati" deb belgilangan, pul uslubidagi reklama materiali.</p>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
