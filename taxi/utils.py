@@ -1148,7 +1148,7 @@ def build_flyer_pdf():
         c.drawString(block_w + 9 * mm, 13 * mm, "Buyurtma berish uchun qo'ng'iroq qiling:")
         c.setFont('Helvetica-Bold', 16)
         c.setFillColor(AMBER)
-        c.drawString(block_w + 9 * mm, 4 * mm, "1356")
+        c.drawString(block_w + 9 * mm, 4 * mm, "1351")
 
         # Tashqi ramka
         c.setStrokeColor(AMBER)
