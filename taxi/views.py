@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.db.models import Q, Count
 from django.http import JsonResponse, HttpResponse
-from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
@@ -1733,29 +1733,6 @@ def driver_edit(request, pk):
                     messages.error(request, "Haydovchiga bog'langan foydalanuvchi topilmadi, parol o'zgartirilmadi.")
             messages.success(request, "Haydovchi ma'lumotlari yangilandi.")
     return redirect(request.META.get('HTTP_REFERER') or reverse('taxi:driver_detail', args=[pk]))
-
-
-# ── Operator/Admin profile ───────────────────────────────────────────────────────
-
-@login_required(login_url='taxi:panel_login')
-def panel_profile(request):
-    if request.method == 'POST':
-        old_password = request.POST.get('old_password', '')
-        new_password = request.POST.get('new_password', '')
-        confirm_password = request.POST.get('confirm_password', '')
-        if not request.user.check_password(old_password):
-            messages.error(request, "Eski parol noto'g'ri.")
-        elif len(new_password) < 6:
-            messages.error(request, "Yangi parol kamida 6 ta belgi bo'lishi kerak.")
-        elif new_password != confirm_password:
-            messages.error(request, "Yangi parol va tasdiqlash mos kelmadi.")
-        else:
-            request.user.set_password(new_password)
-            request.user.save()
-            update_session_auth_hash(request, request.user)
-            messages.success(request, "Parolingiz muvaffaqiyatli o'zgartirildi.")
-        return redirect('taxi:panel_profile')
-    return render(request, 'taxi/profile.html')
 
 
 # ── Order price edit ───────────────────────────────────────────────────────────

@@ -272,17 +272,16 @@
     </nav>
 
     <!-- user -->
-    <a href="{% url 'taxi:panel_profile' %}"
-       class="px-4 py-4 border-t border-white/50 dark:border-white/5 flex items-center gap-3 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-        <img src="https://ui-avatars.com/api/?name={{ request.user.get_full_name|default:request.user.username|default:'Admin' }}&background=f59e0b&color=fff&bold=true" alt="Admin"
+    <div class="px-4 py-4 border-t border-white/50 dark:border-white/5 flex items-center gap-3">
+        <img src="https://ui-avatars.com/api/?name=Admin&background=f59e0b&color=fff&bold=true" alt="Admin"
              class="w-9 h-9 rounded-full ring-2 ring-yellow-300 dark:ring-yellow-700">
         <div class="flex-1 min-w-0">
-            <p class="text-sm font-semibold text-gray-800 dark:text-white truncate">{{ request.user.get_full_name|default:request.user.username|default:"Administrator" }}</p>
-            <a href="/admin/logout/" onclick="event.stopPropagation()" class="text-xs text-red-500 hover:text-red-600 font-medium">
+            <p class="text-sm font-semibold text-gray-800 dark:text-white truncate">Administrator</p>
+            <a href="/admin/logout/" class="text-xs text-red-500 hover:text-red-600 font-medium">
                 <i class="fas fa-right-from-bracket mr-1"></i>Chiqish
             </a>
         </div>
-    </a>
+    </div>
 </aside>
 
 <!-- ══════════ MAIN ══════════ -->
