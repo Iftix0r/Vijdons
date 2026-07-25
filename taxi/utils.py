@@ -341,6 +341,12 @@ def _driver_url(driver_id):
     return f'{base}/panel/drivers/{driver_id}/detail/'
 
 
+def _driver_app_url():
+    from django.conf import settings
+    base = getattr(settings, 'SITE_URL', '').rstrip('/')
+    return f'{base}/driver/home/'
+
+
 def _order_inline(order_id):
     return {'inline_keyboard': [[{'text': '🔍 Batafsil', 'url': _order_url(order_id)}]]}
 
@@ -349,28 +355,64 @@ def _driver_inline(driver_id):
     return {'inline_keyboard': [[{'text': '👤 Haydovchi', 'url': _driver_url(driver_id)}]]}
 
 
+def _driver_group_inline():
+    return {'inline_keyboard': [[{'text': '📱 Ilovaga kirish', 'url': _driver_app_url()}]]}
+
+
+def _notify_driver_group(text, reply_markup=None):
+    """Haydovchilar guruhi(lari)ga xabar yuboradi — cfg.notify_driver_group yoqilgan
+    va kamida bitta guruh ID kiritilgan bo'lsa."""
+    cfg = _cfg()
+    if not cfg or not cfg.notify_driver_group:
+        return
+    ids = cfg.get_all_driver_group_ids()
+    if not ids:
+        return
+    send_telegram(text, chat_ids=ids, reply_markup=reply_markup or _driver_group_inline())
+
+
 def tg_new_order(order):
     log_panel_event('panel_new_order', f"Buyurtma #{order.id} — {order.from_address}")
     cfg = _cfg()
-    if cfg and not cfg.notify_new_order:
-        return
     client = order.client
-    lines = [
+
+    if not cfg or cfg.notify_new_order:
+        lines = [
+            f"🚨 <b>Yangi buyurtma #{order.id}</b>",
+            f"👤 Mijoz: {client.full_name or '—'} | <code>{client.phone_number}</code>",
+            f"📍 Qayerdan: <b>{order.from_address}</b>",
+        ]
+        if order.to_address:
+            lines.append(f"🏁 Qayerga: <b>{order.to_address}</b>")
+        if order.distance_km:
+            lines.append(f"📏 Masofa: {order.distance_km:.1f} km")
+        if order.price:
+            lines.append(f"💰 Narx: <b>{order.price} UZS</b>")
+        lines.append(f"💳 To'lov: {'Naqd 💵' if order.payment_type == 'cash' else 'Karta 💳'}")
+        if order.note:
+            lines.append(f"📝 Izoh: {order.note}")
+        lines.append(f"🕐 Vaqt: {order.created_at.strftime('%d.%m.%Y %H:%M') if order.created_at else '—'}")
+        send_telegram('\n'.join(lines), reply_markup=_order_inline(order.id))
+
+    # Haydovchilar guruhiga — telefon raqamisiz, mijoz tarixi bilan
+    completed = client.orders.filter(status='completed').count()
+    cancelled = client.orders.filter(status='cancelled').count()
+    d_lines = [
         f"🚨 <b>Yangi buyurtma #{order.id}</b>",
-        f"👤 Mijoz: {client.full_name or '—'} | <code>{client.phone_number}</code>",
+        f"👤 Mijoz: <b>{client.full_name or 'Nomaʻlum mijoz'}</b>",
         f"📍 Qayerdan: <b>{order.from_address}</b>",
     ]
     if order.to_address:
-        lines.append(f"🏁 Qayerga: <b>{order.to_address}</b>")
+        d_lines.append(f"🏁 Qayerga: <b>{order.to_address}</b>")
     if order.distance_km:
-        lines.append(f"📏 Masofa: {order.distance_km:.1f} km")
+        d_lines.append(f"📏 Masofa: {order.distance_km:.1f} km")
     if order.price:
-        lines.append(f"💰 Narx: <b>{order.price} UZS</b>")
-    lines.append(f"💳 To'lov: {'Naqd 💵' if order.payment_type == 'cash' else 'Karta 💳'}")
+        d_lines.append(f"💰 Narx: <b>{order.price} UZS</b>")
+    d_lines.append(f"💳 To'lov: {'Naqd 💵' if order.payment_type == 'cash' else 'Karta 💳'}")
     if order.note:
-        lines.append(f"📝 Izoh: {order.note}")
-    lines.append(f"🕐 Vaqt: {order.created_at.strftime('%d.%m.%Y %H:%M') if order.created_at else '—'}")
-    send_telegram('\n'.join(lines), reply_markup=_order_inline(order.id))
+        d_lines.append(f"📝 Izoh: {order.note}")
+    d_lines.append(f"✅ Yakunlagan: {completed} ta | ❌ Bekor qilgan: {cancelled} ta")
+    _notify_driver_group('\n'.join(d_lines))
 
 
 def tg_order_dispatched(order, driver):
@@ -391,19 +433,24 @@ def tg_order_dispatched(order, driver):
 
 def tg_order_accepted(order, driver):
     cfg = _cfg()
-    if cfg and not cfg.notify_accepted:
-        return
-    markup = {'inline_keyboard': [[
-        {'text': '🔍 Buyurtma', 'url': _order_url(order.id)},
-        {'text': '👤 Haydovchi', 'url': _driver_url(driver.id)},
-    ]]}
-    send_telegram(
-        f"✅ <b>Buyurtma #{order.id} qabul qilindi</b>\n"
-        f"🚗 <b>{driver.full_name}</b> | {driver.car_model} <code>{driver.car_number}</code>\n"
-        f"👤 {order.client.full_name or '—'} | <code>{order.client.phone_number}</code>\n"
-        f"📍 {order.from_address}" + (f" → {order.to_address}" if order.to_address else "") + "\n"
-        f"💰 {order.price or '—'} UZS",
-        reply_markup=markup,
+    if not cfg or cfg.notify_accepted:
+        markup = {'inline_keyboard': [[
+            {'text': '🔍 Buyurtma', 'url': _order_url(order.id)},
+            {'text': '👤 Haydovchi', 'url': _driver_url(driver.id)},
+        ]]}
+        send_telegram(
+            f"✅ <b>Buyurtma #{order.id} qabul qilindi</b>\n"
+            f"🚗 <b>{driver.full_name}</b> | {driver.car_model} <code>{driver.car_number}</code>\n"
+            f"👤 {order.client.full_name or '—'} | <code>{order.client.phone_number}</code>\n"
+            f"📍 {order.from_address}" + (f" → {order.to_address}" if order.to_address else "") + "\n"
+            f"💰 {order.price or '—'} UZS",
+            reply_markup=markup,
+        )
+
+    # Haydovchilar guruhiga — buyurtma band bo'lganini va kim qabul qilganini bildiradi
+    _notify_driver_group(
+        f"✅ <b>Buyurtma #{order.id} band qilindi</b>\n"
+        f"🚗 Qabul qildi: <b>{driver.full_name}</b> | {driver.car_model} <code>{driver.car_number}</code>"
     )
 
 

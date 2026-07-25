@@ -558,6 +558,9 @@ def bot_settings(request):
         bot.group_id  = request.POST.get('group_id', '').strip()
         bot.extra_group_ids = request.POST.get('extra_group_ids', '').strip()
         bot.client_bot_token = request.POST.get('client_bot_token', '').strip()
+        bot.driver_group_id = request.POST.get('driver_group_id', '').strip()
+        bot.driver_extra_group_ids = request.POST.get('driver_extra_group_ids', '').strip()
+        bot.notify_driver_group    = 'notify_driver_group'    in request.POST
         bot.notify_new_order       = 'notify_new_order'       in request.POST
         bot.notify_dispatched      = 'notify_dispatched'      in request.POST
         bot.notify_accepted        = 'notify_accepted'        in request.POST
