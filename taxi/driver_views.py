@@ -871,6 +871,15 @@ def driver_duty_toggle(request, driver):
 def driver_meter_update(request, driver, pk):
     """Taximetr ma'lumotlarini DBga saqlaydi va qaytaradi."""
     order = get_object_or_404(Order, pk=pk, driver=driver)
+    if order.status in ('completed', 'cancelled'):
+        # Buyurtma allaqachon yakunlangan/bekor qilingan — tarmoq kechikishi
+        # tufayli keyin yetib kelgan eski autosave so'rovi yakuniy narx va
+        # masofani eski qiymat bilan ustidan yozib yubormasin.
+        return JsonResponse({
+            'ok': True,
+            'dist_km': order.tmx_dist_km,
+            'price':   float(order.price) if order.price else 0,
+        })
     try:
         dist_km = float(request.POST.get('dist_km') or request.GET.get('dist_km') or 0)
         price   = float(request.POST.get('price')   or request.GET.get('price')   or 0)
