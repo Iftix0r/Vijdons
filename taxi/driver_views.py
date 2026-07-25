@@ -180,11 +180,10 @@ def driver_home(request, driver):
     _tariff = TariffSettings.get()
 
     # Haydovchi "Asosiy" sahifani ochganda avtomatik navbatga chiqadi — buning
-    # uchun endi "Liniyaga chiqish" tugmasini bosish shart emas. Balans
-    # yetarli bo'lmasa (driver_duty_toggle'dagi bilan bir xil shart) avtomatik
-    # yoqilmaydi — bunday holda haydovchi baribir tugma orqali ham chiqa
-    # olmaydi, shuning uchun uni shu yerda ham chetlab o'tmaymiz.
-    if not driver.is_on_duty and driver.balance >= _tariff.commission:
+    # uchun endi "Liniyaga chiqish" tugmasini bosish shart emas. Balans kam
+    # bo'lsa ham navbatga chiqaveradi — u baribir buyurtmalarni ko'radi,
+    # faqat balans yetmasa qabul qila olmaydi (order_status'dagi tekshiruv).
+    if not driver.is_on_duty:
         driver.is_on_duty = True
         driver.save(update_fields=['is_on_duty'])
 
@@ -842,7 +841,6 @@ def driver_location_sync(request, driver):
 @driver_login_required
 @require_POST
 def driver_duty_toggle(request, driver):
-    tariff = TariffSettings.get()
     # Diqqat: is_on_duty faqat YANGI buyurtma dispatch qilish uchun filtr
     # sifatida ishlatiladi (utils.dispatch_order va h.k.) — joriy (accepted/
     # on_way/arrived) buyurtmani boshqarish Tarix orqali navbat holatidan
@@ -850,13 +848,9 @@ def driver_duty_toggle(request, driver):
     # navbatdan chiqishni taqiqlamaymiz (avval taqiqlangan edi — bu haydovchi
     # uchun "tugma bosilsa ham hech narsa bo'lmaydi" holatini keltirib
     # chiqargan, mobil ilova API'sida ham bunday cheklov yo'q).
-    if not driver.is_on_duty:
-        # Navbatga kirishda balans yetarlimi tekshirish
-        if driver.balance < tariff.commission:
-            return JsonResponse({
-                'ok': False,
-                'error': f"Balans yetarli emas. Kamida {int(tariff.commission):,} so'm bo'lishi kerak."
-            }, status=400)
+    # Balans kam bo'lsa ham navbatga chiqishga ruxsat beriladi — u baribir
+    # buyurtmalarni ko'radi, faqat balans yetmasa qabul qila olmaydi
+    # (order_status'dagi alohida tekshiruv shu ishni qiladi).
     driver.is_on_duty = not driver.is_on_duty
     driver.save(update_fields=['is_on_duty'])
     action = DriverActivityLog.ACTION_DUTY_ON if driver.is_on_duty else DriverActivityLog.ACTION_DUTY_OFF
