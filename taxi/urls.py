@@ -109,6 +109,7 @@ urlpatterns = [
 
     path('flyer/', views.flyer_page, name='flyer_page'),
     path('flyer/download/', views.flyer_download, name='flyer_download'),
+    path('flyer/redeem/', views.flyer_redeem, name='flyer_redeem'),
 
     # ── Vazifalar ──
     path('tasks/', views.task_list, name='task_list'),

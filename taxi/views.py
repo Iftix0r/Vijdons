@@ -2084,7 +2084,7 @@ def flyer_page(request):
 
 @login_required(login_url='taxi:panel_login')
 @require_POST
-def flyer_generate(request):
+def flyer_download(request):
     try:
         quantity = int(request.POST.get('quantity', 30))
     except (TypeError, ValueError):
