@@ -909,74 +909,85 @@ def generate_growth_insights(stats):
 
 
 def build_contract_pdf(contract, driver=None, signature=None):
-    """Shartnoma matnidan PDF quradi (BytesIO qaytaradi). `driver`/`signature`
-    berilsa — haydovchi ma'lumotlari va imzo rasmi hujjat oxiriga qo'shiladi,
-    aks holda bo'sh (namunaviy) shartnoma hosil bo'ladi."""
+    """Shartnoma matnidan bitta sahifaga sig'adigan ikki ustunli (gazeta uslubi)
+    PDF quradi (BytesIO qaytaradi). `driver`/`signature` berilsa — haydovchi
+    ma'lumotlari va imzo rasmi hujjat oxiriga qo'shiladi, aks holda bo'sh
+    (namunaviy) shartnoma hosil bo'ladi."""
     from io import BytesIO
     from django.utils import timezone
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, HRFlowable
+    from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer, Image
 
     def esc(text):
         return (text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
                     .replace('\n', '<br/>'))
 
-    def draw_footer(canvas_obj, doc_obj):
+    margin      = 10 * mm
+    header_h    = 22 * mm
+    col_gap     = 6 * mm
+    page_w, page_h = A4
+    col_w = (page_w - 2 * margin - col_gap) / 2
+    # Footer matni pastki margin zonasiga (frame tagidan pastda) chizilgani
+    # uchun uning uchun alohida joy band qilinmaydi — aks holda ustun bo'yicha
+    # foydali balandlik behuda kamayib, matn ikkinchi sahifaga o'tib ketardi.
+    col_h = page_h - 2 * margin - header_h
+
+    def draw_chrome(canvas_obj, doc_obj):
         canvas_obj.saveState()
-        canvas_obj.setFont('Helvetica', 8)
+        top = page_h - margin
+        canvas_obj.setFont('Helvetica-Bold', 9)
+        canvas_obj.setFillColor(colors.HexColor('#f59e0b'))
+        canvas_obj.drawString(margin, top - 10, 'VIJDON TAXI')
+        canvas_obj.setFont('Helvetica-Bold', 13)
+        canvas_obj.setFillColor(colors.black)
+        canvas_obj.drawString(margin, top - 24, contract.title)
+        canvas_obj.setFont('Helvetica', 7.5)
         canvas_obj.setFillColor(colors.grey)
-        canvas_obj.drawString(20 * mm, 12 * mm, "Vijdon Taxi — avtomatik generatsiya qilingan hujjat")
-        canvas_obj.drawRightString(A4[0] - 20 * mm, 12 * mm, f"Sahifa {doc_obj.page}")
+        meta = (f"Generatsiya: {timezone.now().strftime('%d.%m.%Y %H:%M')}  |  Versiya: {contract.version}")
+        if driver:
+            meta += f"  |  Haydovchi: {driver.full_name}  |  Tel: {driver.phone_number}  |  Mashina: {driver.car_model} ({driver.car_number})"
+        canvas_obj.drawString(margin, top - 34, meta)
+        canvas_obj.setStrokeColor(colors.HexColor('#d1d5db'))
+        canvas_obj.setLineWidth(0.6)
+        canvas_obj.line(margin, top - 38, page_w - margin, top - 38)
+
+        canvas_obj.setFont('Helvetica', 7)
+        canvas_obj.setFillColor(colors.grey)
+        canvas_obj.drawString(margin, margin - 4, "Vijdon Taxi — avtomatik generatsiya qilingan hujjat")
+        canvas_obj.drawRightString(page_w - margin, margin - 4, f"Sahifa {doc_obj.page}")
         canvas_obj.restoreState()
 
     buf = BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=20 * mm, bottomMargin=20 * mm,
-                             leftMargin=20 * mm, rightMargin=20 * mm)
+    frame1 = Frame(margin, margin, col_w, col_h, id='col1', topPadding=0, bottomPadding=0)
+    frame2 = Frame(margin + col_w + col_gap, margin, col_w, col_h, id='col2', topPadding=0, bottomPadding=0)
+    doc = BaseDocTemplate(buf, pagesize=A4)
+    doc.addPageTemplates(PageTemplate(id='two-col', frames=[frame1, frame2], onPage=draw_chrome))
+
     styles = getSampleStyleSheet()
-    brand_style = ParagraphStyle('ContractBrand', parent=styles['Normal'], fontSize=9,
-                                  textColor=colors.HexColor('#f59e0b'), spaceAfter=2)
-    title_style = ParagraphStyle('ContractTitle', parent=styles['Title'], fontSize=15, spaceAfter=4)
-    body_style  = ParagraphStyle('ContractBody', parent=styles['Normal'], fontSize=10, leading=14, spaceAfter=8)
-    meta_style  = ParagraphStyle('ContractMeta', parent=styles['Normal'], fontSize=9, textColor=colors.grey)
+    body_style = ParagraphStyle('ContractBody', parent=styles['Normal'], fontSize=8, leading=10.3, spaceAfter=4.5)
+    meta_style = ParagraphStyle('ContractMeta', parent=styles['Normal'], fontSize=7.5, textColor=colors.grey, leading=9.5)
 
-    elements = [
-        Paragraph('VIJDON TAXI', brand_style),
-        Paragraph(esc(contract.title), title_style),
-        Paragraph(esc(f"Hujjat generatsiya qilingan sana: {timezone.now().strftime('%d.%m.%Y %H:%M')} | "
-                       f"Shartnoma versiyasi: {contract.version}"), meta_style),
-        Spacer(1, 6),
-        HRFlowable(width='100%', thickness=0.75, color=colors.HexColor('#d1d5db')),
-        Spacer(1, 12),
-    ]
-
-    if driver:
-        elements.append(Paragraph(
-            esc(f"Haydovchi: {driver.full_name} | Tel: {driver.phone_number} | "
-                f"Mashina: {driver.car_model} ({driver.car_number})"), meta_style))
-        elements.append(Spacer(1, 10))
-
+    elements = []
     for para in contract.content.split('\n\n'):
         if para.strip():
             elements.append(Paragraph(esc(para), body_style))
 
     if signature:
-        elements.append(Spacer(1, 10))
-        elements.append(HRFlowable(width='100%', thickness=0.75, color=colors.HexColor('#d1d5db')))
-        elements.append(Spacer(1, 10))
+        elements.append(Spacer(1, 6))
         elements.append(Paragraph(
             esc(f"Imzolangan sana: {signature.signed_at.strftime('%d.%m.%Y %H:%M')} | "
                 f"Versiya: {signature.version} | IP: {signature.ip_address or '-'}"), meta_style))
-        elements.append(Spacer(1, 6))
+        elements.append(Spacer(1, 4))
         try:
-            elements.append(Image(signature.signature.path, width=100 * mm, height=35 * mm, kind='proportional'))
+            elements.append(Image(signature.signature.path, width=col_w * 0.9, height=22 * mm, kind='proportional'))
         except Exception:
             pass
         elements.append(Paragraph(esc(f"Imzolagan: {signature.full_name}"), meta_style))
 
-    doc.build(elements, onFirstPage=draw_footer, onLaterPages=draw_footer)
+    doc.build(elements)
     buf.seek(0)
     return buf
 
