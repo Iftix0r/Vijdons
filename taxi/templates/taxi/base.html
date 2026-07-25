@@ -265,6 +265,10 @@
            class="nav-link {% if request.resolver_match.url_name == 'sms_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-comment-sms w-5 text-center"></i> SMS sozlamalari
         </a>
+        <a href="{% url 'taxi:ai_settings' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'ai_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-robot w-5 text-center"></i> AI sozlamalari
+        </a>
         <a href="/admin/"
            class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-shield-halved w-5 text-center"></i> Admin Panel

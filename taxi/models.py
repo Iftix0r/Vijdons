@@ -273,6 +273,34 @@ class SmsSettings(models.Model):
         verbose_name_plural = 'SMS sozlamalari'
 
 
+class AiSettings(models.Model):
+    """Singleton: dashboard uchun OpenAI o'sish tavsiyalari sozlamalari."""
+    MODEL_CHOICES = [
+        ('gpt-4o-mini', 'GPT-4o mini (tez va arzon)'),
+        ('gpt-4o',       'GPT-4o'),
+    ]
+    api_key = models.CharField(max_length=255, blank=True, default='', verbose_name='OpenAI API kalit',
+                                help_text='platform.openai.com dan olingan sk-... kalit')
+    model   = models.CharField(max_length=50, choices=MODEL_CHOICES, default='gpt-4o-mini', verbose_name='Model')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return 'AI Sozlamalari'
+
+    class Meta:
+        verbose_name = 'AI sozlamalari'
+        verbose_name_plural = 'AI sozlamalari'
+
+
 class MapsSettings(models.Model):
     """Singleton: admin paneldan geocoding API sozlamalari."""
     PROVIDER_NOMINATIM = 'nominatim'

@@ -6,8 +6,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
-from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings
-from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms
+from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings
+from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights
 import csv
 
 ONLINE_THRESHOLD_SECONDS = 120  # last_seen shundan yangi bo'lsa — online (yashil)
@@ -649,6 +649,78 @@ def sms_settings(request):
         'test_result': test_result,
         'sms_notifs': sms_notifs,
     })
+
+
+# ── AI o'sish tavsiyalari ─────────────────────────────────────────────────────
+
+@login_required(login_url='taxi:panel_login')
+def ai_settings(request):
+    cfg = AiSettings.get()
+    saved = False
+    if request.method == 'POST':
+        cfg.api_key = request.POST.get('api_key', '').strip()
+        cfg.model   = request.POST.get('model', cfg.model)
+        cfg.save()
+        saved = True
+    return render(request, 'taxi/ai_settings.html', {
+        'cfg': cfg,
+        'saved': saved,
+        'model_choices': AiSettings.MODEL_CHOICES,
+    })
+
+
+@login_required(login_url='taxi:panel_login')
+def panel_ai_insights(request):
+    from django.utils import timezone
+    from django.db.models import Sum, Count, Avg
+    from datetime import timedelta
+
+    today = timezone.now().date()
+    completed_qs = Order.objects.filter(status='completed')
+    total_orders = Order.objects.count()
+    cancelled_orders = Order.objects.filter(status='cancelled').count()
+    cancel_rate = round(cancelled_orders / total_orders * 100, 1) if total_orders else 0
+
+    weekly_counts = []
+    for i in range(6, -1, -1):
+        day = today - timedelta(days=i)
+        weekly_counts.append(Order.objects.filter(created_at__date=day).count())
+
+    online_threshold = timezone.now() - timezone.timedelta(minutes=2)
+    top_drivers = Driver.objects.annotate(
+        completed=Count('orders', filter=Q(orders__status='completed'))
+    ).filter(completed__gt=0).order_by('-completed')[:5]
+    bottom_drivers = Driver.objects.filter(
+        is_active=True, approval_status=Driver.APPROVAL_APPROVED
+    ).annotate(
+        completed=Count('orders', filter=Q(orders__status='completed'))
+    ).order_by('completed')[:5]
+
+    total_clients = Client.objects.count()
+    repeat_clients = Client.objects.annotate(total=Count('orders')).filter(total__gt=1).count()
+    repeat_rate = round(repeat_clients / total_clients * 100, 1) if total_clients else 0
+
+    stats = {
+        'jami_buyurtmalar':              total_orders,
+        'yakunlangan_buyurtmalar':       completed_qs.count(),
+        'bekor_qilingan_buyurtmalar':    cancelled_orders,
+        'bekor_qilish_foizi':            cancel_rate,
+        'jami_daromad_som':              float(completed_qs.aggregate(s=Sum('price'))['s'] or 0),
+        'ortacha_narx_som':              float(completed_qs.aggregate(a=Avg('price'))['a'] or 0),
+        'songgi_7_kun_buyurtmalar_soni': weekly_counts,
+        'faol_haydovchilar_soni':        Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED).count(),
+        'online_haydovchilar_soni':      Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED, last_seen__gte=online_threshold).count(),
+        'eng_faol_haydovchilar':         [{'ism': d.full_name, 'yakunlangan_safar': d.completed} for d in top_drivers],
+        'kam_faol_haydovchilar':         [{'ism': d.full_name, 'yakunlangan_safar': d.completed} for d in bottom_drivers],
+        'jami_mijozlar':                 total_clients,
+        'qaytib_kelgan_mijozlar_foizi':  repeat_rate,
+        'bloklangan_mijozlar':           Client.objects.filter(is_blocked=True).count(),
+    }
+
+    ok, text = generate_growth_insights(stats)
+    if ok:
+        return JsonResponse({'ok': True, 'text': text})
+    return JsonResponse({'ok': False, 'error': text}, status=400)
 
 
 @login_required(login_url='taxi:panel_login')

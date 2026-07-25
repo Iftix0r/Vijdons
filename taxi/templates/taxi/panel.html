@@ -72,6 +72,32 @@
     <canvas id="weeklyChart" height="80"></canvas>
 </div>
 
+<!-- AI growth insights -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden mb-6">
+    <div class="flex justify-between items-center px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
+                <i class="fas fa-robot text-indigo-500"></i>
+            </div>
+            <div>
+                <h3 class="font-bold text-gray-900 dark:text-white text-sm">O'sish bo'yicha AI tavsiyalar</h3>
+                <p class="text-xs text-gray-400">Buyurtma va qo'ng'iroqlar sonini oshirish uchun qadamlar</p>
+            </div>
+        </div>
+        <button onclick="loadAiInsights()" title="Qayta yuklash"
+                class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-indigo-500 transition-colors">
+            <i id="ai-refresh-icon" class="fas fa-rotate text-xs"></i>
+        </button>
+    </div>
+    <div id="ai-insights-body" class="px-6 py-5">
+        <div class="space-y-2 animate-pulse">
+            <div class="h-3 bg-gray-100 dark:bg-gray-800 rounded w-3/4"></div>
+            <div class="h-3 bg-gray-100 dark:bg-gray-800 rounded w-full"></div>
+            <div class="h-3 bg-gray-100 dark:bg-gray-800 rounded w-5/6"></div>
+        </div>
+    </div>
+</div>
+
 <!-- Stats row -->
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
     <!-- All orders -->
@@ -346,5 +372,40 @@
         }
     });
 })();
+
+async function loadAiInsights() {
+    const body = document.getElementById('ai-insights-body');
+    const icon = document.getElementById('ai-refresh-icon');
+    icon.classList.add('fa-spin');
+    body.innerHTML = `
+        <div class="space-y-2 animate-pulse">
+            <div class="h-3 bg-gray-100 dark:bg-gray-800 rounded w-3/4"></div>
+            <div class="h-3 bg-gray-100 dark:bg-gray-800 rounded w-full"></div>
+            <div class="h-3 bg-gray-100 dark:bg-gray-800 rounded w-5/6"></div>
+        </div>`;
+    try {
+        const r = await fetch('{% url "taxi:panel_ai_insights" %}');
+        const d = await r.json();
+        if (d.ok) {
+            const div = document.createElement('div');
+            div.className = 'text-sm text-gray-700 dark:text-gray-300 leading-relaxed';
+            div.style.whiteSpace = 'pre-wrap';
+            div.textContent = d.text;
+            body.innerHTML = '';
+            body.appendChild(div);
+        } else {
+            body.innerHTML = `
+                <div class="text-sm text-amber-600 dark:text-amber-400">
+                    <i class="fas fa-triangle-exclamation mr-1.5"></i>${d.error}
+                    ${d.error && d.error.includes('AI sozlamalari') ? `<a href="{% url 'taxi:ai_settings' %}" class="ml-1 underline font-semibold">Sozlash</a>` : ''}
+                </div>`;
+        }
+    } catch (e) {
+        body.innerHTML = `<div class="text-sm text-red-500"><i class="fas fa-triangle-exclamation mr-1.5"></i>Tarmoq xatosi, qayta urinib ko'ring.</div>`;
+    } finally {
+        icon.classList.remove('fa-spin');
+    }
+}
+loadAiInsights();
 </script>
 {% endblock %}

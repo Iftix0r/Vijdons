@@ -820,3 +820,54 @@ def dispatch_order(order):
 
     return nearest
 
+
+def generate_growth_insights(stats):
+    """Joriy statistika asosida OpenAI'dan taksi biznesini rivojlantirish bo'yicha
+    qadam-baqadam tavsiyalar so'raydi. (ok, text_yoki_xato) qaytaradi."""
+    try:
+        from taxi.models import AiSettings
+        cfg = AiSettings.get()
+    except Exception:
+        return False, 'AI sozlamalari topilmadi'
+
+    if not cfg.api_key:
+        return False, 'OpenAI API kalit kiritilmagan — AI sozlamalari sahifasidan kiriting'
+
+    prompt = (
+        "Sen taksi xizmati uchun o'sish bo'yicha maslahatchisan. Quyidagi joriy statistika asosida "
+        "buyurtmalar va qo'ng'iroqlar sonini oshirish, biznesni rivojlantirish uchun 4-6 ta aniq, "
+        "amaliy va qadama-qadam bajarish mumkin bo'lgan tavsiya ber. Har bir tavsiya qisqa sarlavha "
+        "va 1-2 gapli tushuntirishdan iborat bo'lsin. Faqat o'zbek tilida, raqamlangan ro'yxat "
+        "shaklida, ortiqcha kirish so'zlarisiz javob ber.\n\n"
+        f"Statistika:\n{json.dumps(stats, ensure_ascii=False, indent=2)}"
+    )
+
+    payload = json.dumps({
+        'model': cfg.model or 'gpt-4o-mini',
+        'messages': [{'role': 'user', 'content': prompt}],
+        'temperature': 0.7,
+    }).encode()
+    req = urllib.request.Request(
+        'https://api.openai.com/v1/chat/completions',
+        data=payload,
+        headers={
+            'Authorization': f'Bearer {cfg.api_key}',
+            'Content-Type': 'application/json',
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode())
+        text = data['choices'][0]['message']['content'].strip()
+        return True, text
+    except urllib.error.HTTPError as e:
+        try:
+            err = json.loads(e.read().decode())
+            msg = err.get('error', {}).get('message', str(e))
+        except Exception:
+            msg = str(e)
+        return False, f'OpenAI xatosi: {msg}'
+    except Exception as e:
+        return False, f'Tarmoq xatosi: {e}'
+

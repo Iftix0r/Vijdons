@@ -1,0 +1,81 @@
+{% extends 'taxi/base.html' %}
+{% block title %}AI Sozlamalari — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-end gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">AI O'sish Tavsiyalari 🤖</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Dashboarddagi o'sish tavsiyalari OpenAI orqali generatsiya qilinadi.</p>
+    </div>
+    <span class="text-xs text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-700">
+        <i class="fas fa-clock mr-1"></i>{{ cfg.updated_at|date:"d.m.Y H:i" }}
+    </span>
+</div>
+
+{% if saved %}
+<div class="mb-4 px-4 py-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 rounded-xl text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+    <i class="fas fa-check-circle mr-2"></i>Sozlamalar saqlandi!
+</div>
+{% endif %}
+
+<div class="max-w-2xl space-y-5">
+  <form method="POST">
+    {% csrf_token %}
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden mb-5">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
+                <i class="fas fa-robot text-indigo-500"></i>
+            </div>
+            <div class="flex-1">
+                <p class="text-sm font-bold text-gray-800 dark:text-white">OpenAI ulanish</p>
+                <p class="text-xs text-gray-400">
+                    <a href="https://platform.openai.com/api-keys" target="_blank" class="text-blue-500 hover:underline">platform.openai.com/api-keys</a> dan olingan kalit
+                </p>
+            </div>
+            {% if cfg.api_key %}
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot"></span>Ulangan
+            </span>
+            {% else %}
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>Ulanmagan
+            </span>
+            {% endif %}
+        </div>
+        <div class="px-6 py-5 space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                    <i class="fas fa-key text-yellow-500 mr-1"></i>OpenAI API kalit
+                </label>
+                <input type="password" name="api_key" value="{{ cfg.api_key }}" autocomplete="new-password"
+                       placeholder="sk-..."
+                       class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:text-white transition">
+                <p class="text-xs text-gray-400 mt-1">Kalitni faqat shu yerga kiriting — chatga yoki kodga hech qachon yozmang.</p>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                    <i class="fas fa-microchip text-purple-500 mr-1"></i>Model
+                </label>
+                <select name="model"
+                        class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:text-white transition">
+                    {% for value, label in model_choices %}
+                    <option value="{{ value }}" {% if cfg.model == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex gap-3">
+        <button type="submit"
+                class="flex-1 py-3 bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-sm rounded-xl shadow-sm transition-all hover:-translate-y-0.5">
+            <i class="fas fa-save mr-2"></i>Saqlash
+        </button>
+        <a href="{% url 'taxi:panel_dashboard' %}"
+           class="px-5 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-semibold text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+            Bekor
+        </a>
+    </div>
+  </form>
+</div>
+{% endblock %}
