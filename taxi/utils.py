@@ -823,7 +823,8 @@ def dispatch_order(order):
 
 def generate_growth_insights(stats):
     """Joriy statistika asosida OpenAI'dan taksi biznesini rivojlantirish bo'yicha
-    qadam-baqadam tavsiyalar so'raydi. (ok, text_yoki_xato) qaytaradi."""
+    qadam-baqadam tavsiyalar so'raydi. (ok, items_yoki_xato_matni) qaytaradi.
+    items — [{'sarlavha': str, 'tavsif': str}, ...] ro'yxati."""
     try:
         from taxi.models import AiSettings
         cfg = AiSettings.get()
@@ -836,9 +837,10 @@ def generate_growth_insights(stats):
     prompt = (
         "Sen taksi xizmati uchun o'sish bo'yicha maslahatchisan. Quyidagi joriy statistika asosida "
         "buyurtmalar va qo'ng'iroqlar sonini oshirish, biznesni rivojlantirish uchun 4-6 ta aniq, "
-        "amaliy va qadama-qadam bajarish mumkin bo'lgan tavsiya ber. Har bir tavsiya qisqa sarlavha "
-        "va 1-2 gapli tushuntirishdan iborat bo'lsin. Faqat o'zbek tilida, raqamlangan ro'yxat "
-        "shaklida, ortiqcha kirish so'zlarisiz javob ber.\n\n"
+        "amaliy va qadama-qadam bajarish mumkin bo'lgan tavsiya ber. Faqat o'zbek tilida yoz. "
+        "Matn ichida markdown belgilaridan (**, #, -, *) foydalanma — oddiy tekst yoz.\n\n"
+        "Javobni faqat quyidagi JSON formatda qaytar, boshqa hech narsa yozma:\n"
+        '{"tavsiyalar": [{"sarlavha": "qisqa sarlavha (3-6 so\'z)", "tavsif": "1-2 gapli aniq tushuntirish"}]}\n\n'
         f"Statistika:\n{json.dumps(stats, ensure_ascii=False, indent=2)}"
     )
 
@@ -846,6 +848,7 @@ def generate_growth_insights(stats):
         'model': cfg.model or 'gpt-4o-mini',
         'messages': [{'role': 'user', 'content': prompt}],
         'temperature': 0.7,
+        'response_format': {'type': 'json_object'},
     }).encode()
     req = urllib.request.Request(
         'https://api.openai.com/v1/chat/completions',
@@ -859,8 +862,17 @@ def generate_growth_insights(stats):
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             data = json.loads(resp.read().decode())
-        text = data['choices'][0]['message']['content'].strip()
-        return True, text
+        content = data['choices'][0]['message']['content'].strip()
+        parsed = json.loads(content)
+        items = parsed.get('tavsiyalar') or []
+        items = [
+            {'sarlavha': str(it.get('sarlavha', '')).strip(),
+             'tavsif':   str(it.get('tavsif', '')).strip()}
+            for it in items if isinstance(it, dict) and (it.get('sarlavha') or it.get('tavsif'))
+        ]
+        if not items:
+            return False, "AI javobini o'qib bo'lmadi, qayta urinib ko'ring"
+        return True, items
     except urllib.error.HTTPError as e:
         try:
             err = json.loads(e.read().decode())
@@ -868,6 +880,8 @@ def generate_growth_insights(stats):
         except Exception:
             msg = str(e)
         return False, f'OpenAI xatosi: {msg}'
+    except (KeyError, json.JSONDecodeError):
+        return False, "AI javobini o'qib bo'lmadi, qayta urinib ko'ring"
     except Exception as e:
         return False, f'Tarmoq xatosi: {e}'
 

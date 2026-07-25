@@ -386,18 +386,39 @@ async function loadAiInsights() {
     try {
         const r = await fetch('{% url "taxi:panel_ai_insights" %}');
         const d = await r.json();
-        if (d.ok) {
-            const div = document.createElement('div');
-            div.className = 'text-sm text-gray-700 dark:text-gray-300 leading-relaxed';
-            div.style.whiteSpace = 'pre-wrap';
-            div.textContent = d.text;
+        if (d.ok && d.items && d.items.length) {
+            const list = document.createElement('div');
+            list.className = 'space-y-3';
+            const colors = ['indigo', 'blue', 'emerald', 'amber', 'purple', 'rose'];
+            d.items.forEach((it, i) => {
+                const color = colors[i % colors.length];
+                const row = document.createElement('div');
+                row.className = 'flex gap-3 items-start';
+                const badge = document.createElement('div');
+                badge.className = `w-7 h-7 rounded-full bg-${color}-100 dark:bg-${color}-900/30 text-${color}-600 dark:text-${color}-400 flex items-center justify-center text-xs font-bold flex-shrink-0`;
+                badge.textContent = i + 1;
+                const text = document.createElement('div');
+                text.className = 'min-w-0';
+                const title = document.createElement('p');
+                title.className = 'text-sm font-bold text-gray-900 dark:text-white';
+                title.textContent = it.sarlavha;
+                const desc = document.createElement('p');
+                desc.className = 'text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed';
+                desc.textContent = it.tavsif;
+                text.appendChild(title);
+                text.appendChild(desc);
+                row.appendChild(badge);
+                row.appendChild(text);
+                list.appendChild(row);
+            });
             body.innerHTML = '';
-            body.appendChild(div);
+            body.appendChild(list);
         } else {
+            const errMsg = d.error || "Tavsiya olinmadi, qayta urinib ko'ring.";
             body.innerHTML = `
                 <div class="text-sm text-amber-600 dark:text-amber-400">
-                    <i class="fas fa-triangle-exclamation mr-1.5"></i>${d.error}
-                    ${d.error && d.error.includes('AI sozlamalari') ? `<a href="{% url 'taxi:ai_settings' %}" class="ml-1 underline font-semibold">Sozlash</a>` : ''}
+                    <i class="fas fa-triangle-exclamation mr-1.5"></i>${errMsg}
+                    ${errMsg.includes('AI sozlamalari') || errMsg.includes('API kalit') ? `<a href="{% url 'taxi:ai_settings' %}" class="ml-1 underline font-semibold">Sozlash</a>` : ''}
                 </div>`;
         }
     } catch (e) {

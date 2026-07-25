@@ -717,10 +717,10 @@ def panel_ai_insights(request):
         'bloklangan_mijozlar':           Client.objects.filter(is_blocked=True).count(),
     }
 
-    ok, text = generate_growth_insights(stats)
+    ok, result = generate_growth_insights(stats)
     if ok:
-        return JsonResponse({'ok': True, 'text': text})
-    return JsonResponse({'ok': False, 'error': text}, status=400)
+        return JsonResponse({'ok': True, 'items': result})
+    return JsonResponse({'ok': False, 'error': result}, status=400)
 
 
 @login_required(login_url='taxi:panel_login')
