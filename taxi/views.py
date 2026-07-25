@@ -6,8 +6,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
-from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature
-from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf
+from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher
+from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes
 import csv
 
 ONLINE_THRESHOLD_SECONDS = 120  # last_seen shundan yangi bo'lsa — online (yashil)
@@ -2105,7 +2105,7 @@ def flyer_download(request):
 @login_required(login_url='taxi:panel_login')
 @require_POST
 def flyer_redeem(request):
-    from decimal import Decimal
+    from django.utils import timezone
     code = request.POST.get('code', '').strip().upper()
     driver_id = request.POST.get('driver_id', '').strip()
     voucher = get_object_or_404(FlyerVoucher, code=code)
@@ -2121,7 +2121,7 @@ def flyer_redeem(request):
     amount = voucher.amount
 
     voucher.is_used = True
-    voucher.used_at = timezone_now()
+    voucher.used_at = timezone.now()
     voucher.used_by_driver = driver
     voucher.verified_by = request.user
     voucher.save(update_fields=['is_used', 'used_at', 'used_by_driver', 'verified_by'])
