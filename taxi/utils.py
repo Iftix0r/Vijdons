@@ -1043,7 +1043,7 @@ def build_contract_pdf(contract, driver=None, signature=None):
 def build_flyer_pdf():
     """Reklama flayeri: A4 sahifaga 3 tadan flayer (gorizontal chiziqlar bo'ylab
     kesiladi). 1-sahifa — flayerlarning old tomoni (Vijdon Taxi reklamasi),
-    2-sahifa — orqa tomoni (5 000 so'mlik chegirma sertifikati dizayni).
+    2-sahifa — orqa tomoni (3 000 so'mlik chegirma sertifikati dizayni).
     Ikki tomonlama chop etganda "uzun tomondan aylantirish" (flip on long edge)
     rejimida old/orqa tomonlar to'g'ri mos tushadi. BytesIO qaytaradi.
 
@@ -1119,11 +1119,11 @@ def build_flyer_pdf():
         c.setFillColor(DARK)
         c.setFont('Helvetica-Bold', 14.5)
         c.drawString(block_w + 9 * mm, strip_h - 16 * mm, "Buyurtma bering —")
-        c.drawString(block_w + 9 * mm, strip_h - 26 * mm, "5 000 so'm sovg'a oling!")
+        c.drawString(block_w + 9 * mm, strip_h - 26 * mm, "3 000 so'm sovg'a oling!")
         c.setFont('Helvetica', 9)
         c.setFillColor(GREY_TEXT)
         c.drawString(block_w + 9 * mm, strip_h - 37 * mm, "Ushbu flayerni haydovchimizga ko'rsating —")
-        c.drawString(block_w + 9 * mm, strip_h - 43 * mm, "safaringiz 5 000 so'mga arzonlashadi.")
+        c.drawString(block_w + 9 * mm, strip_h - 43 * mm, "safaringiz 3 000 so'mga arzonlashadi.")
 
         # Bo'sh joyni to'ldiruvchi qiyshiq "chegirma muhri"
         stamp_x, stamp_y, stamp_r = page_w - 42 * mm, 40 * mm, 21 * mm
@@ -1138,7 +1138,7 @@ def build_flyer_pdf():
         c.setFillAlpha(1)
         c.setFillColor(AMBER)
         c.setFont('Helvetica-Bold', 15)
-        c.drawCentredString(0, 5, "5 000")
+        c.drawCentredString(0, 5, "3 000")
         c.setFont('Helvetica-Bold', 7.5)
         c.drawCentredString(0, -7, "SO'M CHEGIRMA")
         c.restoreState()
@@ -1189,7 +1189,7 @@ def build_flyer_pdf():
         c.setFont('Helvetica-Bold', 11)
         c.drawCentredString(page_w / 2, strip_h - 15 * mm, "CHEGIRMA SERTIFIKATI")
         c.setFont('Helvetica-Bold', 32)
-        c.drawCentredString(page_w / 2, strip_h / 2 - 4 * mm, "5 000 SO'M")
+        c.drawCentredString(page_w / 2, strip_h / 2 - 4 * mm, "3 000 SO'M")
         c.setFont('Helvetica', 8.3)
         c.setFillColor(GREEN_TEXT)
         c.drawCentredString(page_w / 2, 18.5 * mm, "Faqat bitta safar uchun amal qiladi.")
