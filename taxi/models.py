@@ -757,6 +757,29 @@ class DriverContractSignature(models.Model):
         ordering = ['-signed_at']
 
 
+class FlyerVoucher(models.Model):
+    """Reklama flayeridagi maxfiy tekshirish kodi — soxta (nusxa ko'chirilgan)
+    flayerlarni aniqlash uchun. Har bir chop etilgan flayerda o'ziga xos kod
+    bo'ladi; admin panelda kodni kiritib tekshirish va haydovchiga balans
+    qo'shilganda 'ishlatilgan' deb belgilash mumkin."""
+    code       = models.CharField(max_length=12, unique=True, db_index=True, verbose_name='Kod')
+    amount     = models.DecimalField(max_digits=10, decimal_places=0, default=3000, verbose_name="Chegirma summasi")
+    batch_note = models.CharField(max_length=100, blank=True, default='', verbose_name='Partiya izohi')
+    is_used    = models.BooleanField(default=False, verbose_name='Ishlatilgan')
+    used_at    = models.DateTimeField(null=True, blank=True)
+    used_by_driver = models.ForeignKey(Driver, null=True, blank=True, on_delete=models.SET_NULL, related_name='flyer_vouchers')
+    verified_by    = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.code
+
+    class Meta:
+        verbose_name = 'Flayer kuponi'
+        verbose_name_plural = 'Flayer kuponlari'
+        ordering = ['-created_at']
+
+
 class Task(models.Model):
     """Admin panel uchun ichki vazifalar taxtasi (rejada / bajarilmoqda / bajarildi)."""
     STATUS_TODO = 'todo'

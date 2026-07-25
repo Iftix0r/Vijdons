@@ -1040,12 +1040,30 @@ def build_contract_pdf(contract, driver=None, signature=None):
     return buf
 
 
-def build_flyer_pdf():
-    """Reklama flayeri: A4 sahifaga 3 tadan flayer (gorizontal chiziqlar bo'ylab
-    kesiladi). 1-sahifa — flayerlarning old tomoni (Vijdon Taxi reklamasi),
-    2-sahifa — orqa tomoni (3 000 so'mlik chegirma sertifikati dizayni).
-    Ikki tomonlama chop etganda "uzun tomondan aylantirish" (flip on long edge)
-    rejimida old/orqa tomonlar to'g'ri mos tushadi. BytesIO qaytaradi.
+def generate_voucher_codes(n, existing=None):
+    """`n` ta noyob, taxminlab bo'lmaydigan maxfiy flayer kodi yaratadi
+    (0/O/1/I kabi chalkash belgilarsiz, 8 ta belgi). `existing` — bazadagi
+    band kodlar to'plami, ular bilan to'qnashmaydi."""
+    import secrets
+    alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+    existing = existing or set()
+    codes = set()
+    while len(codes) < n:
+        candidate = ''.join(secrets.choice(alphabet) for _ in range(8))
+        if candidate not in existing:
+            codes.add(candidate)
+    return list(codes)
+
+
+def build_flyer_pdf(codes):
+    """Reklama flayeri: har bir A4 varag'iga 3 tadan flayer (gorizontal
+    chiziqlar bo'ylab kesiladi), har bir flayerda o'ziga xos maxfiy tekshirish
+    kodi bosiladi (soxtalashtirishning oldini olish uchun). `codes` — flayerlar
+    soniga teng satrlar ro'yxati (3 ga karrali bo'lishi kerak).
+
+    Har bir varaq juftligi ketma-ket chiqadi: old tomon, so'ng o'sha varaqning
+    orqa tomoni — ikki tomonlama chop etganda "uzun tomondan aylantirish"
+    (flip on long edge) rejimida mos tushadi. BytesIO qaytaradi.
 
     Diqqat: bu haqiqiy banknota tasvirining nusxasi emas — valyuta dizaynini
     aniq takrorlash huquqiy jihatdan xavfli, shuning uchun pul uslubidagi,
@@ -1083,134 +1101,146 @@ def build_flyer_pdf():
             c.line(0, y, page_w, y)
         c.restoreState()
 
-    # ── OLD TOMON — reklama ──
-    for i in range(n):
-        y0 = page_h - (i + 1) * strip_h
-        c.saveState()
-        c.translate(0, y0)
+    def draw_front(strip_codes):
+        for i in range(n):
+            y0 = page_h - (i + 1) * strip_h
+            code = strip_codes[i] if i < len(strip_codes) else ''
+            c.saveState()
+            c.translate(0, y0)
 
-        block_w = 62 * mm
-        c.setFillColor(DARK)
-        c.rect(0, 0, block_w, strip_h, stroke=0, fill=1)
+            block_w = 62 * mm
+            c.setFillColor(DARK)
+            c.rect(0, 0, block_w, strip_h, stroke=0, fill=1)
 
-        if logo_path:
-            badge = 52 * mm
-            badge_x = (block_w - badge) / 2
-            badge_y = strip_h - badge - 9 * mm
+            if logo_path:
+                badge = 52 * mm
+                badge_x = (block_w - badge) / 2
+                badge_y = strip_h - badge - 9 * mm
+                c.setFillColor(colors.white)
+                c.roundRect(badge_x, badge_y, badge, badge, 4 * mm, stroke=0, fill=1)
+                pad = 3 * mm
+                c.drawImage(logo_path, badge_x + pad, badge_y + pad, width=badge - 2 * pad,
+                            height=badge - 2 * pad, preserveAspectRatio=True, anchor='c', mask='auto')
+            else:
+                c.setFillColor(AMBER)
+                c.setFont('Helvetica-Bold', 22)
+                c.drawString(8 * mm, strip_h / 2 + 8 * mm, 'VIJDON')
+                c.drawString(8 * mm, strip_h / 2 - 8 * mm, 'TAXI')
+
             c.setFillColor(colors.white)
-            c.roundRect(badge_x, badge_y, badge, badge, 4 * mm, stroke=0, fill=1)
-            pad = 3 * mm
-            c.drawImage(logo_path, badge_x + pad, badge_y + pad, width=badge - 2 * pad,
-                        height=badge - 2 * pad, preserveAspectRatio=True, anchor='c', mask='auto')
-        else:
+            c.setFont('Helvetica', 8.5)
+            c.drawCentredString(block_w / 2, 8 * mm, "Ishonchli va tez taksi xizmati")
+
+            # Qorong'i blok bilan oq maydonni ajratuvchi rangli chiziq
             c.setFillColor(AMBER)
-            c.setFont('Helvetica-Bold', 22)
-            c.drawString(8 * mm, strip_h / 2 + 8 * mm, 'VIJDON')
-            c.drawString(8 * mm, strip_h / 2 - 8 * mm, 'TAXI')
+            c.rect(block_w, 0, 2.2 * mm, strip_h, stroke=0, fill=1)
 
-        c.setFillColor(colors.white)
-        c.setFont('Helvetica', 8.5)
-        c.drawCentredString(block_w / 2, 8 * mm, "Ishonchli va tez taksi xizmati")
+            c.setFillColor(DARK)
+            c.setFont('Helvetica-Bold', 14.5)
+            c.drawString(block_w + 9 * mm, strip_h - 16 * mm, "Buyurtma bering —")
+            c.drawString(block_w + 9 * mm, strip_h - 26 * mm, "3 000 so'm sovg'a oling!")
+            c.setFont('Helvetica', 9)
+            c.setFillColor(GREY_TEXT)
+            c.drawString(block_w + 9 * mm, strip_h - 37 * mm, "Ushbu flayerni haydovchimizga ko'rsating —")
+            c.drawString(block_w + 9 * mm, strip_h - 43 * mm, "safaringiz 3 000 so'mga arzonlashadi.")
 
-        # Qorong'i blok bilan oq maydonni ajratuvchi rangli chiziq
-        c.setFillColor(AMBER)
-        c.rect(block_w, 0, 2.2 * mm, strip_h, stroke=0, fill=1)
+            # Bo'sh joyni to'ldiruvchi qiyshiq "chegirma muhri"
+            stamp_x, stamp_y, stamp_r = page_w - 42 * mm, 40 * mm, 21 * mm
+            c.saveState()
+            c.translate(stamp_x, stamp_y)
+            c.rotate(-12)
+            c.setFillColor(AMBER)
+            c.setFillAlpha(0.13)
+            c.setStrokeColor(AMBER)
+            c.setLineWidth(1.3)
+            c.circle(0, 0, stamp_r, stroke=1, fill=1)
+            c.setFillAlpha(1)
+            c.setFillColor(AMBER)
+            c.setFont('Helvetica-Bold', 15)
+            c.drawCentredString(0, 5, "3 000")
+            c.setFont('Helvetica-Bold', 7.5)
+            c.drawCentredString(0, -7, "SO'M CHEGIRMA")
+            c.restoreState()
 
-        c.setFillColor(DARK)
-        c.setFont('Helvetica-Bold', 14.5)
-        c.drawString(block_w + 9 * mm, strip_h - 16 * mm, "Buyurtma bering —")
-        c.drawString(block_w + 9 * mm, strip_h - 26 * mm, "3 000 so'm sovg'a oling!")
-        c.setFont('Helvetica', 9)
-        c.setFillColor(GREY_TEXT)
-        c.drawString(block_w + 9 * mm, strip_h - 37 * mm, "Ushbu flayerni haydovchimizga ko'rsating —")
-        c.drawString(block_w + 9 * mm, strip_h - 43 * mm, "safaringiz 3 000 so'mga arzonlashadi.")
+            c.setFont('Helvetica', 9)
+            c.setFillColor(GREY_TEXT)
+            c.drawString(block_w + 9 * mm, 13 * mm, "Buyurtma berish uchun qo'ng'iroq qiling:")
+            c.setFont('Helvetica-Bold', 16)
+            c.setFillColor(AMBER)
+            c.drawString(block_w + 9 * mm, 4 * mm, "1351")
 
-        # Bo'sh joyni to'ldiruvchi qiyshiq "chegirma muhri"
-        stamp_x, stamp_y, stamp_r = page_w - 42 * mm, 40 * mm, 21 * mm
-        c.saveState()
-        c.translate(stamp_x, stamp_y)
-        c.rotate(-12)
-        c.setFillColor(AMBER)
-        c.setFillAlpha(0.13)
-        c.setStrokeColor(AMBER)
-        c.setLineWidth(1.3)
-        c.circle(0, 0, stamp_r, stroke=1, fill=1)
-        c.setFillAlpha(1)
-        c.setFillColor(AMBER)
-        c.setFont('Helvetica-Bold', 15)
-        c.drawCentredString(0, 5, "3 000")
-        c.setFont('Helvetica-Bold', 7.5)
-        c.drawCentredString(0, -7, "SO'M CHEGIRMA")
-        c.restoreState()
+            # Tashqi ramka
+            c.setStrokeColor(AMBER)
+            c.setLineWidth(1.2)
+            c.rect(2 * mm, 2 * mm, page_w - 4 * mm, strip_h - 4 * mm, stroke=1, fill=0)
+            c.restoreState()
+        cut_lines()
+        c.showPage()
 
-        c.setFont('Helvetica', 9)
-        c.setFillColor(GREY_TEXT)
-        c.drawString(block_w + 9 * mm, 13 * mm, "Buyurtma berish uchun qo'ng'iroq qiling:")
-        c.setFont('Helvetica-Bold', 16)
-        c.setFillColor(AMBER)
-        c.drawString(block_w + 9 * mm, 4 * mm, "1351")
+    def draw_back(strip_codes):
+        for i in range(n):
+            y0 = page_h - (i + 1) * strip_h
+            code = strip_codes[i] if i < len(strip_codes) else ''
+            c.saveState()
+            c.translate(0, y0)
 
-        # Tashqi ramka
-        c.setStrokeColor(AMBER)
-        c.setLineWidth(1.2)
-        c.rect(2 * mm, 2 * mm, page_w - 4 * mm, strip_h - 4 * mm, stroke=1, fill=0)
-        c.restoreState()
-    cut_lines()
-    c.showPage()
+            c.setFillColor(GREEN_LIGHT)
+            c.rect(0, 0, page_w, strip_h, stroke=0, fill=1)
 
-    # ── ORQA TOMON — chegirma sertifikati ──
-    for i in range(n):
-        y0 = page_h - (i + 1) * strip_h
-        c.saveState()
-        c.translate(0, y0)
+            # Fon suvbelgisi — nafis, deyarli sezilmas tarzda "VIJDON" so'zi
+            c.saveState()
+            c.translate(page_w / 2, strip_h / 2)
+            c.rotate(-16)
+            c.setFillColor(GREEN)
+            c.setFillAlpha(0.055)
+            c.setFont('Helvetica-Bold', 70)
+            c.drawCentredString(0, -20, "VIJDON")
+            c.restoreState()
 
-        c.setFillColor(GREEN_LIGHT)
-        c.rect(0, 0, page_w, strip_h, stroke=0, fill=1)
+            c.setStrokeColor(GREEN)
+            c.setLineWidth(1.6)
+            c.rect(4 * mm, 4 * mm, page_w - 8 * mm, strip_h - 8 * mm, stroke=1, fill=0)
+            c.setLineWidth(0.5)
+            c.setDash([1, 2])
+            c.rect(7 * mm, 7 * mm, page_w - 14 * mm, strip_h - 14 * mm, stroke=1, fill=0)
+            c.setDash([])
 
-        # Fon suvbelgisi — nafis, deyarli sezilmas tarzda "VIJDON" so'zi
-        c.saveState()
-        c.translate(page_w / 2, strip_h / 2)
-        c.rotate(-16)
-        c.setFillColor(GREEN)
-        c.setFillAlpha(0.055)
-        c.setFont('Helvetica-Bold', 70)
-        c.drawCentredString(0, -20, "VIJDON")
-        c.restoreState()
+            c.setFillColor(GREEN)
+            c.setFont('Helvetica-Bold', 11)
+            c.drawCentredString(page_w / 2, strip_h - 15 * mm, "CHEGIRMA SERTIFIKATI")
+            c.setFont('Helvetica-Bold', 32)
+            c.drawCentredString(page_w / 2, strip_h / 2 - 4 * mm, "3 000 SO'M")
+            c.setFont('Helvetica', 8.3)
+            c.setFillColor(GREEN_TEXT)
+            c.drawCentredString(page_w / 2, 18.5 * mm, "Faqat bitta safar uchun amal qiladi.")
+            c.drawCentredString(page_w / 2, 14 * mm, "Boshqa aksiyalar bilan birlashtirilmaydi.")
 
-        c.setStrokeColor(GREEN)
-        c.setLineWidth(1.6)
-        c.rect(4 * mm, 4 * mm, page_w - 8 * mm, strip_h - 8 * mm, stroke=1, fill=0)
-        c.setLineWidth(0.5)
-        c.setDash([1, 2])
-        c.rect(7 * mm, 7 * mm, page_w - 14 * mm, strip_h - 14 * mm, stroke=1, fill=0)
-        c.setDash([])
+            # Maxfiy tekshirish kodi — soxtalashtirishga qarshi
+            c.setFont('Courier-Bold', 10)
+            c.setFillColor(GREEN)
+            c.drawCentredString(page_w / 2, strip_h - 22 * mm, f"KOD: {code}")
 
-        c.setFillColor(GREEN)
-        c.setFont('Helvetica-Bold', 11)
-        c.drawCentredString(page_w / 2, strip_h - 15 * mm, "CHEGIRMA SERTIFIKATI")
-        c.setFont('Helvetica-Bold', 32)
-        c.drawCentredString(page_w / 2, strip_h / 2 - 4 * mm, "3 000 SO'M")
-        c.setFont('Helvetica', 8.3)
-        c.setFillColor(GREEN_TEXT)
-        c.drawCentredString(page_w / 2, 18.5 * mm, "Faqat bitta safar uchun amal qiladi.")
-        c.drawCentredString(page_w / 2, 14 * mm, "Boshqa aksiyalar bilan birlashtirilmaydi.")
+            foot_text = "VIJDON TAXI"
+            c.setFont('Helvetica-Bold', 9)
+            text_w = c.stringWidth(foot_text, 'Helvetica-Bold', 9)
+            logo_sz = 7 * mm
+            gap = 1.8 * mm
+            total_w = (logo_sz + gap if logo_path else 0) + text_w
+            start_x = page_w / 2 - total_w / 2
+            if logo_path:
+                c.drawImage(logo_path, start_x, 9 * mm - logo_sz / 2 + 1, width=logo_sz, height=logo_sz,
+                            preserveAspectRatio=True, anchor='c', mask='auto')
+                start_x += logo_sz + gap
+            c.setFillColor(GREEN)
+            c.drawString(start_x, 9 * mm - 3, foot_text)
+            c.restoreState()
+        cut_lines()
+        c.showPage()
 
-        foot_text = "VIJDON TAXI"
-        c.setFont('Helvetica-Bold', 9)
-        text_w = c.stringWidth(foot_text, 'Helvetica-Bold', 9)
-        logo_sz = 7 * mm
-        gap = 1.8 * mm
-        total_w = (logo_sz + gap if logo_path else 0) + text_w
-        start_x = page_w / 2 - total_w / 2
-        if logo_path:
-            c.drawImage(logo_path, start_x, 9 * mm - logo_sz / 2 + 1, width=logo_sz, height=logo_sz,
-                        preserveAspectRatio=True, anchor='c', mask='auto')
-            start_x += logo_sz + gap
-        c.setFillColor(GREEN)
-        c.drawString(start_x, 9 * mm - 3, foot_text)
-        c.restoreState()
-    cut_lines()
-    c.showPage()
+    for start in range(0, len(codes), n):
+        chunk = codes[start:start + n]
+        draw_front(chunk)
+        draw_back(chunk)
 
     c.save()
     buf.seek(0)

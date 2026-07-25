@@ -2064,15 +2064,82 @@ def driver_contract_download(request, pk):
 
 @login_required(login_url='taxi:panel_login')
 def flyer_page(request):
-    return render(request, 'taxi/flyer.html')
+    checked_voucher = None
+    check_error = None
+
+    if request.method == 'POST' and 'check_code' in request.POST:
+        code = request.POST.get('code', '').strip().upper()
+        checked_voucher = FlyerVoucher.objects.filter(code=code).select_related('used_by_driver').first()
+        if not checked_voucher:
+            check_error = "Bunday kod topilmadi — bu flayer soxta bo'lishi mumkin."
+
+    return render(request, 'taxi/flyer.html', {
+        'total_vouchers': FlyerVoucher.objects.count(),
+        'used_vouchers':  FlyerVoucher.objects.filter(is_used=True).count(),
+        'checked_voucher': checked_voucher,
+        'check_error': check_error,
+        'drivers': Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED).order_by('full_name'),
+    })
 
 
 @login_required(login_url='taxi:panel_login')
-def flyer_download(request):
-    buf = build_flyer_pdf()
+@require_POST
+def flyer_generate(request):
+    try:
+        quantity = int(request.POST.get('quantity', 30))
+    except (TypeError, ValueError):
+        quantity = 30
+    quantity = max(3, min(quantity, 300))
+    quantity = ((quantity + 2) // 3) * 3  # 3 ga karrali bo'lishi shart (A4'da 3 tadan)
+
+    existing_codes = set(FlyerVoucher.objects.values_list('code', flat=True))
+    codes = generate_voucher_codes(quantity, existing=existing_codes)
+    FlyerVoucher.objects.bulk_create([FlyerVoucher(code=code) for code in codes])
+
+    buf = build_flyer_pdf(codes)
     response = HttpResponse(buf.getvalue(), content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="vijdon_taxi_flayer.pdf"'
     return response
+
+
+@login_required(login_url='taxi:panel_login')
+@require_POST
+def flyer_redeem(request):
+    from decimal import Decimal
+    code = request.POST.get('code', '').strip().upper()
+    driver_id = request.POST.get('driver_id', '').strip()
+    voucher = get_object_or_404(FlyerVoucher, code=code)
+
+    if voucher.is_used:
+        messages.error(request, "Bu kod allaqachon ishlatilgan.")
+        return redirect('taxi:flyer_page')
+    if not driver_id:
+        messages.error(request, "Haydovchini tanlang.")
+        return redirect('taxi:flyer_page')
+
+    driver = get_object_or_404(Driver, pk=driver_id)
+    amount = voucher.amount
+
+    voucher.is_used = True
+    voucher.used_at = timezone_now()
+    voucher.used_by_driver = driver
+    voucher.verified_by = request.user
+    voucher.save(update_fields=['is_used', 'used_at', 'used_by_driver', 'verified_by'])
+
+    driver.balance += amount
+    driver.save(update_fields=['balance'])
+    BalanceLog.objects.create(
+        driver=driver, action='add', amount=amount,
+        balance_after=driver.balance, note=f"Flayer kuponi: {voucher.code}"
+    )
+    DriverActivityLog.objects.create(
+        driver=driver, action=DriverActivityLog.ACTION_BALANCE,
+        detail=f"+{amount} UZS (flayer kuponi {voucher.code})",
+        ip_address=_get_client_ip(request), user_agent=request.META.get('HTTP_USER_AGENT', ''),
+    )
+    tg_balance_changed(driver, amount, 'add')
+    messages.success(request, f"Kod tasdiqlandi — {driver.full_name} balansiga {amount} so'm qo'shildi.")
+    return redirect('taxi:flyer_page')
 
 
 # ── Vazifalar (Task board) ────────────────────────────────────────────────────
