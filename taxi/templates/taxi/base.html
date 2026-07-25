@@ -272,16 +272,17 @@
     </nav>
 
     <!-- user -->
-    <div class="px-4 py-4 border-t border-white/50 dark:border-white/5 flex items-center gap-3">
-        <img src="https://ui-avatars.com/api/?name=Admin&background=f59e0b&color=fff&bold=true" alt="Admin"
+    <a href="{% url 'taxi:panel_profile' %}"
+       class="px-4 py-4 border-t border-white/50 dark:border-white/5 flex items-center gap-3 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+        <img src="https://ui-avatars.com/api/?name={{ request.user.get_full_name|default:request.user.username|default:'Admin' }}&background=f59e0b&color=fff&bold=true" alt="Admin"
              class="w-9 h-9 rounded-full ring-2 ring-yellow-300 dark:ring-yellow-700">
         <div class="flex-1 min-w-0">
-            <p class="text-sm font-semibold text-gray-800 dark:text-white truncate">Administrator</p>
-            <a href="/admin/logout/" class="text-xs text-red-500 hover:text-red-600 font-medium">
+            <p class="text-sm font-semibold text-gray-800 dark:text-white truncate">{{ request.user.get_full_name|default:request.user.username|default:"Administrator" }}</p>
+            <a href="/admin/logout/" onclick="event.stopPropagation()" class="text-xs text-red-500 hover:text-red-600 font-medium">
                 <i class="fas fa-right-from-bracket mr-1"></i>Chiqish
             </a>
         </div>
-    </div>
+    </a>
 </aside>
 
 <!-- ══════════ MAIN ══════════ -->
@@ -596,6 +597,12 @@
                         {% endfor %}
                     </select>
                 </div>
+                <div class="col-span-2">
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Yangi parol (ixtiyoriy)</label>
+                    <input type="password" name="new_password" id="de_new_password" autocomplete="new-password" placeholder="Kamida 6 ta belgi"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition">
+                    <p class="text-xs text-gray-400 mt-1">Bo'sh qoldirsangiz, haydovchining paroli o'zgarmaydi.</p>
+                </div>
             </div>
             <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
                 <button type="button" onclick="closeModal('driverEditModal')"
@@ -726,6 +733,7 @@
         document.getElementById('de_car_model').value     = carModel || '';
         document.getElementById('de_car_number').value    = carNumber || '';
         document.getElementById('de_car_type').value      = carType || '';
+        document.getElementById('de_new_password').value  = '';
         openModal('driverEditModal');
     }
 

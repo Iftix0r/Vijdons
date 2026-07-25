@@ -7,6 +7,7 @@ urlpatterns = [
     # ── Auth ──
     path('login/', views.panel_login, name='panel_login'),
     path('logout/', views.panel_logout, name='panel_logout'),
+    path('profile/', views.panel_profile, name='panel_profile'),
 
     # ── Web panel ──
     path('', views.panel_dashboard, name='panel_dashboard'),

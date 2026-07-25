@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.db.models import Q, Count
 from django.http import JsonResponse, HttpResponse
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
@@ -1713,8 +1713,11 @@ def driver_edit(request, pk):
         car_model    = request.POST.get('car_model', driver.car_model).strip()
         car_number   = request.POST.get('car_number', driver.car_number).strip()
         car_type     = request.POST.get('car_type', driver.car_type)
+        new_password = request.POST.get('new_password', '').strip()
         if Driver.objects.filter(phone_number=phone_number).exclude(pk=driver.pk).exists():
             messages.error(request, f"Telefon raqami {phone_number} boshqa haydovchiga tegishli.")
+        elif new_password and len(new_password) < 6:
+            messages.error(request, "Parol kamida 6 ta belgi bo'lishi kerak.")
         else:
             driver.full_name    = full_name
             driver.phone_number = phone_number
@@ -1722,8 +1725,37 @@ def driver_edit(request, pk):
             driver.car_number   = car_number
             driver.car_type     = car_type
             driver.save(update_fields=['full_name', 'phone_number', 'car_model', 'car_number', 'car_type'])
+            if new_password:
+                if driver.user:
+                    driver.user.set_password(new_password)
+                    driver.user.save()
+                else:
+                    messages.error(request, "Haydovchiga bog'langan foydalanuvchi topilmadi, parol o'zgartirilmadi.")
             messages.success(request, "Haydovchi ma'lumotlari yangilandi.")
     return redirect(request.META.get('HTTP_REFERER') or reverse('taxi:driver_detail', args=[pk]))
+
+
+# ── Operator/Admin profile ───────────────────────────────────────────────────────
+
+@login_required(login_url='taxi:panel_login')
+def panel_profile(request):
+    if request.method == 'POST':
+        old_password = request.POST.get('old_password', '')
+        new_password = request.POST.get('new_password', '')
+        confirm_password = request.POST.get('confirm_password', '')
+        if not request.user.check_password(old_password):
+            messages.error(request, "Eski parol noto'g'ri.")
+        elif len(new_password) < 6:
+            messages.error(request, "Yangi parol kamida 6 ta belgi bo'lishi kerak.")
+        elif new_password != confirm_password:
+            messages.error(request, "Yangi parol va tasdiqlash mos kelmadi.")
+        else:
+            request.user.set_password(new_password)
+            request.user.save()
+            update_session_auth_hash(request, request.user)
+            messages.success(request, "Parolingiz muvaffaqiyatli o'zgartirildi.")
+        return redirect('taxi:panel_profile')
+    return render(request, 'taxi/profile.html')
 
 
 # ── Order price edit ───────────────────────────────────────────────────────────
