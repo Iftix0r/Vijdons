@@ -393,7 +393,12 @@
     });
 })();
 
-function buildTopPerformerCard(icon, color, label, name, statLine, reward) {
+function getCookie(name) {
+    const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+    return v ? v[2] : '';
+}
+
+function buildTopPerformerCard(kind, id, period, icon, color, label, name, statLine, reward) {
     const card = document.createElement('div');
     card.className = `rounded-xl border border-${color}-100 dark:border-${color}-900/30 bg-${color}-50/50 dark:bg-${color}-900/10 p-4`;
     card.innerHTML = `
@@ -407,13 +412,46 @@ function buildTopPerformerCard(icon, color, label, name, statLine, reward) {
             </div>
         </div>
         <p class="text-xs text-gray-500 dark:text-gray-400 mb-2"></p>
-        ${reward ? `<div class="flex items-start gap-1.5 text-xs text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 rounded-lg px-2.5 py-2 border border-${color}-100 dark:border-${color}-900/30">
+        ${reward ? `<div class="flex items-start gap-1.5 text-xs text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 rounded-lg px-2.5 py-2 border border-${color}-100 dark:border-${color}-900/30 mb-2">
             <i class="fas fa-gift text-${color}-500 mt-0.5"></i><span class="reward-text"></span>
-        </div>` : ''}`;
+        </div>` : ''}
+        <button type="button" class="give-reward-btn w-full py-2 rounded-lg bg-${color}-500 hover:bg-${color}-600 text-white text-xs font-bold transition-colors">
+            <i class="fas fa-check mr-1"></i>Berdim
+        </button>`;
     card.querySelector('p.text-sm').textContent = name;
     card.querySelector('p.text-xs.text-gray-500').textContent = statLine;
     if (reward) card.querySelector('.reward-text').textContent = reward;
+    card.querySelector('.give-reward-btn').addEventListener('click', function() {
+        markRewardGiven(kind, id, period, reward, this, card);
+    });
     return card;
+}
+
+async function markRewardGiven(kind, id, period, rewardText, btn, card) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-1"></i>Saqlanmoqda...';
+    try {
+        const fd = new FormData();
+        fd.append('type', kind);
+        fd.append('id', id);
+        fd.append('period', period);
+        fd.append('reward_text', rewardText || '');
+        fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+        const r = await fetch('{% url "taxi:panel_ai_reward_given" %}', { method: 'POST', body: fd });
+        const d = await r.json();
+        if (d.ok) {
+            btn.outerHTML = `<div class="w-full py-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold text-center"><i class="fas fa-check-circle mr-1"></i>Berildi — keyingi safar boshqasiga taklif qilinadi</div>`;
+            showToast("Belgilandi — rahmat!");
+        } else {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check mr-1"></i>Berdim';
+            showToast(d.error || 'Xatolik yuz berdi');
+        }
+    } catch (e) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check mr-1"></i>Berdim';
+        showToast('Tarmoq xatosi');
+    }
 }
 
 async function loadAiInsights() {
@@ -445,12 +483,12 @@ async function loadAiInsights() {
             if (d.top_driver) {
                 const stat = `${d.top_driver.yakunlangan_safar ?? 0} ta safar yakunladi` +
                     (d.top_driver.daromad_keltirdi_som ? ` · ${Math.round(d.top_driver.daromad_keltirdi_som).toLocaleString('ru-RU')} so'm daromad keltirdi` : '');
-                topSection.appendChild(buildTopPerformerCard('fa-trophy', 'amber', "Oyning eng faol haydovchisi", d.top_driver.ism, stat, d.top_driver_reward));
+                topSection.appendChild(buildTopPerformerCard('driver', d.top_driver.id, d.period, 'fa-trophy', 'amber', "Oyning eng faol haydovchisi", d.top_driver.ism, stat, d.top_driver_reward));
             }
             if (d.top_client) {
                 const stat = `${d.top_client.buyurtmalar_soni ?? 0} ta buyurtma berdi` +
                     (d.top_client.sarflagan_pul_som ? ` · ${Math.round(d.top_client.sarflagan_pul_som).toLocaleString('ru-RU')} so'm sarfladi` : '');
-                topSection.appendChild(buildTopPerformerCard('fa-star', 'purple', "Oyning eng faol mijozi", d.top_client.ism, stat, d.top_client_reward));
+                topSection.appendChild(buildTopPerformerCard('client', d.top_client.id, d.period, 'fa-star', 'purple', "Oyning eng faol mijozi", d.top_client.ism, stat, d.top_client_reward));
             }
             if (topSection.children.length) topSection.classList.remove('hidden');
 

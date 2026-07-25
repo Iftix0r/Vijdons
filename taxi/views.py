@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
-from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings
+from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog
 from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights
 import csv
 
@@ -715,20 +715,32 @@ def panel_ai_insights(request):
     repeat_rate = round(repeat_clients / total_clients * 100, 1) if total_clients else 0
 
     # ── Eng ko'p ishlagan haydovchi va eng faol mijoz (shu oy, bo'lmasa umumiy) ──
+    # Bu oy allaqachon "berdim" deb belgilangan haydovchi/mijoz qayta taklif qilinmaydi —
+    # operator ularga sovg'a berganini tasdiqlagach, navbat keyingisiga o'tadi.
     month_start = today.replace(day=1)
-    top_driver_month = Driver.objects.annotate(
+    period = today.strftime('%Y-%m')
+    rewarded_driver_ids = set(AiRewardLog.objects.filter(
+        reward_type=AiRewardLog.TYPE_DRIVER, period=period
+    ).values_list('driver_id', flat=True))
+    rewarded_client_ids = set(AiRewardLog.objects.filter(
+        reward_type=AiRewardLog.TYPE_CLIENT, period=period
+    ).values_list('client_id', flat=True))
+
+    top_driver_month = Driver.objects.exclude(id__in=rewarded_driver_ids).annotate(
         completed=Count('orders', filter=Q(orders__status='completed', orders__created_at__date__gte=month_start)),
         earned=Sum('orders__price', filter=Q(orders__status='completed', orders__created_at__date__gte=month_start)),
     ).filter(completed__gt=0).order_by('-completed').first()
-    top_driver = top_driver_month or (top_drivers[0] if top_drivers else None)
+    top_driver_fallback = next((d for d in top_drivers if d.id not in rewarded_driver_ids), None)
+    top_driver = top_driver_month or top_driver_fallback
 
-    top_client_month = Client.objects.annotate(
+    top_client_month = Client.objects.exclude(id__in=rewarded_client_ids).annotate(
         total=Count('orders', filter=Q(orders__created_at__date__gte=month_start)),
         spent=Sum('orders__price', filter=Q(orders__status='completed', orders__created_at__date__gte=month_start)),
     ).filter(total__gt=0).order_by('-total').first()
-    top_client = top_client_month or Client.objects.annotate(
+    top_client_fallback = Client.objects.exclude(id__in=rewarded_client_ids).annotate(
         total=Count('orders'), spent=Sum('orders__price', filter=Q(orders__status='completed'))
     ).filter(total__gt=0).order_by('-total').first()
+    top_client = top_client_month or top_client_fallback
 
     top_driver_data = None
     if top_driver:
@@ -778,12 +790,45 @@ def panel_ai_insights(request):
             'ok': True,
             'items': result['tavsiyalar'],
             'warning': result.get('ogohlantirish') or '',
+            'period': period,
             'top_driver': top_driver_data,
             'top_driver_reward': result.get('top_haydovchi_sovrini') or '',
             'top_client': top_client_data,
             'top_client_reward': result.get('top_mijoz_sovrini') or '',
         })
     return JsonResponse({'ok': False, 'error': result}, status=400)
+
+
+@login_required(login_url='taxi:panel_login')
+@require_POST
+def panel_ai_reward_given(request):
+    """Operator AI tavsiya qilgan sovg'ani haydovchi/mijozga qo'lda berganini
+    tasdiqlaydi. AI hech qachon sovg'ani o'zi avtomatik bermaydi — bu yerda faqat
+    inson tasdiqlagan holat qayd etiladi, shundan keyin shu davrda ular AI
+    tavsiyasida qayta taklif qilinmaydi."""
+    reward_type = request.POST.get('type', '').strip()
+    target_id   = request.POST.get('id', '').strip()
+    period      = request.POST.get('period', '').strip()
+    reward_text = request.POST.get('reward_text', '').strip()
+
+    if reward_type not in (AiRewardLog.TYPE_DRIVER, AiRewardLog.TYPE_CLIENT) or not target_id or not period:
+        return JsonResponse({'ok': False, 'error': "Noto'g'ri so'rov"}, status=400)
+
+    kwargs = {'reward_type': reward_type, 'period': period}
+    if reward_type == AiRewardLog.TYPE_DRIVER:
+        driver = get_object_or_404(Driver, pk=target_id)
+        kwargs['driver'] = driver
+    else:
+        client = get_object_or_404(Client, pk=target_id)
+        kwargs['client'] = client
+
+    obj, created = AiRewardLog.objects.get_or_create(
+        **kwargs,
+        defaults={'reward_text': reward_text, 'given_by': request.user},
+    )
+    if not created:
+        return JsonResponse({'ok': False, 'error': 'Bu shaxsga shu oy uchun allaqachon belgilangan'}, status=400)
+    return JsonResponse({'ok': True})
 
 
 @login_required(login_url='taxi:panel_login')

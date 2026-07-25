@@ -301,6 +301,36 @@ class AiSettings(models.Model):
         verbose_name_plural = 'AI sozlamalari'
 
 
+class AiRewardLog(models.Model):
+    """Operator AI tavsiya qilgan sovg'ani haydovchi/mijozga 'berdim' deb belgilagan
+    holatlar tarixi. Shu davr (oy) uchun belgilangan kishi keyingi AI tavsiyasida
+    qayta taklif qilinmaydi — sovg'a AI tomonidan avtomatik berilmaydi, faqat
+    operator tasdiqlagach shu yerga yoziladi."""
+    TYPE_DRIVER = 'driver'
+    TYPE_CLIENT = 'client'
+    TYPE_CHOICES = [(TYPE_DRIVER, 'Haydovchi'), (TYPE_CLIENT, 'Mijoz')]
+
+    reward_type = models.CharField(max_length=10, choices=TYPE_CHOICES)
+    driver      = models.ForeignKey(Driver, null=True, blank=True, on_delete=models.CASCADE, related_name='ai_rewards')
+    client      = models.ForeignKey(Client, null=True, blank=True, on_delete=models.CASCADE, related_name='ai_rewards')
+    period      = models.CharField(max_length=7, verbose_name="Davr (YYYY-MM)")
+    reward_text = models.TextField(blank=True, default='', verbose_name="Sovg'a tavsifi")
+    given_by    = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    given_at    = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        who = self.driver.full_name if self.driver else (self.client.full_name or self.client.phone_number if self.client else '—')
+        return f"{who} — {self.period}"
+
+    class Meta:
+        verbose_name = "AI sovg'a tarixi"
+        verbose_name_plural = "AI sovg'a tarixi"
+        constraints = [
+            models.UniqueConstraint(fields=['reward_type', 'driver', 'period'], name='unique_driver_reward_per_period'),
+            models.UniqueConstraint(fields=['reward_type', 'client', 'period'], name='unique_client_reward_per_period'),
+        ]
+
+
 class MapsSettings(models.Model):
     """Singleton: admin paneldan geocoding API sozlamalari."""
     PROVIDER_NOMINATIM = 'nominatim'
