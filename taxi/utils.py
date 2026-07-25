@@ -690,6 +690,82 @@ def tg_duty_changed(driver, is_on_duty):
     )
 
 
+def tg_morning_greeting():
+    """Har kuni ertalab haydovchilar guruhiga iliq salomlashuv xabari yuboradi."""
+    cfg = _cfg()
+    if not cfg or not cfg.notify_morning_greeting:
+        return
+    from django.utils import timezone
+    from taxi.models import Driver
+    today = timezone.localtime().strftime('%d.%m.%Y')
+    on_duty = Driver.objects.filter(is_active=True, is_on_duty=True, approval_status='approved').count()
+    text = (
+        "🌅 <b>Xayrli tong, aziz haydovchilar!</b>\n\n"
+        "Yangi kun — yangi yo'llar, yangi baraka! Bugun ham xushmuomalalik va ehtiyotkorlik bilan "
+        "yo'lovchilarni tashib, yaxshi kayfiyatda ishlang.\n"
+        "Yo'lda omad va xavfsizlik tilaymiz! 🚕💐\n\n"
+        f"📅 {today} | 🟢 Hozir navbatda: <b>{on_duty}</b> haydovchi"
+    )
+    _notify_driver_group(text)
+
+
+def tg_evening_top_drivers():
+    """Kechqurun haydovchilar guruhiga o'sha kunning eng ko'p ishlagan TOP-10
+    haydovchilari ro'yxatini yuboradi (yakunlangan buyurtmalar soni bo'yicha)."""
+    cfg = _cfg()
+    if not cfg or not cfg.notify_evening_top_drivers:
+        return
+    from django.db.models import Count, Sum, Q
+    from django.utils import timezone
+    from taxi.models import Driver
+
+    today = timezone.localdate()
+    top = (
+        Driver.objects.filter(is_active=True)
+        .annotate(
+            completed=Count('orders', filter=Q(orders__status='completed', orders__created_at__date=today)),
+            earned=Sum('orders__price', filter=Q(orders__status='completed', orders__created_at__date=today)),
+        )
+        .filter(completed__gt=0)
+        .order_by('-completed')[:10]
+    )
+    if not top:
+        return
+
+    medals = ['🥇', '🥈', '🥉']
+    lines = ["🏆 <b>Bugungi TOP-10 haydovchilar</b>", f"📅 {today.strftime('%d.%m.%Y')}", ""]
+    for i, d in enumerate(top):
+        rank = medals[i] if i < 3 else f"{i + 1}."
+        earned = d.earned or 0
+        lines.append(f"{rank} <b>{d.full_name}</b> — {d.completed} ta buyurtma | {earned:,.0f} UZS".replace(',', ' '))
+    lines.append("\nAjoyib mehnat uchun rahmat! Ertaga ham shu ruhda davom etamiz 💪")
+    _notify_driver_group('\n'.join(lines))
+
+
+def tg_night_greeting():
+    """Kechasi hozir navbatda turgan (tungi smenada ishlayotgan) haydovchilarga
+    alohida salomlashuv xabarini haydovchilar guruhiga yuboradi."""
+    cfg = _cfg()
+    if not cfg or not cfg.notify_night_greeting:
+        return
+    from taxi.models import Driver
+
+    night_drivers = list(
+        Driver.objects.filter(is_active=True, is_on_duty=True, approval_status='approved')
+    )
+    if not night_drivers:
+        return
+
+    names = ', '.join(f"<b>{d.full_name}</b>" for d in night_drivers)
+    text = (
+        "🌙 <b>Xayrli kech, tungi navbatchi haydovchilar!</b>\n\n"
+        f"Bu kecha navbatda turganlar: {names}\n\n"
+        "Tungi yo'llarda ehtiyot bo'ling, diqqatingizni yo'ldan bo'lmang. "
+        "Xavfsiz va samarali tun tilaymiz! 🚕✨"
+    )
+    _notify_driver_group(text)
+
+
 def tg_sos_alert(alert):
     driver = alert.driver
     log_panel_event('panel_sos_alert', f"SOS #{alert.id} — {driver.full_name}")
