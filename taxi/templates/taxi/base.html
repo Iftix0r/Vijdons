@@ -784,6 +784,7 @@
     let _ymapsReady = false;
     let _odriverMarks = {};
     let _odriverPoll  = null;
+    let _odriverCentered = false;
 
     function _loadOrderMapDrivers() {
         if (!_omap) return;
@@ -792,6 +793,17 @@
             .then(function(data){
                 if (!_omap) return; // modal shu orada yopilgan bo'lishi mumkin
                 var online = (data.drivers || []).filter(function(d){ return d.is_online; });
+                // Birinchi yuklashda haritani Toshkent bilan cheklab qo'ymasdan,
+                // haydovchilar eng ko'p to'plangan hududga moslab markazlashtiramiz.
+                if (!_odriverCentered && online.length) {
+                    _odriverCentered = true;
+                    var pts = online.map(function(d){ return [d.latitude, d.longitude]; });
+                    if (pts.length === 1) {
+                        _omap.setCenter(pts[0], 13);
+                    } else {
+                        _omap.setBounds(ymaps.util.bounds.fromPoints(pts), { checkZoomRange: true, zoomMargin: 40 });
+                    }
+                }
                 var seen = {};
                 online.forEach(function(d){
                     seen[d.id] = true;
@@ -910,6 +922,7 @@
         if (id === 'orderModal') {
             // Reset state
             _stopOrderMapDrivers();
+            _odriverCentered = false;
             _omap = null; _omapFromPM = null; _omapToPM = null; _omapStep = 1;
             document.getElementById('om_from_lat').value = '';
             document.getElementById('om_from_lng').value = '';
