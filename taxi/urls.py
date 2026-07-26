@@ -53,6 +53,8 @@ urlpatterns = [
     path('orders/export/csv/', views.orders_export_csv, name='orders_export_csv'),
     path('statistics/', views.statistics, name='statistics'),
     path('statistics/export/csv/', views.statistics_export_csv, name='statistics_export_csv'),
+    path('finance/', views.finance_dashboard, name='finance_dashboard'),
+    path('finance/export/csv/', views.finance_export_csv, name='finance_export_csv'),
 
     path('api/client/lookup/', api_views.client_last_order_api, name='api_client_lookup'),
 

@@ -2294,6 +2294,115 @@ def statistics_export_csv(request):
     return response
 
 
+# ── Moliya ───────────────────────────────────────────────────────────────────
+
+def _finance_breakdown(completed_qs, field, choices):
+    from django.db.models import Sum, Count
+    labels = dict(choices)
+    rows = list(
+        completed_qs.values(field).annotate(total=Sum('price'), commission=Sum('commission'), c=Count('id')).order_by('-total')
+    )
+    for row in rows:
+        row['label'] = labels.get(row[field], row[field])
+    return rows
+
+
+@login_required(login_url='taxi:panel_login')
+def finance_dashboard(request):
+    from django.db.models import Sum, Count
+    from datetime import timedelta
+
+    period, start_date, end_date = _statistics_range(request)
+    range_days = (end_date - start_date).days + 1
+
+    completed_qs = Order.objects.filter(status='completed', created_at__date__gte=start_date, created_at__date__lte=end_date)
+    gmv = float(completed_qs.aggregate(s=Sum('price'))['s'] or 0)
+    commission_revenue = float(completed_qs.aggregate(s=Sum('commission'))['s'] or 0)
+    driver_share = gmv - commission_revenue
+    take_rate = round(commission_revenue / gmv * 100, 1) if gmv else 0
+
+    prev_end_date   = start_date - timedelta(days=1)
+    prev_start_date = prev_end_date - timedelta(days=range_days - 1)
+    prev_commission = float(Order.objects.filter(
+        status='completed', created_at__date__gte=prev_start_date, created_at__date__lte=prev_end_date
+    ).aggregate(s=Sum('commission'))['s'] or 0)
+    commission_growth_pct = round((commission_revenue - prev_commission) / prev_commission * 100, 1) if prev_commission else None
+
+    labels, daily_gmv, daily_commission = [], [], []
+    for i in range(range_days):
+        day = start_date + timedelta(days=i)
+        day_qs = Order.objects.filter(status='completed', created_at__date=day)
+        labels.append(day.strftime('%d/%m'))
+        daily_gmv.append(float(day_qs.aggregate(s=Sum('price'))['s'] or 0))
+        daily_commission.append(float(day_qs.aggregate(s=Sum('commission'))['s'] or 0))
+
+    payment_breakdown  = _finance_breakdown(completed_qs, 'payment_type', Order.PAYMENT_CHOICES)
+    car_type_breakdown = _finance_breakdown(completed_qs, 'car_type', Driver.CAR_TYPE_CHOICES)
+
+    top_by_commission = Driver.objects.annotate(
+        commission_sum=Sum('orders__commission', filter=Q(orders__status='completed', orders__created_at__date__gte=start_date, orders__created_at__date__lte=end_date)),
+        completed=Count('orders', filter=Q(orders__status='completed', orders__created_at__date__gte=start_date, orders__created_at__date__lte=end_date)),
+    ).filter(completed__gt=0).order_by('-commission_sum')[:10]
+
+    topped_up = float(BalanceLog.objects.filter(
+        action=BalanceLog.ACTION_ADD, created_at__date__gte=start_date, created_at__date__lte=end_date
+    ).aggregate(s=Sum('amount'))['s'] or 0)
+    manual_deducted = float(BalanceLog.objects.filter(
+        action=BalanceLog.ACTION_DEDUCT, created_at__date__gte=start_date, created_at__date__lte=end_date
+    ).aggregate(s=Sum('amount'))['s'] or 0)
+    voucher_cost = float(FlyerVoucher.objects.filter(
+        is_used=True, used_at__date__gte=start_date, used_at__date__lte=end_date
+    ).aggregate(s=Sum('amount'))['s'] or 0)
+
+    return render(request, 'taxi/finance.html', {
+        'period': period, 'start_date': start_date, 'end_date': end_date,
+        'custom_range': bool(request.GET.get('start') and request.GET.get('end')),
+        'gmv': gmv,
+        'commission_revenue': commission_revenue,
+        'driver_share': driver_share,
+        'take_rate': take_rate,
+        'commission_growth_pct': commission_growth_pct,
+        'labels': labels, 'daily_gmv': daily_gmv, 'daily_commission': daily_commission,
+        'payment_breakdown': payment_breakdown,
+        'car_type_breakdown': car_type_breakdown,
+        'top_by_commission': top_by_commission,
+        'topped_up': topped_up,
+        'manual_deducted': manual_deducted,
+        'voucher_cost': voucher_cost,
+    })
+
+
+@login_required(login_url='taxi:panel_login')
+def finance_export_csv(request):
+    from django.db.models import Sum, Count
+
+    period, start_date, end_date = _statistics_range(request)
+    completed_qs = Order.objects.filter(status='completed', created_at__date__gte=start_date, created_at__date__lte=end_date)
+
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="moliya_{start_date}_{end_date}.csv"'
+    response.write('﻿')
+    writer = csv.writer(response)
+
+    gmv = completed_qs.aggregate(s=Sum('price'))['s'] or 0
+    commission = completed_qs.aggregate(s=Sum('commission'))['s'] or 0
+    writer.writerow(['Davr', f'{start_date} — {end_date}'])
+    writer.writerow(['Umumiy aylanma (GMV)', gmv])
+    writer.writerow(['Kompaniya komissiya daromadi', commission])
+    writer.writerow(['Haydovchilar ulushi', gmv - commission])
+    writer.writerow([])
+
+    writer.writerow(['Top haydovchilar (komissiya bo\'yicha)', 'Safarlar', 'Komissiya (UZS)'])
+    top_by_commission = Driver.objects.annotate(
+        commission_sum=Sum('orders__commission', filter=Q(orders__status='completed', orders__created_at__date__gte=start_date, orders__created_at__date__lte=end_date)),
+        completed=Count('orders', filter=Q(orders__status='completed', orders__created_at__date__gte=start_date, orders__created_at__date__lte=end_date)),
+    ).filter(completed__gt=0).order_by('-commission_sum')[:50]
+    for d in top_by_commission:
+        writer.writerow([d.full_name, d.completed, d.commission_sum or 0])
+
+    return response
+
+
 # ── Haydovchi shartnomasi ──────────────────────────────────────────────────────
 
 @login_required(login_url='taxi:panel_login')
