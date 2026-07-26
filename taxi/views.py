@@ -1181,6 +1181,7 @@ def topup_list(request):
         'requests':      qs,
         'status_filter': status_filter,
         'pending_count': BalanceTopupRequest.objects.filter(status=BalanceTopupRequest.STATUS_PENDING).count(),
+        'drivers': Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED).order_by('full_name'),
         'total_topped_up': total_topped_up,
         'total_deducted':  total_deducted,
         'month_topped_up': month_topped_up,
