@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher, LegalDocument, SecurityIncident, VoiceParticipant, VoiceSignal
-from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed, build_balance_receipt_pdf, voice_prune_stale, voice_participants_list, voice_target_kwargs, voice_signal_sender_info
+from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed, build_balance_receipt_pdf, build_flyer_business_card_pdf, voice_prune_stale, voice_participants_list, voice_target_kwargs, voice_signal_sender_info
 import csv
 import json
 
@@ -2712,20 +2712,29 @@ def flyer_verify(request, code):
 @login_required(login_url='taxi:panel_login')
 @require_POST
 def flyer_download(request):
+    fmt = request.POST.get('format', 'flyer')
+    per_sheet = 10 if fmt == 'card' else 3
+
     try:
         quantity = int(request.POST.get('quantity', 30))
     except (TypeError, ValueError):
         quantity = 30
-    quantity = max(3, min(quantity, 300))
-    quantity = ((quantity + 2) // 3) * 3  # 3 ga karrali bo'lishi shart (A4'da 3 tadan)
+    quantity = max(per_sheet, min(quantity, 300))
+    quantity = ((quantity + per_sheet - 1) // per_sheet) * per_sheet  # to'liq varaqqa to'lishi kerak
 
     existing_codes = set(FlyerVoucher.objects.values_list('code', flat=True))
     codes = generate_voucher_codes(quantity, existing=existing_codes)
     FlyerVoucher.objects.bulk_create([FlyerVoucher(code=code) for code in codes])
 
-    buf = build_flyer_pdf(codes)
+    if fmt == 'card':
+        buf = build_flyer_business_card_pdf(codes)
+        filename = 'vijdon_taxi_vizitka.pdf'
+    else:
+        buf = build_flyer_pdf(codes)
+        filename = 'vijdon_taxi_flayer.pdf'
+
     response = HttpResponse(buf.getvalue(), content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="vijdon_taxi_flayer.pdf"'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 
 

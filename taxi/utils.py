@@ -1801,66 +1801,88 @@ def build_flyer_pdf(codes):
             c.saveState()
             c.translate(0, y0)
 
-            block_w = 62 * mm
+            c.setFillColor(colors.white)
+            c.rect(0, 0, page_w, strip_h, stroke=0, fill=1)
+
+            # Bosh joyni jonlantiruvchi yumshoq fon doirasi — endi narx katta
+            # sarlavha sifatida chiqqani uchun bu faqat nafis fon bezagi,
+            # e'tiborni tortmaydi
+            c.saveState()
+            c.setFillColor(AMBER)
+            c.setFillAlpha(0.07)
+            c.circle(page_w - 18 * mm, strip_h - 10 * mm, 40 * mm, stroke=0, fill=1)
+            c.restoreState()
+
+            block_w = 58 * mm
             c.setFillColor(DARK)
             c.rect(0, 0, block_w, strip_h, stroke=0, fill=1)
 
             if logo_path:
-                badge = 52 * mm
+                badge = 44 * mm
                 badge_x = (block_w - badge) / 2
-                badge_y = strip_h - badge - 9 * mm
+                badge_y = strip_h - badge - 12 * mm
                 c.setFillColor(colors.white)
-                c.roundRect(badge_x, badge_y, badge, badge, 4 * mm, stroke=0, fill=1)
+                c.roundRect(badge_x, badge_y, badge, badge, 5 * mm, stroke=0, fill=1)
                 pad = 3 * mm
                 c.drawImage(logo_path, badge_x + pad, badge_y + pad, width=badge - 2 * pad,
                             height=badge - 2 * pad, preserveAspectRatio=True, anchor='c', mask='auto')
             else:
+                badge_y = strip_h - 44 * mm - 12 * mm
                 c.setFillColor(AMBER)
-                c.setFont('Helvetica-Bold', 22)
-                c.drawString(8 * mm, strip_h / 2 + 8 * mm, 'VIJDON')
-                c.drawString(8 * mm, strip_h / 2 - 8 * mm, 'TAXI')
+                c.setFont('Helvetica-Bold', 20)
+                c.drawCentredString(block_w / 2, strip_h / 2 + 6, 'VIJDON')
+                c.drawCentredString(block_w / 2, strip_h / 2 - 10, 'TAXI')
 
             c.setFillColor(colors.white)
-            c.setFont('Helvetica', 8.5)
-            c.drawCentredString(block_w / 2, 8 * mm, "Ishonchli va tez taksi xizmati")
+            c.setFont('Helvetica-Bold', 9)
+            c.drawCentredString(block_w / 2, badge_y - 9 * mm, "ISHONCHLI VA TEZ")
+            c.setFont('Helvetica', 9)
+            c.drawCentredString(block_w / 2, badge_y - 15 * mm, "taksi xizmati")
+
+            # Blokning pastki chetida ingichka amber chiziq — nafis yakunlovchi chiziq
+            c.setStrokeColor(AMBER)
+            c.setLineWidth(1)
+            c.line(10 * mm, 10 * mm, block_w - 10 * mm, 10 * mm)
 
             # Qorong'i blok bilan oq maydonni ajratuvchi rangli chiziq
             c.setFillColor(AMBER)
             c.rect(block_w, 0, 2.2 * mm, strip_h, stroke=0, fill=1)
 
+            right_x = block_w + 10 * mm
+            right_edge = page_w - 8 * mm
+
+            # Eyebrow — "AKSIYA" yorlig'i
+            pill_w, pill_h = 26 * mm, 6.5 * mm
+            pill_y = strip_h - 15 * mm
+            c.setFillColor(AMBER)
+            c.roundRect(right_x, pill_y, pill_w, pill_h, pill_h / 2, stroke=0, fill=1)
+            c.setFillColor(colors.white)
+            c.setFont('Helvetica-Bold', 8)
+            c.drawCentredString(right_x + pill_w / 2, pill_y + pill_h / 2 - 2.8, "AKSIYA")
+
+            # Katta narx sarlavhasi — endi asosiy diqqat markazi
             c.setFillColor(DARK)
-            c.setFont('Helvetica-Bold', 14.5)
-            c.drawString(block_w + 9 * mm, strip_h - 16 * mm, "Buyurtma bering —")
-            c.drawString(block_w + 9 * mm, strip_h - 26 * mm, "3 000 so'm sovg'a oling!")
-            c.setFont('Helvetica', 9)
-            c.setFillColor(GREY_TEXT)
-            c.drawString(block_w + 9 * mm, strip_h - 37 * mm, "Ushbu flayerni haydovchimizga ko'rsating —")
-            c.drawString(block_w + 9 * mm, strip_h - 43 * mm, "safaringiz 3 000 so'mga arzonlashadi.")
-
-            # Bo'sh joyni to'ldiruvchi qiyshiq "chegirma muhri"
-            stamp_x, stamp_y, stamp_r = page_w - 42 * mm, 40 * mm, 21 * mm
-            c.saveState()
-            c.translate(stamp_x, stamp_y)
-            c.rotate(-12)
-            c.setFillColor(AMBER)
-            c.setFillAlpha(0.13)
-            c.setStrokeColor(AMBER)
-            c.setLineWidth(1.3)
-            c.circle(0, 0, stamp_r, stroke=1, fill=1)
-            c.setFillAlpha(1)
-            c.setFillColor(AMBER)
+            c.setFont('Helvetica-Bold', 32)
+            c.drawString(right_x, strip_h - 35 * mm, "3 000 so'm")
             c.setFont('Helvetica-Bold', 15)
-            c.drawCentredString(0, 5, "3 000")
-            c.setFont('Helvetica-Bold', 7.5)
-            c.drawCentredString(0, -7, "SO'M CHEGIRMA")
-            c.restoreState()
-
-            c.setFont('Helvetica', 9)
-            c.setFillColor(GREY_TEXT)
-            c.drawString(block_w + 9 * mm, 13 * mm, "Buyurtma berish uchun qo'ng'iroq qiling:")
-            c.setFont('Helvetica-Bold', 16)
             c.setFillColor(AMBER)
-            c.drawString(block_w + 9 * mm, 4 * mm, "1351")
+            c.drawString(right_x, strip_h - 45 * mm, "SOVG'A OLING!")
+
+            c.setFont('Helvetica', 9.5)
+            c.setFillColor(GREY_TEXT)
+            c.drawString(right_x, strip_h - 55 * mm, "Ushbu flayerni haydovchimizga ko'rsating —")
+            c.drawString(right_x, strip_h - 61 * mm, "safaringiz 3 000 so'mga arzonlashadi.")
+
+            c.setStrokeColor(colors.HexColor('#e5e7eb'))
+            c.setLineWidth(0.8)
+            c.line(right_x, 23 * mm, right_edge, 23 * mm)
+
+            c.setFont('Helvetica', 9.5)
+            c.setFillColor(GREY_TEXT)
+            c.drawString(right_x, 15 * mm, "Buyurtma berish uchun qo'ng'iroq qiling:")
+            c.setFont('Helvetica-Bold', 22)
+            c.setFillColor(AMBER)
+            c.drawString(right_x, 4 * mm, "1351")
 
             # Tashqi ramka
             c.setStrokeColor(AMBER)
@@ -1898,31 +1920,43 @@ def build_flyer_pdf(codes):
             c.rect(7 * mm, 7 * mm, page_w - 14 * mm, strip_h - 14 * mm, stroke=1, fill=0)
             c.setDash([])
 
+            # Kupon "tishchalari" — chekka o'rtasida chapdan va o'ngdan yarim
+            # doira bite — haqiqiy yirtiladigan kupon hissini beradi
+            c.setFillColor(colors.white)
+            c.circle(0, strip_h / 2, 3.5 * mm, stroke=0, fill=1)
+            c.circle(page_w, strip_h / 2, 3.5 * mm, stroke=0, fill=1)
+
+            # Tepa qator: chap tomonda QR + izoh, o'ng tomonda maxfiy kod
+            if code:
+                site_url = getattr(settings, 'SITE_URL', 'https://vijdontaxi.uz').rstrip('/')
+                qr_size = 16 * mm
+                qr_x, qr_y = 11 * mm, strip_h - 29 * mm
+                draw_qr(c, f"{site_url}/flayer/{code}/", qr_x, qr_y, qr_size)
+                c.setFont('Helvetica-Bold', 6.6)
+                c.setFillColor(GREEN)
+                c.drawString(qr_x + qr_size + 3 * mm, qr_y + qr_size - 6, "ASLLIGINI")
+                c.drawString(qr_x + qr_size + 3 * mm, qr_y + qr_size - 12, "TEKSHIRISH")
+                c.setFont('Helvetica', 6)
+                c.setFillColor(GREEN_TEXT)
+                c.drawString(qr_x + qr_size + 3 * mm, qr_y + qr_size - 18, "uchun skanerlang")
+
+            c.setFont('Courier-Bold', 9)
+            c.setFillColor(GREEN)
+            c.drawRightString(page_w - 11 * mm, strip_h - 16 * mm, f"KOD: {code}")
+
             c.setFillColor(GREEN)
             c.setFont('Helvetica-Bold', 11)
-            c.drawCentredString(page_w / 2, strip_h - 15 * mm, "CHEGIRMA SERTIFIKATI")
-            c.setFont('Helvetica-Bold', 32)
-            c.drawCentredString(page_w / 2, strip_h / 2 - 4 * mm, "3 000 SO'M")
+            c.drawCentredString(page_w / 2, strip_h - 40 * mm, "CHEGIRMA SERTIFIKATI")
+            c.setFont('Helvetica-Bold', 38)
+            c.drawCentredString(page_w / 2, strip_h / 2 - 8 * mm, "3 000 SO'M")
+            c.setFont('Helvetica', 8)
+            c.setFillColor(GREEN_TEXT)
+            c.drawCentredString(page_w / 2, strip_h / 2 - 16 * mm, "chegirma summasi")
+
             c.setFont('Helvetica', 8.3)
             c.setFillColor(GREEN_TEXT)
             c.drawCentredString(page_w / 2, 18.5 * mm, "Faqat bitta safar uchun amal qiladi.")
             c.drawCentredString(page_w / 2, 14 * mm, "Boshqa aksiyalar bilan birlashtirilmaydi.")
-
-            # Maxfiy tekshirish kodi — soxtalashtirishga qarshi
-            c.setFont('Courier-Bold', 10)
-            c.setFillColor(GREEN)
-            c.drawCentredString(page_w / 2, strip_h - 22 * mm, f"KOD: {code}")
-
-            # QR kod — telefon kamerasi bilan skanerlansa, flayer asl (original)
-            # yoki soxta ekanini darhol ko'rsatadigan tekshirish sahifasiga olib boradi
-            if code:
-                site_url = getattr(settings, 'SITE_URL', 'https://vijdontaxi.uz').rstrip('/')
-                qr_size = 20 * mm
-                qr_x, qr_y = 10 * mm, strip_h - 32 * mm
-                draw_qr(c, f"{site_url}/flayer/{code}/", qr_x, qr_y, qr_size)
-                c.setFont('Helvetica', 6)
-                c.setFillColor(GREEN_TEXT)
-                c.drawCentredString(qr_x + qr_size / 2, qr_y - 4, "Tekshirish uchun skanerlang")
 
             foot_text = "VIJDON TAXI"
             c.setFont('Helvetica-Bold', 9)
@@ -1943,6 +1977,171 @@ def build_flyer_pdf(codes):
 
     for start in range(0, len(codes), n):
         chunk = codes[start:start + n]
+        draw_front(chunk)
+        draw_back(chunk)
+
+    c.save()
+    buf.seek(0)
+    return buf
+
+
+def build_flyer_business_card_pdf(codes):
+    """Xuddi shu chegirma kuponini VIZITKA o'lchamida (90x50mm, standart CIS
+    o'lchami) chop etish uchun alohida, shu kichik o'lchamga moslab
+    LOYIHALANGAN (kattaroq flayerni shunchaki kichraytirish emas) PDF quradi.
+
+    Katta flayerni vizitka o'lchamigacha kichraytirsa, matn va QR kod
+    o'qib/skanerlab bo'lmas darajada mayda bo'lib qolar edi — shuning uchun
+    bu funksiya shriftlarni va joylashuvni to'g'ridan-to'g'ri 90x50mm uchun
+    hisoblab chiqadi. Har bir A4 varag'iga 2 ustun x 5 qator = 10 tadan
+    vizitka chiqadi (kesish chiziqlari bilan). `codes` — vizitkalar soniga
+    teng satrlar ro'yxati."""
+    from io import BytesIO
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    from reportlab.pdfgen import canvas as pdfcanvas
+    from reportlab.graphics.barcode import qr as qr_barcode
+    from reportlab.graphics.shapes import Drawing
+    from reportlab.graphics import renderPDF
+    from django.conf import settings
+    from django.contrib.staticfiles import finders
+
+    def draw_qr(canvas_obj, url, x, y, size):
+        widget = qr_barcode.QrCodeWidget(url)
+        b = widget.getBounds()
+        w, h = b[2] - b[0], b[3] - b[1]
+        d = Drawing(size, size, transform=[size / w, 0, 0, size / h, 0, 0])
+        d.add(widget)
+        renderPDF.draw(d, canvas_obj, x, y)
+
+    DARK  = colors.HexColor('#111827')
+    AMBER = colors.HexColor('#f59e0b')
+    GREEN = colors.HexColor('#15803d')
+    GREEN_LIGHT = colors.HexColor('#ecfdf5')
+    GREY_TEXT   = colors.HexColor('#374151')
+    logo_path = finders.find('taxi/img/logo.png')
+
+    card_w, card_h = 90 * mm, 50 * mm
+    cols, rows = 2, 5
+    per_page = cols * rows
+    page_w, page_h = A4
+    margin_x = (page_w - cols * card_w) / 2
+    margin_y = (page_h - rows * card_h) / 2
+
+    buf = BytesIO()
+    c = pdfcanvas.Canvas(buf, pagesize=A4)
+
+    def cut_lines():
+        c.saveState()
+        c.setDash([2, 2])
+        c.setStrokeColor(colors.grey)
+        c.setLineWidth(0.4)
+        for col in range(cols + 1):
+            x = margin_x + col * card_w
+            c.line(x, margin_y, x, page_h - margin_y)
+        for row in range(rows + 1):
+            y = margin_y + row * card_h
+            c.line(margin_x, y, page_w - margin_x, y)
+        c.restoreState()
+
+    def card_origin(idx):
+        col = idx % cols
+        row = idx // cols
+        return margin_x + col * card_w, page_h - margin_y - (row + 1) * card_h
+
+    def draw_front(chunk):
+        for idx in range(per_page):
+            x0, y0 = card_origin(idx)
+            c.saveState()
+            c.translate(x0, y0)
+
+            c.setFillColor(colors.white)
+            c.rect(0, 0, card_w, card_h, stroke=0, fill=1)
+
+            block_w = 26 * mm
+            c.setFillColor(DARK)
+            c.rect(0, 0, block_w, card_h, stroke=0, fill=1)
+            if logo_path:
+                badge = 17 * mm
+                badge_x = (block_w - badge) / 2
+                badge_y = (card_h - badge) / 2
+                c.setFillColor(colors.white)
+                c.roundRect(badge_x, badge_y, badge, badge, 2.5 * mm, stroke=0, fill=1)
+                pad = 1.6 * mm
+                c.drawImage(logo_path, badge_x + pad, badge_y + pad, width=badge - 2 * pad,
+                            height=badge - 2 * pad, preserveAspectRatio=True, anchor='c', mask='auto')
+            c.setFillColor(AMBER)
+            c.rect(block_w, 0, 1 * mm, card_h, stroke=0, fill=1)
+
+            rx = block_w + 4 * mm
+            c.setFillColor(DARK)
+            c.setFont('Helvetica-Bold', 15)
+            c.drawString(rx, card_h - 15 * mm, "3 000 so'm")
+            c.setFont('Helvetica-Bold', 9)
+            c.setFillColor(AMBER)
+            c.drawString(rx, card_h - 21 * mm, "SOVG'A OLING!")
+            c.setFont('Helvetica', 6.3)
+            c.setFillColor(GREY_TEXT)
+            c.drawString(rx, card_h - 28 * mm, "Flayerni haydovchiga ko'rsating")
+            c.setFont('Helvetica', 7.5)
+            c.setFillColor(GREY_TEXT)
+            c.drawString(rx, 8 * mm, "Buyurtma:")
+            c.setFont('Helvetica-Bold', 13)
+            c.setFillColor(AMBER)
+            c.drawString(rx, 2.5 * mm, "1351")
+
+            c.setStrokeColor(AMBER)
+            c.setLineWidth(0.8)
+            c.rect(0.8 * mm, 0.8 * mm, card_w - 1.6 * mm, card_h - 1.6 * mm, stroke=1, fill=0)
+            c.restoreState()
+        cut_lines()
+        c.showPage()
+
+    def draw_back(chunk):
+        site_url = getattr(settings, 'SITE_URL', 'https://vijdontaxi.uz').rstrip('/')
+        for idx in range(per_page):
+            code = chunk[idx] if idx < len(chunk) else ''
+            x0, y0 = card_origin(idx)
+            c.saveState()
+            c.translate(x0, y0)
+
+            c.setFillColor(GREEN_LIGHT)
+            c.rect(0, 0, card_w, card_h, stroke=0, fill=1)
+            c.setStrokeColor(GREEN)
+            c.setLineWidth(1)
+            c.rect(1.2 * mm, 1.2 * mm, card_w - 2.4 * mm, card_h - 2.4 * mm, stroke=1, fill=0)
+
+            c.setFillColor(GREEN)
+            c.setFont('Helvetica-Bold', 7.5)
+            c.drawCentredString(card_w / 2, card_h - 8 * mm, "CHEGIRMA SERTIFIKATI")
+
+            if code:
+                qr_size = 21 * mm
+                qr_x, qr_y = 5 * mm, 6 * mm
+                draw_qr(c, f"{site_url}/flayer/{code}/", qr_x, qr_y, qr_size)
+                c.setFont('Helvetica', 5.2)
+                c.setFillColor(GREEN)
+                c.drawCentredString(qr_x + qr_size / 2, 3 * mm, "Asllik tekshiruvi")
+
+            info_x = 5 * mm + 21 * mm + 4 * mm
+            c.setFillColor(GREEN)
+            c.setFont('Helvetica-Bold', 22)
+            c.drawString(info_x, card_h - 24 * mm, "3 000")
+            c.setFont('Helvetica-Bold', 11)
+            c.drawString(info_x, card_h - 30 * mm, "SO'M CHEGIRMA")
+            c.setFont('Courier-Bold', 8)
+            c.drawString(info_x, card_h - 38 * mm, f"KOD: {code}")
+            c.setFont('Helvetica', 5.8)
+            c.setFillColor(GREY_TEXT)
+            c.drawString(info_x, 5 * mm, "Faqat bitta safar uchun amal qiladi.")
+
+            c.restoreState()
+        cut_lines()
+        c.showPage()
+
+    for start in range(0, len(codes), per_page):
+        chunk = codes[start:start + per_page]
         draw_front(chunk)
         draw_back(chunk)
 
