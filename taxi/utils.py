@@ -1735,8 +1735,10 @@ def generate_voucher_codes(n, existing=None):
 def build_flyer_pdf(codes):
     """Reklama flayeri: har bir A4 varag'iga 3 tadan flayer (gorizontal
     chiziqlar bo'ylab kesiladi), har bir flayerda o'ziga xos maxfiy tekshirish
-    kodi bosiladi (soxtalashtirishning oldini olish uchun). `codes` — flayerlar
-    soniga teng satrlar ro'yxati (3 ga karrali bo'lishi kerak).
+    kodi VA shu kodni tekshirish sahifasiga olib boruvchi QR kod bosiladi
+    (soxtalashtirishning oldini olish uchun — mijoz telefon kamerasi bilan
+    skanerlab, flayer asl yoki soxta ekanini darhol bilib oladi). `codes` —
+    flayerlar soniga teng satrlar ro'yxati (3 ga karrali bo'lishi kerak).
 
     Har bir varaq juftligi ketma-ket chiqadi: old tomon, so'ng o'sha varaqning
     orqa tomoni — ikki tomonlama chop etganda "uzun tomondan aylantirish"
@@ -1750,6 +1752,20 @@ def build_flyer_pdf(codes):
     from reportlab.lib.units import mm
     from reportlab.lib import colors
     from reportlab.pdfgen import canvas as pdfcanvas
+    from reportlab.graphics.barcode import qr as qr_barcode
+    from reportlab.graphics.shapes import Drawing
+    from reportlab.graphics import renderPDF
+    from django.conf import settings
+
+    def draw_qr(canvas_obj, url, x, y, size):
+        """Berilgan URL manzilini QR kod sifatida `(x, y)` (chapdan-pastdan)
+        nuqtaga `size` x `size` o'lchamda chizadi."""
+        widget = qr_barcode.QrCodeWidget(url)
+        b = widget.getBounds()
+        w, h = b[2] - b[0], b[3] - b[1]
+        d = Drawing(size, size, transform=[size / w, 0, 0, size / h, 0, 0])
+        d.add(widget)
+        renderPDF.draw(d, canvas_obj, x, y)
 
     page_w, page_h = A4
     n = 3
@@ -1896,6 +1912,17 @@ def build_flyer_pdf(codes):
             c.setFont('Courier-Bold', 10)
             c.setFillColor(GREEN)
             c.drawCentredString(page_w / 2, strip_h - 22 * mm, f"KOD: {code}")
+
+            # QR kod — telefon kamerasi bilan skanerlansa, flayer asl (original)
+            # yoki soxta ekanini darhol ko'rsatadigan tekshirish sahifasiga olib boradi
+            if code:
+                site_url = getattr(settings, 'SITE_URL', 'https://vijdontaxi.uz').rstrip('/')
+                qr_size = 20 * mm
+                qr_x, qr_y = 10 * mm, strip_h - 32 * mm
+                draw_qr(c, f"{site_url}/flayer/{code}/", qr_x, qr_y, qr_size)
+                c.setFont('Helvetica', 6)
+                c.setFillColor(GREEN_TEXT)
+                c.drawCentredString(qr_x + qr_size / 2, qr_y - 4, "Tekshirish uchun skanerlang")
 
             foot_text = "VIJDON TAXI"
             c.setFont('Helvetica-Bold', 9)

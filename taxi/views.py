@@ -2701,6 +2701,14 @@ def flyer_page(request):
     })
 
 
+def flyer_verify(request, code):
+    """Flayerdagi QR kod skanerlanganda ochiladigan OMMAVIY (login talab
+    qilmaydigan) sahifa — mijoz telefon kamerasi bilan darhol flayer asl
+    (original) yoki soxta ekanini ko'radi."""
+    voucher = FlyerVoucher.objects.select_related('used_by_driver').filter(code=code.strip().upper()).first()
+    return render(request, 'taxi/flyer_verify.html', {'voucher': voucher, 'code': code.strip().upper()})
+
+
 @login_required(login_url='taxi:panel_login')
 @require_POST
 def flyer_download(request):

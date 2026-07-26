@@ -20,6 +20,7 @@ from django.urls import path, include
 from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
+from taxi import views as taxi_views
 
 admin.site.site_header = "Vijdon Taxi Boshqaruv Paneli"
 admin.site.site_title = "Vijdon Taxi Admin"
@@ -47,6 +48,9 @@ def android_asset_links(request):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('.well-known/assetlinks.json', android_asset_links),
+    # Reklama flayeridagi QR kod shu qisqa manzilga ishora qiladi (osonroq
+    # skanerlanishi uchun /panel/ prefiksisiz) — taxi/views.py:flyer_verify
+    path('flayer/<str:code>/', taxi_views.flyer_verify, name='flyer_verify'),
     path('panel/', include('taxi.urls')),
     path('driver/', include('taxi.driver_urls')),
     path('client/', include('taxi.client_urls')),
