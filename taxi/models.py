@@ -230,6 +230,7 @@ class BotSettings(models.Model):
     notify_daily_summary       = models.BooleanField(default=True, verbose_name='Kunlik umumiy hisobot')
     notify_weekly_summary      = models.BooleanField(default=True, verbose_name='Haftalik umumiy hisobot')
     notify_daily_highlight     = models.BooleanField(default=True, verbose_name='Kunning yorqin lahzalari')
+    notify_monthly_financial_report = models.BooleanField(default=True, verbose_name="Oylik moliyaviy hisobot")
 
     # Voqea asosida (event-based) yangi bildirishnomalar
     notify_low_rating         = models.BooleanField(default=True, verbose_name='Reyting pasayganda ogohlantirish')
@@ -252,6 +253,7 @@ class BotSettings(models.Model):
     last_daily_summary_date          = models.DateField(null=True, blank=True)
     last_weekly_summary_date         = models.DateField(null=True, blank=True)
     last_daily_highlight_date        = models.DateField(null=True, blank=True)
+    last_monthly_financial_report_date = models.DateField(null=True, blank=True)
 
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -596,6 +598,7 @@ class BalanceTopupRequest(models.Model):
     amount      = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="So'ralgan summa")
     receipt     = models.ImageField(upload_to='topup_receipts/', verbose_name='Chek rasmi')
     status      = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_PENDING, verbose_name='Holati')
+    reject_reason = models.CharField(max_length=255, blank=True, default='', verbose_name='Rad etish sababi')
     created_at  = models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')
     resolved_at = models.DateTimeField(null=True, blank=True, verbose_name='Hal qilingan vaqti')
 

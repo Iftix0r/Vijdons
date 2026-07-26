@@ -26,6 +26,7 @@ _DAILY_SCHEDULE = (
 
 _WEEKLY_HOUR  = 21  # Yakshanba kuni shu soatda (TOP-10) / 22 (umumiy hisobot)
 _MONTHLY_HOUR = 21  # Oyning oxirgi kunida shu soatda
+_MONTHLY_FINANCIAL_REPORT_HOUR = 9  # Oyning 1-kunida shu soatda (o'tgan oy hisoboti)
 
 _TICK_SECONDS = 30
 
@@ -72,6 +73,9 @@ def _run_tick():
 
     if now.hour == _MONTHLY_HOUR and (today + timedelta(days=1)).day == 1:
         _claim_and_run('last_monthly_top_drivers_date', 'tg_monthly_top_drivers', today)
+
+    if now.hour == _MONTHLY_FINANCIAL_REPORT_HOUR and today.day == 1:
+        _claim_and_run('last_monthly_financial_report_date', 'tg_monthly_financial_report', today)
 
     if now.hour == 22 and now.isoweekday() == 7:
         _claim_and_run('last_weekly_summary_date', 'tg_weekly_summary', today)

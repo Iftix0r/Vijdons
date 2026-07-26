@@ -642,6 +642,13 @@ def tg_low_balance_alert(driver):
     if driver.balance >= tariff.commission:
         return
     log_panel_event('panel_low_balance', f"{driver.full_name} — balans kam: {driver.balance} UZS")
+
+    from taxi.driver_views import send_push_to_driver
+    send_push_to_driver(
+        driver, '⚠️ Balans kam',
+        f"Balansingiz {driver.balance} UZS. Yangi buyurtma qabul qilish uchun kamida {tariff.commission} UZS kerak — iltimos to'ldiring.",
+    )
+
     cfg = _cfg()
     if cfg and not cfg.notify_low_balance:
         return
@@ -1050,6 +1057,41 @@ def tg_weekly_summary():
         f"✅ Yakunlangan: <b>{stats['completed']}</b> ta\n"
         f"💰 Tushum: <b>{revenue:,.0f} UZS</b>\n"
         f"❌ Bekor qilingan: {stats['cancelled']} ta".replace(',', ' ')
+    )
+
+
+def tg_monthly_financial_report():
+    """Har oyning birinchi kunida, endigina yakunlangan o'tgan oy bo'yicha
+    moliyaviy hisobotni operatorlar guruhiga yuboradi: tushum, haydovchilarga
+    to'ldirilgan pul, komissiya sifatida yechilgan pul va sof farq."""
+    cfg = _cfg()
+    if not cfg or not cfg.notify_monthly_financial_report:
+        return
+    from datetime import timedelta
+    from django.db.models import Sum
+    from django.utils import timezone
+    from taxi.models import BalanceLog
+
+    today = timezone.localdate()
+    month_end = today.replace(day=1) - timedelta(days=1)
+    month_start = month_end.replace(day=1)
+
+    order_stats = _company_stats_for_period(month_start, month_end)
+    topped_up = BalanceLog.objects.filter(
+        action=BalanceLog.ACTION_ADD, created_at__date__gte=month_start, created_at__date__lte=month_end
+    ).aggregate(s=Sum('amount'))['s'] or 0
+    deducted = BalanceLog.objects.filter(
+        action=BalanceLog.ACTION_DEDUCT, created_at__date__gte=month_start, created_at__date__lte=month_end
+    ).aggregate(s=Sum('amount'))['s'] or 0
+
+    send_telegram(
+        f"🗓️ <b>Oylik moliyaviy hisobot</b>\n"
+        f"📅 {month_start.strftime('%m.%Y')}\n\n"
+        f"✅ Yakunlangan buyurtmalar: <b>{order_stats['completed']}</b> ta\n"
+        f"💰 Buyurtmalardan tushum: <b>{order_stats['revenue']:,.0f} UZS</b>\n"
+        f"➕ Haydovchilarga to'ldirilgan: <b>{topped_up:,.0f} UZS</b>\n"
+        f"➖ Komissiya sifatida yechilgan: <b>{deducted:,.0f} UZS</b>\n"
+        f"📈 Sof farq (komissiya − to'ldirish): <b>{deducted - topped_up:,.0f} UZS</b>".replace(',', ' ')
     )
 
 

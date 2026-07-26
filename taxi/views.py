@@ -12,6 +12,7 @@ import csv
 
 ONLINE_THRESHOLD_SECONDS = 120  # last_seen shundan yangi bo'lsa — online (yashil)
 PENDING_ORDER_AGING_SECONDS = 120  # buyurtma shuncha vaqt haydovchisiz tursa — operator e'tiboriga chiqadi
+TOPUP_AGING_HOURS = 3  # to'lov so'rovi shuncha soat hal qilinmasa — dashboardda ogohlantirish chiqadi
 
 
 def _get_client_ip(request):
@@ -430,6 +431,11 @@ def panel_dashboard(request):
         is_active=True, approval_status=Driver.APPROVAL_APPROVED, is_on_duty=False
     ).filter(Q(last_seen__lt=inactive_cutoff) | Q(last_seen__isnull=True))
 
+    topup_aging_cutoff = timezone.now() - timedelta(hours=TOPUP_AGING_HOURS)
+    aging_topups = BalanceTopupRequest.objects.select_related('driver').filter(
+        status=BalanceTopupRequest.STATUS_PENDING, created_at__lte=topup_aging_cutoff
+    ).order_by('created_at')
+
     context = {
         'orders':               orders,
         'total_orders':         Order.objects.count(),
@@ -461,6 +467,9 @@ def panel_dashboard(request):
         'low_balance_driver_count': low_balance_drivers.count(),
         'inactive_drivers':     inactive_drivers,
         'inactive_driver_count': inactive_drivers.count(),
+        'aging_topups':      aging_topups,
+        'aging_topup_count': aging_topups.count(),
+        'topup_aging_hours': TOPUP_AGING_HOURS,
     }
     return render(request, 'taxi/panel.html', context)
 
@@ -625,6 +634,7 @@ def bot_settings(request):
         bot.notify_weekly_summary      = 'notify_weekly_summary'      in request.POST
         bot.notify_daily_highlight     = 'notify_daily_highlight'     in request.POST
         bot.notify_flyer_redeemed      = 'notify_flyer_redeemed'      in request.POST
+        bot.notify_monthly_financial_report = 'notify_monthly_financial_report' in request.POST
         bot.save()
         # SITE_URL ni settings ga yozish
         site_url = request.POST.get('site_url', '').strip()
@@ -676,6 +686,7 @@ def bot_settings(request):
         ('notify_weekly_summary',      'Haftalik umumiy hisobot (yakshanba 22:00)', '📈', bot.notify_weekly_summary),
         ('notify_daily_highlight',     "Kunning yorqin lahzalari (20:00)",     '🌟', bot.notify_daily_highlight),
         ('notify_flyer_redeemed',      'Flayer kuponi ishlatilganda xabar',    '🎁', bot.notify_flyer_redeemed),
+        ('notify_monthly_financial_report', "Oylik moliyaviy hisobot (har oy 1-kuni 09:00)", '🗓️', bot.notify_monthly_financial_report),
     ]
     return render(request, 'taxi/bot_settings.html', {
         'bot': bot,
@@ -1177,6 +1188,9 @@ def topup_list(request):
     if history_end:
         history_qs = history_qs.filter(created_at__date__lte=history_end)
 
+    from django.core.paginator import Paginator
+    history_page = Paginator(history_qs, 30).get_page(request.GET.get('hpage'))
+
     # So'nggi 30 kunlik pul harakati (qo'shilgan/yechilgan), grafik uchun
     flow_labels, flow_added, flow_deducted = [], [], []
     for i in range(29, -1, -1):
@@ -1196,7 +1210,7 @@ def topup_list(request):
         'total_deducted':  total_deducted,
         'month_topped_up': month_topped_up,
         'month_deducted':  month_deducted,
-        'history':        history_qs[:200],
+        'history':        history_page,
         'history_action': history_action,
         'history_q':      history_q,
         'history_start':  history_start,
@@ -1269,10 +1283,17 @@ def topup_resolve(request, pk):
             tg_balance_changed(driver, topup.amount, BalanceLog.ACTION_ADD)
             messages.success(request, f"To'lov #{topup.id} tasdiqlandi — {driver.full_name} balansi: {driver.balance} UZS")
         elif action == 'reject':
+            reason = request.POST.get('reason', '').strip()
             topup.status = BalanceTopupRequest.STATUS_REJECTED
+            topup.reject_reason = reason
             messages.success(request, f"To'lov #{topup.id} rad etildi.")
+            from .driver_views import send_push_to_driver
+            send_push_to_driver(
+                driver, "❌ To'lov so'rovi rad etildi",
+                f"{topup.amount} UZS to'lov so'rovingiz rad etildi." + (f" Sabab: {reason}" if reason else ''),
+            )
         topup.resolved_at = timezone.now()
-        topup.save(update_fields=['status', 'resolved_at'])
+        topup.save(update_fields=['status', 'resolved_at', 'reject_reason'])
     return redirect(request.META.get('HTTP_REFERER', 'taxi:topup_list'))
 
 
@@ -1785,6 +1806,8 @@ def _handle_admin_message(token, chat_id, text, location=None):
             topup.status = BalanceTopupRequest.STATUS_REJECTED
             topup.resolved_at = timezone.now()
             topup.save(update_fields=['status', 'resolved_at'])
+            from .driver_views import send_push_to_driver
+            send_push_to_driver(driver, "❌ To'lov so'rovi rad etildi", f"{topup.amount} UZS to'lov so'rovingiz rad etildi.")
             _admin_bot_send(token, chat_id, f"🚫 To'lov #{topup.id} rad etildi.", _ADMIN_MENU_KB)
         return
 

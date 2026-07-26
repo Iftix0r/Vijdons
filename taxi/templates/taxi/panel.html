@@ -270,8 +270,8 @@
 {% endif %}
 
 <!-- Balans/faollik ogohlantirishlari -->
-{% if low_balance_driver_count > 0 or inactive_driver_count > 0 %}
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+{% if low_balance_driver_count > 0 or inactive_driver_count > 0 or aging_topup_count > 0 %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
     {% if low_balance_driver_count > 0 %}
     <div class="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/40 rounded-2xl p-4 flex items-center justify-between gap-3">
         <div class="flex items-center gap-3 min-w-0">
@@ -302,6 +302,26 @@
         </div>
         <a href="{% url 'taxi:driver_list' %}"
            class="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition-colors">
+            Ko'rish <i class="fas fa-arrow-right text-[10px]"></i>
+        </a>
+    </div>
+    {% endif %}
+    {% if aging_topup_count > 0 %}
+    <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-2xl p-4 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-600 flex items-center justify-center flex-shrink-0">
+                <span class="relative flex h-3 w-3">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <i class="fas fa-money-bill-transfer relative text-xs"></i>
+                </span>
+            </div>
+            <div class="min-w-0">
+                <p class="font-bold text-amber-800 dark:text-amber-300 text-sm">{{ aging_topup_count }} ta to'lov so'rovi {{ topup_aging_hours }}+ soatdir kutmoqda</p>
+                <p class="text-xs text-amber-600 dark:text-amber-400 mt-0.5 truncate">Haydovchilar javob kutmoqda — tezroq tasdiqlang yoki rad eting.</p>
+            </div>
+        </div>
+        <a href="{% url 'taxi:topup_list' %}"
+           class="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition-colors">
             Ko'rish <i class="fas fa-arrow-right text-[10px]"></i>
         </a>
     </div>

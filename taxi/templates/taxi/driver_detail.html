@@ -132,6 +132,10 @@
                     </button>
                 </form>
             </div>
+            <a href="{% url 'taxi:topup_list' %}?tab=history&q={{ driver.phone_number }}"
+               class="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                <i class="fas fa-clock-rotate-left"></i> Balans tarixini ko'rish
+            </a>
         </div>
 
         <!-- Contract status -->
