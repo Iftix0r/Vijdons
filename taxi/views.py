@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
-from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher
+from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher, LegalDocument, SecurityIncident
 from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed, build_balance_receipt_pdf
 import csv
 
@@ -436,6 +436,11 @@ def panel_dashboard(request):
         status=BalanceTopupRequest.STATUS_PENDING, created_at__lte=topup_aging_cutoff
     ).order_by('created_at')
 
+    expiring_documents = LegalDocument.objects.filter(
+        expires_at__isnull=False, expires_at__lte=today + timedelta(days=DOCUMENT_EXPIRY_WARNING_DAYS)
+    ).order_by('expires_at')
+    open_security_incidents = SecurityIncident.objects.exclude(status=SecurityIncident.STATUS_RESOLVED)
+
     context = {
         'orders':               orders,
         'total_orders':         Order.objects.count(),
@@ -470,6 +475,9 @@ def panel_dashboard(request):
         'aging_topups':      aging_topups,
         'aging_topup_count': aging_topups.count(),
         'topup_aging_hours': TOPUP_AGING_HOURS,
+        'expiring_documents':      expiring_documents,
+        'expiring_document_count': expiring_documents.count(),
+        'open_security_incident_count': open_security_incidents.count(),
     }
     return render(request, 'taxi/panel.html', context)
 
@@ -2401,6 +2409,103 @@ def finance_export_csv(request):
         writer.writerow([d.full_name, d.completed, d.commission_sum or 0])
 
     return response
+
+
+# ── Xavfsizlik (yuridik hujjatlar va jiddiy voqealar) ───────────────────────
+
+DOCUMENT_EXPIRY_WARNING_DAYS = 30  # hujjat muddati shuncha kun qolganda ogohlantiriladi
+
+
+@login_required(login_url='taxi:panel_login')
+def security_dashboard(request):
+    from datetime import timedelta
+    from django.utils import timezone
+
+    tab = request.GET.get('tab', 'incidents')
+    today = timezone.now().date()
+    expiry_warning_date = today + timedelta(days=DOCUMENT_EXPIRY_WARNING_DAYS)
+
+    incidents = SecurityIncident.objects.select_related('related_driver', 'related_client', 'created_by').order_by('-created_at')
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        incidents = incidents.filter(status=status_filter)
+
+    documents = LegalDocument.objects.order_by('expires_at')
+
+    return render(request, 'taxi/security.html', {
+        'tab': tab,
+        'incidents': incidents,
+        'status_filter': status_filter,
+        'open_incident_count': SecurityIncident.objects.exclude(status=SecurityIncident.STATUS_RESOLVED).count(),
+        'documents': documents,
+        'today': today,
+        'expiry_warning_date': expiry_warning_date,
+        'expiring_document_count': LegalDocument.objects.filter(
+            expires_at__isnull=False, expires_at__lte=expiry_warning_date
+        ).count(),
+        'drivers': Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED).order_by('full_name'),
+        'clients': Client.objects.order_by('full_name'),
+        'incident_types': SecurityIncident.TYPE_CHOICES,
+        'document_types': LegalDocument.TYPE_CHOICES,
+    })
+
+
+@login_required(login_url='taxi:panel_login')
+def security_incident_create(request):
+    if request.method == 'POST':
+        SecurityIncident.objects.create(
+            title=request.POST.get('title', '').strip(),
+            incident_type=request.POST.get('incident_type', SecurityIncident.TYPE_OTHER),
+            description=request.POST.get('description', '').strip(),
+            related_driver_id=request.POST.get('related_driver') or None,
+            related_client_id=request.POST.get('related_client') or None,
+            evidence=request.FILES.get('evidence'),
+            created_by=request.user,
+        )
+        messages.success(request, "Voqea ro'yxatga olindi.")
+    return redirect('taxi:security_dashboard')
+
+
+@login_required(login_url='taxi:panel_login')
+def security_incident_update(request, pk):
+    incident = get_object_or_404(SecurityIncident, pk=pk)
+    if request.method == 'POST':
+        from django.utils import timezone
+        incident.status = request.POST.get('status', incident.status)
+        incident.resolution_note = request.POST.get('resolution_note', '').strip()
+        if incident.status == SecurityIncident.STATUS_RESOLVED and not incident.resolved_at:
+            incident.resolved_at = timezone.now()
+        elif incident.status != SecurityIncident.STATUS_RESOLVED:
+            incident.resolved_at = None
+        incident.save(update_fields=['status', 'resolution_note', 'resolved_at'])
+        messages.success(request, f"Voqea #{incident.id} yangilandi.")
+    return redirect(request.META.get('HTTP_REFERER', 'taxi:security_dashboard'))
+
+
+@login_required(login_url='taxi:panel_login')
+def security_document_upload(request):
+    if request.method == 'POST' and request.FILES.get('file'):
+        LegalDocument.objects.create(
+            title=request.POST.get('title', '').strip(),
+            doc_type=request.POST.get('doc_type', LegalDocument.TYPE_LICENSE),
+            number=request.POST.get('number', '').strip(),
+            file=request.FILES.get('file'),
+            issued_at=request.POST.get('issued_at') or None,
+            expires_at=request.POST.get('expires_at') or None,
+            notes=request.POST.get('notes', '').strip(),
+            uploaded_by=request.user,
+        )
+        messages.success(request, "Hujjat yuklandi.")
+    return redirect('taxi:security_dashboard')
+
+
+@login_required(login_url='taxi:panel_login')
+def security_document_delete(request, pk):
+    document = get_object_or_404(LegalDocument, pk=pk)
+    if request.method == 'POST':
+        document.delete()
+        messages.success(request, "Hujjat o'chirildi.")
+    return redirect('taxi:security_dashboard')
 
 
 # ── Haydovchi shartnomasi ──────────────────────────────────────────────────────

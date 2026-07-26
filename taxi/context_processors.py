@@ -6,7 +6,7 @@ def active_drivers(request):
     import json
     from django.conf import settings
     from django.db.models import Max
-    from .models import MapsSettings, TariffSettings, PanelEvent, PanelSound, BalanceLog, BalanceTopupRequest
+    from .models import MapsSettings, TariffSettings, PanelEvent, PanelSound, BalanceLog, BalanceTopupRequest, SecurityIncident
     from .constants import DRIVER_SOUND_EVENTS
     maps = MapsSettings.get()
     tariff = TariffSettings.get()
@@ -36,6 +36,9 @@ def active_drivers(request):
         ).count(),
         'pending_topup_count': BalanceTopupRequest.objects.filter(
             status=BalanceTopupRequest.STATUS_PENDING
+        ).count(),
+        'open_security_incident_count': SecurityIncident.objects.exclude(
+            status=SecurityIncident.STATUS_RESOLVED
         ).count(),
         'VAPID_PUBLIC_KEY': getattr(settings, 'VAPID_PUBLIC_KEY', ''),
         'YANDEX_MAPKIT_KEY': maps.yandex_mapkit_key or '',

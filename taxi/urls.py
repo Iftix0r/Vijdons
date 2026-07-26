@@ -55,6 +55,11 @@ urlpatterns = [
     path('statistics/export/csv/', views.statistics_export_csv, name='statistics_export_csv'),
     path('finance/', views.finance_dashboard, name='finance_dashboard'),
     path('finance/export/csv/', views.finance_export_csv, name='finance_export_csv'),
+    path('security/', views.security_dashboard, name='security_dashboard'),
+    path('security/incidents/create/', views.security_incident_create, name='security_incident_create'),
+    path('security/incidents/<int:pk>/update/', views.security_incident_update, name='security_incident_update'),
+    path('security/documents/upload/', views.security_document_upload, name='security_document_upload'),
+    path('security/documents/<int:pk>/delete/', views.security_document_delete, name='security_document_delete'),
 
     path('api/client/lookup/', api_views.client_last_order_api, name='api_client_lookup'),
 

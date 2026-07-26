@@ -1,0 +1,415 @@
+{% extends 'taxi/base.html' %}
+{% block title %}Xavfsizlik — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-center gap-4 mb-5">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+            🛡️ Xavfsizlik
+            {% if open_incident_count %}
+            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-red-500 text-white animate-pulse">
+                {{ open_incident_count }} ochiq
+            </span>
+            {% endif %}
+        </h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Jiddiy voqealar (tuhmat, shantaj, yuridik nizolar) va kompaniya hujjatlari</p>
+    </div>
+    <div class="flex flex-wrap gap-3">
+        <button onclick="openModal('newIncidentModal')"
+                class="flex items-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-xl shadow-sm shadow-red-200 dark:shadow-none transition-all hover:-translate-y-0.5">
+            <i class="fas fa-triangle-exclamation"></i> Yangi voqea
+        </button>
+        <button onclick="openModal('newDocumentModal')"
+                class="flex items-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-xl shadow-sm shadow-blue-200 dark:shadow-none transition-all hover:-translate-y-0.5">
+            <i class="fas fa-file-arrow-up"></i> Hujjat yuklash
+        </button>
+    </div>
+</div>
+
+<!-- KPI kartalar -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+        <p class="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1">Ochiq voqealar</p>
+        <h3 class="text-xl font-extrabold text-red-500">{{ open_incident_count }}</h3>
+        <p class="text-[11px] text-gray-400 mt-0.5">tekshirilishi kerak</p>
+    </div>
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+        <p class="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1">Jami voqealar</p>
+        <h3 class="text-xl font-extrabold text-gray-700 dark:text-gray-300">{{ incidents|length }}</h3>
+        <p class="text-[11px] text-gray-400 mt-0.5">ro'yxatga olingan</p>
+    </div>
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+        <p class="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1">Muddati tugayotgan hujjatlar</p>
+        <h3 class="text-xl font-extrabold text-amber-500">{{ expiring_document_count }}</h3>
+        <p class="text-[11px] text-gray-400 mt-0.5">{{ expiry_warning_date|date:"d.m.Y" }}gacha</p>
+    </div>
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+        <p class="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1">Jami hujjatlar</p>
+        <h3 class="text-xl font-extrabold text-blue-500">{{ documents|length }}</h3>
+        <p class="text-[11px] text-gray-400 mt-0.5">litsenziya, guvohnoma va h.k.</p>
+    </div>
+</div>
+
+<!-- Tab tugmalari -->
+<div class="flex gap-2 mb-5">
+    <a href="?tab=incidents" class="px-4 py-2 rounded-xl text-sm font-semibold transition {% if tab != 'documents' %}bg-red-500 text-white{% else %}bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50{% endif %}">
+        <i class="fas fa-triangle-exclamation mr-1.5"></i>Voqealar
+    </a>
+    <a href="?tab=documents" class="px-4 py-2 rounded-xl text-sm font-semibold transition {% if tab == 'documents' %}bg-red-500 text-white{% else %}bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50{% endif %}">
+        <i class="fas fa-file-shield mr-1.5"></i>Hujjatlar
+    </a>
+</div>
+
+{% if tab == 'documents' %}
+<!-- Hujjatlar jadvali -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                    <th class="px-5 py-3.5">Hujjat</th>
+                    <th class="px-5 py-3.5">Turi</th>
+                    <th class="px-5 py-3.5">Raqami</th>
+                    <th class="px-5 py-3.5">Amal muddati</th>
+                    <th class="px-5 py-3.5">Holati</th>
+                    <th class="px-5 py-3.5 text-right">Amal</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
+                {% for doc in documents %}
+                <tr class="hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-colors">
+                    <td class="px-5 py-3.5">
+                        <a href="{{ doc.file.url }}" target="_blank" class="font-semibold text-gray-800 dark:text-white text-xs hover:text-blue-600 transition-colors">
+                            <i class="fas fa-file-lines text-blue-400 mr-1"></i>{{ doc.title }}
+                        </a>
+                        {% if doc.notes %}<div class="text-[10px] text-gray-400 mt-0.5 max-w-[220px] truncate">{{ doc.notes }}</div>{% endif %}
+                    </td>
+                    <td class="px-5 py-3.5 text-xs text-gray-600 dark:text-gray-300">{{ doc.get_doc_type_display }}</td>
+                    <td class="px-5 py-3.5 text-xs text-gray-600 dark:text-gray-300 font-mono">{{ doc.number|default:"—" }}</td>
+                    <td class="px-5 py-3.5 text-xs text-gray-600 dark:text-gray-300">
+                        {% if doc.expires_at %}{{ doc.expires_at|date:"d.m.Y" }}{% else %}Muddatsiz{% endif %}
+                    </td>
+                    <td class="px-5 py-3.5">
+                        {% if not doc.expires_at %}
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">Muddatsiz</span>
+                        {% elif doc.expires_at < today %}
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                            <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>Muddati tugagan
+                        </span>
+                        {% elif doc.expires_at <= expiry_warning_date %}
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 animate-pulse">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Tez orada tugaydi
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Amal qiladi
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-3.5 text-right">
+                        <form method="POST" action="{% url 'taxi:security_document_delete' doc.pk %}" onsubmit="return confirm('Bu hujjatni o\'chirishga ishonchingiz komilmi?')">
+                            {% csrf_token %}
+                            <button type="submit" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 hover:text-red-700 transition-colors" title="O'chirish">
+                                <i class="fas fa-trash text-xs"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-14">
+                        <div class="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-300 dark:text-gray-600 text-2xl mx-auto mb-3">
+                            <i class="fas fa-file-shield"></i>
+                        </div>
+                        <p class="font-semibold text-gray-700 dark:text-gray-300">Hujjat yuklanmagan</p>
+                        <p class="text-xs text-gray-400 mt-1">Litsenziya, guvohnoma va boshqa hujjatlarni shu yerga yuklang.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+
+<!-- Voqealar filtri -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm px-5 py-4 mb-5">
+    <form method="get" class="flex flex-wrap gap-3">
+        <input type="hidden" name="tab" value="incidents">
+        <select name="status"
+                class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-red-400 transition-all">
+            <option value="">Barcha holatlar</option>
+            <option value="open"          {% if status_filter == 'open' %}selected{% endif %}>🔴 Ochiq</option>
+            <option value="investigating" {% if status_filter == 'investigating' %}selected{% endif %}>🟡 Tekshirilmoqda</option>
+            <option value="resolved"      {% if status_filter == 'resolved' %}selected{% endif %}>🟢 Hal qilindi</option>
+        </select>
+        <button type="submit" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-xl transition-colors">
+            <i class="fas fa-filter mr-1"></i> Filtrlash
+        </button>
+    </form>
+</div>
+
+<!-- Voqealar jadvali -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                    <th class="px-5 py-3.5">#</th>
+                    <th class="px-5 py-3.5">Voqea</th>
+                    <th class="px-5 py-3.5">Turi</th>
+                    <th class="px-5 py-3.5">Aloqador</th>
+                    <th class="px-5 py-3.5">Holati</th>
+                    <th class="px-5 py-3.5">Vaqt</th>
+                    <th class="px-5 py-3.5 text-right">Amal</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
+                {% for inc in incidents %}
+                <tr class="hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-colors {% if inc.status == 'open' %}bg-red-50/40 dark:bg-red-900/10{% endif %}">
+                    <td class="px-5 py-3.5"><span class="font-bold text-gray-900 dark:text-white">#{{ inc.id }}</span></td>
+                    <td class="px-5 py-3.5 max-w-[240px]">
+                        <div class="font-semibold text-gray-800 dark:text-white text-xs">{{ inc.title }}</div>
+                        <div class="text-[11px] text-gray-400 mt-0.5 truncate">{{ inc.description }}</div>
+                        {% if inc.evidence %}
+                        <a href="{{ inc.evidence.url }}" target="_blank" class="inline-flex items-center gap-1 text-[10px] text-blue-500 hover:text-blue-700 font-semibold mt-1">
+                            <i class="fas fa-paperclip"></i>Dalil
+                        </a>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-3.5 text-xs text-gray-600 dark:text-gray-300">{{ inc.get_incident_type_display }}</td>
+                    <td class="px-5 py-3.5 text-xs text-gray-600 dark:text-gray-300">
+                        {% if inc.related_driver %}<div><i class="fas fa-car text-blue-400 mr-1"></i>{{ inc.related_driver.full_name }}</div>{% endif %}
+                        {% if inc.related_client %}<div><i class="fas fa-user text-purple-400 mr-1"></i>{{ inc.related_client.full_name|default:inc.related_client.phone_number }}</div>{% endif %}
+                        {% if not inc.related_driver and not inc.related_client %}—{% endif %}
+                    </td>
+                    <td class="px-5 py-3.5">
+                        {% if inc.status == 'open' %}
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 animate-pulse">
+                            <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>Ochiq
+                        </span>
+                        {% elif inc.status == 'investigating' %}
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Tekshirilmoqda
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Hal qilindi
+                        </span>
+                        {% endif %}
+                        {% if inc.resolution_note %}
+                        <div class="text-[10px] text-gray-400 mt-1 max-w-[160px] truncate" title="{{ inc.resolution_note }}">{{ inc.resolution_note }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-3.5 text-[11px] text-gray-400 whitespace-nowrap">{{ inc.created_at|date:"d/m/Y H:i" }}</td>
+                    <td class="px-5 py-3.5 text-right">
+                        <button type="button"
+                                onclick="openIncidentUpdateModal({{ inc.pk }}, '{{ inc.title|escapejs }}', '{{ inc.status }}')"
+                                class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-500 hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                                title="Holatni yangilash">
+                            <i class="fas fa-pen text-xs"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center py-14">
+                        <div class="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-300 dark:text-gray-600 text-2xl mx-auto mb-3">
+                            <i class="fas fa-shield-halved"></i>
+                        </div>
+                        <p class="font-semibold text-gray-700 dark:text-gray-300">Voqealar topilmadi</p>
+                        <p class="text-xs text-gray-400 mt-1">Hozircha jiddiy voqea ro'yxatga olinmagan.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- ══ Yangi voqea modali ══ -->
+<div id="newIncidentModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-base font-bold text-gray-900 dark:text-white"><i class="fas fa-triangle-exclamation text-red-500 mr-2"></i>Yangi voqea</h2>
+            <button onclick="closeModal('newIncidentModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form method="POST" action="{% url 'taxi:security_incident_create' %}" enctype="multipart/form-data" class="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Qisqa tavsif</label>
+                <input type="text" name="title" required placeholder="Masalan: Haydovchiga ijtimoiy tarmoqda tuhmat"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400 dark:text-white transition">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Turi</label>
+                <select name="incident_type" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400 dark:text-white transition">
+                    {% for key, label in incident_types %}
+                    <option value="{{ key }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Batafsil tavsif</label>
+                <textarea name="description" rows="4" required placeholder="Voqea qanday yuz berdi, kim ishtirok etdi, qanday dalillar bor..."
+                          class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400 dark:text-white transition"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Aloqador haydovchi</label>
+                    <select name="related_driver" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400 dark:text-white transition">
+                        <option value="">—</option>
+                        {% for d in drivers %}
+                        <option value="{{ d.pk }}">{{ d.full_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Aloqador mijoz</label>
+                    <select name="related_client" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400 dark:text-white transition">
+                        <option value="">—</option>
+                        {% for c in clients %}
+                        <option value="{{ c.pk }}">{{ c.full_name|default:c.phone_number }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Dalil (ixtiyoriy — skrinshot, hujjat)</label>
+                <input type="file" name="evidence"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400 dark:text-white transition">
+            </div>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('newIncidentModal')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold shadow-md shadow-red-200 dark:shadow-none transition">
+                    Ro'yxatga olish
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ══ Voqea holatini yangilash modali ══ -->
+<div id="updateIncidentModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-base font-bold text-gray-900 dark:text-white"><i class="fas fa-pen text-blue-500 mr-2"></i>Holatni yangilash</h2>
+            <button onclick="closeModal('updateIncidentModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form id="updateIncidentForm" method="POST" class="px-6 py-5 space-y-4">
+            {% csrf_token %}
+            <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">Voqea: <span id="ui-title" class="text-blue-600 dark:text-blue-400"></span></p>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Holati</label>
+                <select id="ui-status" name="status" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition">
+                    <option value="open">🔴 Ochiq</option>
+                    <option value="investigating">🟡 Tekshirilmoqda</option>
+                    <option value="resolved">🟢 Hal qilindi</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Hal qilish izohi</label>
+                <textarea name="resolution_note" rows="3" placeholder="Qanday hal qilindi yoki qanday chora ko'rilmoqda..."
+                          class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition"></textarea>
+            </div>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('updateIncidentModal')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold shadow-md shadow-blue-200 dark:shadow-none transition">
+                    Saqlash
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ══ Yangi hujjat modali ══ -->
+<div id="newDocumentModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-base font-bold text-gray-900 dark:text-white"><i class="fas fa-file-arrow-up text-blue-500 mr-2"></i>Hujjat yuklash</h2>
+            <button onclick="closeModal('newDocumentModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form method="POST" action="{% url 'taxi:security_document_upload' %}" enctype="multipart/form-data" class="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Hujjat nomi</label>
+                <input type="text" name="title" required placeholder="Masalan: Yo'lovchi tashish litsenziyasi"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Turi</label>
+                    <select name="doc_type" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition">
+                        {% for key, label in document_types %}
+                        <option value="{{ key }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Raqami (ixtiyoriy)</label>
+                    <input type="text" name="number" placeholder="№ 12345"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Berilgan sana</label>
+                    <input type="date" name="issued_at"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition dark:[color-scheme:dark]">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Amal muddati</label>
+                    <input type="date" name="expires_at"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition dark:[color-scheme:dark]">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Fayl</label>
+                <input type="file" name="file" required
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Izoh (ixtiyoriy)</label>
+                <input type="text" name="notes" placeholder="Qo'shimcha izoh"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white transition">
+            </div>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('newDocumentModal')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold shadow-md shadow-blue-200 dark:shadow-none transition">
+                    Yuklash
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openIncidentUpdateModal(id, title, status) {
+    document.getElementById('updateIncidentForm').action = `/panel/security/incidents/${id}/update/`;
+    document.getElementById('ui-title').textContent = title;
+    document.getElementById('ui-status').value = status;
+    openModal('updateIncidentModal');
+}
+</script>
+{% endblock %}

@@ -270,7 +270,7 @@
 {% endif %}
 
 <!-- Balans/faollik ogohlantirishlari -->
-{% if low_balance_driver_count > 0 or inactive_driver_count > 0 or aging_topup_count > 0 %}
+{% if low_balance_driver_count > 0 or inactive_driver_count > 0 or aging_topup_count > 0 or expiring_document_count > 0 or open_security_incident_count > 0 %}
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
     {% if low_balance_driver_count > 0 %}
     <div class="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/40 rounded-2xl p-4 flex items-center justify-between gap-3">
@@ -322,6 +322,43 @@
         </div>
         <a href="{% url 'taxi:topup_list' %}"
            class="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition-colors">
+            Ko'rish <i class="fas fa-arrow-right text-[10px]"></i>
+        </a>
+    </div>
+    {% endif %}
+    {% if expiring_document_count > 0 %}
+    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-2xl p-4 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/50 text-red-600 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-file-shield"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="font-bold text-red-800 dark:text-red-300 text-sm">{{ expiring_document_count }} ta hujjat muddati tugagan/tugamoqda</p>
+                <p class="text-xs text-red-600 dark:text-red-400 mt-0.5 truncate">Litsenziya/guvohnoma muddatini yangilang — kompaniya qonuniy ishlashi uchun muhim.</p>
+            </div>
+        </div>
+        <a href="{% url 'taxi:security_dashboard' %}?tab=documents"
+           class="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-xl transition-colors">
+            Ko'rish <i class="fas fa-arrow-right text-[10px]"></i>
+        </a>
+    </div>
+    {% endif %}
+    {% if open_security_incident_count > 0 %}
+    <div class="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800/40 rounded-2xl p-4 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-900/50 text-rose-600 flex items-center justify-center flex-shrink-0">
+                <span class="relative flex h-3 w-3">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <i class="fas fa-shield-halved relative text-xs"></i>
+                </span>
+            </div>
+            <div class="min-w-0">
+                <p class="font-bold text-rose-800 dark:text-rose-300 text-sm">{{ open_security_incident_count }} ta xavfsizlik voqeasi ochiq</p>
+                <p class="text-xs text-rose-600 dark:text-rose-400 mt-0.5 truncate">Tuhmat, shantaj yoki yuridik nizolar — e'tibor talab qiladi.</p>
+            </div>
+        </div>
+        <a href="{% url 'taxi:security_dashboard' %}"
+           class="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-xl transition-colors">
             Ko'rish <i class="fas fa-arrow-right text-[10px]"></i>
         </a>
     </div>

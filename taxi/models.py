@@ -859,3 +859,80 @@ class Task(models.Model):
         verbose_name = 'Vazifa'
         verbose_name_plural = 'Vazifalar'
         ordering = ['-created_at']
+
+
+class LegalDocument(models.Model):
+    """Kompaniyaning rasmiy hujjatlari (litsenziya, guvohnoma va h.k.) —
+    kompaniya qonuniy ishlayotganini tasdiqlash va muddati tugashini
+    kuzatib borish uchun."""
+    TYPE_LICENSE     = 'license'
+    TYPE_CERTIFICATE = 'certificate'
+    TYPE_OTHER       = 'other'
+    TYPE_CHOICES = (
+        (TYPE_LICENSE,     'Litsenziya'),
+        (TYPE_CERTIFICATE, 'Guvohnoma'),
+        (TYPE_OTHER,       'Boshqa hujjat'),
+    )
+
+    title       = models.CharField(max_length=255, verbose_name='Hujjat nomi')
+    doc_type    = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_LICENSE, verbose_name='Turi')
+    number      = models.CharField(max_length=100, blank=True, default='', verbose_name='Hujjat raqami')
+    file        = models.FileField(upload_to='legal_docs/', verbose_name='Fayl')
+    issued_at   = models.DateField(null=True, blank=True, verbose_name='Berilgan sana')
+    expires_at  = models.DateField(null=True, blank=True, verbose_name='Amal qilish muddati', help_text='Muddatsiz bo\'lsa bo\'sh qoldiring')
+    notes       = models.TextField(blank=True, default='', verbose_name='Izoh')
+    uploaded_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, verbose_name='Yuklagan')
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.title} ({self.get_doc_type_display()})"
+
+    class Meta:
+        verbose_name = 'Yuridik hujjat'
+        verbose_name_plural = 'Yuridik hujjatlar'
+        ordering = ['-created_at']
+
+
+class SecurityIncident(models.Model):
+    """Kutilmagan jiddiy holatlar (tuhmat, shantaj, yuridik nizolar va h.k.)
+    ro'yxati — bunday voqealar operator e'tiboridan chetda qolib, kompaniyaga
+    huquqiy/obro' zarari yetkazmasligi uchun kuzatib va hal qilib boriladi."""
+    TYPE_DEFAMATION = 'defamation'
+    TYPE_BLACKMAIL  = 'blackmail'
+    TYPE_LEGAL      = 'legal'
+    TYPE_OTHER      = 'other'
+    TYPE_CHOICES = (
+        (TYPE_DEFAMATION, "Tuhmat / obro'ga putur"),
+        (TYPE_BLACKMAIL,  'Shantaj / tahdid'),
+        (TYPE_LEGAL,      'Yuridik nizo / sud ishi'),
+        (TYPE_OTHER,      'Boshqa'),
+    )
+
+    STATUS_OPEN     = 'open'
+    STATUS_PROGRESS = 'investigating'
+    STATUS_RESOLVED = 'resolved'
+    STATUS_CHOICES = (
+        (STATUS_OPEN,     'Ochiq'),
+        (STATUS_PROGRESS, 'Tekshirilmoqda'),
+        (STATUS_RESOLVED, 'Hal qilindi'),
+    )
+
+    title           = models.CharField(max_length=255, verbose_name='Qisqa tavsif')
+    incident_type   = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_OTHER, verbose_name='Turi')
+    description     = models.TextField(verbose_name='Batafsil tavsif')
+    related_driver  = models.ForeignKey(Driver, null=True, blank=True, on_delete=models.SET_NULL, related_name='security_incidents', verbose_name='Aloqador haydovchi')
+    related_client  = models.ForeignKey(Client, null=True, blank=True, on_delete=models.SET_NULL, related_name='security_incidents', verbose_name='Aloqador mijoz')
+    evidence        = models.FileField(upload_to='security_evidence/', blank=True, null=True, verbose_name='Dalil (fayl/skrinshot)')
+    status          = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_OPEN, verbose_name='Holati')
+    resolution_note = models.TextField(blank=True, default='', verbose_name='Hal qilish izohi')
+    created_by      = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='reported_incidents', verbose_name='Kim ro\'yxatga oldi')
+    created_at      = models.DateTimeField(auto_now_add=True)
+    resolved_at     = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.title} ({self.get_status_display()})"
+
+    class Meta:
+        verbose_name = "Xavfsizlik voqeasi"
+        verbose_name_plural = "Xavfsizlik voqealari"
+        ordering = ['-created_at']
