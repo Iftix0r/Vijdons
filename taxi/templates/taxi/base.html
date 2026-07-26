@@ -751,6 +751,7 @@
     }
     function closeModal(id) {
         document.getElementById(id).classList.add('hidden-modal');
+        if (id === 'orderModal' && typeof _stopOrderMapDrivers === 'function') _stopOrderMapDrivers();
     }
     // close on backdrop click
     document.querySelectorAll('.modal-wrap').forEach(m => {
@@ -781,6 +782,49 @@
     let _omapToPM   = null;
     let _omapStep   = 1; // 1=qayerdan, 2=qayerga
     let _ymapsReady = false;
+    let _odriverMarks = {};
+    let _odriverPoll  = null;
+
+    function _loadOrderMapDrivers() {
+        if (!_omap) return;
+        fetch('/panel/drivers/api/locations/')
+            .then(function(r){ return r.json(); })
+            .then(function(data){
+                if (!_omap) return; // modal shu orada yopilgan bo'lishi mumkin
+                var online = (data.drivers || []).filter(function(d){ return d.is_online; });
+                var seen = {};
+                online.forEach(function(d){
+                    seen[d.id] = true;
+                    var coords = [d.latitude, d.longitude];
+                    var hint = d.full_name + ' · ' + d.car_model + ' ' + d.car_number;
+                    if (_odriverMarks[d.id]) {
+                        _odriverMarks[d.id].geometry.setCoordinates(coords);
+                    } else {
+                        var pm = new ymaps.Placemark(coords,
+                            { hintContent: hint },
+                            { preset: 'islands#blueAutoIcon', iconColor: '#3b82f6' }
+                        );
+                        _omap.geoObjects.add(pm);
+                        _odriverMarks[d.id] = pm;
+                    }
+                });
+                Object.keys(_odriverMarks).forEach(function(id){
+                    if (!seen[id]) {
+                        _omap.geoObjects.remove(_odriverMarks[id]);
+                        delete _odriverMarks[id];
+                    }
+                });
+            })
+            .catch(function(e){ console.error('order map drivers error:', e); });
+    }
+
+    function _stopOrderMapDrivers() {
+        if (_odriverPoll) { clearInterval(_odriverPoll); _odriverPoll = null; }
+        if (_omap) {
+            Object.keys(_odriverMarks).forEach(function(id){ _omap.geoObjects.remove(_odriverMarks[id]); });
+        }
+        _odriverMarks = {};
+    }
 
     ymaps.ready(function () { _ymapsReady = true; });
 
@@ -853,6 +897,10 @@
                 _omapStep = 1; // Reset: keyingi bosish qayerdan uchun (tahrirlash)
             }
         });
+
+        // Yaqin atrofdagi onlayn haydovchilarni haritada ko'rsatish, 8s'da yangilanadi
+        _loadOrderMapDrivers();
+        _odriverPoll = setInterval(_loadOrderMapDrivers, 8000);
     }
 
     // openModal ni kengaytirish — orderModal ochilganda haritani ishga tushirish
@@ -861,6 +909,7 @@
         _origOpen(id);
         if (id === 'orderModal') {
             // Reset state
+            _stopOrderMapDrivers();
             _omap = null; _omapFromPM = null; _omapToPM = null; _omapStep = 1;
             document.getElementById('om_from_lat').value = '';
             document.getElementById('om_from_lng').value = '';
