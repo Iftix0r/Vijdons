@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher
-from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed
+from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed, build_balance_receipt_pdf
 import csv
 
 ONLINE_THRESHOLD_SECONDS = 120  # last_seen shundan yangi bo'lsa — online (yashil)
@@ -1148,6 +1148,7 @@ def sos_count(request):
 def topup_list(request):
     from django.db.models import Sum
     from django.utils import timezone
+    from datetime import timedelta
 
     tab = request.GET.get('tab', 'requests')
     status_filter = request.GET.get('status', BalanceTopupRequest.STATUS_PENDING)
@@ -1176,6 +1177,15 @@ def topup_list(request):
     if history_end:
         history_qs = history_qs.filter(created_at__date__lte=history_end)
 
+    # So'nggi 30 kunlik pul harakati (qo'shilgan/yechilgan), grafik uchun
+    flow_labels, flow_added, flow_deducted = [], [], []
+    for i in range(29, -1, -1):
+        day = today - timedelta(days=i)
+        day_logs = BalanceLog.objects.filter(created_at__date=day)
+        flow_labels.append(day.strftime('%d/%m'))
+        flow_added.append(float(day_logs.filter(action=BalanceLog.ACTION_ADD).aggregate(s=Sum('amount'))['s'] or 0))
+        flow_deducted.append(float(day_logs.filter(action=BalanceLog.ACTION_DEDUCT).aggregate(s=Sum('amount'))['s'] or 0))
+
     return render(request, 'taxi/topup_list.html', {
         'tab':           tab,
         'requests':      qs,
@@ -1191,6 +1201,9 @@ def topup_list(request):
         'history_q':      history_q,
         'history_start':  history_start,
         'history_end':    history_end,
+        'flow_labels':   flow_labels,
+        'flow_added':    flow_added,
+        'flow_deducted': flow_deducted,
     })
 
 
@@ -1221,6 +1234,15 @@ def balance_log_export_csv(request):
             log.id, log.driver.full_name, log.driver.phone_number, log.get_action_display(),
             log.amount, log.balance_after, log.note, log.created_at.strftime('%d.%m.%Y %H:%M'),
         ])
+    return response
+
+
+@login_required(login_url='taxi:panel_login')
+def balance_log_receipt_pdf(request, pk):
+    log = get_object_or_404(BalanceLog.objects.select_related('driver'), pk=pk)
+    buf = build_balance_receipt_pdf(log)
+    response = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="chek_{log.id}.pdf"'
     return response
 
 

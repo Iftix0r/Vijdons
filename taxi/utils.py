@@ -1515,6 +1515,103 @@ def build_contract_pdf(contract, driver=None, signature=None):
     return buf
 
 
+def build_balance_receipt_pdf(log):
+    """Bitta balans harakati (BalanceLog) uchun 80mm termal chek uslubidagi
+    PDF chek quradi (BytesIO qaytaradi) — chop etish yoki mijozga/haydovchiga
+    yuborish uchun."""
+    from io import BytesIO
+    from textwrap import wrap
+    from django.utils import timezone
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    from reportlab.pdfgen import canvas as pdfcanvas
+    from django.contrib.staticfiles import finders
+    from taxi.models import BalanceLog
+
+    ACCENT = colors.HexColor('#f59e0b')
+    LINE   = colors.HexColor('#d1d5db')
+    logo_path = finders.find('taxi/img/logo.png')
+    note_lines = wrap(log.note, 40) if log.note else []
+
+    width  = 80 * mm
+    height = (150 + len(note_lines) * 4) * mm
+    buf = BytesIO()
+    c = pdfcanvas.Canvas(buf, pagesize=(width, height))
+
+    x = 6 * mm
+    y = height - 10 * mm
+
+    if logo_path:
+        try:
+            c.drawImage(logo_path, width / 2 - 8 * mm, y - 16 * mm, width=16 * mm, height=16 * mm,
+                        preserveAspectRatio=True, anchor='c', mask='auto')
+            y -= 20 * mm
+        except Exception:
+            pass
+
+    c.setFont('Helvetica-Bold', 12)
+    c.setFillColor(ACCENT)
+    c.drawCentredString(width / 2, y, 'VIJDON TAXI')
+    y -= 5.5 * mm
+    c.setFont('Helvetica', 8)
+    c.setFillColor(colors.grey)
+    c.drawCentredString(width / 2, y, "To'lov cheki")
+    y -= 7 * mm
+
+    def dashed_line():
+        nonlocal y
+        c.setStrokeColor(LINE)
+        c.setDash(1, 2)
+        c.line(x, y, width - x, y)
+        c.setDash()
+        y -= 6 * mm
+
+    def row(label, value, bold=False):
+        nonlocal y
+        c.setFont('Helvetica', 8)
+        c.setFillColor(colors.grey)
+        c.drawString(x, y, label)
+        c.setFont('Helvetica-Bold' if bold else 'Helvetica', 8)
+        c.setFillColor(colors.black)
+        c.drawRightString(width - x, y, value)
+        y -= 5.5 * mm
+
+    dashed_line()
+    row('Chek №', f'#{log.id}')
+    row('Sana', log.created_at.strftime('%d.%m.%Y %H:%M'))
+    row('Haydovchi', log.driver.full_name)
+    row('Telefon', log.driver.phone_number)
+    row('Mashina', f'{log.driver.car_model} ({log.driver.car_number})')
+    y -= 1 * mm
+    dashed_line()
+
+    action_label = "Balansga qo'shildi" if log.action == BalanceLog.ACTION_ADD else "Balansdan yechildi"
+    sign = '+' if log.action == BalanceLog.ACTION_ADD else '-'
+    row(action_label, f"{sign}{log.amount:,.0f} UZS".replace(',', ' '), bold=True)
+    row('Joriy balans', f"{log.balance_after:,.0f} UZS".replace(',', ' '), bold=True)
+
+    if note_lines:
+        y -= 1 * mm
+        c.setFont('Helvetica-Oblique', 7)
+        c.setFillColor(colors.grey)
+        for line in note_lines:
+            c.drawString(x, y, line)
+            y -= 4 * mm
+
+    y -= 2 * mm
+    dashed_line()
+    c.setFont('Helvetica', 6)
+    c.setFillColor(colors.grey)
+    c.drawCentredString(width / 2, y, f"Chek yaratildi: {timezone.now().strftime('%d.%m.%Y %H:%M')}")
+    y -= 4 * mm
+    c.drawCentredString(width / 2, y, "Vijdon Taxi — rahmat!")
+
+    c.showPage()
+    c.save()
+    buf.seek(0)
+    return buf
+
+
 def generate_voucher_codes(n, existing=None):
     """`n` ta noyob, taxminlab bo'lmaydigan maxfiy flayer kodi yaratadi
     (0/O/1/I kabi chalkash belgilarsiz, 8 ta belgi). `existing` — bazadagi
