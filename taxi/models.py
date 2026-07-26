@@ -536,7 +536,7 @@ class VoiceParticipant(models.Model):
         verbose_name_plural = 'Efirdagi ishtirokchilar'
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(driver__isnull=False) | models.Q(operator__isnull=False),
+                check=models.Q(driver__isnull=False) | models.Q(operator__isnull=False),
                 name='voice_participant_driver_or_operator',
             ),
         ]
