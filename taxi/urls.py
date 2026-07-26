@@ -99,6 +99,7 @@ urlpatterns = [
 
     # ── Balans to'ldirish so'rovlari (admin panel) ──
     path('topups/', views.topup_list, name='topup_list'),
+    path('topups/export/csv/', views.balance_log_export_csv, name='balance_log_export_csv'),
     path('topups/<int:pk>/resolve/', views.topup_resolve, name='topup_resolve'),
 
     # ── Ovozli bildirishnomalar ──

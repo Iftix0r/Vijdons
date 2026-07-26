@@ -1,20 +1,139 @@
 {% extends 'taxi/base.html' %}
-{% block title %}Balans to'ldirish so'rovlari — Vijdon Taxi{% endblock %}
+{% block title %}To'lovlar — Vijdon Taxi{% endblock %}
 
 {% block content %}
 <div class="flex flex-wrap justify-between items-center gap-4 mb-5">
     <div>
         <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
-            💳 Balans to'ldirish so'rovlari
+            💳 To'lovlar
             {% if pending_count %}
             <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500 text-white animate-pulse">
                 {{ pending_count }} kutilmoqda
             </span>
             {% endif %}
         </h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Haydovchilar yuborgan to'lov cheklari</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">To'lov so'rovlari va balans harakatlari hisoboti</p>
     </div>
 </div>
+
+<!-- KPI kartalar -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+        <p class="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1">Jami to'ldirilgan</p>
+        <h3 class="text-xl font-extrabold text-emerald-500">{{ total_topped_up|floatformat:0 }}</h3>
+        <p class="text-[11px] text-gray-400 mt-0.5">UZS (barcha vaqt)</p>
+    </div>
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+        <p class="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1">Jami yechilgan (komissiya)</p>
+        <h3 class="text-xl font-extrabold text-rose-500">{{ total_deducted|floatformat:0 }}</h3>
+        <p class="text-[11px] text-gray-400 mt-0.5">UZS (barcha vaqt)</p>
+    </div>
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+        <p class="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1">Shu oy to'ldirilgan</p>
+        <h3 class="text-xl font-extrabold text-emerald-500">{{ month_topped_up|floatformat:0 }}</h3>
+        <p class="text-[11px] text-gray-400 mt-0.5">UZS</p>
+    </div>
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+        <p class="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1">Shu oy yechilgan</p>
+        <h3 class="text-xl font-extrabold text-rose-500">{{ month_deducted|floatformat:0 }}</h3>
+        <p class="text-[11px] text-gray-400 mt-0.5">UZS</p>
+    </div>
+</div>
+
+<!-- Tab tugmalari -->
+<div class="flex gap-2 mb-5">
+    <a href="?tab=requests" class="px-4 py-2 rounded-xl text-sm font-semibold transition {% if tab != 'history' %}bg-amber-500 text-white{% else %}bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50{% endif %}">
+        <i class="fas fa-inbox mr-1.5"></i>To'lov so'rovlari
+    </a>
+    <a href="?tab=history" class="px-4 py-2 rounded-xl text-sm font-semibold transition {% if tab == 'history' %}bg-amber-500 text-white{% else %}bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50{% endif %}">
+        <i class="fas fa-clock-rotate-left mr-1.5"></i>Balans tarixi
+    </a>
+</div>
+
+{% if tab == 'history' %}
+<!-- Balans tarixi filtri -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm px-5 py-4 mb-5">
+    <form method="get" class="flex flex-wrap items-center gap-3">
+        <input type="hidden" name="tab" value="history">
+        <input type="text" name="q" value="{{ history_q }}" placeholder="Haydovchi ismi yoki telefon..."
+               class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all">
+        <select name="haction"
+                class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all">
+            <option value="">Barcha amallar</option>
+            <option value="add"    {% if history_action == 'add' %}selected{% endif %}>➕ Qo'shildi</option>
+            <option value="deduct" {% if history_action == 'deduct' %}selected{% endif %}>➖ Ayirildi</option>
+        </select>
+        <input type="date" name="hstart" value="{{ history_start }}"
+               class="text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-gray-700 dark:text-gray-200 dark:[color-scheme:dark]">
+        <span class="text-gray-300 dark:text-gray-600 text-xs">—</span>
+        <input type="date" name="hend" value="{{ history_end }}"
+               class="text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-gray-700 dark:text-gray-200 dark:[color-scheme:dark]">
+        <button type="submit"
+                class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-xl transition-colors">
+            <i class="fas fa-filter mr-1"></i> Filtrlash
+        </button>
+        <a href="{% url 'taxi:balance_log_export_csv' %}?q={{ history_q }}&haction={{ history_action }}&hstart={{ history_start }}&hend={{ history_end }}"
+           class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl transition-colors">
+            <i class="fas fa-file-csv mr-1"></i> Eksport
+        </a>
+    </form>
+</div>
+
+<!-- Balans tarixi jadvali -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                    <th class="px-5 py-3.5">Haydovchi</th>
+                    <th class="px-5 py-3.5">Amal</th>
+                    <th class="px-5 py-3.5">Summa</th>
+                    <th class="px-5 py-3.5">Balans (keyin)</th>
+                    <th class="px-5 py-3.5">Izoh</th>
+                    <th class="px-5 py-3.5">Vaqt</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
+                {% for log in history %}
+                <tr class="hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-colors">
+                    <td class="px-5 py-3.5">
+                        <div class="font-semibold text-gray-800 dark:text-white text-xs">{{ log.driver.full_name }}</div>
+                        <div class="text-[11px] text-gray-400 font-mono">{{ log.driver.phone_number }}</div>
+                    </td>
+                    <td class="px-5 py-3.5">
+                        {% if log.action == 'add' %}
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            <i class="fas fa-plus text-[9px]"></i>Qo'shildi
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                            <i class="fas fa-minus text-[9px]"></i>Ayirildi
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-3.5 font-bold {% if log.action == 'add' %}text-emerald-600{% else %}text-rose-500{% endif %}">
+                        {{ log.amount|floatformat:0 }} UZS
+                    </td>
+                    <td class="px-5 py-3.5 text-xs text-gray-600 dark:text-gray-300">{{ log.balance_after|floatformat:0 }} UZS</td>
+                    <td class="px-5 py-3.5 text-xs text-gray-500 dark:text-gray-400 max-w-[240px] truncate">{{ log.note|default:"—" }}</td>
+                    <td class="px-5 py-3.5 text-[11px] text-gray-400 whitespace-nowrap">{{ log.created_at|date:"d/m/Y H:i" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-14">
+                        <div class="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-300 dark:text-gray-600 text-2xl mx-auto mb-3">
+                            <i class="fas fa-receipt"></i>
+                        </div>
+                        <p class="font-semibold text-gray-700 dark:text-gray-300">Balans harakati topilmadi</p>
+                        <p class="text-xs text-gray-400 mt-1">Filtrlarni o'zgartirib qayta urinib ko'ring.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
 
 <!-- Filter -->
 <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm px-5 py-4 mb-5">
@@ -129,4 +248,5 @@
         </table>
     </div>
 </div>
+{% endif %}
 {% endblock %}

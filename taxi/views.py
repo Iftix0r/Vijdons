@@ -1146,15 +1146,81 @@ def sos_count(request):
 
 @login_required(login_url='taxi:panel_login')
 def topup_list(request):
+    from django.db.models import Sum
+    from django.utils import timezone
+
+    tab = request.GET.get('tab', 'requests')
     status_filter = request.GET.get('status', BalanceTopupRequest.STATUS_PENDING)
     qs = BalanceTopupRequest.objects.select_related('driver').order_by('-created_at')
     if status_filter:
         qs = qs.filter(status=status_filter)
+
+    today = timezone.now().date()
+    month_start = today.replace(day=1)
+    total_topped_up = BalanceLog.objects.filter(action=BalanceLog.ACTION_ADD).aggregate(s=Sum('amount'))['s'] or 0
+    total_deducted  = BalanceLog.objects.filter(action=BalanceLog.ACTION_DEDUCT).aggregate(s=Sum('amount'))['s'] or 0
+    month_topped_up = BalanceLog.objects.filter(action=BalanceLog.ACTION_ADD, created_at__date__gte=month_start).aggregate(s=Sum('amount'))['s'] or 0
+    month_deducted  = BalanceLog.objects.filter(action=BalanceLog.ACTION_DEDUCT, created_at__date__gte=month_start).aggregate(s=Sum('amount'))['s'] or 0
+
+    history_qs = BalanceLog.objects.select_related('driver').order_by('-created_at')
+    history_action = request.GET.get('haction', '')
+    history_q       = request.GET.get('q', '').strip()
+    history_start   = request.GET.get('hstart', '')
+    history_end     = request.GET.get('hend', '')
+    if history_action in (BalanceLog.ACTION_ADD, BalanceLog.ACTION_DEDUCT):
+        history_qs = history_qs.filter(action=history_action)
+    if history_q:
+        history_qs = history_qs.filter(Q(driver__full_name__icontains=history_q) | Q(driver__phone_number__icontains=history_q))
+    if history_start:
+        history_qs = history_qs.filter(created_at__date__gte=history_start)
+    if history_end:
+        history_qs = history_qs.filter(created_at__date__lte=history_end)
+
     return render(request, 'taxi/topup_list.html', {
+        'tab':           tab,
         'requests':      qs,
         'status_filter': status_filter,
         'pending_count': BalanceTopupRequest.objects.filter(status=BalanceTopupRequest.STATUS_PENDING).count(),
+        'total_topped_up': total_topped_up,
+        'total_deducted':  total_deducted,
+        'month_topped_up': month_topped_up,
+        'month_deducted':  month_deducted,
+        'history':        history_qs[:200],
+        'history_action': history_action,
+        'history_q':      history_q,
+        'history_start':  history_start,
+        'history_end':    history_end,
     })
+
+
+@login_required(login_url='taxi:panel_login')
+def balance_log_export_csv(request):
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="balans_tarixi.csv"'
+    response.write('﻿')
+    writer = csv.writer(response)
+    writer.writerow(['#', 'Haydovchi', 'Telefon', 'Amal', 'Summa', "Balans (keyin)", 'Izoh', 'Vaqt'])
+
+    qs = BalanceLog.objects.select_related('driver').order_by('-created_at')
+    action = request.GET.get('haction', '')
+    q       = request.GET.get('q', '').strip()
+    start   = request.GET.get('hstart', '')
+    end     = request.GET.get('hend', '')
+    if action in (BalanceLog.ACTION_ADD, BalanceLog.ACTION_DEDUCT):
+        qs = qs.filter(action=action)
+    if q:
+        qs = qs.filter(Q(driver__full_name__icontains=q) | Q(driver__phone_number__icontains=q))
+    if start:
+        qs = qs.filter(created_at__date__gte=start)
+    if end:
+        qs = qs.filter(created_at__date__lte=end)
+
+    for log in qs:
+        writer.writerow([
+            log.id, log.driver.full_name, log.driver.phone_number, log.get_action_display(),
+            log.amount, log.balance_after, log.note, log.created_at.strftime('%d.%m.%Y %H:%M'),
+        ])
+    return response
 
 
 @login_required(login_url='taxi:panel_login')
