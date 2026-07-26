@@ -1216,9 +1216,15 @@ async function doAction(id,action){
 
   try{
     const fd = new FormData();
-    fd.append('tmx_dist_km', _tmxDistKm || 0);
-    fd.append('tmx_price', parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,'')) || 0);
-    fd.append('tmx_time', _tmxTimeStr || '0:00');
+    // Taksimetr bir vaqtda faqat BITTA buyurtmani kuzatadi (global _tmxDistKm).
+    // Haydovchida 2-chi faol buyurtma bo'lganda, ushbu amal boshqa (kuzatilmayotgan)
+    // buyurtmaga tegishli bo'lsa, joriy taksimetr qiymatini yuborilmaymiz — aks holda
+    // bitta buyurtmaning masofasi ikkinchisiga yozilib, ikkalasi ham noto'g'ri chiqadi.
+    if (String(_tmxOrderId) === String(id)) {
+      fd.append('tmx_dist_km', _tmxDistKm || 0);
+      fd.append('tmx_price', parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,'')) || 0);
+      fd.append('tmx_time', _tmxTimeStr || '0:00');
+    }
     const ctrl = new AbortController();
     const timeoutId = setTimeout(() => ctrl.abort(), 15000);
     const r=await fetch(`/driver/orders/${id}/${action}/`,{
