@@ -132,10 +132,36 @@ def order_create(request):
     return redirect(request.META.get('HTTP_REFERER', 'taxi:panel_dashboard'))
 
 
+def _refund_order_commission(order, driver, reason):
+    """Buyurtma haydovchi tomonidan qabul qilingan holatda (accepted/on_way/
+    arrived) bekor qilinsa yoki o'chirilsa, ilgari undan yechilgan komissiyani
+    balansiga qaytaradi — haydovchi o'z aybisiz pulini yo'qotmasligi uchun."""
+    from decimal import Decimal
+    from .utils import send_fcm
+
+    commission = order.commission or TariffSettings.get().commission
+    driver.balance += Decimal(str(commission))
+    driver.save(update_fields=['balance'])
+    BalanceLog.objects.create(
+        driver=driver, action=BalanceLog.ACTION_ADD, amount=commission,
+        balance_after=driver.balance,
+        note=f"Komissiya qaytarildi — buyurtma #{order.id} {reason}",
+    )
+    send_fcm(
+        driver.fcm_token,
+        title='Komissiya qaytarildi',
+        body=f"Buyurtma #{order.id} bekor qilindi. {commission} so'm balansingizga qaytarildi.",
+        data={'type': 'order_cancelled', 'order_id': str(order.id)},
+    )
+    return commission
+
+
 @login_required(login_url='taxi:panel_login')
 def order_update_status(request, pk):
     order = get_object_or_404(Order, pk=pk)
     if request.method == 'POST':
+        old_status = order.status
+        old_driver = order.driver
         new_status = request.POST.get('status')
         driver_id  = request.POST.get('driver_id') or None
         if new_status in dict(Order.STATUS_CHOICES):
@@ -143,10 +169,19 @@ def order_update_status(request, pk):
         if driver_id:
             order.driver = Driver.objects.filter(pk=driver_id).first()
         order.save()
+
+        # Buyurtma qabul qilingan holatda bo'lib, endi bekor qilinsa — haydovchidan
+        # ilgari yechilgan komissiya balansiga qaytariladi
+        refunded = False
+        if new_status == 'cancelled' and old_status in Order.ACTIVE_STATUSES and old_driver:
+            _refund_order_commission(order, old_driver, "operator tomonidan bekor qilindi")
+            refunded = True
+
         if new_status in ('accepted', 'arrived', 'completed', 'cancelled'):
             sms_order_status(order, new_status)
         # Haydovchiga FCM yuborish — buyurtma bekor qilinsa yoki yakunlansa
-        if new_status in ('cancelled', 'completed') and order.driver:
+        # (komissiya qaytarilganda alohida xabar allaqachon yuborilgan)
+        if new_status in ('cancelled', 'completed') and order.driver and not refunded:
             from .utils import send_fcm
             send_fcm(
                 order.driver.fcm_token,
@@ -209,6 +244,10 @@ def order_cancel_reassign(request, pk):
 def order_delete(request, pk):
     order = get_object_or_404(Order, pk=pk)
     if request.method == 'POST':
+        # Buyurtma hali yakunlanmagan holatda haydovchiga biriktirilgan bo'lsa
+        # (komissiya balansidan allaqachon yechilgan) — o'chirishdan oldin qaytariladi
+        if order.driver_id and order.status in Order.ACTIVE_STATUSES:
+            _refund_order_commission(order, order.driver, "o'chirildi")
         log_panel_event('panel_order_deleted', f"Buyurtma #{order.id} — {order.from_address}")
         order.delete()
     return redirect('taxi:order_list')
@@ -1651,17 +1690,22 @@ def _handle_admin_message(token, chat_id, text, location=None):
                 f"⚠️ Buyurtma #{order.id} allaqachon {dict(Order.STATUS_CHOICES).get(order.status)}.",
                 _ADMIN_MENU_KB)
             return
+        refunded = False
+        if order.driver_id and order.status in Order.ACTIVE_STATUSES:
+            _refund_order_commission(order, order.driver, "admin (bot) tomonidan bekor qilindi")
+            refunded = True
         order.status = 'cancelled'
         order.save(update_fields=['status', 'updated_at'])
         sms_order_status(order, 'cancelled')
         if order.driver:
-            from .utils import send_fcm
-            send_fcm(
-                order.driver.fcm_token,
-                title='Buyurtma bekor qilindi',
-                body=f"Buyurtma #{order.id} bekor qilindi.",
-                data={'type': 'order_cancelled', 'order_id': str(order.id)},
-            )
+            if not refunded:
+                from .utils import send_fcm
+                send_fcm(
+                    order.driver.fcm_token,
+                    title='Buyurtma bekor qilindi',
+                    body=f"Buyurtma #{order.id} bekor qilindi.",
+                    data={'type': 'order_cancelled', 'order_id': str(order.id)},
+                )
             tg_order_cancelled(order, order.driver)
         else:
             log_panel_event('panel_order_cancelled', f"Buyurtma #{order.id} — admin (bot) tomonidan bekor qilindi")
