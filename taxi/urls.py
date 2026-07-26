@@ -61,6 +61,11 @@ urlpatterns = [
     path('security/documents/upload/', views.security_document_upload, name='security_document_upload'),
     path('security/documents/<int:pk>/delete/', views.security_document_delete, name='security_document_delete'),
 
+    path('voice/join/',      views.panel_voice_join,      name='panel_voice_join'),
+    path('voice/leave/',     views.panel_voice_leave,     name='panel_voice_leave'),
+    path('voice/heartbeat/', views.panel_voice_heartbeat, name='panel_voice_heartbeat'),
+    path('voice/signal/',    views.panel_voice_signal,    name='panel_voice_signal'),
+
     path('api/client/lookup/', api_views.client_last_order_api, name='api_client_lookup'),
 
     # ── Telegram Bot Webhooks ──

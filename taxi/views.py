@@ -6,9 +6,10 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
-from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher, LegalDocument, SecurityIncident
-from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed, build_balance_receipt_pdf
+from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher, LegalDocument, SecurityIncident, VoiceParticipant, VoiceSignal
+from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed, build_balance_receipt_pdf, voice_prune_stale, voice_participants_list, voice_target_kwargs, voice_signal_sender_info
 import csv
+import json
 
 ONLINE_THRESHOLD_SECONDS = 120  # last_seen shundan yangi bo'lsa — online (yashil)
 PENDING_ORDER_AGING_SECONDS = 120  # buyurtma shuncha vaqt haydovchisiz tursa — operator e'tiboriga chiqadi
@@ -2550,6 +2551,82 @@ def security_document_delete(request, pk):
         document.delete()
         messages.success(request, "Hujjat o'chirildi.")
     return redirect('taxi:security_dashboard')
+
+
+# ── Guruh jonli ovozli aloqa ("efir") — operator paneli tomoni ──────────────
+# Haydovchilar bir-biri bilan gaplashadigan "efir"ning aynan o'zi — operator
+# ham xuddi shu xonaga (VoiceParticipant/VoiceSignal) ulanadi, shu bilan
+# haydovchilarning suhbatini eshitishi va o'zi ham hammaga gapirishi mumkin
+# bo'ladi. Umumiy mantiq taxi/utils.py dagi voice_* funksiyalarda — batafsili
+# uchun taxi/driver_views.py dagi driver_voice_* (haydovchi tomoni) ga qarang.
+
+@login_required(login_url='taxi:panel_login')
+@require_POST
+def panel_voice_join(request):
+    voice_prune_stale()
+    VoiceParticipant.objects.update_or_create(operator=request.user)
+    return JsonResponse({'ok': True, 'participants': voice_participants_list(f'o{request.user.id}')})
+
+
+@login_required(login_url='taxi:panel_login')
+@require_POST
+def panel_voice_leave(request):
+    others = voice_participants_list(f'o{request.user.id}')
+    VoiceParticipant.objects.filter(operator=request.user).delete()
+    signals = []
+    for o in others:
+        kwargs = voice_target_kwargs('to', o['key'])
+        if kwargs:
+            signals.append(VoiceSignal(from_operator=request.user, kind=VoiceSignal.KIND_LEAVE, payload='', **kwargs))
+    VoiceSignal.objects.bulk_create(signals)
+    return JsonResponse({'ok': True})
+
+
+@login_required(login_url='taxi:panel_login')
+def panel_voice_heartbeat(request):
+    try:
+        VoiceParticipant.objects.get(operator=request.user).save(update_fields=['last_seen'])
+    except VoiceParticipant.DoesNotExist:
+        return JsonResponse({'ok': True, 'joined': False})
+    voice_prune_stale()
+
+    signals = list(VoiceSignal.objects.filter(to_operator=request.user).select_related('from_driver', 'from_operator').order_by('created_at')[:50])
+    signal_ids = [s.id for s in signals]
+    if signal_ids:
+        VoiceSignal.objects.filter(id__in=signal_ids).delete()
+
+    return JsonResponse({
+        'ok': True,
+        'joined': True,
+        'participants': voice_participants_list(f'o{request.user.id}'),
+        'signals': [
+            dict(zip(('from', 'from_name'), voice_signal_sender_info(s)),
+                 kind=s.kind, payload=json.loads(s.payload) if s.payload else None)
+            for s in signals
+        ],
+    })
+
+
+@login_required(login_url='taxi:panel_login')
+@require_POST
+def panel_voice_signal(request):
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'ok': False}, status=400)
+
+    kind = data.get('kind')
+    payload = data.get('payload')
+    target_kwargs = voice_target_kwargs('to', data.get('to'))
+    if not target_kwargs or kind not in dict(VoiceSignal.KIND_CHOICES):
+        return JsonResponse({'ok': False, 'error': "Noto'g'ri so'rov"}, status=400)
+
+    VoiceSignal.objects.create(
+        from_operator=request.user, kind=kind,
+        payload=json.dumps(payload) if payload is not None else '',
+        **target_kwargs,
+    )
+    return JsonResponse({'ok': True})
 
 
 # ── Haydovchi shartnomasi ──────────────────────────────────────────────────────

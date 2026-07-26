@@ -1028,10 +1028,10 @@ async function _voiceAutoConnect() {
   // OFFER yuboraman — shu bilan ikki tomon ham bir vaqtda offer yubormay,
   // "kim birinchi so'z boshlaydi" mojarosining oldi olinadi.
   for (const p of (data.participants || [])) {
-    const entry = _voicePeer(p.id, p.name);
+    const entry = _voicePeer(p.key, p.name);
     const offer = await entry.pc.createOffer();
     await entry.pc.setLocalDescription(offer);
-    _voiceSendSignal(p.id, 'offer', offer);
+    _voiceSendSignal(p.key, 'offer', offer);
   }
 
   _voiceUpdateParticipantsUI(data.participants || []);

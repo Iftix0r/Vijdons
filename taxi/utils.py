@@ -200,6 +200,69 @@ def log_panel_event(event_type, message=''):
         pass
 
 
+# ── Guruh jonli ovozli aloqa ("efir") — umumiy yordamchilar ─────────────────
+# Haydovchi (taxi/driver_views.py) va operator panel (taxi/views.py) tomonlari
+# bir xil "efir" xonasini ulashadi, shuning uchun ikkalasi ham shu funksiyalardan
+# foydalanadi. Ishtirokchi kaliti — 'd<driver_id>' yoki 'o<user_id>' shaklidagi
+# satr (masalan 'd5', 'o3') — frontend JS uchun bitta tekis ID makonini
+# ta'minlaydi, backend esa prefiksga qarab qaysi FK (driver/operator) ekanini biladi.
+VOICE_STALE_SECONDS = 12
+
+
+def voice_prune_stale():
+    """Heartbeat uzoq vaqt kelmagan (masalan ilova yopilgan) ishtirokchilarni
+    "efir"dan olib tashlaydi."""
+    from django.utils import timezone
+    import datetime
+    from taxi.models import VoiceParticipant
+    cutoff = timezone.now() - datetime.timedelta(seconds=VOICE_STALE_SECONDS)
+    VoiceParticipant.objects.filter(last_seen__lt=cutoff).delete()
+
+
+def voice_participant_key(participant):
+    return f'd{participant.driver_id}' if participant.driver_id else f'o{participant.operator_id}'
+
+
+def voice_participants_list(exclude_key):
+    """"Efir"dagi barcha ishtirokchilarni (so'rov yuborayotgan tomondan
+    tashqari) frontend uchun {'key', 'name', 'is_operator'} shaklida qaytaradi."""
+    from taxi.models import VoiceParticipant
+    out = []
+    for p in VoiceParticipant.objects.select_related('driver', 'operator'):
+        key = voice_participant_key(p)
+        if key == exclude_key:
+            continue
+        if p.driver_id:
+            out.append({'key': key, 'name': p.driver.full_name, 'car_number': p.driver.car_number, 'is_operator': False})
+        else:
+            out.append({'key': key, 'name': f"Operator — {p.operator.get_full_name() or p.operator.username}", 'is_operator': True})
+    return out
+
+
+def voice_target_kwargs(prefix, key):
+    """'d5' yoki 'o3' kalitini `VoiceSignal.objects.create(...)` ga mos
+    `{'to_driver_id': 5}` yoki `{'to_operator_id': 3}` kabi kwargs ga aylantiradi.
+    `prefix` — 'to' yoki 'from'. Noto'g'ri/bo'sh kalit uchun None qaytaradi."""
+    if not key or len(key) < 2:
+        return None
+    kind, raw_id = key[0], key[1:]
+    if not raw_id.isdigit():
+        return None
+    if kind == 'd':
+        return {f'{prefix}_driver_id': int(raw_id)}
+    if kind == 'o':
+        return {f'{prefix}_operator_id': int(raw_id)}
+    return None
+
+
+def voice_signal_sender_info(signal):
+    """VoiceSignal qatoridan yuboruvchining (key, name) juftligini qaytaradi —
+    `select_related('from_driver', 'from_operator')` bilan olingan bo'lishi kerak."""
+    if signal.from_driver_id:
+        return f'd{signal.from_driver_id}', signal.from_driver.full_name
+    return f'o{signal.from_operator_id}', f"Operator — {signal.from_operator.get_full_name() or signal.from_operator.username}"
+
+
 # ── Eskiz.uz SMS ──────────────────────────────────────────────────────────────
 
 def normalize_phone_uz(raw):

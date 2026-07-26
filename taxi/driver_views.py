@@ -1096,54 +1096,42 @@ def driver_group_chat_send_audio(request, driver):
 # ishtirokchi uchun mo'ljallangan. Ishonchli NAT o'tish uchun TURN server yo'q
 # (faqat bepul ochiq STUN) — juda cheklangan tarmoqlarda ulanish muvaffaqiyatsiz
 # bo'lishi mumkin.
-VOICE_STALE_SECONDS = 12
-
-
-def _voice_prune_stale():
-    from django.utils import timezone
-    import datetime
-    cutoff = timezone.now() - datetime.timedelta(seconds=VOICE_STALE_SECONDS)
-    VoiceParticipant.objects.filter(last_seen__lt=cutoff).delete()
-
-
-def _voice_participants_list(exclude_driver):
-    return [
-        {'id': p.driver_id, 'name': p.driver.full_name, 'car_number': p.driver.car_number}
-        for p in VoiceParticipant.objects.select_related('driver').exclude(driver_id=exclude_driver.id)
-    ]
-
-
 @driver_login_required
 @require_POST
 def driver_voice_join(request, driver):
-    _voice_prune_stale()
+    from .utils import voice_prune_stale, voice_participants_list
+    voice_prune_stale()
     VoiceParticipant.objects.update_or_create(driver=driver)
-    return JsonResponse({'ok': True, 'participants': _voice_participants_list(driver)})
+    return JsonResponse({'ok': True, 'participants': voice_participants_list(f'd{driver.id}')})
 
 
 @driver_login_required
 @require_POST
 def driver_voice_leave(request, driver):
-    others = _voice_participants_list(driver)
+    from .utils import voice_participants_list, voice_target_kwargs
+    others = voice_participants_list(f'd{driver.id}')
     VoiceParticipant.objects.filter(driver=driver).delete()
-    VoiceSignal.objects.bulk_create([
-        VoiceSignal(from_driver=driver, to_driver_id=o['id'], kind=VoiceSignal.KIND_LEAVE, payload='')
-        for o in others
-    ])
+    signals = []
+    for o in others:
+        kwargs = voice_target_kwargs('to', o['key'])
+        if kwargs:
+            signals.append(VoiceSignal(from_driver=driver, kind=VoiceSignal.KIND_LEAVE, payload='', **kwargs))
+    VoiceSignal.objects.bulk_create(signals)
     return JsonResponse({'ok': True})
 
 
 @driver_login_required
 def driver_voice_heartbeat(request, driver):
+    from .utils import voice_prune_stale, voice_participants_list, voice_signal_sender_info
     try:
         # last_seen `auto_now=True` bo'lgani uchun .save() chaqirilishi kerak —
         # queryset .update() bilan avtomatik yangilanmaydi (faqat model instance save()da ishlaydi)
         VoiceParticipant.objects.get(driver=driver).save(update_fields=['last_seen'])
     except VoiceParticipant.DoesNotExist:
         return JsonResponse({'ok': True, 'joined': False})
-    _voice_prune_stale()
+    voice_prune_stale()
 
-    signals = list(VoiceSignal.objects.filter(to_driver=driver).select_related('from_driver').order_by('created_at')[:50])
+    signals = list(VoiceSignal.objects.filter(to_driver=driver).select_related('from_driver', 'from_operator').order_by('created_at')[:50])
     signal_ids = [s.id for s in signals]
     if signal_ids:
         VoiceSignal.objects.filter(id__in=signal_ids).delete()
@@ -1151,14 +1139,10 @@ def driver_voice_heartbeat(request, driver):
     return JsonResponse({
         'ok': True,
         'joined': True,
-        'participants': _voice_participants_list(driver),
+        'participants': voice_participants_list(f'd{driver.id}'),
         'signals': [
-            {
-                'from': s.from_driver_id,
-                'from_name': s.from_driver.full_name,
-                'kind': s.kind,
-                'payload': json.loads(s.payload) if s.payload else None,
-            }
+            dict(zip(('from', 'from_name'), voice_signal_sender_info(s)),
+                 kind=s.kind, payload=json.loads(s.payload) if s.payload else None)
             for s in signals
         ],
     })
@@ -1167,19 +1151,21 @@ def driver_voice_heartbeat(request, driver):
 @driver_login_required
 @require_POST
 def driver_voice_signal(request, driver):
+    from .utils import voice_target_kwargs
     try:
         data = json.loads(request.body)
     except Exception:
         return JsonResponse({'ok': False}, status=400)
 
-    to_id = data.get('to')
     kind = data.get('kind')
     payload = data.get('payload')
-    if not to_id or kind not in dict(VoiceSignal.KIND_CHOICES):
+    target_kwargs = voice_target_kwargs('to', data.get('to'))
+    if not target_kwargs or kind not in dict(VoiceSignal.KIND_CHOICES):
         return JsonResponse({'ok': False, 'error': "Noto'g'ri so'rov"}, status=400)
 
     VoiceSignal.objects.create(
-        from_driver=driver, to_driver_id=to_id, kind=kind,
+        from_driver=driver, kind=kind,
         payload=json.dumps(payload) if payload is not None else '',
+        **target_kwargs,
     )
     return JsonResponse({'ok': True})
