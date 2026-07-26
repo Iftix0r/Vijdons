@@ -59,7 +59,7 @@
         </div>
         <p class="text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1">Yakunlangan</p>
         <h3 class="text-2xl font-extrabold text-gray-900 dark:text-white relative z-10">{{ completed_orders }}</h3>
-        <p class="text-[11px] text-rose-400 mt-0.5"><i class="fas fa-times-circle mr-1"></i>{{ cancelled_orders }} bekor qilindi</p>
+        <p class="text-[11px] text-rose-400 mt-0.5"><i class="fas fa-times-circle mr-1"></i>{{ cancelled_orders }} bekor qilindi ({{ cancellation_rate }}%)</p>
     </div>
 </div>
 
@@ -68,6 +68,20 @@
     <div class="flex justify-between items-center mb-3">
         <h3 class="font-bold text-gray-900 dark:text-white text-sm">So'nggi 7 kunlik daromad</h3>
         <span class="text-xs text-gray-400">UZS</span>
+    </div>
+    <div class="flex flex-wrap gap-2 mb-4">
+        {% if revenue_growth_pct is not None %}
+        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold {% if revenue_growth_pct > 0 %}bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400{% elif revenue_growth_pct < 0 %}bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400{% else %}bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400{% endif %}">
+            <i class="fas {% if revenue_growth_pct > 0 %}fa-arrow-trend-up{% elif revenue_growth_pct < 0 %}fa-arrow-trend-down{% else %}fa-equals{% endif %}"></i>
+            Haftalik daromad: o'tgan haftaga nisbatan {{ revenue_growth_pct }}%
+        </span>
+        {% endif %}
+        {% if orders_growth_pct is not None %}
+        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold {% if orders_growth_pct > 0 %}bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400{% elif orders_growth_pct < 0 %}bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400{% else %}bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400{% endif %}">
+            <i class="fas {% if orders_growth_pct > 0 %}fa-arrow-trend-up{% elif orders_growth_pct < 0 %}fa-arrow-trend-down{% else %}fa-equals{% endif %}"></i>
+            Haftalik buyurtmalar: o'tgan haftaga nisbatan {{ orders_growth_pct }}%
+        </span>
+        {% endif %}
     </div>
     <div id="weekly-compare-chips" class="flex flex-wrap gap-2 mb-4"></div>
     <canvas id="weeklyChart" height="80"></canvas>
@@ -252,6 +266,46 @@
        class="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-xl transition-colors">
         Ko'rish <i class="fas fa-arrow-right text-xs"></i>
     </a>
+</div>
+{% endif %}
+
+<!-- Balans/faollik ogohlantirishlari -->
+{% if low_balance_driver_count > 0 or inactive_driver_count > 0 %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    {% if low_balance_driver_count > 0 %}
+    <div class="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/40 rounded-2xl p-4 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-orange-100 dark:bg-orange-900/50 text-orange-600 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-wallet"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="font-bold text-orange-800 dark:text-orange-300 text-sm">{{ low_balance_driver_count }} ta haydovchi balansi kam</p>
+                <p class="text-xs text-orange-600 dark:text-orange-400 mt-0.5 truncate">Komissiyani yopa olmay, yangi buyurtma qabul qila olmaydi.</p>
+            </div>
+        </div>
+        <a href="{% url 'taxi:driver_list' %}"
+           class="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition-colors">
+            Ko'rish <i class="fas fa-arrow-right text-[10px]"></i>
+        </a>
+    </div>
+    {% endif %}
+    {% if inactive_driver_count > 0 %}
+    <div class="bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/40 rounded-2xl p-4 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-slate-200 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-bed"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="font-bold text-slate-700 dark:text-slate-300 text-sm">{{ inactive_driver_count }} ta haydovchi 3+ kundir faol emas</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">Navbatga chiqmagan — qayta bog'lanish kerak bo'lishi mumkin.</p>
+            </div>
+        </div>
+        <a href="{% url 'taxi:driver_list' %}"
+           class="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition-colors">
+            Ko'rish <i class="fas fa-arrow-right text-[10px]"></i>
+        </a>
+    </div>
+    {% endif %}
 </div>
 {% endif %}
 

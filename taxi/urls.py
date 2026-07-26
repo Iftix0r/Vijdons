@@ -52,6 +52,7 @@ urlpatterns = [
     path('orders/<int:pk>/edit-price/', views.order_edit_price, name='order_edit_price'),
     path('orders/export/csv/', views.orders_export_csv, name='orders_export_csv'),
     path('statistics/', views.statistics, name='statistics'),
+    path('statistics/export/csv/', views.statistics_export_csv, name='statistics_export_csv'),
 
     path('api/client/lookup/', api_views.client_last_order_api, name='api_client_lookup'),
 

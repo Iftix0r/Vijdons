@@ -16,11 +16,15 @@ logger = logging.getLogger(__name__)
 _DAILY_SCHEDULE = (
     (7,  'last_morning_greeting_date',        'tg_morning_greeting'),
     (10, 'last_inactive_drivers_report_date', 'tg_inactive_drivers_report'),
+    (19, 'last_high_rejection_report_date',   'tg_high_rejection_report'),
     (20, 'last_evening_top_drivers_date',     'tg_evening_top_drivers'),
+    (20, 'last_daily_highlight_date',         'tg_daily_highlight_trip'),
+    (21, 'last_top_hours_drivers_date',       'tg_top_hours_drivers'),
+    (22, 'last_daily_summary_date',           'tg_daily_summary'),
     (23, 'last_night_greeting_date',          'tg_night_greeting'),
 )
 
-_WEEKLY_HOUR  = 21  # Yakshanba kuni shu soatda
+_WEEKLY_HOUR  = 21  # Yakshanba kuni shu soatda (TOP-10) / 22 (umumiy hisobot)
 _MONTHLY_HOUR = 21  # Oyning oxirgi kunida shu soatda
 
 _TICK_SECONDS = 30
@@ -68,6 +72,9 @@ def _run_tick():
 
     if now.hour == _MONTHLY_HOUR and (today + timedelta(days=1)).day == 1:
         _claim_and_run('last_monthly_top_drivers_date', 'tg_monthly_top_drivers', today)
+
+    if now.hour == 22 and now.isoweekday() == 7:
+        _claim_and_run('last_weekly_summary_date', 'tg_weekly_summary', today)
 
 
 def _run_loop():

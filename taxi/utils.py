@@ -906,6 +906,189 @@ def tg_group_announcement(text):
     _notify_driver_group(f"📢 <b>E'lon</b>\n\n{text}")
 
 
+def _today_duty_seconds():
+    """Bugun har bir haydovchi jami necha soniya navbatda (is_on_duty) turganini
+    hisoblaydi — DriverActivityLog dagi duty_on/duty_off juftliklaridan."""
+    from django.utils import timezone
+    from taxi.models import DriverActivityLog
+
+    now = timezone.localtime()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    logs = (
+        DriverActivityLog.objects
+        .filter(created_at__gte=today_start,
+                action__in=[DriverActivityLog.ACTION_DUTY_ON, DriverActivityLog.ACTION_DUTY_OFF])
+        .order_by('driver_id', 'created_at')
+    )
+
+    seconds = {}
+    open_on = {}
+    for log in logs:
+        if log.action == DriverActivityLog.ACTION_DUTY_ON:
+            open_on[log.driver_id] = log.created_at
+        else:
+            start = open_on.pop(log.driver_id, today_start)
+            seconds[log.driver_id] = seconds.get(log.driver_id, 0) + (log.created_at - start).total_seconds()
+    # Hozir ham navbatda turganlar uchun shu daqiqagacha bo'lgan vaqtni qo'shamiz
+    for driver_id, start in open_on.items():
+        seconds[driver_id] = seconds.get(driver_id, 0) + (timezone.now() - start).total_seconds()
+    return seconds
+
+
+def tg_top_hours_drivers():
+    """Har kuni kechqurun bugun eng uzoq navbatda turgan (is_on_duty bo'lgan)
+    haydovchilar TOP-10 ro'yxatini haydovchilar guruhiga yuboradi."""
+    cfg = _cfg()
+    if not cfg or not cfg.notify_top_hours_drivers:
+        return
+    from django.utils import timezone
+    from taxi.models import Driver
+
+    seconds = _today_duty_seconds()
+    top = sorted(seconds.items(), key=lambda kv: kv[1], reverse=True)[:10]
+    top = [(driver_id, secs) for driver_id, secs in top if secs >= 600]  # 10 daqiqadan kam bo'lsa hisobga olinmaydi
+    if not top:
+        return
+
+    drivers = {d.id: d for d in Driver.objects.filter(id__in=[driver_id for driver_id, _ in top])}
+    medals = ['🥇', '🥈', '🥉']
+    today = timezone.localdate()
+    lines = ["⏱ <b>Bugun eng uzoq navbatda turgan haydovchilar</b>", f"📅 {today.strftime('%d.%m.%Y')}", ""]
+    for i, (driver_id, secs) in enumerate(top):
+        d = drivers.get(driver_id)
+        if not d:
+            continue
+        rank = medals[i] if i < 3 else f"{i + 1}."
+        lines.append(f"{rank} <b>{d.full_name}</b> — {secs / 3600:.1f} soat")
+    lines.append("\nFidoyiligingiz uchun rahmat! 🙌")
+    _notify_driver_group('\n'.join(lines))
+
+
+def tg_high_rejection_report():
+    """Bugun ko'p buyurtmani rad etgan haydovchilarni operatorlar guruhiga
+    ma'lum qiladi. Taxminiy hisob: shu kun yaratilgan buyurtmalar orasida
+    rad etganlar soni va qabul qilganlar soni solishtiriladi."""
+    cfg = _cfg()
+    if not cfg or not cfg.notify_high_rejection:
+        return
+    from django.utils import timezone
+    from taxi.models import Driver, Order
+
+    threshold = 0.5
+    min_sample = 5
+    today = timezone.localdate()
+    lines = []
+    for d in Driver.objects.filter(is_active=True, approval_status='approved'):
+        rejected = Order.objects.filter(rejected_by=d, created_at__date=today).count()
+        accepted = Order.objects.filter(driver=d, created_at__date=today).count()
+        total = rejected + accepted
+        if total < min_sample:
+            continue
+        rate = rejected / total
+        if rate > threshold:
+            lines.append(f"👤 <b>{d.full_name}</b> — {rejected}/{total} ta rad etgan ({rate * 100:.0f}%)")
+    if not lines:
+        return
+    send_telegram('\n'.join([
+        "⚠️ <b>Bugun ko'p buyurtmani rad etgan haydovchilar</b>", "",
+        *lines,
+    ]))
+
+
+def _company_stats_for_period(date_from, date_to):
+    from django.db.models import Count, Sum
+    from taxi.models import Order
+
+    qs = Order.objects.filter(created_at__date__gte=date_from, created_at__date__lte=date_to)
+    completed = qs.filter(status='completed').aggregate(count=Count('id'), revenue=Sum('price'))
+    cancelled_count = qs.filter(status='cancelled').count()
+    return {
+        'completed': completed['count'] or 0,
+        'revenue':   completed['revenue'] or 0,
+        'cancelled': cancelled_count,
+    }
+
+
+def tg_daily_summary():
+    """Kun oxirida kompaniya bo'yicha umumiy hisobotni operatorlar guruhiga yuboradi."""
+    cfg = _cfg()
+    if not cfg or not cfg.notify_daily_summary:
+        return
+    from django.utils import timezone
+    from taxi.models import Driver
+
+    today = timezone.localdate()
+    stats = _company_stats_for_period(today, today)
+    active_drivers = Driver.objects.filter(is_active=True, is_on_duty=True, approval_status='approved').count()
+    revenue = stats['revenue']
+    send_telegram(
+        f"📊 <b>Kunlik hisobot</b>\n"
+        f"📅 {today.strftime('%d.%m.%Y')}\n\n"
+        f"✅ Yakunlangan: <b>{stats['completed']}</b> ta\n"
+        f"💰 Tushum: <b>{revenue:,.0f} UZS</b>\n"
+        f"❌ Bekor qilingan: {stats['cancelled']} ta\n"
+        f"🟢 Hozir navbatda: {active_drivers} haydovchi".replace(',', ' ')
+    )
+
+
+def tg_weekly_summary():
+    """Har yakshanba kechqurun kompaniya bo'yicha haftalik hisobotni
+    operatorlar guruhiga yuboradi."""
+    cfg = _cfg()
+    if not cfg or not cfg.notify_weekly_summary:
+        return
+    from datetime import timedelta
+    from django.utils import timezone
+
+    today = timezone.localdate()
+    week_start = today - timedelta(days=today.weekday())
+    stats = _company_stats_for_period(week_start, today)
+    revenue = stats['revenue']
+    send_telegram(
+        f"📊 <b>Haftalik hisobot</b>\n"
+        f"📅 {week_start.strftime('%d.%m')} — {today.strftime('%d.%m.%Y')}\n\n"
+        f"✅ Yakunlangan: <b>{stats['completed']}</b> ta\n"
+        f"💰 Tushum: <b>{revenue:,.0f} UZS</b>\n"
+        f"❌ Bekor qilingan: {stats['cancelled']} ta".replace(',', ' ')
+    )
+
+
+def tg_daily_highlight_trip():
+    """Kun oxirida eng uzoq va eng qimmat safarni haydovchilar guruhida
+    e'lon qiladi — kichik qiziqarli shoutout."""
+    cfg = _cfg()
+    if not cfg or not cfg.notify_daily_highlight:
+        return
+    from django.utils import timezone
+    from taxi.models import Order
+
+    today = timezone.localdate()
+    qs = Order.objects.filter(status='completed', created_at__date=today, driver__isnull=False)
+    longest  = qs.exclude(distance_km__isnull=True).order_by('-distance_km').first()
+    priciest = qs.exclude(price__isnull=True).order_by('-price').first()
+    if not longest and not priciest:
+        return
+
+    lines = ["🌟 <b>Kunning yorqin lahzalari</b>", f"📅 {today.strftime('%d.%m.%Y')}", ""]
+    if longest:
+        lines.append(f"📏 Eng uzoq safar: <b>{longest.distance_km:.1f} km</b> — {longest.driver.full_name}")
+    if priciest:
+        lines.append(f"💰 Eng qimmat safar: <b>{priciest.price:,.0f} UZS</b> — {priciest.driver.full_name}".replace(',', ' '))
+    _notify_driver_group('\n'.join(lines))
+
+
+def tg_flyer_voucher_redeemed(voucher, driver):
+    """Haydovchi flayerdagi kuponni ishlatganda haydovchilar guruhiga
+    tabriklovchi xabar yuboradi."""
+    cfg = _cfg()
+    if not cfg or not cfg.notify_flyer_redeemed:
+        return
+    _notify_driver_group(
+        f"🎁 <b>Flayer kuponi ishlatildi!</b>\n"
+        f"👤 <b>{driver.full_name}</b> balansiga <b>{voucher.amount:,.0f} UZS</b> qo'shildi.".replace(',', ' ')
+    )
+
+
 def tg_night_greeting():
     """Kechasi hozir navbatda turgan (tungi smenada ishlayotgan) haydovchilarga
     alohida salomlashuv xabarini haydovchilar guruhiga yuboradi."""

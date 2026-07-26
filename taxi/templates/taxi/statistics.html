@@ -7,16 +7,48 @@
         <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white">Statistika</h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Tizim tahlili va hisobotlar</p>
     </div>
-    <div class="flex gap-2">
-        <a href="?period=week"  class="px-4 py-2 rounded-xl text-sm font-semibold transition {% if period == 'week' %}bg-yellow-500 text-white{% else %}bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50{% endif %}">7 kun</a>
-        <a href="?period=month" class="px-4 py-2 rounded-xl text-sm font-semibold transition {% if period == 'month' %}bg-yellow-500 text-white{% else %}bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50{% endif %}">30 kun</a>
-        <a href="?period=year"  class="px-4 py-2 rounded-xl text-sm font-semibold transition {% if period == 'year' %}bg-yellow-500 text-white{% else %}bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50{% endif %}">1 yil</a>
+    <div class="flex flex-wrap items-center gap-2">
+        <a href="?period=week"  class="px-4 py-2 rounded-xl text-sm font-semibold transition {% if period == 'week' and not custom_range %}bg-yellow-500 text-white{% else %}bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50{% endif %}">7 kun</a>
+        <a href="?period=month" class="px-4 py-2 rounded-xl text-sm font-semibold transition {% if period == 'month' and not custom_range %}bg-yellow-500 text-white{% else %}bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50{% endif %}">30 kun</a>
+        <a href="?period=year"  class="px-4 py-2 rounded-xl text-sm font-semibold transition {% if period == 'year' and not custom_range %}bg-yellow-500 text-white{% else %}bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50{% endif %}">1 yil</a>
+        <form method="get" class="flex items-center gap-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-2 py-1.5">
+            <input type="date" name="start" value="{{ start_date|date:'Y-m-d' }}"
+                   class="text-xs bg-transparent focus:outline-none text-gray-600 dark:text-gray-300 dark:[color-scheme:dark]">
+            <span class="text-gray-300 dark:text-gray-600 text-xs">—</span>
+            <input type="date" name="end" value="{{ end_date|date:'Y-m-d' }}"
+                   class="text-xs bg-transparent focus:outline-none text-gray-600 dark:text-gray-300 dark:[color-scheme:dark]">
+            <button type="submit" class="px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700">
+                <i class="fas fa-filter"></i>
+            </button>
+        </form>
+        <a href="{% url 'taxi:statistics_export_csv' %}?start={{ start_date|date:'Y-m-d' }}&end={{ end_date|date:'Y-m-d' }}"
+           class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-white transition">
+            <i class="fas fa-file-csv"></i> Eksport
+        </a>
     </div>
+</div>
+
+<!-- Tanlangan davr uchun o'sish va bekor qilish darajasi -->
+<div class="flex flex-wrap gap-2 mb-5">
+    {% if revenue_growth_pct is not None %}
+    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold {% if revenue_growth_pct > 0 %}bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400{% elif revenue_growth_pct < 0 %}bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400{% else %}bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400{% endif %}">
+        <i class="fas {% if revenue_growth_pct > 0 %}fa-arrow-trend-up{% elif revenue_growth_pct < 0 %}fa-arrow-trend-down{% else %}fa-equals{% endif %}"></i>
+        Daromad: oldingi davrga nisbatan {{ revenue_growth_pct }}%
+    </span>
+    {% endif %}
+    {% if orders_growth_pct is not None %}
+    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold {% if orders_growth_pct > 0 %}bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400{% elif orders_growth_pct < 0 %}bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400{% else %}bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400{% endif %}">
+        <i class="fas {% if orders_growth_pct > 0 %}fa-arrow-trend-up{% elif orders_growth_pct < 0 %}fa-arrow-trend-down{% else %}fa-equals{% endif %}"></i>
+        Buyurtmalar: oldingi davrga nisbatan {{ orders_growth_pct }}%
+    </span>
+    {% endif %}
+    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400">
+        <i class="fas fa-times-circle"></i> Bekor qilish darajasi: {{ cancellation_rate }}% (tanlangan davrda)
+    </span>
 </div>
 
 <!-- Umumiy kartalar -->
 <div class="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-5">
-    {% for item in stat_cards %}{% endfor %}
     <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm text-center">
         <div class="text-2xl font-extrabold text-yellow-500">{{ total_orders }}</div>
         <div class="text-xs text-gray-400 mt-1">Jami buyurtma</div>
@@ -53,6 +85,40 @@
         <div class="font-bold text-gray-900 dark:text-white text-sm mb-4">Buyurtmalar soni</div>
         <canvas id="countChart" height="120"></canvas>
     </div>
+</div>
+
+<!-- Soatlik yuklama -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 mb-5">
+    <div class="font-bold text-gray-900 dark:text-white text-sm mb-1">Soat kesimida yuklama</div>
+    <p class="text-xs text-gray-400 mb-4">Tanlangan davrda buyurtmalar qaysi soatlarda ko'proq tushganini ko'rsatadi — smena va shtat rejalashtirish uchun foydali.</p>
+    <canvas id="hourlyChart" height="90"></canvas>
+</div>
+
+<!-- Hudud bo'yicha top manzillar -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden mb-5">
+    <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800 font-bold text-gray-900 dark:text-white text-sm">
+        📍 Top hududlar (qayerdan buyurtma ko'p tushmoqda)
+    </div>
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="text-xs uppercase text-gray-400 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                <th class="px-5 py-3 text-left">#</th>
+                <th class="px-5 py-3 text-left">Manzil</th>
+                <th class="px-5 py-3 text-right">Buyurtmalar soni</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50 dark:divide-gray-800">
+            {% for a in top_addresses %}
+            <tr class="hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-colors">
+                <td class="px-5 py-3 text-gray-400 text-xs font-bold">{{ forloop.counter }}</td>
+                <td class="px-5 py-3 text-xs text-gray-700 dark:text-gray-300">{{ a.from_address }}</td>
+                <td class="px-5 py-3 text-right font-bold text-blue-600 text-xs">{{ a.c }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center py-8 text-gray-400 text-xs">Ma'lumot yo'q</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 
 <!-- Top haydovchilar va mijozlar -->
@@ -141,6 +207,14 @@ new Chart(document.getElementById('revenueChart'), {
 new Chart(document.getElementById('countChart'), {
     type: 'line',
     data: { labels, datasets: [{ data: counts, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.4, fill: true, pointRadius: 3 }] },
+    options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor } }, y: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor } } } }
+});
+
+const hourlyLabels = {{ hourly_labels|safe }};
+const hourlyCounts = {{ hourly_counts|safe }};
+new Chart(document.getElementById('hourlyChart'), {
+    type: 'bar',
+    data: { labels: hourlyLabels, datasets: [{ data: hourlyCounts, backgroundColor: 'rgba(99,102,241,0.7)', borderRadius: 6, borderSkipped: false }] },
     options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor } }, y: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor } } } }
 });
 </script>

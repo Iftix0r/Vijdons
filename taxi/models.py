@@ -225,12 +225,18 @@ class BotSettings(models.Model):
     notify_weekly_top_drivers  = models.BooleanField(default=True, verbose_name="Haftalik TOP-10 haydovchilar")
     notify_monthly_top_drivers = models.BooleanField(default=True, verbose_name="Oylik TOP-10 haydovchilar")
     notify_inactive_drivers    = models.BooleanField(default=True, verbose_name="Uzoq faol bo'lmagan haydovchilar hisoboti")
+    notify_top_hours_drivers   = models.BooleanField(default=True, verbose_name="Eng ko'p soat ishlagan haydovchilar")
+    notify_high_rejection      = models.BooleanField(default=True, verbose_name="Ko'p rad etish haqida ogohlantirish")
+    notify_daily_summary       = models.BooleanField(default=True, verbose_name='Kunlik umumiy hisobot')
+    notify_weekly_summary      = models.BooleanField(default=True, verbose_name='Haftalik umumiy hisobot')
+    notify_daily_highlight     = models.BooleanField(default=True, verbose_name='Kunning yorqin lahzalari')
 
     # Voqea asosida (event-based) yangi bildirishnomalar
     notify_low_rating         = models.BooleanField(default=True, verbose_name='Reyting pasayganda ogohlantirish')
     notify_surge_alert        = models.BooleanField(default=True, verbose_name='Talab yuqori bo\'lganda ogohlantirish')
     notify_driver_milestone   = models.BooleanField(default=True, verbose_name='Haydovchi yubileyi (safarlar soni)')
     notify_sos_to_driver_group= models.BooleanField(default=True, verbose_name='SOS signalini haydovchilar guruhiga ham yuborish')
+    notify_flyer_redeemed     = models.BooleanField(default=True, verbose_name='Flayer kuponi ishlatilganda xabar')
 
     # Har bir kunlik/haftalik/oylik xabar oxirgi marta yuborilgan sana — bir marta
     # yuborilib ketmasligi uchun (masalan bir nechta worker jarayoni bo'lsa)
@@ -241,6 +247,11 @@ class BotSettings(models.Model):
     last_monthly_top_drivers_date    = models.DateField(null=True, blank=True)
     last_inactive_drivers_report_date= models.DateField(null=True, blank=True)
     last_surge_alert_at              = models.DateTimeField(null=True, blank=True)
+    last_top_hours_drivers_date      = models.DateField(null=True, blank=True)
+    last_high_rejection_report_date  = models.DateField(null=True, blank=True)
+    last_daily_summary_date          = models.DateField(null=True, blank=True)
+    last_weekly_summary_date         = models.DateField(null=True, blank=True)
+    last_daily_highlight_date        = models.DateField(null=True, blank=True)
 
     updated_at = models.DateTimeField(auto_now=True)
 

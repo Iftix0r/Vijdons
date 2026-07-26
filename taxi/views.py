@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher
-from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes
+from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed
 import csv
 
 ONLINE_THRESHOLD_SECONDS = 120  # last_seen shundan yangi bo'lsa — online (yashil)
@@ -394,6 +394,8 @@ def panel_dashboard(request):
     today_orders    = today_qs.count()
     avg_price       = completed_qs.aggregate(a=Avg('price'))['a'] or Decimal('0')
     cancelled_orders = Order.objects.filter(status='cancelled').count()
+    all_orders_count = Order.objects.count()
+    cancellation_rate = round(cancelled_orders / all_orders_count * 100, 1) if all_orders_count else 0
 
     # So'nggi 7 kunlik statistika (grafik uchun)
     from datetime import timedelta
@@ -404,6 +406,29 @@ def panel_dashboard(request):
         weekly_labels.append(day.strftime('%d/%m'))
         weekly_revenue.append(float(day_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or 0))
         weekly_counts.append(day_qs.count())
+
+    # Shu hafta vs o'tgan hafta o'sish foizi (daromad va buyurtmalar soni)
+    this_week_start = today - timedelta(days=6)
+    last_week_start = this_week_start - timedelta(days=7)
+    last_week_end    = this_week_start - timedelta(days=1)
+    this_week_qs = Order.objects.filter(created_at__date__gte=this_week_start, created_at__date__lte=today)
+    last_week_qs = Order.objects.filter(created_at__date__gte=last_week_start, created_at__date__lte=last_week_end)
+    this_week_revenue = float(this_week_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or 0)
+    last_week_revenue = float(last_week_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or 0)
+    this_week_orders  = this_week_qs.count()
+    last_week_orders  = last_week_qs.count()
+    revenue_growth_pct = round((this_week_revenue - last_week_revenue) / last_week_revenue * 100, 1) if last_week_revenue else None
+    orders_growth_pct  = round((this_week_orders - last_week_orders) / last_week_orders * 100, 1) if last_week_orders else None
+
+    # Ogohlantirishlar: balansi kam va uzoq faol bo'lmagan haydovchilar
+    tariff_for_alerts = TariffSettings.get()
+    low_balance_drivers = Driver.objects.filter(
+        is_active=True, approval_status=Driver.APPROVAL_APPROVED, balance__lt=tariff_for_alerts.commission
+    ).order_by('balance')
+    inactive_cutoff = timezone.now() - timedelta(days=3)
+    inactive_drivers = Driver.objects.filter(
+        is_active=True, approval_status=Driver.APPROVAL_APPROVED, is_on_duty=False
+    ).filter(Q(last_seen__lt=inactive_cutoff) | Q(last_seen__isnull=True))
 
     context = {
         'orders':               orders,
@@ -429,6 +454,13 @@ def panel_dashboard(request):
         'weekly_labels':        weekly_labels,
         'weekly_revenue':       weekly_revenue,
         'weekly_counts':        weekly_counts,
+        'cancellation_rate':    cancellation_rate,
+        'revenue_growth_pct':   revenue_growth_pct,
+        'orders_growth_pct':    orders_growth_pct,
+        'low_balance_drivers':  low_balance_drivers,
+        'low_balance_driver_count': low_balance_drivers.count(),
+        'inactive_drivers':     inactive_drivers,
+        'inactive_driver_count': inactive_drivers.count(),
     }
     return render(request, 'taxi/panel.html', context)
 
@@ -587,6 +619,12 @@ def bot_settings(request):
         bot.notify_surge_alert         = 'notify_surge_alert'         in request.POST
         bot.notify_driver_milestone    = 'notify_driver_milestone'    in request.POST
         bot.notify_sos_to_driver_group = 'notify_sos_to_driver_group' in request.POST
+        bot.notify_top_hours_drivers   = 'notify_top_hours_drivers'   in request.POST
+        bot.notify_high_rejection      = 'notify_high_rejection'      in request.POST
+        bot.notify_daily_summary       = 'notify_daily_summary'       in request.POST
+        bot.notify_weekly_summary      = 'notify_weekly_summary'      in request.POST
+        bot.notify_daily_highlight     = 'notify_daily_highlight'     in request.POST
+        bot.notify_flyer_redeemed      = 'notify_flyer_redeemed'      in request.POST
         bot.save()
         # SITE_URL ni settings ga yozish
         site_url = request.POST.get('site_url', '').strip()
@@ -632,6 +670,12 @@ def bot_settings(request):
         ('notify_surge_alert',         'Talab yuqori bo\'lganda ogohlantirish','📈', bot.notify_surge_alert),
         ('notify_driver_milestone',    'Haydovchi yubileyi (safarlar soni)',   '🎉', bot.notify_driver_milestone),
         ('notify_sos_to_driver_group', 'SOS ni haydovchilar guruhiga ham yuborish', '🆘', bot.notify_sos_to_driver_group),
+        ('notify_top_hours_drivers',   "Eng ko'p soat ishlagan (21:00)",       '⏱️', bot.notify_top_hours_drivers),
+        ('notify_high_rejection',      "Ko'p rad etish haqida ogohlantirish (19:00)", '🚫', bot.notify_high_rejection),
+        ('notify_daily_summary',       'Kunlik umumiy hisobot (22:00)',        '📊', bot.notify_daily_summary),
+        ('notify_weekly_summary',      'Haftalik umumiy hisobot (yakshanba 22:00)', '📈', bot.notify_weekly_summary),
+        ('notify_daily_highlight',     "Kunning yorqin lahzalari (20:00)",     '🌟', bot.notify_daily_highlight),
+        ('notify_flyer_redeemed',      'Flayer kuponi ishlatilganda xabar',    '🎁', bot.notify_flyer_redeemed),
     ]
     return render(request, 'taxi/bot_settings.html', {
         'bot': bot,
@@ -1993,33 +2037,85 @@ def orders_export_csv(request):
 
 # ── Statistics ─────────────────────────────────────────────────────────────────
 
-@login_required(login_url='taxi:panel_login')
-def statistics(request):
+def _statistics_range(request):
+    """GET parametrlaridan tahlil qilinadigan sana oralig'ini aniqlaydi:
+    ?start=YYYY-MM-DD&end=YYYY-MM-DD berilsa shu oraliq, aks holda ?period=week/month/year."""
     from django.utils import timezone
-    from django.db.models import Sum, Count, Avg
-    from datetime import timedelta
-    from decimal import Decimal
+    from datetime import timedelta, date as date_cls
 
     today  = timezone.now().date()
     period = request.GET.get('period', 'week')
-    days   = 30 if period == 'month' else (365 if period == 'year' else 7)
+    start_str = request.GET.get('start')
+    end_str   = request.GET.get('end')
+
+    if start_str and end_str:
+        try:
+            start_date = date_cls.fromisoformat(start_str)
+            end_date   = date_cls.fromisoformat(end_str)
+            if start_date > end_date:
+                start_date, end_date = end_date, start_date
+        except ValueError:
+            start_date, end_date = today - timedelta(days=6), today
+    else:
+        days = 30 if period == 'month' else (365 if period == 'year' else 7)
+        start_date, end_date = today - timedelta(days=days - 1), today
+
+    return period, start_date, end_date
+
+
+@login_required(login_url='taxi:panel_login')
+def statistics(request):
+    from django.db.models import Sum, Count, Avg
+    from django.db.models.functions import ExtractHour
+    from datetime import timedelta
+    from decimal import Decimal
+
+    period, start_date, end_date = _statistics_range(request)
+    range_days = (end_date - start_date).days + 1
 
     labels, revenues, counts = [], [], []
-    for i in range(days - 1, -1, -1):
-        day = today - timedelta(days=i)
+    for i in range(range_days):
+        day = start_date + timedelta(days=i)
         day_qs = Order.objects.filter(created_at__date=day)
         labels.append(day.strftime('%d/%m'))
         revenues.append(float(day_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or 0))
         counts.append(day_qs.count())
 
+    range_qs = Order.objects.filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
+    range_completed_qs = range_qs.filter(status='completed')
+    range_orders_count    = range_qs.count()
+    range_cancelled_count = range_qs.filter(status='cancelled').count()
+    cancellation_rate = round(range_cancelled_count / range_orders_count * 100, 1) if range_orders_count else 0
+    range_revenue = float(range_completed_qs.aggregate(s=Sum('price'))['s'] or 0)
+
+    # Oldingi (bir xil uzunlikdagi) davrga nisbatan o'sish foizi
+    prev_end_date   = start_date - timedelta(days=1)
+    prev_start_date = prev_end_date - timedelta(days=range_days - 1)
+    prev_qs = Order.objects.filter(created_at__date__gte=prev_start_date, created_at__date__lte=prev_end_date)
+    prev_revenue = float(prev_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or 0)
+    prev_orders_count = prev_qs.count()
+    revenue_growth_pct = round((range_revenue - prev_revenue) / prev_revenue * 100, 1) if prev_revenue else None
+    orders_growth_pct  = round((range_orders_count - prev_orders_count) / prev_orders_count * 100, 1) if prev_orders_count else None
+
+    # Soatlik yuklama (tanlangan davr bo'yicha, 0-23 soat)
+    hourly_counts = [0] * 24
+    for row in range_qs.annotate(hour=ExtractHour('created_at')).values('hour').annotate(c=Count('id')):
+        hourly_counts[row['hour']] = row['c']
+
+    # Hudud bo'yicha top manzillar (qayerdan)
+    top_addresses = list(
+        range_qs.exclude(from_address='').values('from_address')
+        .annotate(c=Count('id')).order_by('-c')[:10]
+    )
+
     top_drivers = Driver.objects.annotate(
-        completed=Count('orders', filter=Q(orders__status='completed')),
-        earned=Sum('orders__price', filter=Q(orders__status='completed'))
+        completed=Count('orders', filter=Q(orders__status='completed', orders__created_at__date__gte=start_date, orders__created_at__date__lte=end_date)),
+        earned=Sum('orders__price', filter=Q(orders__status='completed', orders__created_at__date__gte=start_date, orders__created_at__date__lte=end_date))
     ).filter(completed__gt=0).order_by('-completed')[:10]
 
     top_clients = Client.objects.annotate(
-        total=Count('orders'),
-        spent=Sum('orders__price', filter=Q(orders__status='completed'))
+        total=Count('orders', filter=Q(orders__created_at__date__gte=start_date, orders__created_at__date__lte=end_date)),
+        spent=Sum('orders__price', filter=Q(orders__status='completed', orders__created_at__date__gte=start_date, orders__created_at__date__lte=end_date))
     ).filter(total__gt=0).order_by('-total')[:10]
 
     total_revenue = Order.objects.filter(status='completed').aggregate(s=Sum('price'))['s'] or Decimal('0')
@@ -2027,6 +2123,8 @@ def statistics(request):
 
     return render(request, 'taxi/statistics.html', {
         'period': period, 'labels': labels, 'revenues': revenues, 'counts': counts,
+        'start_date': start_date, 'end_date': end_date,
+        'custom_range': bool(request.GET.get('start') and request.GET.get('end')),
         'top_drivers': top_drivers, 'top_clients': top_clients,
         'total_revenue': total_revenue, 'avg_price': avg_price,
         'total_orders': Order.objects.count(),
@@ -2035,7 +2133,53 @@ def statistics(request):
         'total_drivers': Driver.objects.filter(approval_status='approved').count(),
         'total_clients': Client.objects.count(),
         'blocked_clients': Client.objects.filter(is_blocked=True).count(),
+        'range_revenue': range_revenue,
+        'range_orders_count': range_orders_count,
+        'cancellation_rate': cancellation_rate,
+        'revenue_growth_pct': revenue_growth_pct,
+        'orders_growth_pct': orders_growth_pct,
+        'hourly_labels': [f"{h:02d}" for h in range(24)],
+        'hourly_counts': hourly_counts,
+        'top_addresses': top_addresses,
     })
+
+
+@login_required(login_url='taxi:panel_login')
+def statistics_export_csv(request):
+    from django.db.models import Sum
+    from datetime import timedelta
+
+    period, start_date, end_date = _statistics_range(request)
+    range_days = (end_date - start_date).days + 1
+
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="statistika_{start_date}_{end_date}.csv"'
+    response.write('﻿')
+    writer = csv.writer(response)
+
+    writer.writerow(['Sana', 'Daromad (UZS)', 'Buyurtmalar soni'])
+    for i in range(range_days):
+        day = start_date + timedelta(days=i)
+        day_qs = Order.objects.filter(created_at__date=day)
+        revenue = day_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or 0
+        writer.writerow([day.strftime('%d.%m.%Y'), revenue, day_qs.count()])
+
+    writer.writerow([])
+    writer.writerow(['Top haydovchilar', 'Safarlar', 'Daromad (UZS)'])
+    top_drivers = Driver.objects.annotate(
+        completed=Count('orders', filter=Q(orders__status='completed', orders__created_at__date__gte=start_date, orders__created_at__date__lte=end_date)),
+        earned=Sum('orders__price', filter=Q(orders__status='completed', orders__created_at__date__gte=start_date, orders__created_at__date__lte=end_date))
+    ).filter(completed__gt=0).order_by('-completed')[:20]
+    for d in top_drivers:
+        writer.writerow([d.full_name, d.completed, d.earned or 0])
+
+    writer.writerow([])
+    writer.writerow(['Top hududlar (qayerdan)', 'Buyurtmalar soni'])
+    range_qs = Order.objects.filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
+    for row in range_qs.exclude(from_address='').values('from_address').annotate(c=Count('id')).order_by('-c')[:20]:
+        writer.writerow([row['from_address'], row['c']])
+
+    return response
 
 
 # ── Haydovchi shartnomasi ──────────────────────────────────────────────────────
@@ -2166,6 +2310,7 @@ def flyer_redeem(request):
         ip_address=_get_client_ip(request), user_agent=request.META.get('HTTP_USER_AGENT', ''),
     )
     tg_balance_changed(driver, amount, 'add')
+    tg_flyer_voucher_redeemed(voucher, driver)
     messages.success(request, f"Kod tasdiqlandi — {driver.full_name} balansiga {amount} so'm qo'shildi.")
     return redirect('taxi:flyer_page')
 
