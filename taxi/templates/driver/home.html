@@ -393,9 +393,19 @@ let _myOrdersDrawerOpen = false;
 // yerga (va sessionStorage'ga — DRIVER_ID bilan bog'langan holda) yoziladi —
 // keyingi pollarda, HATTO sahifa qayta ochilgan/yangilangan taqdirda ham,
 // renderOrdersDOM() uni majburan qayta OCHMAYDI (pastdagi "Buyurtmalarim"
-// tugmasi orqaligina qayta ochiladi).
+// tugmasi orqaligina qayta ochiladi). Diqqat: bitta ID emas, BUTUN TO'PLAM
+// (Set) saqlanadi — aks holda, 2+ faol buyurtma bir vaqtda bo'lganda,
+// bittasini yopish "eng oxirgi yopilgan shu" deb boshqasini (hali yopilmagan,
+// lekin ilgari ko'rsatilgan) darhol majburan qayta ochib yuborardi.
 const _SS_ORDER_DISMISSED = `vijdon_order_dismissed_${DRIVER_ID}`;
-let _orderSheetDismissedFor = parseInt(sessionStorage.getItem(_SS_ORDER_DISMISSED)) || null;
+let _dismissedOrderIds = new Set();
+try {
+  const _rawDismissed = JSON.parse(sessionStorage.getItem(_SS_ORDER_DISMISSED) || '[]');
+  if (Array.isArray(_rawDismissed)) _rawDismissed.forEach(id => _dismissedOrderIds.add(Number(id)));
+} catch(_) {}
+function _saveDismissedOrderIds(){
+  try { sessionStorage.setItem(_SS_ORDER_DISMISSED, JSON.stringify([..._dismissedOrderIds])); } catch(_) {}
+}
 
 // Sahifa yuklanishi bilan darhol DOM ni render qilamiz
 renderOrdersDOM();
@@ -554,7 +564,7 @@ async function loadOrders() {
     if (_activeOrders.length) {
       _updateMyOrdersBtn(_activeOrders);
       const _sheetOrder = _activeOrders.find(o => o.id === _sheetOpenForId) ||
-                           _activeOrders.find(o => o.id !== _orderSheetDismissedFor);
+                           _activeOrders.find(o => !_dismissedOrderIds.has(o.id));
       if (_sheetOrder) _ensureActiveSheet(_sheetOrder);
     }
   } catch(_){}
@@ -607,14 +617,14 @@ function renderOrdersDOM() {
   // boshqarishi mumkin — sheet bir vaqtda faqat bittasini ko'rsatadi (hozir
   // ochiq turgani, hali faol bo'lsa, davom etadi), qolganlari "Buyurtmalarim"
   // panelida (pastda, tab-bar ustida) sanaladi va bosilganda almashtiriladi.
-  // Haydovchi buyurtma oynasini qo'lda yopgan bo'lsa (_orderSheetDismissedFor),
+  // Haydovchi buyurtma oynasini qo'lda yopgan bo'lsa (_dismissedOrderIds),
   // uni majburan qayta ochmaymiz.
   const activeOrders = ORDERS.filter(o =>
     o.status === 'accepted' || o.status === 'on_way' || o.status === 'arrived');
   _updateMyOrdersBtn(activeOrders);
   const sheetOrder = activeOrders.length
     ? (activeOrders.find(o => o.id === _sheetOpenForId) ||
-       activeOrders.find(o => o.id !== _orderSheetDismissedFor) ||
+       activeOrders.find(o => !_dismissedOrderIds.has(o.id)) ||
        null)
     : null;
   if (sheetOrder) {
@@ -1517,8 +1527,8 @@ function _onBackdropTap(){
 // Pastdagi "Buyurtmalarim" tugmasi orqali istalgan payt qayta ochiladi.
 function dismissOrderSheet(){
   if (_sheetOpenForId != null) {
-    _orderSheetDismissedFor = _sheetOpenForId;
-    sessionStorage.setItem(_SS_ORDER_DISMISSED, String(_sheetOpenForId));
+    _dismissedOrderIds.add(_sheetOpenForId);
+    _saveDismissedOrderIds();
   }
   closeSheet();
   const activeOrders = ORDERS.filter(o =>
@@ -1558,8 +1568,8 @@ function openMyOrderById(id){
   if (!target) return;
   try { Native.vibrate(); } catch(_) {}
   closeMyOrdersDrawer();
-  _orderSheetDismissedFor = null;
-  sessionStorage.removeItem(_SS_ORDER_DISMISSED);
+  _dismissedOrderIds.delete(id);
+  _saveDismissedOrderIds();
   try { closeMtxPanel(); } catch(_) {}
   _renderSheet(target.id, target);
   _updateMyOrdersBtn(activeOrders);
