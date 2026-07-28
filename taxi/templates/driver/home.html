@@ -173,7 +173,7 @@
      karta, #sheet bilan bir xil uslubda. Alohida xaritasi yo'q — haydovchining
      joylashuvi/izi to'g'ridan-to'g'ri asosiy xaritada (_homeMap) chiziladi. -->
 <div id="mtx-panel" class="ios-sheet fixed left-4 right-4 overflow-y-auto"
-     style="z-index:190;bottom:calc(env(safe-area-inset-bottom,16px) + 16px);border-radius:20px;transform:translateY(calc(100% + 40px));transition:transform .32s cubic-bezier(.32,.72,0,1);max-height:50vh">
+     style="z-index:190;bottom:calc(env(safe-area-inset-bottom,16px) + 96px);border-radius:20px;transform:translateY(calc(100% + 200px));transition:transform .32s cubic-bezier(.32,.72,0,1);max-height:50vh">
   <div class="px-4 py-3.5 space-y-3">
     <div class="flex items-center justify-between">
       <div class="ios-title font-semibold">Taksometr</div>
@@ -258,7 +258,11 @@
      pastki panelda (#sheet) qoladi — u faqat shular mavjud bo'lsagina ochiladi. -->
 <div id="sheet-overlay" class="fixed inset-0 z-[200] hidden">
   <div id="sheet-map" class="absolute inset-0" style="background:#1c1c1f" onclick="_onBackdropTap()"></div>
-  <div id="sheet-map-hint" class="flex items-center justify-center" style="position:absolute;inset:0;pointer-events:none;display:none">
+  <!-- Diqqat: bu hint butun ekranga (inset:0) markazlashtirilmaydi — aks holda
+       yuqoridagi opaque #order-live karta orqasida ko'rinmay qolishi mumkin
+       edi. Shuning uchun karta va pastki panel orasidagi bo'sh joyga
+       (~62% balandlik) qat'iy joylashtiramiz. -->
+  <div id="sheet-map-hint" class="flex items-center justify-center" style="position:absolute;top:62%;left:16px;right:16px;transform:translateY(-50%);pointer-events:none;display:none">
     <span class="ios-caption2" style="color:rgba(255,255,255,.4)">Manzil xaritada ko'rsatilmagan</span>
   </div>
 
@@ -268,9 +272,12 @@
   </div>
 
   <!-- Endi ekran chetlariga yopishmagan, suzib turuvchi ixcham karta — asosiy
-       sahifadagi qalqib turuvchi elementlar (chip, tugma) kabi. -->
+       sahifadagi qalqib turuvchi elementlar (chip, tugma) kabi. Diqqat:
+       bottom offset tab-bar balandligidan (~70px + uning bottom bo'shlig'i)
+       KATTA bo'lishi shart — aks holda pastki panel tab-bar orqasiga
+       yashirinib/kesilib qolardi. -->
   <div id="sheet" class="ios-sheet absolute left-4 right-4 overflow-y-auto"
-       style="bottom:calc(env(safe-area-inset-bottom,16px) + 16px);border-radius:20px;transform:translateY(calc(100% + 40px));transition:transform .38s cubic-bezier(.32,.72,0,1);max-height:32vh">
+       style="bottom:calc(env(safe-area-inset-bottom,16px) + 96px);border-radius:20px;transform:translateY(calc(100% + 200px));transition:transform .38s cubic-bezier(.32,.72,0,1);max-height:32vh">
     <div id="sheet-body" class="px-4 py-3.5 space-y-2"></div>
   </div>
 </div>
@@ -1053,13 +1060,13 @@ function toggleMtxPanel() {
   try { Native.vibrate(); } catch(_) {}
   _mtxPanelOpen = !_mtxPanelOpen;
   if (_mtxPanelOpen) { try { closeSheet(); } catch(_) {} } // ikkala panel bir vaqtda ochiq turmasin
-  document.getElementById('mtx-panel').style.transform = _mtxPanelOpen ? 'translateY(0)' : 'translateY(calc(100% + 40px))';
+  document.getElementById('mtx-panel').style.transform = _mtxPanelOpen ? 'translateY(0)' : 'translateY(calc(100% + 200px))';
 }
 
 function closeMtxPanel() {
   _mtxPanelOpen = false;
   const p = document.getElementById('mtx-panel');
-  if (p) p.style.transform = 'translateY(calc(100% + 40px))';
+  if (p) p.style.transform = 'translateY(calc(100% + 200px))';
 }
 
 // Ekranga qadalgan tugma: ishlamayotganda bosilsa — boshlash paneli ochiladi;
@@ -1463,7 +1470,7 @@ function _renderSheet(id, o){
   ov.style.pointerEvents='';
   ov.classList.remove('hidden');
   requestAnimationFrame(()=>{
-    sh.style.transform = hasBottomExtra ? 'translateY(0)' : 'translateY(calc(100% + 40px))';
+    sh.style.transform = hasBottomExtra ? 'translateY(0)' : 'translateY(calc(100% + 200px))';
     if(o.status==='on_way'||o.status==='arrived') {
       // Darhol va keyin ham yangilaymiz (taximetr ishlayotgan bo'lsa)
       _syncSheetTmx(o);
@@ -1483,7 +1490,7 @@ function _renderSheet(id, o){
 function closeSheet(){
   const sh=document.getElementById('sheet');
   const ov=document.getElementById('sheet-overlay');
-  sh.style.transform='translateY(calc(100% + 40px))';
+  sh.style.transform='translateY(calc(100% + 200px))';
   // Overlay pointer-events ni darhol o'chiramiz — animatsiya tugashini kutmasdan
   ov.style.pointerEvents='none';
   _destroySheetMap();
