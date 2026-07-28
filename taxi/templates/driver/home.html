@@ -135,8 +135,8 @@
 <button id="mtx-toggle-btn" onclick="toggleMtxPanel()"
   class="flex items-center gap-2 active:opacity-70 transition-opacity"
   style="position:fixed;z-index:15;top:62%;transform:translateY(-50%);left:16px;padding:12px 18px 12px 16px;border-radius:9999px;background:#FFD600;box-shadow:0 6px 18px rgba(255,214,0,.35),0 2px 6px rgba(0,0,0,.25)">
-  <i class="fas fa-gauge-high" style="color:#111;font-size:19px"></i>
-  <span class="ios-body font-bold" style="color:#111">Taksometr</span>
+  <i id="mtx-toggle-icon" class="fas fa-gauge-high" style="color:#111;font-size:19px"></i>
+  <span id="mtx-toggle-label" class="ios-body font-bold" style="color:#111">Taksometr</span>
 </button>
 
 <!-- Taksometr paneli — asosiy xarita (#home-map) ustida suzib turuvchi ixcham
@@ -1060,6 +1060,16 @@ function closeMtxPanel() {
   if (p) p.style.transform = 'translateY(calc(100% + 40px))';
 }
 
+// Ekranga qadalgan tugma yozuvi/ikonkasi holatga qarab almashadi — ishlamayotganda
+// "Taksometr" (bosilsa boshlash paneli ochiladi), ishlayotganda "To'xtatish"
+// (bosilsa hisob-kitob/Yakunlash bor paneli ochiladi).
+function _mtxSyncToggleBtn() {
+  const icon = document.getElementById('mtx-toggle-icon');
+  const label = document.getElementById('mtx-toggle-label');
+  if (icon) icon.className = _mtxActive ? 'fas fa-stop' : 'fas fa-gauge-high';
+  if (label) label.textContent = _mtxActive ? "To'xtatish" : 'Taksometr';
+}
+
 function mtxStart() {
   if (_mtxActive) return;
   _mtxActive    = true;
@@ -1075,6 +1085,7 @@ function mtxStart() {
   }
   document.getElementById('mtx-idle').style.display    = 'none';
   document.getElementById('mtx-running').style.display = '';
+  _mtxSyncToggleBtn();
   _mtxPersist();
   _mtxInterval = setInterval(_mtxRender, 1000);
   _mtxRender();
@@ -1092,6 +1103,7 @@ function _mtxStop() {
   }
   document.getElementById('mtx-idle').style.display    = '';
   document.getElementById('mtx-running').style.display = 'none';
+  _mtxSyncToggleBtn();
 }
 
 function mtxFinish() {
@@ -1136,6 +1148,7 @@ function mtxFinish() {
     _mtxDistKm    = saved.dist || 0;
     document.getElementById('mtx-idle').style.display    = 'none';
     document.getElementById('mtx-running').style.display = '';
+    _mtxSyncToggleBtn();
     _mtxInterval = setInterval(_mtxRender, 1000);
     _mtxRender();
     toggleMtxPanel();
