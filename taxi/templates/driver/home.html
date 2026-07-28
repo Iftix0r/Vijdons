@@ -59,7 +59,7 @@
 </div>
 
 <!-- Pull-to-refresh -->
-<div id="ptr" class="flex items-center justify-center gap-2 overflow-hidden"
+<div id="ptr" class="relative flex items-center justify-center gap-2 overflow-hidden"
      style="height:0;opacity:0;transition:height .18s ease,opacity .18s ease;color:var(--ios-label3)">
   <i class="fas fa-arrow-rotate-right ios-caption" id="ptr-icon"></i>
   <span class="ios-caption" id="ptr-txt">Yangilash uchun torting</span>
@@ -115,42 +115,41 @@
 }
 </style>
 
-<!-- Jonli xarita — o'z joylashuvi + hozir navbatdagi boshqa haydovchilar.
-     Chetlardan bo'shliqsiz (to'liq eninicha) — Yandex/Uber uslubidagi asosiy
-     xarita panjarasi kabi ko'proq joy egallasin. -->
-<div class="relative" style="margin-top:-4px">
-  <div class="overflow-hidden relative" style="width:100%;height:calc(100vh - 168px)">
-    <div id="home-map" style="width:100%;height:100%;background:#1c1c1f"></div>
-    <div id="home-map-hint" class="absolute inset-0 flex items-center justify-center" style="pointer-events:none">
-      <span class="ios-caption2" style="color:rgba(255,255,255,.4)">GPS signal kutilmoqda…</span>
-    </div>
-    <!-- Xaritaning ostidagi kontent bilan qo'shilib ketmasligi uchun yumshoq soya -->
-    <div class="absolute left-0 right-0 bottom-0 pointer-events-none" style="height:36px;background:linear-gradient(to bottom, transparent, var(--ios-bg))"></div>
-    <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px]" style="background:rgba(20,20,22,.65);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
-      <span style="width:8px;height:8px;border-radius:50%;background:#FFD600;flex-shrink:0"></span>
-      <span class="ios-caption2 font-bold" style="color:#fff">Siz</span>
-      <span style="width:8px;height:8px;border-radius:50%;background:#34C759;flex-shrink:0;margin-left:4px"></span>
-      <span id="home-map-peers-count" class="ios-caption2 font-bold" style="color:#fff">0 haydovchi</span>
-    </div>
-    <!-- "Buyurtma qidirilmoqda" indikatori — endi alohida joy egallamaydi,
-         xaritaning o'zi ustida suzib turadi (JS: _setMapSearchBadge) -->
-    <div id="map-search-badge" class="absolute left-1/2 flex items-center gap-2 px-3.5 py-2 rounded-full" style="display:none;bottom:14px;transform:translateX(-50%);background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,.3)">
-      <span class="search-dot w-2 h-2 rounded-full flex-shrink-0" style="background:#FFD600"></span>
-      <span id="map-search-text" class="ios-subhead font-semibold" style="color:#fff;white-space:nowrap">Buyurtma qidirilmoqda</span>
-    </div>
-    <button onclick="_homeMapRecenter()"
-      class="absolute top-2.5 right-2.5 w-9 h-9 rounded-full flex items-center justify-center active:opacity-60 transition-opacity"
-      style="background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
-      <i class="fas fa-location-crosshairs" style="color:#FFD600;font-size:15px"></i>
-    </button>
-  </div>
+<!-- Jonli xarita — TO'LIQ EKRAN ORQA FONI (position:fixed): navbar (yuqorida)
+     va tab-bar (pastda) buning USTIDA suzib turadi (ikkalasi ham shaffof/blur
+     fon bilan yasalgan), xarita esa ularning OSTIDA ham davom etadi — chetlardan
+     hech qanday bo'shliq/qirra qolmasin. -->
+<div id="home-map" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:0;background:#1c1c1f"></div>
+<div id="home-map-hint" class="flex items-center justify-center" style="position:fixed;inset:0;z-index:0;pointer-events:none">
+  <span class="ios-caption2" style="color:rgba(255,255,255,.4)">GPS signal kutilmoqda…</span>
 </div>
+<div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px]" style="position:fixed;z-index:15;top:calc(env(safe-area-inset-top,47px) + 108px);left:16px;background:rgba(20,20,22,.65);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
+  <span style="width:8px;height:8px;border-radius:50%;background:#FFD600;flex-shrink:0"></span>
+  <span class="ios-caption2 font-bold" style="color:#fff">Siz</span>
+  <span style="width:8px;height:8px;border-radius:50%;background:#34C759;flex-shrink:0;margin-left:4px"></span>
+  <span id="home-map-peers-count" class="ios-caption2 font-bold" style="color:#fff">0 haydovchi</span>
+</div>
+<!-- "Buyurtma qidirilmoqda" indikatori — xaritaning o'zi ustida suzib turadi
+     (JS: _setMapSearchBadge), tab-bardan yuqorida qoladi -->
+<div id="map-search-badge" class="flex items-center gap-2 px-3.5 py-2 rounded-full" style="display:none;position:fixed;z-index:15;left:50%;bottom:calc(env(safe-area-inset-bottom,16px) + 96px);transform:translateX(-50%);background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,.3)">
+  <span class="search-dot w-2 h-2 rounded-full flex-shrink-0" style="background:#FFD600"></span>
+  <span id="map-search-text" class="ios-subhead font-semibold" style="color:#fff;white-space:nowrap">Buyurtma qidirilmoqda</span>
+</div>
+<button onclick="_homeMapRecenter()"
+  class="flex items-center justify-center active:opacity-60 transition-opacity"
+  style="position:fixed;z-index:15;top:calc(env(safe-area-inset-top,47px) + 108px);right:16px;width:38px;height:38px;border-radius:50%;background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
+  <i class="fas fa-location-crosshairs" style="color:#FFD600;font-size:15px"></i>
+</button>
 
 <!-- Content: JS tomonidan to'ldiriladi (haqiqiy buyurtma kartalari bo'lsa
      shu yerda, xaritadan pastda ko'rinadi) -->
 <!-- padding-bottom: pastda suzib turuvchi tab-bar ostida buyurtmalar
      ko'rinmay qolib ketmasligi uchun -->
-<div class="px-4 py-3 space-y-3" id="orders-wrap" style="padding-bottom:100px"></div>
+<!-- Diqqat: `relative` shart — xarita endi to'liq ekranli `position:fixed`
+     fon (z-index:0), pozitsiyalanmagan oddiy div undan pastda (orqasida)
+     chizilib qolardi (CSS stacking qoidasi: pozitsiyalangan elementlar,
+     z-index:0 bo'lsa ham, oddiy statik kontentdan USTUNROQ chiziladi). -->
+<div class="relative px-4 py-3 space-y-3" id="orders-wrap" style="padding-bottom:100px"></div>
 
 <style>
 @keyframes pulse-dot {
