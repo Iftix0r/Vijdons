@@ -1057,6 +1057,18 @@ def system_status(request):
         'secret_key_default': django_settings.SECRET_KEY.startswith('django-insecure-'),
     }
 
+    # ── Static fayllar manifesti ─────────────────────────────────────────────
+    # Diqqat: aynan shu tekshiruv yo'qligi sabab bir marta butun sayt 500 berib
+    # qolgan edi (`collectstatic` ishga tushirilmagani uchun manifest'da
+    # yozuv yo'q edi) — endi buni oldindan shu yerda ko'rish mumkin.
+    static_info = {'ok': False, 'error': None}
+    try:
+        from django.templatetags.static import static as _static_url
+        _static_url('taxi/img/logo.png')
+        static_info['ok'] = True
+    except Exception as e:
+        static_info['error'] = str(e)
+
     # ── Mavjud DB backuplar ───────────────────────────────────────────────────
     backups = []
     try:
@@ -1090,6 +1102,8 @@ def system_status(request):
     for c in django_checks:
         if c['is_error']:
             problems.append(f"Django: {c['msg']}")
+    if not static_info['ok']:
+        problems.append("Static fayllar manifesti buzilgan — `python manage.py collectstatic` ishga tushiring (aks holda sayt 500 beradi!)")
 
     return render(request, 'taxi/system_status.html', {
         'problems': problems,
@@ -1110,6 +1124,7 @@ def system_status(request):
         'migrations_pending': migrations_pending,
         'django_checks':    django_checks,
         'env_info':          env_info,
+        'static_info':       static_info,
     })
 
 
@@ -1146,6 +1161,46 @@ def system_audit_log(request):
         'staff_users': staff_users,
         'counts': counts,
     })
+
+
+@system_login_required
+def run_collectstatic(request):
+    """`git pull`dan keyin `collectstatic` unutilib qolsa, static fayllar
+    manifesti eskirib, butun sayt 500 bera boshlaydi (buni bir marta boshdan
+    kechirdik) — shuning uchun SSH'siz, shu tugma orqali ham ishga tushirish
+    mumkin bo'lsin."""
+    if request.method != 'POST':
+        return redirect('system:system_status')
+    import io
+    from django.core.management import call_command
+    from .utils import log_system_event
+    out = io.StringIO()
+    try:
+        call_command('collectstatic', interactive=False, verbosity=1, stdout=out, stderr=out)
+        log_system_event('collectstatic_run', 'collectstatic ishga tushirildi', request=request)
+        messages.success(request, "collectstatic muvaffaqiyatli bajarildi.")
+    except Exception as e:
+        log_system_event('collectstatic_run', f'collectstatic xato berdi: {e}', level='error', request=request, detail=out.getvalue())
+        messages.error(request, f"collectstatic xatosi: {e}")
+    return redirect('system:system_status')
+
+
+@system_login_required
+def run_migrate(request):
+    if request.method != 'POST':
+        return redirect('system:system_status')
+    import io
+    from django.core.management import call_command
+    from .utils import log_system_event
+    out = io.StringIO()
+    try:
+        call_command('migrate', interactive=False, verbosity=1, stdout=out, stderr=out)
+        log_system_event('migrate_run', 'migrate ishga tushirildi', request=request, detail=out.getvalue())
+        messages.success(request, "Migratsiyalar bajarildi.")
+    except Exception as e:
+        log_system_event('migrate_run', f'migrate xato berdi: {e}', level='error', request=request, detail=out.getvalue())
+        messages.error(request, f"Migratsiya xatosi: {e}")
+    return redirect('system:system_status')
 
 
 @system_login_required

@@ -188,7 +188,7 @@
     </div>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
 
     <!-- Deploy / Git -->
     <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
@@ -237,6 +237,38 @@
             <i class="fas fa-circle text-[6px]"></i> Hammasi qo'llangan
         </span>
         {% endif %}
+        <form action="{% url 'system:run_migrate' %}" method="POST" class="mt-3" onsubmit="return confirm('Migratsiyalarni hozir ishga tushirasizmi?');">
+            {% csrf_token %}
+            <button type="submit" class="w-full py-1.5 bg-lime-600 hover:bg-lime-700 text-white text-xs font-bold rounded-lg transition">
+                <i class="fas fa-play mr-1"></i>migrate ishga tushirish
+            </button>
+        </form>
+    </div>
+
+    <!-- Static fayllar -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-900/20 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-folder-tree text-sky-500 text-sm"></i>
+            </div>
+            <p class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Static fayllar</p>
+        </div>
+        {% if static_info.ok %}
+        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2 py-1 rounded-full">
+            <i class="fas fa-circle text-[6px]"></i> Manifest to'g'ri
+        </span>
+        {% else %}
+        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-1 rounded-full mb-2">
+            <i class="fas fa-circle text-[6px]"></i> Manifest buzilgan!
+        </span>
+        <p class="text-xs text-red-500 font-mono break-all">{{ static_info.error }}</p>
+        {% endif %}
+        <form action="{% url 'system:run_collectstatic' %}" method="POST" class="mt-3" onsubmit="return confirm('collectstatic hozir ishga tushirilsinmi?');">
+            {% csrf_token %}
+            <button type="submit" class="w-full py-1.5 bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold rounded-lg transition">
+                <i class="fas fa-play mr-1"></i>collectstatic ishga tushirish
+            </button>
+        </form>
     </div>
 
     <!-- Muhit -->
