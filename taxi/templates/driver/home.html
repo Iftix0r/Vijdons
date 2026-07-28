@@ -251,19 +251,26 @@
   </div>
 </div>
 
-<!-- ── iOS Bottom Sheet ── -->
-<!-- Xarita endi kichik karta emas — asosiy sahifadagi (home-map) kabi butun
-     ekranga to'liq fon bo'lib, sheet uning ustida suzib turadi. -->
+<!-- ── Buyurtma qabul qilish/tafsilotlari ── -->
+<!-- Taksometrdagi bilan bir xil uslub: xarita to'liq ekran fon, asosiy
+     ma'lumot (status/manzil/mijoz/narx/amal tugmalari) to'g'ridan-to'g'ri
+     xarita ustida (#order-live) suzadi; faqat aloqa tugmalari va izoh kichik
+     pastki panelda (#sheet) qoladi — u faqat shular mavjud bo'lsagina ochiladi. -->
 <div id="sheet-overlay" class="fixed inset-0 z-[200] hidden">
   <div id="sheet-map" class="absolute inset-0" style="background:#1c1c1f" onclick="_onBackdropTap()"></div>
   <div id="sheet-map-hint" class="flex items-center justify-center" style="position:absolute;inset:0;pointer-events:none;display:none">
     <span class="ios-caption2" style="color:rgba(255,255,255,.4)">Manzil xaritada ko'rsatilmagan</span>
   </div>
+
+  <div id="order-live" class="ios-card2 rounded-[16px]"
+       style="position:absolute;z-index:5;top:calc(env(safe-area-inset-top,47px) + 16px);left:16px;right:16px;max-height:58vh;overflow-y:auto">
+    <div id="order-live-body" class="p-3.5 space-y-2.5"></div>
+  </div>
+
   <!-- Endi ekran chetlariga yopishmagan, suzib turuvchi ixcham karta — asosiy
-       sahifadagi qalqib turuvchi elementlar (chip, tugma) kabi, xaritaning
-       katta qismi doim ochiq qolishi uchun balandligi mumkin qadar cheklangan. -->
+       sahifadagi qalqib turuvchi elementlar (chip, tugma) kabi. -->
   <div id="sheet" class="ios-sheet absolute left-4 right-4 overflow-y-auto"
-       style="bottom:calc(env(safe-area-inset-bottom,16px) + 16px);border-radius:20px;transform:translateY(calc(100% + 40px));transition:transform .38s cubic-bezier(.32,.72,0,1);max-height:40vh">
+       style="bottom:calc(env(safe-area-inset-bottom,16px) + 16px);border-radius:20px;transform:translateY(calc(100% + 40px));transition:transform .38s cubic-bezier(.32,.72,0,1);max-height:32vh">
     <div id="sheet-body" class="px-4 py-3.5 space-y-2"></div>
   </div>
 </div>
@@ -1336,9 +1343,10 @@ function _renderSheet(id, o){
               <button onclick="callOperator()" class="ios-btn-destructive mt-2">📞 Bekor qilish (Operator: ${OPERATOR_PHONE})</button>`,
   };
 
-  document.getElementById('sheet-body').innerHTML=`
-    <!-- Xarita endi bu kartaning ortida, butun ekranga to'liq fon (#sheet-map,
-         sheet-overlay ichida) — shu sabab bu yerda faqat ixcham holat qatori. -->
+  // Asosiy narsa (status/manzil/mijoz/narx/amal tugmalari) endi xarita ustida
+  // suzuvchi #order-live'ga chiqadi; faqat aloqa tugmalari va izoh (bo'lsa)
+  // pastdagi kichik #sheet panelida qoladi.
+  document.getElementById('order-live-body').innerHTML=`
     <div class="flex items-center justify-between">
       <span class="ios-caption2 font-semibold px-2.5 py-1 rounded-[8px] ${pill[o.status]||''}">${label[o.status]||o.status}</span>
       <div class="flex items-center gap-2">
@@ -1349,7 +1357,7 @@ function _renderSheet(id, o){
     </div>
 
     <!-- Manzillar — ixcham, nuqta rangi xaritadagi markerlar bilan mos -->
-    <div class="ios-card2 rounded-[14px] px-3.5 py-3">
+    <div class="rounded-[14px] px-3.5 py-3" style="background:var(--ios-fill)">
       <div class="flex items-start gap-2.5">
         <span style="width:8px;height:8px;border-radius:50%;background:#34C759;flex-shrink:0;margin-top:4px"></span>
         <span class="ios-subhead font-medium flex-1 min-w-0">${o.from_address}</span>
@@ -1361,75 +1369,78 @@ function _renderSheet(id, o){
       </div>`:''}
     </div>
 
-    <!-- Client card -->
-    <div class="ios-card2 rounded-[14px] p-3.5">
-      <div class="flex items-center gap-3 ${o.status!=='pending'?'mb-3':''}">
-        <div class="w-11 h-11 rounded-full bg-[#007AFF] flex items-center justify-center flex-shrink-0">
-          <i class="fas fa-user text-white text-base"></i>
-        </div>
-        <div class="flex-1 min-w-0">
-          <div class="ios-subhead font-semibold truncate">${o.client_name||'Mijoz'}</div>
-          ${o.status!=='pending'
-            ?`<div class="ios-caption mt-0.5" style="color:var(--ios-label3)">${o.client_phone}</div>`
-            :`<div class="ios-caption mt-0.5" style="color:var(--ios-label3)">Qabul qilgach ko'rinadi</div>`}
-        </div>
-        ${o.price?`<div class="text-right flex-shrink-0">
-          <div class="ios-subhead font-semibold text-[#34C759]">${parseInt(o.price).toLocaleString()} so'm</div>
-          ${o.distance_km?`<div class="ios-caption" style="color:var(--ios-label3)">${parseFloat(o.distance_km).toFixed(1)} km</div>`:''}
-        </div>`:''}
+    <!-- Mijoz + narx -->
+    <div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-full bg-[#007AFF] flex items-center justify-center flex-shrink-0">
+        <i class="fas fa-user text-white text-base"></i>
       </div>
-      ${(o.status!=='pending'&&o.commission)?`
-      <div class="flex items-center justify-between" style="padding:8px 10px;margin-bottom:12px;border-radius:10px;background:rgba(255,149,0,.08)">
-        <span class="ios-caption2 font-semibold" style="color:#FF9500"><i class="fas fa-percent" style="font-size:9px;margin-right:4px"></i>Komissiya</span>
-        <span class="ios-caption font-bold" style="color:#FF9500">${parseInt(o.commission).toLocaleString()} so'm</span>
-      </div>`:''}
-      ${o.status!=='pending'?`
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-        <!-- Telefon -->
-        <button onclick="Native.vibrate();Native.callPhone('${o.client_phone}')"
-                style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-                       padding:8px 4px;border-radius:12px;background:rgba(52,199,89,.12);border:none;cursor:pointer;
-                       -webkit-tap-highlight-color:transparent;transition:opacity .15s"
-                ontouchstart="this.style.opacity='.6'" ontouchend="this.style.opacity='1'">
-          <div style="width:30px;height:30px;border-radius:50%;background:#34C759;display:flex;align-items:center;justify-content:center">
-            <i class="fas fa-phone" style="color:#fff;font-size:13px"></i>
-          </div>
-          <span style="font-size:11px;font-weight:600;color:#34C759">Qo'ng'iroq</span>
-        </button>
-        <!-- SMS / Chat -->
-        <button onclick="Native.vibrate();window.location.href='sms:${o.client_phone}'"
-                style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-                       padding:8px 4px;border-radius:12px;background:rgba(0,122,255,.1);border:none;cursor:pointer;
-                       -webkit-tap-highlight-color:transparent;transition:opacity .15s"
-                ontouchstart="this.style.opacity='.6'" ontouchend="this.style.opacity='1'">
-          <div style="width:30px;height:30px;border-radius:50%;background:#007AFF;display:flex;align-items:center;justify-content:center">
-            <i class="fas fa-comment-sms" style="color:#fff;font-size:13px"></i>
-          </div>
-          <span style="font-size:11px;font-weight:600;color:#007AFF">Xabar</span>
-        </button>
-        <!-- Telegram -->
-        <button onclick="Native.vibrate();openTelegram('${o.client_phone}')"
-                style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-                       padding:8px 4px;border-radius:12px;background:rgba(39,174,239,.12);border:none;cursor:pointer;
-                       -webkit-tap-highlight-color:transparent;transition:opacity .15s"
-                ontouchstart="this.style.opacity='.6'" ontouchend="this.style.opacity='1'">
-          <div style="width:30px;height:30px;border-radius:50%;background:#27AEF0;display:flex;align-items:center;justify-content:center">
-            <i class="fab fa-telegram" style="color:#fff;font-size:15px"></i>
-          </div>
-          <span style="font-size:11px;font-weight:600;color:#27AEF0">Telegram</span>
-        </button>
+      <div class="flex-1 min-w-0">
+        <div class="ios-subhead font-semibold truncate">${o.client_name||'Mijoz'}</div>
+        ${o.status!=='pending'
+          ?`<div class="ios-caption mt-0.5" style="color:var(--ios-label3)">${o.client_phone}</div>`
+          :`<div class="ios-caption mt-0.5" style="color:var(--ios-label3)">Qabul qilgach ko'rinadi</div>`}
+      </div>
+      ${o.price?`<div class="text-right flex-shrink-0">
+        <div class="ios-subhead font-semibold text-[#34C759]">${parseInt(o.price).toLocaleString()} so'm</div>
+        ${o.distance_km?`<div class="ios-caption" style="color:var(--ios-label3)">${parseFloat(o.distance_km).toFixed(1)} km</div>`:''}
       </div>`:''}
     </div>
 
-    ${o.note?`<div class="ios-card2 rounded-[14px] px-4 py-3 flex items-start gap-2.5">
-      <i class="fas fa-note-sticky text-[#FF9500] mt-0.5 flex-shrink-0"></i>
-      <span class="ios-subhead" style="color:var(--ios-label2)">${o.note}</span>
+    ${(o.status!=='pending'&&o.commission)?`
+    <div class="flex items-center justify-between" style="padding:8px 10px;border-radius:10px;background:rgba(255,149,0,.08)">
+      <span class="ios-caption2 font-semibold" style="color:#FF9500"><i class="fas fa-percent" style="font-size:9px;margin-right:4px"></i>Komissiya</span>
+      <span class="ios-caption font-bold" style="color:#FF9500">${parseInt(o.commission).toLocaleString()} so'm</span>
     </div>`:''}
 
     <!-- Taximeter (faqat on_way/arrived/completed da) -->
     ${(o.status==='on_way'||o.status==='arrived'||o.status==='completed')?_tmxWidgetHTML(o):''}
     <div>${btns[o.status]||''}</div>
   `;
+
+  const hasBottomExtra = (o.status!=='pending') || !!o.note;
+  document.getElementById('sheet-body').innerHTML = hasBottomExtra ? `
+    ${o.status!=='pending'?`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+      <!-- Telefon -->
+      <button onclick="Native.vibrate();Native.callPhone('${o.client_phone}')"
+              style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+                     padding:8px 4px;border-radius:12px;background:rgba(52,199,89,.12);border:none;cursor:pointer;
+                     -webkit-tap-highlight-color:transparent;transition:opacity .15s"
+              ontouchstart="this.style.opacity='.6'" ontouchend="this.style.opacity='1'">
+        <div style="width:30px;height:30px;border-radius:50%;background:#34C759;display:flex;align-items:center;justify-content:center">
+          <i class="fas fa-phone" style="color:#fff;font-size:13px"></i>
+        </div>
+        <span style="font-size:11px;font-weight:600;color:#34C759">Qo'ng'iroq</span>
+      </button>
+      <!-- SMS / Chat -->
+      <button onclick="Native.vibrate();window.location.href='sms:${o.client_phone}'"
+              style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+                     padding:8px 4px;border-radius:12px;background:rgba(0,122,255,.1);border:none;cursor:pointer;
+                     -webkit-tap-highlight-color:transparent;transition:opacity .15s"
+              ontouchstart="this.style.opacity='.6'" ontouchend="this.style.opacity='1'">
+        <div style="width:30px;height:30px;border-radius:50%;background:#007AFF;display:flex;align-items:center;justify-content:center">
+          <i class="fas fa-comment-sms" style="color:#fff;font-size:13px"></i>
+        </div>
+        <span style="font-size:11px;font-weight:600;color:#007AFF">Xabar</span>
+      </button>
+      <!-- Telegram -->
+      <button onclick="Native.vibrate();openTelegram('${o.client_phone}')"
+              style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+                     padding:8px 4px;border-radius:12px;background:rgba(39,174,239,.12);border:none;cursor:pointer;
+                     -webkit-tap-highlight-color:transparent;transition:opacity .15s"
+              ontouchstart="this.style.opacity='.6'" ontouchend="this.style.opacity='1'">
+        <div style="width:30px;height:30px;border-radius:50%;background:#27AEF0;display:flex;align-items:center;justify-content:center">
+          <i class="fab fa-telegram" style="color:#fff;font-size:15px"></i>
+        </div>
+        <span style="font-size:11px;font-weight:600;color:#27AEF0">Telegram</span>
+      </button>
+    </div>`:''}
+
+    ${o.note?`<div class="${o.status!=='pending'?'mt-2':''} flex items-start gap-2.5">
+      <i class="fas fa-note-sticky text-[#FF9500] mt-0.5 flex-shrink-0"></i>
+      <span class="ios-subhead" style="color:var(--ios-label2)">${o.note}</span>
+    </div>`:''}
+  ` : '';
 
   const ov=document.getElementById('sheet-overlay');
   const sh=document.getElementById('sheet');
@@ -1452,7 +1463,7 @@ function _renderSheet(id, o){
   ov.style.pointerEvents='';
   ov.classList.remove('hidden');
   requestAnimationFrame(()=>{
-    sh.style.transform='translateY(0)';
+    sh.style.transform = hasBottomExtra ? 'translateY(0)' : 'translateY(calc(100% + 40px))';
     if(o.status==='on_way'||o.status==='arrived') {
       // Darhol va keyin ham yangilaymiz (taximetr ishlayotgan bo'lsa)
       _syncSheetTmx(o);
