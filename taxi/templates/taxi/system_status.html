@@ -1,4 +1,4 @@
-{% extends 'taxi/base.html' %}
+{% extends 'taxi/system_base.html' %}
 {% block title %}Tizim holati — Vijdon Taxi{% endblock %}
 
 {% block content %}
@@ -7,7 +7,7 @@
         <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Tizim holati 🖥️</h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Server, xotira, disk va fon jarayonlarining joriy holati — dasturchi uchun diagnostika.</p>
     </div>
-    <a href="{% url 'taxi:system_status' %}"
+    <a href="{% url 'system:system_status' %}"
        class="flex items-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-semibold rounded-xl transition-colors">
         <i class="fas fa-rotate-right"></i> Yangilash
     </a>
@@ -219,7 +219,7 @@
         <p class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
             <i class="fas fa-box-archive mr-1.5"></i>Ma'lumotlar bazasi zaxira nusxasi (Backup)
         </p>
-        <form action="{% url 'taxi:backup_create' %}" method="POST" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').innerHTML='<i class=\'fas fa-spinner fa-spin mr-1.5\'></i>Yaratilmoqda... (bir necha daqiqa)';">
+        <form action="{% url 'system:backup_create' %}" method="POST" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').innerHTML='<i class=\'fas fa-spinner fa-spin mr-1.5\'></i>Yaratilmoqda... (bir necha daqiqa)';">
             {% csrf_token %}
             <button type="submit" class="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl transition-colors">
                 <i class="fas fa-plus"></i> Yangi backup yaratish
@@ -245,11 +245,11 @@
                     <td class="py-2.5 pr-3 text-xs text-gray-500 dark:text-gray-400">{{ b.size_mb }} MB</td>
                     <td class="py-2.5 pr-3 text-right">
                         <div class="flex items-center justify-end gap-1">
-                            <a href="{% url 'taxi:backup_download' b.name %}"
+                            <a href="{% url 'system:backup_download' b.name %}"
                                class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-500 hover:bg-blue-100 transition-colors" title="Yuklab olish">
                                 <i class="fas fa-download text-xs"></i>
                             </a>
-                            <form action="{% url 'taxi:backup_delete' b.name %}" method="POST" onsubmit="return confirm('{{ b.name }} o\'chirilsinmi?');">
+                            <form action="{% url 'system:backup_delete' b.name %}" method="POST" onsubmit="return confirm('{{ b.name }} o\'chirilsinmi?');">
                                 {% csrf_token %}
                                 <button type="submit" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors" title="O'chirish">
                                     <i class="fas fa-trash-can text-xs"></i>

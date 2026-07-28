@@ -1,4 +1,4 @@
-{% extends 'taxi/base.html' %}
+{% extends 'taxi/system_base.html' %}
 {% block title %}Reklama flayeri — Vijdon Taxi{% endblock %}
 
 {% block content %}
@@ -7,7 +7,7 @@
         <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Reklama Flayeri 📣</h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Yangi mijozlarni jalb qilish uchun chop etiladigan chegirma flayeri.</p>
     </div>
-    <form method="post" action="{% url 'taxi:flyer_download' %}" class="flex items-center gap-2 flex-wrap" id="flyer-download-form">
+    <form method="post" action="{% url 'system:flyer_download' %}" class="flex items-center gap-2 flex-wrap" id="flyer-download-form">
         {% csrf_token %}
         <select name="owner_driver_id"
                 class="px-3 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white">
@@ -61,7 +61,7 @@
                 <p class="text-xs text-gray-400 mt-0.5">Eng ko'p mijoz keltirgan (vizitkasi ishlatilgan) haydovchi.</p>
             </div>
             {% if week_leader and not week_leader_rewarded %}
-            <form method="post" action="{% url 'taxi:flyer_reward_bonus' %}" onsubmit="return confirm('{{ week_leader.full_name }}ga 100 000 so\'m bonus berilsinmi?');">
+            <form method="post" action="{% url 'system:flyer_reward_bonus' %}" onsubmit="return confirm('{{ week_leader.full_name }}ga 100 000 so\'m bonus berilsinmi?');">
                 {% csrf_token %}
                 <input type="hidden" name="driver_id" value="{{ week_leader.pk }}">
                 <input type="hidden" name="week_start" value="{{ week_start|date:'Y-m-d' }}">
@@ -173,7 +173,7 @@
                         <i class="fas fa-circle-check"></i>
                         {% if checked_voucher.owner_driver %}Kod haqiqiy va hali ishlatilmagan — tasdiqlansa avtomatik egasi balansiga qo'shiladi.{% else %}Kod haqiqiy va hali ishlatilmagan — haydovchini tanlab balansga qo'shing.{% endif %}
                     </div>
-                    <form method="post" action="{% url 'taxi:flyer_redeem' %}" class="flex gap-2">
+                    <form method="post" action="{% url 'system:flyer_redeem' %}" class="flex gap-2">
                         {% csrf_token %}
                         <input type="hidden" name="code" value="{{ checked_voucher.code }}">
                         {% if not checked_voucher.owner_driver %}

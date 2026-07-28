@@ -27,6 +27,16 @@ TOPUP_AGING_HOURS = 3  # to'lov so'rovi shuncha soat hal qilinmasa — dashboard
 panel_login_required = user_passes_test(
     lambda u: u.is_authenticated and u.is_staff, login_url='taxi:panel_login')
 
+# Diqqat: "Tizim" (dasturchi/DevOps) sahifalari — backup, tizim diagnostikasi,
+# tarif/bot/SMS/AI kabi sozlamalar — endi oddiy operatordan (is_staff) yuqori
+# huquq (is_superuser) talab qiladi va butunlay alohida panelda (/system/,
+# alohida login sahifasi bilan) joylashadi. Oddiy admin/operator hisoblari
+# bu bo'limni sidebar'da UMUMAN ko'rmaydi va to'g'ridan-to'g'ri manzilga
+# kirishga urinsa ham (is_superuser bo'lmagani uchun) /system/login/ ga
+# qaytariladi.
+system_login_required = user_passes_test(
+    lambda u: u.is_authenticated and u.is_staff and u.is_superuser, login_url='system:system_login')
+
 # ── DB backup (Tizim holati sahifasi) ───────────────────────────────────────
 # Diqqat (xavfsizlik): backup fayl nomlari HAR DOIM shu qat'iy formatga mos
 # kelishi shart — download/delete view'lari foydalanuvchidan kelgan `filename`
@@ -707,7 +717,7 @@ def client_list(request):
 
 # ── Tariff Settings ────────────────────────────────────────────────────────────
 
-@panel_login_required
+@system_login_required
 def bot_settings(request):
     from django.conf import settings as django_settings
     bot = BotSettings.get()
@@ -767,7 +777,7 @@ def bot_settings(request):
         if 'announce' in request.POST and announce_text and bot.bot_token:
             from .utils import tg_group_announcement
             tg_group_announcement(announce_text)
-        return redirect('taxi:bot_settings')
+        return redirect('system:bot_settings')
     site_url = getattr(django_settings, 'SITE_URL', '')
     order_notifs = [
         ('notify_new_order',  'Yangi buyurtma',          '🚨', bot.notify_new_order),
@@ -816,7 +826,7 @@ def bot_settings(request):
     })
 
 
-@panel_login_required
+@system_login_required
 def sms_settings(request):
     sms = SmsSettings.get()
     saved = False
@@ -858,7 +868,7 @@ def sms_settings(request):
 
 # ── AI o'sish tavsiyalari ─────────────────────────────────────────────────────
 
-@panel_login_required
+@system_login_required
 def ai_settings(request):
     cfg = AiSettings.get()
     saved = False
@@ -874,7 +884,7 @@ def ai_settings(request):
     })
 
 
-@panel_login_required
+@system_login_required
 def system_status(request):
     """Dasturchi/operator uchun tizim diagnostikasi: xotira, disk, protsessor
     yuklamasi, DB ulanishi va scheduler threadining "tirikligi" — ilova
@@ -1032,7 +1042,7 @@ def system_status(request):
     })
 
 
-@panel_login_required
+@system_login_required
 def backup_create(request):
     """`pg_dump` orqali joriy PostgreSQL bazasining to'liq nusxasini oladi va
     gzip qilib backups/ papkasiga saqlaydi. Kichik/o'rta hajmdagi baza uchun
@@ -1040,7 +1050,7 @@ def backup_create(request):
     davomida sinxron bajarish yetarli — juda katta bazalarda bu alohida
     fon vazifasiga (masalan cron) ko'chirilishi kerak bo'lardi."""
     if request.method != 'POST':
-        return redirect('taxi:system_status')
+        return redirect('system:system_status')
 
     import os
     import gzip
@@ -1093,10 +1103,10 @@ def backup_create(request):
         messages.error(request, f"Backup xatosi: {e}")
         if os.path.exists(sql_path):
             os.remove(sql_path)
-    return redirect('taxi:system_status')
+    return redirect('system:system_status')
 
 
-@panel_login_required
+@system_login_required
 def backup_download(request, filename):
     import os
     from django.http import FileResponse, Http404
@@ -1108,7 +1118,7 @@ def backup_download(request, filename):
     return FileResponse(open(path, 'rb'), as_attachment=True, filename=filename)
 
 
-@panel_login_required
+@system_login_required
 def backup_delete(request, filename):
     import os
     if request.method == 'POST' and BACKUP_FILENAME_RE.match(filename):
@@ -1117,7 +1127,7 @@ def backup_delete(request, filename):
             os.remove(path)
             log_panel_event('panel_backup_deleted', filename)
             messages.success(request, f"{filename} o'chirildi.")
-    return redirect('taxi:system_status')
+    return redirect('system:system_status')
 
 
 @panel_login_required
@@ -1282,34 +1292,34 @@ def panel_ai_reward_given(request):
     return JsonResponse({'ok': True})
 
 
-@panel_login_required
+@system_login_required
 def bot_admin_add(request):
     if request.method == 'POST':
         chat_id   = request.POST.get('chat_id', '').strip()
         full_name = request.POST.get('full_name', '').strip()
         if chat_id.isdigit():
             BotAdmin.objects.get_or_create(chat_id=chat_id, defaults={'full_name': full_name})
-    return redirect('taxi:bot_settings')
+    return redirect('system:bot_settings')
 
 
-@panel_login_required
+@system_login_required
 def bot_admin_delete(request, pk):
     admin = get_object_or_404(BotAdmin, pk=pk)
     if request.method == 'POST':
         admin.delete()
-    return redirect('taxi:bot_settings')
+    return redirect('system:bot_settings')
 
 
-@panel_login_required
+@system_login_required
 def bot_admin_toggle(request, pk):
     admin = get_object_or_404(BotAdmin, pk=pk)
     if request.method == 'POST':
         admin.is_active = not admin.is_active
         admin.save(update_fields=['is_active'])
-    return redirect('taxi:bot_settings')
+    return redirect('system:bot_settings')
 
 
-@panel_login_required
+@system_login_required
 def sound_settings(request):
     from .constants import PANEL_SOUND_EVENTS, DRIVER_SOUND_EVENTS
     all_keys = [k for k, _ in PANEL_SOUND_EVENTS + DRIVER_SOUND_EVENTS]
@@ -1330,7 +1340,7 @@ def sound_settings(request):
             snd.enabled = f'enabled_{key}' in request.POST
             snd.save()
         messages.success(request, "Ovoz sozlamalari saqlandi.")
-        return redirect('taxi:sound_settings')
+        return redirect('system:sound_settings')
 
     return render(request, 'taxi/sound_settings.html', {
         'panel_sounds':  [(key, label, sounds[key]) for key, label in PANEL_SOUND_EVENTS],
@@ -1451,7 +1461,7 @@ def client_bot_webhook(request):
     return HttpResponse('ok')
 
 
-@panel_login_required
+@system_login_required
 def maps_settings(request):
     maps = MapsSettings.get()
     if request.method == 'POST':
@@ -1460,11 +1470,11 @@ def maps_settings(request):
         maps.yandex_mapkit_key = request.POST.get('yandex_mapkit_key', '').strip()
         maps.is_active         = request.POST.get('is_active') == 'on'
         maps.save()
-        return redirect('taxi:maps_settings')
+        return redirect('system:maps_settings')
     return render(request, 'taxi/maps_settings.html', {'maps': maps})
 
 
-@panel_login_required
+@system_login_required
 def tariff_settings(request):
     tariff = TariffSettings.get()
     if request.method == 'POST':
@@ -1481,7 +1491,7 @@ def tariff_settings(request):
             tariff.save()
         except (InvalidOperation, ValueError):
             pass
-        return redirect('taxi:tariff_settings')
+        return redirect('system:tariff_settings')
     return render(request, 'taxi/tariff_settings.html', {'tariff': tariff})
 
 
@@ -2250,8 +2260,12 @@ def operator_bot_webhook(request):
     return HttpResponse('ok')
 
 
+@system_login_required
 def operator_bot_set_webhook(request):
-    """Operator bot webhook URL ni Telegram ga o'rnatish."""
+    """Operator bot webhook URL ni Telegram ga o'rnatish.
+    Diqqat (xavfsizlik): avval bu view hech qanday autentifikatsiya
+    tekshiruvisiz edi — endi bot_settings sahifasining bir qismi sifatida
+    faqat tizim (superuser) roliga ochiq."""
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'message': 'POST talab qilinadi'})
     from .models import BotSettings
@@ -2442,6 +2456,31 @@ def panel_login(request):
 def panel_logout(request):
     logout(request)
     return redirect('taxi:panel_login')
+
+
+# ── Tizim (dasturchi) paneli — alohida kirish ──────────────────────────────
+def system_login(request):
+    # Diqqat: is_superuser ham tekshiriladi (is_staff yetarli emas) — aks
+    # holda oddiy admin hisobi bilan kirgan foydalanuvchi shu sahifada
+    # "allaqachon kirgan" deb tizim dashboard'iga yo'naltirilardi, u esa
+    # (is_superuser talab qilgani uchun) yana shu yerga qaytarib, cheksiz
+    # redirect siklini hosil qilardi (panel_login'dagi bilan bir xil sabab).
+    if request.user.is_authenticated and request.user.is_staff and request.user.is_superuser:
+        return redirect('system:system_status')
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+        user = authenticate(request, username=username, password=password)
+        if user and user.is_staff and user.is_superuser:
+            login(request, user)
+            return redirect(request.GET.get('next', 'system:system_status'))
+        messages.error(request, "Login yoki parol noto'g'ri, yoki sizda tizim paneliga kirish huquqi yo'q!")
+    return render(request, 'taxi/system_login.html')
+
+
+def system_logout(request):
+    logout(request)
+    return redirect('system:system_login')
 
 
 # ── Driver Edit ────────────────────────────────────────────────────────────────
@@ -2953,7 +2992,7 @@ def panel_voice_signal(request):
 
 # ── Haydovchi shartnomasi ──────────────────────────────────────────────────────
 
-@panel_login_required
+@system_login_required
 def contract_settings(request):
     contract = ContractSettings.get()
     saved = False
@@ -2974,7 +3013,7 @@ def contract_settings(request):
     })
 
 
-@panel_login_required
+@system_login_required
 def contract_download_blank(request):
     from django.utils.text import slugify
     contract = ContractSettings.get()
@@ -3003,7 +3042,7 @@ def driver_contract_download(request, pk):
 
 # ── Reklama flayeri ────────────────────────────────────────────────────────────
 
-@panel_login_required
+@system_login_required
 def flyer_page(request):
     from django.utils import timezone
     from datetime import timedelta
@@ -3057,7 +3096,7 @@ def flyer_verify(request, code):
     return render(request, 'taxi/flyer_verify.html', {'voucher': voucher, 'code': code.strip().upper()})
 
 
-@panel_login_required
+@system_login_required
 @require_POST
 def flyer_download(request):
     fmt = request.POST.get('format', 'flyer')
@@ -3089,7 +3128,7 @@ def flyer_download(request):
     return response
 
 
-@panel_login_required
+@system_login_required
 @require_POST
 def flyer_redeem(request):
     from django.utils import timezone
@@ -3099,7 +3138,7 @@ def flyer_redeem(request):
 
     if voucher.is_used:
         messages.error(request, "Bu kod allaqachon ishlatilgan.")
-        return redirect('taxi:flyer_page')
+        return redirect('system:flyer_page')
 
     # Vizitka chiqarilganda egasi biriktirilgan bo'lsa, haydovchini qo'lda
     # tanlash shart emas — vizitka egasi avtomatik hisoblanadi.
@@ -3108,7 +3147,7 @@ def flyer_redeem(request):
     else:
         if not driver_id:
             messages.error(request, "Haydovchini tanlang.")
-            return redirect('taxi:flyer_page')
+            return redirect('system:flyer_page')
         driver = get_object_or_404(Driver, pk=driver_id)
     amount = voucher.amount
 
@@ -3132,10 +3171,10 @@ def flyer_redeem(request):
     tg_balance_changed(driver, amount, 'add')
     tg_flyer_voucher_redeemed(voucher, driver)
     messages.success(request, f"Kod tasdiqlandi — {driver.full_name} balansiga {amount} so'm qo'shildi.")
-    return redirect('taxi:flyer_page')
+    return redirect('system:flyer_page')
 
 
-@panel_login_required
+@system_login_required
 @require_POST
 def flyer_reward_bonus(request):
     """Haftalik 'Mijoz olib kel' vizitka reytingida eng ko'p vizitka
@@ -3156,7 +3195,7 @@ def flyer_reward_bonus(request):
         week_start = date_cls.fromisoformat(week_start_str)
     except ValueError:
         messages.error(request, "Noto'g'ri hafta sanasi.")
-        return redirect('taxi:flyer_page')
+        return redirect('system:flyer_page')
 
     voucher_count = FlyerVoucher.objects.filter(
         owner_driver=driver, is_used=True, used_at__date__gte=week_start,
@@ -3168,7 +3207,7 @@ def flyer_reward_bonus(request):
     )
     if not created:
         messages.error(request, f"{driver.full_name}ga shu hafta uchun bonus allaqachon berilgan.")
-        return redirect('taxi:flyer_page')
+        return redirect('system:flyer_page')
 
     driver.balance += reward.amount
     driver.save(update_fields=['balance'])
@@ -3183,18 +3222,18 @@ def flyer_reward_bonus(request):
     )
     tg_balance_changed(driver, reward.amount, 'add')
     messages.success(request, f"{driver.full_name}ga {reward.amount} so'm vizitka bonusi berildi.")
-    return redirect('taxi:flyer_page')
+    return redirect('system:flyer_page')
 
 
 # ── Vazifalar (Task board) ────────────────────────────────────────────────────
 
-@panel_login_required
+@system_login_required
 def task_list(request):
     if request.method == 'POST':
         title = request.POST.get('title', '').strip()
         if title:
             Task.objects.create(title=title, created_by=request.user)
-        return redirect('taxi:task_list')
+        return redirect('system:task_list')
 
     tasks = Task.objects.select_related('created_by').all()
     return render(request, 'taxi/tasks.html', {
@@ -3204,7 +3243,7 @@ def task_list(request):
     })
 
 
-@panel_login_required
+@system_login_required
 @require_POST
 def task_set_status(request, pk):
     from django.utils import timezone
@@ -3218,7 +3257,7 @@ def task_set_status(request, pk):
     return JsonResponse({'ok': True})
 
 
-@panel_login_required
+@system_login_required
 @require_POST
 def task_delete(request, pk):
     Task.objects.filter(pk=pk).delete()

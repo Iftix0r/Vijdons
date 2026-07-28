@@ -678,7 +678,7 @@ async function loadAiInsights() {
             body.innerHTML = `
                 <div class="text-sm text-amber-600 dark:text-amber-400">
                     <i class="fas fa-triangle-exclamation mr-1.5"></i>${errMsg}
-                    ${errMsg.includes('AI sozlamalari') || errMsg.includes('API kalit') ? `<a href="{% url 'taxi:ai_settings' %}" class="ml-1 underline font-semibold">Sozlash</a>` : ''}
+                    ${errMsg.includes('AI sozlamalari') || errMsg.includes('API kalit') ? `<a href="{% url 'system:ai_settings' %}" class="ml-1 underline font-semibold">Sozlash</a>` : ''}
                 </div>`;
         }
     } catch (e) {

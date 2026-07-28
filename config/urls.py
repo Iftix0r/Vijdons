@@ -52,6 +52,7 @@ urlpatterns = [
     # skanerlanishi uchun /panel/ prefiksisiz) — taxi/views.py:flyer_verify
     path('flayer/<str:code>/', taxi_views.flyer_verify, name='flyer_verify'),
     path('panel/', include('taxi.urls')),
+    path('system/', include('taxi.system_urls')),
     path('driver/', include('taxi.driver_urls')),
     path('client/', include('taxi.client_urls')),
     path('', RedirectView.as_view(url='/panel/', permanent=False)),

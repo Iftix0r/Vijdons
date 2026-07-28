@@ -1,0 +1,269 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="uz" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Tizim — Vijdon Taxi{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Outfit', sans-serif; }
+
+        body {
+            background: #f2f2f7;
+            background-image:
+                radial-gradient(ellipse at 20% 10%, rgba(139,92,246,.14) 0%, transparent 55%),
+                radial-gradient(ellipse at 80% 80%, rgba(99,102,241,.10) 0%, transparent 55%);
+        }
+        .dark body, body.dark {
+            background: #0f1117;
+            background-image:
+                radial-gradient(ellipse at 20% 10%, rgba(139,92,246,.08) 0%, transparent 55%),
+                radial-gradient(ellipse at 80% 80%, rgba(99,102,241,.05) 0%, transparent 55%);
+        }
+
+        #sidebar {
+            background: rgba(255,255,255,0.72);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border-right: 1px solid rgba(255,255,255,0.5);
+            transition: transform .3s ease;
+        }
+        .dark #sidebar {
+            background: rgba(17,24,39,0.75);
+            border-right: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .nav-link { transition: all .2s; border-radius: 12px; margin: 1px 0; }
+        .nav-link:hover { background: rgba(139,92,246,0.10); color: #7c3aed; }
+        .nav-link.active {
+            background: rgba(139,92,246,0.15); color: #6d28d9; font-weight: 700;
+            box-shadow: inset 0 0 0 1px rgba(139,92,246,0.2);
+        }
+        .dark .nav-link:hover  { background: rgba(139,92,246,0.14); color:#c4b5fd; }
+        .dark .nav-link.active { background: rgba(139,92,246,0.20); color:#ddd6fe; box-shadow: inset 0 0 0 1px rgba(139,92,246,0.18); }
+
+        @media (max-width: 768px) {
+            #sidebar { position:fixed; top:0; left:0; height:100%; z-index:40; transform:translateX(-100%); }
+            #sidebar.open { transform:translateX(0); box-shadow:8px 0 32px rgba(0,0,0,.12); }
+            #sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.3); backdrop-filter:blur(4px); z-index:39; }
+            #sidebar-overlay.open { display:block; }
+        }
+
+        ::-webkit-scrollbar { width:4px; height:4px; }
+        ::-webkit-scrollbar-track { background:transparent; }
+        ::-webkit-scrollbar-thumb { background:rgba(0,0,0,.12); border-radius:8px; }
+        ::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,.22); }
+        .dark ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.1); }
+
+        .glass {
+            background: rgba(242,242,247,0.80);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-bottom: 1px solid rgba(255,255,255,0.6);
+        }
+        .dark .glass { background: rgba(15,17,23,0.80); border-bottom: 1px solid rgba(255,255,255,0.06); }
+
+        .bg-white { background: rgba(255,255,255,0.80) !important; backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%); }
+        .dark .bg-white, .dark .dark\:bg-gray-900 {
+            background: rgba(17,24,39,0.75) !important;
+            backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%);
+        }
+
+        .modal-wrap { transition: opacity .25s, visibility .25s; }
+        .modal-wrap.hidden-modal { opacity:0; visibility:hidden; pointer-events:none; }
+        .modal-wrap.hidden-modal .modal-box { transform: scale(.96) translateY(10px); }
+        .modal-box {
+            transition: transform .3s cubic-bezier(.34,1.56,.64,1); transform: scale(1) translateY(0);
+            background: rgba(255,255,255,0.88) !important;
+            backdrop-filter: blur(32px) saturate(200%); -webkit-backdrop-filter: blur(32px) saturate(200%);
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+        .dark .modal-box { background: rgba(17,24,39,0.88) !important; border: 1px solid rgba(255,255,255,0.08); }
+
+        tbody tr { transition: background .15s; }
+        button, a { -webkit-tap-highlight-color: transparent; }
+        main > * { animation: fadeUp .3s ease both; }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+        input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 3px rgba(139,92,246,0.15); }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-gray-950 text-gray-800 dark:text-gray-200 antialiased flex h-screen overflow-hidden transition-colors duration-300">
+
+<!-- ══════════ SIDEBAR ══════════ -->
+<aside id="sidebar" class="w-64 flex-shrink-0 flex flex-col z-30">
+    <div class="h-16 flex items-center gap-3 px-5 border-b border-white/50 dark:border-white/5 flex-shrink-0">
+        <img src="{% static 'taxi/img/logo.png' %}" alt="Vijdon" class="w-9 h-9 rounded-full object-cover flex-shrink-0" style="box-shadow:0 4px 20px rgba(139,92,246,0.35)">
+        <div>
+            <span class="font-extrabold text-lg tracking-tight text-gray-900 dark:text-white block leading-tight">Vijdon<span class="text-purple-500">Taxi</span></span>
+            <span class="text-[10px] font-bold uppercase tracking-widest text-purple-500">Tizim paneli</span>
+        </div>
+    </div>
+
+    <nav class="flex-1 overflow-y-auto py-4 space-y-0.5 px-2">
+        <a href="{% url 'taxi:panel_dashboard' %}"
+           class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-arrow-left w-5 text-center"></i> Asosiy panelga qaytish
+        </a>
+
+        <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest font-bold text-gray-400 dark:text-gray-600">Diagnostika</p>
+        <a href="{% url 'system:system_status' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'system_status' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-server w-5 text-center"></i> Tizim holati
+        </a>
+
+        <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest font-bold text-gray-400 dark:text-gray-600">Sozlamalar</p>
+        <a href="{% url 'system:tariff_settings' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'tariff_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-sliders w-5 text-center"></i> Tariff sozlamalari
+        </a>
+        <a href="{% url 'system:maps_settings' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'maps_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-map-marked-alt w-5 text-center"></i> Maps API
+        </a>
+        <a href="{% url 'system:sound_settings' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'sound_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-volume-high w-5 text-center"></i> Ovoz sozlamalari
+        </a>
+        <a href="{% url 'system:task_list' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'task_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-list-check w-5 text-center"></i> Vazifalar
+        </a>
+        <a href="{% url 'system:contract_settings' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'contract_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-file-signature w-5 text-center"></i> Shartnoma
+        </a>
+        <a href="{% url 'system:flyer_page' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'flyer_page' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-bullhorn w-5 text-center"></i> Reklama flayeri
+        </a>
+        <a href="{% url 'system:bot_settings' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'bot_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fab fa-telegram w-5 text-center"></i> Telegram Bot
+        </a>
+        <a href="{% url 'system:sms_settings' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'sms_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-comment-sms w-5 text-center"></i> SMS sozlamalari
+        </a>
+        <a href="{% url 'system:ai_settings' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'ai_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-robot w-5 text-center"></i> AI sozlamalari
+        </a>
+        <a href="/admin/"
+           class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-shield-halved w-5 text-center"></i> Django Admin
+        </a>
+    </nav>
+
+    <div class="px-4 py-4 border-t border-white/50 dark:border-white/5 flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 flex items-center justify-center font-bold flex-shrink-0">
+            {{ request.user.username|slice:":1"|upper }}
+        </div>
+        <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-gray-800 dark:text-white truncate">{{ request.user.username }}</p>
+            <a href="{% url 'system:system_logout' %}" class="text-xs text-red-500 hover:text-red-600 font-medium">
+                <i class="fas fa-right-from-bracket mr-1"></i>Chiqish
+            </a>
+        </div>
+    </div>
+</aside>
+
+<!-- ══════════ MAIN ══════════ -->
+<div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-transparent">
+    <header class="glass h-16 flex-shrink-0 flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-800 z-20">
+        <p class="text-sm font-bold text-gray-500 dark:text-gray-400">
+            <i class="fas fa-terminal mr-2 text-purple-500"></i>Tizim / Dasturchi paneli
+        </p>
+        <div class="flex items-center gap-3">
+            <button id="theme-toggle" title="Qorong'u/Yorug' rejim"
+                    class="w-9 h-9 rounded-xl bg-gray-100/80 dark:bg-gray-800/80 backdrop-blur flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-yellow-500 transition-colors">
+                <i id="icon-moon" class="fas fa-moon text-sm"></i>
+                <i id="icon-sun"  class="fas fa-sun  text-sm hidden"></i>
+            </button>
+            <button id="mobile-menu-btn" class="md:hidden w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center transition-all active:scale-90" aria-label="Menu">
+                <div id="hbg" class="flex flex-col justify-center items-center gap-[5px] w-5 h-5">
+                    <span class="hbg-line block h-[2px] w-5 bg-gray-600 dark:bg-gray-300 rounded-full transition-all duration-300 origin-center"></span>
+                    <span class="hbg-line block h-[2px] w-3.5 bg-gray-600 dark:bg-gray-300 rounded-full transition-all duration-300 ml-auto"></span>
+                    <span class="hbg-line block h-[2px] w-5 bg-gray-600 dark:bg-gray-300 rounded-full transition-all duration-300 origin-center"></span>
+                </div>
+            </button>
+            <style>
+              #mobile-menu-btn.is-open .hbg-line:nth-child(1){transform:translateY(7px) rotate(45deg);width:20px}
+              #mobile-menu-btn.is-open .hbg-line:nth-child(2){opacity:0;transform:scaleX(0)}
+              #mobile-menu-btn.is-open .hbg-line:nth-child(3){transform:translateY(-7px) rotate(-45deg);width:20px}
+            </style>
+        </div>
+    </header>
+
+    <main class="flex-1 overflow-y-auto p-6">
+        {% if messages %}
+        <div class="space-y-2 mb-4">
+            {% for message in messages %}
+            <div class="px-4 py-3 rounded-xl text-sm font-semibold border
+                {% if message.tags == 'error' %}bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/40 text-red-600 dark:text-red-400
+                {% else %}bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400{% endif %}">
+                <i class="fas {% if message.tags == 'error' %}fa-circle-exclamation{% else %}fa-circle-check{% endif %} mr-2"></i>{{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<div id="sidebar-overlay"></div>
+
+<script>
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    const menuBtn = document.getElementById('mobile-menu-btn');
+    if (menuBtn) {
+        menuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('open');
+            menuBtn.classList.toggle('is-open');
+        });
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('open');
+            menuBtn.classList.remove('is-open');
+        });
+    }
+
+    const html = document.documentElement;
+    const moon = document.getElementById('icon-moon');
+    const sun  = document.getElementById('icon-sun');
+    function applyTheme(dark) {
+        html.classList.toggle('dark', dark);
+        moon.classList.toggle('hidden', dark);
+        sun.classList.toggle('hidden', !dark);
+    }
+    const saved = localStorage.getItem('theme');
+    applyTheme(saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches));
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+        const dark = !html.classList.contains('dark');
+        applyTheme(dark);
+        localStorage.setItem('theme', dark ? 'dark' : 'light');
+    });
+
+    function openModal(id) { document.getElementById(id).classList.remove('hidden-modal'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden-modal'); }
+    document.querySelectorAll('.modal-wrap').forEach(m => {
+        m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); });
+    });
+    function confirmDelete(formId) {
+        if (confirm("Rostdan ham o'chirmoqchimisiz? Bu amalni orqaga qaytarib bo'lmaydi.")) {
+            document.getElementById(formId).submit();
+        }
+    }
+    function getCookie(name) {
+        const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+        return v ? v[2] : '';
+    }
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

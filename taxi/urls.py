@@ -29,20 +29,8 @@ urlpatterns = [
     path('chat/', views.operator_chat, name='operator_chat'),
     path('chat/unread/', views.operator_chat_unread, name='operator_chat_unread'),
     path('chat/typing/', views.operator_chat_typing, name='operator_chat_typing'),
-    path('maps/', views.maps_settings, name='maps_settings'),
-    path('bot/', views.bot_settings, name='bot_settings'),
-    path('sms/', views.sms_settings, name='sms_settings'),
-    path('ai/', views.ai_settings, name='ai_settings'),
-    path('system/', views.system_status, name='system_status'),
-    path('system/backup/create/', views.backup_create, name='backup_create'),
-    path('system/backup/<str:filename>/download/', views.backup_download, name='backup_download'),
-    path('system/backup/<str:filename>/delete/', views.backup_delete, name='backup_delete'),
     path('api/ai-insights/', views.panel_ai_insights, name='panel_ai_insights'),
     path('api/ai-insights/reward/', views.panel_ai_reward_given, name='panel_ai_reward_given'),
-    path('bot/admins/add/', views.bot_admin_add, name='bot_admin_add'),
-    path('bot/admins/<int:pk>/delete/', views.bot_admin_delete, name='bot_admin_delete'),
-    path('bot/admins/<int:pk>/toggle/', views.bot_admin_toggle, name='bot_admin_toggle'),
-    path('tariff/', views.tariff_settings, name='tariff_settings'),
     path('drivers/map/', views.driver_map, name='driver_map'),
     path('drivers/api/locations/', views.active_drivers_locations, name='active_drivers_locations'),
 
@@ -76,7 +64,6 @@ urlpatterns = [
     # ── Telegram Bot Webhooks ──
     path('bot/client-webhook/', views.client_bot_webhook, name='client_bot_webhook'),
     path('bot/operator-webhook/', views.operator_bot_webhook, name='operator_bot_webhook'),
-    path('bot/set-webhook/', views.operator_bot_set_webhook, name='operator_bot_set_webhook'),
 
     # ── Mobile API ──
     path('api/driver/register/',  api_views.driver_register,    name='api_driver_register'),
@@ -122,18 +109,5 @@ urlpatterns = [
 
     # ── Ovozli bildirishnomalar ──
     path('api/events/', views.panel_events_api, name='panel_events_api'),
-    path('sounds/', views.sound_settings, name='sound_settings'),
-    path('contract/', views.contract_settings, name='contract_settings'),
-    path('contract/download/', views.contract_download_blank, name='contract_download_blank'),
     path('drivers/<int:pk>/contract/download/', views.driver_contract_download, name='driver_contract_download'),
-
-    path('flyer/', views.flyer_page, name='flyer_page'),
-    path('flyer/download/', views.flyer_download, name='flyer_download'),
-    path('flyer/redeem/', views.flyer_redeem, name='flyer_redeem'),
-    path('flyer/reward/', views.flyer_reward_bonus, name='flyer_reward_bonus'),
-
-    # ── Vazifalar ──
-    path('tasks/', views.task_list, name='task_list'),
-    path('tasks/<int:pk>/status/', views.task_set_status, name='task_set_status'),
-    path('tasks/<int:pk>/delete/', views.task_delete, name='task_delete'),
 ]

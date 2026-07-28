@@ -260,51 +260,13 @@
             {% endif %}
         </a>
 
+        {% if request.user.is_superuser %}
         <p class="px-3 pt-4 pb-1 text-[10px] uppercase tracking-widest font-bold text-gray-400 dark:text-gray-600">Tizim</p>
-        <a href="/panel/tariff/"
-           class="nav-link {% if request.resolver_match.url_name == 'tariff_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-sliders w-5 text-center"></i> Tariff sozlamalari
-        </a>
-        <a href="/panel/maps/"
-           class="nav-link {% if request.resolver_match.url_name == 'maps_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-map-marked-alt w-5 text-center"></i> Maps API
-        </a>
-        <a href="{% url 'taxi:sound_settings' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'sound_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-volume-high w-5 text-center"></i> Ovoz sozlamalari
-        </a>
-        <a href="{% url 'taxi:task_list' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'task_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-list-check w-5 text-center"></i> Vazifalar
-        </a>
-        <a href="{% url 'taxi:contract_settings' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'contract_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-file-signature w-5 text-center"></i> Shartnoma
-        </a>
-        <a href="{% url 'taxi:flyer_page' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'flyer_page' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-bullhorn w-5 text-center"></i> Reklama flayeri
-        </a>
-        <a href="{% url 'taxi:bot_settings' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'bot_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fab fa-telegram w-5 text-center"></i> Telegram Bot
-        </a>
-        <a href="{% url 'taxi:sms_settings' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'sms_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-comment-sms w-5 text-center"></i> SMS sozlamalari
-        </a>
-        <a href="{% url 'taxi:ai_settings' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'ai_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-robot w-5 text-center"></i> AI sozlamalari
-        </a>
-        <a href="{% url 'taxi:system_status' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'system_status' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-server w-5 text-center"></i> Tizim holati
-        </a>
-        <a href="/admin/"
+        <a href="{% url 'system:system_status' %}"
            class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-shield-halved w-5 text-center"></i> Admin Panel
+            <i class="fas fa-terminal w-5 text-center"></i> Tizim paneli
         </a>
+        {% endif %}
     </nav>
 
     <!-- user -->

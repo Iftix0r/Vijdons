@@ -1,4 +1,4 @@
-{% extends 'taxi/base.html' %}
+{% extends 'taxi/system_base.html' %}
 {% block title %}Shartnoma — Vijdon Taxi{% endblock %}
 
 {% block content %}
@@ -16,7 +16,7 @@
             {% else %}bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400{% endif %}">
             <i class="fas fa-users mr-1"></i>{{ signed_current }}/{{ total_approved }} imzoladi
         </span>
-        <a href="{% url 'taxi:contract_download_blank' %}"
+        <a href="{% url 'system:contract_download_blank' %}"
            class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors">
             <i class="fas fa-download"></i>Namunani yuklab olish
         </a>
