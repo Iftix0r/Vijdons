@@ -188,6 +188,94 @@
     </div>
 </div>
 
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+
+    <!-- Deploy / Git -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center flex-shrink-0">
+                <i class="fab fa-git-alt text-orange-500 text-sm"></i>
+            </div>
+            <p class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Deploy (Git)</p>
+        </div>
+        {% if git_info %}
+        <div class="space-y-1 text-xs text-gray-600 dark:text-gray-300">
+            <div class="flex justify-between"><span>Commit</span><span class="font-mono font-semibold">{{ git_info.commit }}</span></div>
+            <div class="flex justify-between"><span>Branch</span><span class="font-mono font-semibold">{{ git_info.branch }}</span></div>
+            <div class="flex justify-between"><span>Sana</span><span class="font-mono font-semibold">{{ git_info.date|slice:":16" }}</span></div>
+        </div>
+        <p class="text-xs mt-2.5 text-gray-500 dark:text-gray-400 truncate" title="{{ git_info.message }}">{{ git_info.message }}</p>
+        {% if git_info.dirty %}
+        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-2 py-1 rounded-full mt-2">
+            <i class="fas fa-circle text-[6px]"></i> Saqlanmagan lokal o'zgarishlar bor
+        </span>
+        {% endif %}
+        {% else %}
+        <p class="text-xs text-gray-400">Git ma'lumoti topilmadi (bu papka git repo emas yoki `git` mavjud emas).</p>
+        {% endif %}
+    </div>
+
+    <!-- Migratsiyalar -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 rounded-xl bg-lime-50 dark:bg-lime-900/20 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-layer-group text-lime-600 text-sm"></i>
+            </div>
+            <p class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Migratsiyalar</p>
+        </div>
+        {% if migrations_pending is None %}
+        <p class="text-xs text-gray-400">Tekshirib bo'lmadi.</p>
+        {% elif migrations_pending %}
+        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-1 rounded-full mb-2">
+            <i class="fas fa-circle text-[6px]"></i> {{ migrations_pending|length }} ta qo'llanilmagan
+        </span>
+        <ul class="text-xs font-mono text-gray-500 dark:text-gray-400 space-y-0.5 max-h-24 overflow-y-auto">
+            {% for m in migrations_pending %}<li>{{ m }}</li>{% endfor %}
+        </ul>
+        {% else %}
+        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2 py-1 rounded-full">
+            <i class="fas fa-circle text-[6px]"></i> Hammasi qo'llangan
+        </span>
+        {% endif %}
+    </div>
+
+    <!-- Muhit -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-shield-halved text-rose-500 text-sm"></i>
+            </div>
+            <p class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Muhit</p>
+        </div>
+        <div class="space-y-1.5 text-xs">
+            <div class="flex justify-between items-center">
+                <span class="text-gray-500 dark:text-gray-400">DEBUG</span>
+                {% if env_info.debug %}
+                <span class="font-bold text-red-500">Yoqilgan (xavfli!)</span>
+                {% else %}
+                <span class="font-bold text-emerald-600 dark:text-emerald-400">O'chirilgan</span>
+                {% endif %}
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-gray-500 dark:text-gray-400">SECRET_KEY</span>
+                {% if env_info.secret_key_default %}
+                <span class="font-bold text-orange-500">Avtomatik (default)</span>
+                {% else %}
+                <span class="font-bold text-emerald-600 dark:text-emerald-400">O'zgartirilgan</span>
+                {% endif %}
+            </div>
+            <div class="text-gray-500 dark:text-gray-400 pt-1">ALLOWED_HOSTS: <span class="font-mono text-gray-600 dark:text-gray-300">{{ env_info.allowed_hosts|join:", " }}</span></div>
+        </div>
+        {% if django_checks %}
+        <div class="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-800 space-y-1">
+            {% for c in django_checks %}
+            <p class="text-[11px] {% if c.is_error %}text-red-500{% else %}text-orange-500{% endif %}"><i class="fas fa-triangle-exclamation mr-1"></i>{{ c.msg }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
 <!-- Tezkor sonlar -->
 <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
     <p class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">

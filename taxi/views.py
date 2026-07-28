@@ -997,6 +997,60 @@ def system_status(request):
         'clients': Client.objects.count(),
     }
 
+    # ── Deploy holati: joriy git commit, branch, saqlanmagan o'zgarishlar ───
+    # Serverda `git pull` haqiqatan ham ishlaganini/qaysi versiya joriy
+    # ishlab turganini bilish uchun — kod deploy qilingandan keyin ham eski
+    # worker jarayoni ishlab turishi mumkin (shuning uchun "Ishlab turgan
+    # vaqt" bilan solishtirib ko'ring: agar u bu commit sanasidan OLDIN
+    # boshlangan bo'lsa, worker hali qayta ishga tushirilmagan).
+    git_info = None
+    try:
+        import subprocess
+        commit = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], cwd=str(django_settings.BASE_DIR), capture_output=True, text=True, timeout=5)
+        if commit.returncode == 0:
+            branch = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd=str(django_settings.BASE_DIR), capture_output=True, text=True, timeout=5)
+            log = subprocess.run(['git', 'log', '-1', '--format=%s|%ci'], cwd=str(django_settings.BASE_DIR), capture_output=True, text=True, timeout=5)
+            status_out = subprocess.run(['git', 'status', '--porcelain'], cwd=str(django_settings.BASE_DIR), capture_output=True, text=True, timeout=5)
+            msg, _, date = log.stdout.strip().partition('|')
+            git_info = {
+                'commit': commit.stdout.strip(),
+                'branch': branch.stdout.strip() if branch.returncode == 0 else None,
+                'message': msg,
+                'date': date,
+                'dirty': bool(status_out.stdout.strip()) if status_out.returncode == 0 else None,
+            }
+    except Exception:
+        pass
+
+    # ── Qo'llanilmagan migratsiyalar ─────────────────────────────────────────
+    migrations_pending = None
+    try:
+        from django.db.migrations.executor import MigrationExecutor
+        executor = MigrationExecutor(connection)
+        plan = executor.migration_plan(executor.loader.graph.leaf_nodes())
+        migrations_pending = [f'{m.app_label}.{m.name}' for m, backwards in plan if not backwards]
+    except Exception:
+        migrations_pending = None
+
+    # ── Django'ning o'zining deploy xavfsizlik tekshiruvi (manage.py check
+    # --deploy bilan bir xil) — HTTPS/cookie/SECRET_KEY kabi sozlamalar
+    # haqida.
+    django_checks = []
+    try:
+        from django.core.checks import run_checks, WARNING
+        for issue in run_checks(include_deployment_checks=True):
+            if issue.level >= WARNING:
+                django_checks.append({'id': issue.id, 'msg': issue.msg, 'is_error': issue.level >= 40})
+    except Exception:
+        pass
+
+    # ── Muhit (environment) ──────────────────────────────────────────────────
+    env_info = {
+        'debug': django_settings.DEBUG,
+        'allowed_hosts': django_settings.ALLOWED_HOSTS,
+        'secret_key_default': django_settings.SECRET_KEY.startswith('django-insecure-'),
+    }
+
     # ── Mavjud DB backuplar ───────────────────────────────────────────────────
     backups = []
     try:
@@ -1023,6 +1077,13 @@ def system_status(request):
         problems.append("Xotira deyarli tugagan")
     if disk and disk['used_pct'] >= 90:
         problems.append("Diskda joy deyarli qolmagan")
+    if env_info['debug']:
+        problems.append("DEBUG=True — production muhitida bu XAVFLI (xatolarda to'liq kod/sozlamalar ko'rinadi)")
+    if migrations_pending:
+        problems.append(f"{len(migrations_pending)} ta migratsiya qo'llanilmagan — `python manage.py migrate` ishga tushiring")
+    for c in django_checks:
+        if c['is_error']:
+            problems.append(f"Django: {c['msg']}")
 
     return render(request, 'taxi/system_status.html', {
         'problems': problems,
@@ -1039,6 +1100,10 @@ def system_status(request):
         'sched':            sched,
         'counts':           counts,
         'backups':          backups,
+        'git_info':         git_info,
+        'migrations_pending': migrations_pending,
+        'django_checks':    django_checks,
+        'env_info':          env_info,
     })
 
 
@@ -2288,6 +2353,36 @@ def operator_bot_set_webhook(request):
         if result.get('ok'):
             return JsonResponse({'ok': True, 'message': f'Webhook o\'rnatildi: {webhook_url}'})
         return JsonResponse({'ok': False, 'message': result.get('description', 'Xatolik')})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'message': str(e)})
+
+
+@system_login_required
+def bot_webhook_status(request):
+    """Telegram'ning o'zidan hozir qaysi webhook URL o'rnatilganini, kutilayotgan
+    (pending) yangilanishlar sonini va oxirgi xatoni so'rab oladi — "Webhookni
+    o'rnatish" tugmasi bilan bog'liq holatni diagnostika qilish uchun."""
+    from .models import BotSettings
+    bot = BotSettings.get()
+    token = bot.bot_token.strip()
+    if not token:
+        return JsonResponse({'ok': False, 'message': 'Bot token kiritilmagan'})
+    import urllib.request
+    try:
+        req = urllib.request.Request(f'https://api.telegram.org/bot{token}/getWebhookInfo')
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            import json as _json
+            result = _json.loads(resp.read().decode())
+        if not result.get('ok'):
+            return JsonResponse({'ok': False, 'message': result.get('description', 'Xatolik')})
+        info = result.get('result', {})
+        return JsonResponse({
+            'ok': True,
+            'url': info.get('url') or None,
+            'pending_update_count': info.get('pending_update_count', 0),
+            'last_error_message': info.get('last_error_message'),
+            'last_error_date': info.get('last_error_date'),
+        })
     except Exception as e:
         return JsonResponse({'ok': False, 'message': str(e)})
 

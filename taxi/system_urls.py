@@ -37,6 +37,7 @@ urlpatterns = [
 
     path('bot/', views.bot_settings, name='bot_settings'),
     path('bot/set-webhook/', views.operator_bot_set_webhook, name='operator_bot_set_webhook'),
+    path('bot/webhook-status/', views.bot_webhook_status, name='bot_webhook_status'),
     path('bot/admins/add/', views.bot_admin_add, name='bot_admin_add'),
     path('bot/admins/<int:pk>/delete/', views.bot_admin_delete, name='bot_admin_delete'),
     path('bot/admins/<int:pk>/toggle/', views.bot_admin_toggle, name='bot_admin_toggle'),
