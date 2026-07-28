@@ -139,15 +139,19 @@
   <span id="mtx-toggle-label" class="ios-body font-bold" style="color:#111">Taksometr</span>
 </button>
 
-<!-- Taksometr tugmasi ostida — faol (qabul qilingan) buyurtma bo'lsagina
-     ko'rinadi. Haydovchi buyurtma oynasini yopib qo'ysa ham, shu tugma orqali
-     asosiy sahifada qayta ochish mumkin. -->
-<button id="my-orders-btn" onclick="openMyOrder()"
-  class="flex items-center gap-2 active:opacity-70 transition-opacity"
-  style="display:none;position:fixed;z-index:15;top:calc(62% + 48px);left:16px;padding:12px 18px 12px 16px;border-radius:9999px;background:#409CFF;box-shadow:0 6px 18px rgba(64,156,255,.35),0 2px 6px rgba(0,0,0,.25)">
-  <i class="fas fa-car" style="color:#fff;font-size:19px"></i>
-  <span class="ios-body font-bold" style="color:#fff">Buyurtmalarim</span>
-</button>
+<!-- Telegram web-appidagi "forward qilingan xabarlar" paneliga o'xshab, tab-bar
+     ustida suzib turuvchi to'liq enli chiziq — faol (qabul qilingan) buyurtma
+     bo'lsagina ko'rinadi. Haydovchi buyurtma oynasini yopib qo'ysa ham, shu
+     panelga bosib asosiy sahifada qayta ochish mumkin. -->
+<div id="my-orders-btn" onclick="openMyOrder()"
+  class="flex items-center gap-3 active:opacity-80 transition-opacity"
+  style="display:none;position:fixed;z-index:15;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom,16px) + 96px);padding:10px 12px;border-radius:16px;background:var(--ios-card2);box-shadow:0 6px 18px rgba(0,0,0,.25);cursor:pointer">
+  <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style="background:#409CFF">
+    <i class="fas fa-car text-white" style="font-size:15px"></i>
+  </div>
+  <div id="my-orders-btn-text" class="ios-subhead font-semibold flex-1 min-w-0 truncate">Faol buyurtma</div>
+  <i class="fas fa-chevron-up flex-shrink-0" style="color:var(--ios-label3);font-size:13px"></i>
+</div>
 
 <!-- Taksometr ishlab turganda narx/vaqt/masofa/tezlik — funksiyalar
      to'g'ridan-to'g'ri xarita ustida suzib turadi (sheet/panel ichida emas). -->
@@ -1352,6 +1356,8 @@ function dismissOrderSheet(){
   if (_sheetOpenForId != null) {
     _orderSheetDismissedFor = _sheetOpenForId;
     sessionStorage.setItem(_SS_ORDER_DISMISSED, String(_sheetOpenForId));
+    const activeOrder = ORDERS.find(o => o.id === _sheetOpenForId);
+    if (activeOrder) _updateMyOrdersBtn(activeOrder);
   }
   closeSheet();
 }
@@ -1364,14 +1370,25 @@ function openMyOrder(){
   if (!activeOrder) return;
   _orderSheetDismissedFor = null;
   sessionStorage.removeItem(_SS_ORDER_DISMISSED);
+  _updateMyOrdersBtn(activeOrder);
   try { closeMtxPanel(); } catch(_) {}
   _renderSheet(activeOrder.id, activeOrder);
 }
 
 // Ekranga qadalgan "Buyurtmalarim" tugmasi — faqat faol buyurtma bo'lsa ko'rinadi.
+// Bu panel FAQAT haydovchi buyurtma oynasini o'zi yopib qo'ygan bo'lsa
+// ko'rinadi — oyna ochiq turgan payti (yangi qabul qilingandan keyingi odatiy
+// holat) bu panel keraksiz, chunki tafsilotlar allaqachon ko'rinib turadi.
 function _updateMyOrdersBtn(activeOrder){
   const btn = document.getElementById('my-orders-btn');
-  if (btn) btn.style.display = activeOrder ? 'flex' : 'none';
+  if (!btn) return;
+  const show = !!activeOrder && _orderSheetDismissedFor === activeOrder.id;
+  btn.style.display = show ? 'flex' : 'none';
+  if (show) {
+    const label = {accepted:'Qabul qilindi',on_way:"Yo'lda",arrived:'Yetib keldim'};
+    const txt = document.getElementById('my-orders-btn-text');
+    if (txt) txt.textContent = `${label[activeOrder.status]||activeOrder.status} — buyurtma #${activeOrder.id}`;
+  }
 }
 
 function _renderSheet(id, o){
