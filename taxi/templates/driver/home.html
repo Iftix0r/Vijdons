@@ -183,9 +183,13 @@
 </div>
 
 <!-- ── iOS Bottom Sheet ── -->
+<!-- Xarita endi kichik karta emas — asosiy sahifadagi (home-map) kabi butun
+     ekranga to'liq fon bo'lib, sheet uning ustida suzib turadi. -->
 <div id="sheet-overlay" class="fixed inset-0 z-[200] hidden">
-  <div class="absolute inset-0" style="background:rgba(0,0,0,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)"
-       onclick="_onBackdropTap()"></div>
+  <div id="sheet-map" class="absolute inset-0" style="background:#1c1c1f" onclick="_onBackdropTap()"></div>
+  <div id="sheet-map-hint" class="flex items-center justify-center" style="position:absolute;inset:0;pointer-events:none;display:none">
+    <span class="ios-caption2" style="color:rgba(255,255,255,.4)">Manzil xaritada ko'rsatilmagan</span>
+  </div>
   <div id="sheet" class="ios-sheet absolute bottom-0 left-0 right-0 overflow-y-auto"
        style="transform:translateY(100%);transition:transform .38s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom,34px);max-height:calc(100dvh - max(32px, env(safe-area-inset-top,32px)) - 16px)">
     <div class="ios-sheet-handle"></div>
@@ -960,8 +964,11 @@ function _destroySheetMap(){
 }
 
 function _initSheetMap(o){
+  const hint = document.getElementById('sheet-map-hint');
+  if (!o.from_lat || !o.from_lng) { if (hint) hint.style.display = 'flex'; return; }
+  if (hint) hint.style.display = 'none';
   const el = document.getElementById('sheet-map');
-  if (!el || typeof ymaps === 'undefined' || !o.from_lat || !o.from_lng) return;
+  if (!el || typeof ymaps === 'undefined') return;
   ymaps.ready(() => {
     // Sheet qayta ochilganda (masalan boshqa buyurtma) eski xarita instance'ini tozalaymiz
     _destroySheetMap();
@@ -1047,8 +1054,6 @@ function _renderSheet(id, o){
     pending: 'pill-yellow', accepted:'pill-blue', on_way:'pill-purple', arrived:'pill-green'
   };
   const label={pending:'Kutilmoqda',accepted:'Qabul qilindi',on_way:"Yo'lda",arrived:'Yetib keldim'};
-  const statusColor={pending:'#FFD600',accepted:'#409CFF',on_way:'#C77DFF',arrived:'#34C759'};
-  const hasMap = !!(o.from_lat && o.from_lng);
 
   const btns={
     pending: `<button onclick="doAction(${id},'accept')" class="ios-btn-primary">✓ Qabul qilish</button>
@@ -1062,21 +1067,8 @@ function _renderSheet(id, o){
   };
 
   document.getElementById('sheet-body').innerHTML=`
-    <!-- Xarita ustiga status/ID/to'lov cho'ntagi ustma-ust joylashadi — alohida
-         qator ajratmasdan, bitta ixcham blokka sig'diramiz. -->
-    ${hasMap ? `
-    <div class="ios-card2 rounded-[14px] overflow-hidden relative" style="width:100%;height:160px">
-      <div id="sheet-map" style="width:100%;height:100%"></div>
-      <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px]" style="background:rgba(20,20,22,.65);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
-        <span style="width:6px;height:6px;border-radius:50%;background:${statusColor[o.status]||'#fff'};flex-shrink:0"></span>
-        <span class="ios-caption2 font-bold" style="color:#fff">${label[o.status]||o.status}</span>
-        <span class="ios-caption2" style="color:rgba(255,255,255,.5)">#${o.id}</span>
-      </div>
-      <div class="absolute top-2.5 right-2.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px]" style="background:rgba(20,20,22,.65);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
-        <span class="ios-caption2 font-semibold" style="color:#fff">${o.payment_type==='cash'?'💵':'💳'}</span>
-        ${o.car_type_display?`<span class="ios-caption2 font-medium" style="color:rgba(255,255,255,.75)">${o.car_type_display}</span>`:''}
-      </div>
-    </div>` : `
+    <!-- Xarita endi bu kartaning ortida, butun ekranga to'liq fon (#sheet-map,
+         sheet-overlay ichida) — shu sabab bu yerda faqat ixcham holat qatori. -->
     <div class="flex items-center justify-between">
       <span class="ios-caption2 font-semibold px-2.5 py-1 rounded-[8px] ${pill[o.status]||''}">${label[o.status]||o.status}</span>
       <div class="flex items-center gap-2">
@@ -1084,7 +1076,7 @@ function _renderSheet(id, o){
         <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">${o.car_type_display||''}</span>
         <span class="ios-caption2 font-medium" style="color:var(--ios-label3)">#${o.id}</span>
       </div>
-    </div>`}
+    </div>
 
     <!-- Manzillar — ixcham, nuqta rangi xaritadagi markerlar bilan mos -->
     <div class="ios-card2 rounded-[14px] px-3.5 py-3">
@@ -1172,51 +1164,11 @@ function _renderSheet(id, o){
   const ov=document.getElementById('sheet-overlay');
   const sh=document.getElementById('sheet');
 
-  // Buyurtma qabul qilingandan keyin (accepted/on_way/arrived) tafsilotlar
-  // to'liq ekran holida qulflanadi — tashqariga bosib yopib bo'lmaydi, faqat
-  // "Yakunlash"/"Bekor qilish" orqali chiqiladi. Lekin tab-bar (Asosiy/Tarix)
-  // endi bundan mustasno — u sheet'dan balandroq qatlamda (z-index) qoladi,
-  // shu sabab haydovchi buyurtma faol bo'lsa ham Tarix bo'limiga o'ta oladi.
-  // Hali qabul qilinmagan (pending) buyurtma esa oddiy bottom-sheet — uni
-  // ko'rib chiqib, orqaga tashlab yuborish ham mumkin bo'lishi kerak.
-  const isLocked = (o.status==='accepted'||o.status==='on_way'||o.status==='arrived');
-  const handle = sh.querySelector('.ios-sheet-handle');
-  if (isLocked) {
-    // Diqqat: "height:100vh" ISHLATILMAYDI — mobil brauzer/WebView'larda
-    // 100vh haqiqiy ko'rinadigan balandlikdan farq qilishi mumkin (tizim
-    // panellari tufayli), shu sabab sheet ekran tepasidan "chiqib ketardi"
-    // (top chegarasi 0 dan yuqoriga o'tib ketardi). Buning o'rniga top:0
-    // ni ham bottom:0 (mavjud) bilan birga qo'yamiz — brauzer balandlikni
-    // ANIQ shu ikki chegara orasidagi masofa sifatida hisoblaydi, hech
-    // qanday vh xatosiga o'rin qolmaydi.
-    sh.style.top = '0';
-    sh.style.maxHeight = '';
-    sh.style.height    = '';
-    sh.style.borderRadius = '0';
-    sh.style.paddingBottom = 'calc(env(safe-area-inset-bottom,16px) + 100px)';
-    // Diqqat: `.ios-sheet` foni default holda SHAFFOF (blur bilan) — bu
-    // orqasidagi qorong'i backdrop bilan qo'shilib, bo'sh (kontentsiz) joylarda
-    // (masalan pastdagi qo'shimcha bo'shliqda) ko'zga tashlanadigan kulrang/
-    // qop-qora "dog'" hosil qilardi (qayerda opaque kontent — tugma, karta —
-    // bo'lsa bilinmasdi, lekin bo'sh joyda aniq ko'rinib qolardi). Bu holat
-    // to'liq ekranli "qulflangan" sheet uchun umuman kerak emas — shu sabab
-    // uni shaffof "karta" emas, oddiy sahifa sifatida (qattiq fon, blursiz)
-    // ko'rsatamiz — endi hech qanday joyda rang aralashmaydi.
-    sh.style.background = 'var(--ios-bg)';
-    sh.style.backdropFilter = 'none';
-    sh.style.webkitBackdropFilter = 'none';
-    if (handle) handle.style.display = 'none';
-  } else {
-    sh.style.top = '';
-    sh.style.maxHeight = '';
-    sh.style.height    = '';
-    sh.style.borderRadius = '';
-    sh.style.paddingBottom = '';
-    sh.style.background = '';
-    sh.style.backdropFilter = '';
-    sh.style.webkitBackdropFilter = '';
-    if (handle) handle.style.display = '';
-  }
+  // Buyurtma qabul qilingandan keyin (accepted/on_way/arrived) tashqariga
+  // bosib sheet'ni yopib bo'lmaydi (_onBackdropTap qulflaydi), faqat
+  // "Yakunlash"/"Bekor qilish" orqali chiqiladi — lekin endi bu holatda ham
+  // sheet oddiy (yarim ekranli, shaffof) karta bo'lib qoladi, orqasida esa
+  // asosiy sahifadagidek to'liq xarita (#sheet-map) ko'rinib turadi.
 
   // closeSheet() yopilish animatsiyasi paytida overlay'ga vaqtincha
   // pointer-events:none qo'yadi va 380ms dan keyin uni qaytadan yashiradi
