@@ -1,0 +1,219 @@
+{% extends 'taxi/base.html' %}
+{% block title %}Tizim holati — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-end gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Tizim holati 🖥️</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Server, xotira, disk va fon jarayonlarining joriy holati — dasturchi uchun diagnostika.</p>
+    </div>
+    <a href="{% url 'taxi:system_status' %}"
+       class="flex items-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-semibold rounded-xl transition-colors">
+        <i class="fas fa-rotate-right"></i> Yangilash
+    </a>
+</div>
+
+{% if problems %}
+<div class="mb-5 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl text-sm font-semibold text-red-600 dark:text-red-400">
+    <i class="fas fa-triangle-exclamation mr-2"></i>Muammo topildi:
+    <ul class="list-disc list-inside mt-1 font-medium">
+        {% for p in problems %}<li>{{ p }}</li>{% endfor %}
+    </ul>
+</div>
+{% else %}
+<div class="mb-5 px-4 py-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 rounded-xl text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+    <i class="fas fa-check-circle mr-2"></i>Hammasi joyida — muammo topilmadi.
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+
+    <!-- Uptime -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-power-off text-blue-500 text-sm"></i>
+            </div>
+            <p class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Ishlab turgan vaqt</p>
+        </div>
+        <p class="text-xl font-extrabold text-gray-900 dark:text-white">{{ uptime_human }}</p>
+        <p class="text-xs text-gray-400 mt-1">Joriy worker jarayoni ishga tushganidan beri</p>
+    </div>
+
+    <!-- Versiyalar -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-code text-purple-500 text-sm"></i>
+            </div>
+            <p class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Versiyalar</p>
+        </div>
+        <div class="space-y-1 text-xs text-gray-600 dark:text-gray-300">
+            <div class="flex justify-between"><span>Python</span><span class="font-mono font-semibold">{{ python_version }}</span></div>
+            <div class="flex justify-between"><span>Django</span><span class="font-mono font-semibold">{{ django_version }}</span></div>
+            <div class="flex justify-between gap-2"><span class="flex-shrink-0">OS</span><span class="font-mono font-semibold text-right truncate" title="{{ os_platform }}">{{ os_platform }}</span></div>
+        </div>
+    </div>
+
+    <!-- DB -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-database text-cyan-500 text-sm"></i>
+            </div>
+            <p class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Ma'lumotlar bazasi</p>
+        </div>
+        {% if db.ok %}
+        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2 py-1 rounded-full mb-2">
+            <i class="fas fa-circle text-[6px]"></i> Ulangan
+        </span>
+        <div class="space-y-1 text-xs text-gray-600 dark:text-gray-300">
+            <div class="flex justify-between"><span>Javob tezligi</span><span class="font-mono font-semibold">{{ db.latency_ms }} ms</span></div>
+            {% if db.size_mb %}<div class="flex justify-between"><span>Hajmi</span><span class="font-mono font-semibold">{{ db.size_mb }} MB</span></div>{% endif %}
+        </div>
+        {% else %}
+        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-1 rounded-full mb-2">
+            <i class="fas fa-circle text-[6px]"></i> Ulanmagan
+        </span>
+        <p class="text-xs text-red-500 font-mono break-all">{{ db.error }}</p>
+        {% endif %}
+    </div>
+
+    <!-- Scheduler -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-clock-rotate-left text-amber-500 text-sm"></i>
+            </div>
+            <p class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Fon rejalashtiruvchi</p>
+        </div>
+        {% if not sched.enabled %}
+        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-2 py-1 rounded-full mb-2">
+            <i class="fas fa-circle text-[6px]"></i> O'chirilgan (bu jarayonda)
+        </span>
+        <p class="text-xs text-gray-400">manage.py buyruqlarida shunday bo'lishi normal.</p>
+        {% elif sched.healthy %}
+        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2 py-1 rounded-full mb-2">
+            <i class="fas fa-circle text-[6px]"></i> Ishlayapti
+        </span>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Oxirgi tick: {{ sched.last_tick_ago_sec }}s oldin</p>
+        {% elif sched.last_tick_ago_sec is None %}
+        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-2 py-1 rounded-full mb-2">
+            <i class="fas fa-circle text-[6px]"></i> Hali tick bo'lmagan
+        </span>
+        {% else %}
+        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-1 rounded-full mb-2">
+            <i class="fas fa-circle text-[6px]"></i> Qotib qolgan bo'lishi mumkin
+        </span>
+        <p class="text-xs text-red-500">Oxirgi tick: {{ sched.last_tick_ago_sec }}s oldin (30s kutilgan)</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
+
+    <!-- Xotira -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 rounded-xl bg-pink-50 dark:bg-pink-900/20 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-memory text-pink-500 text-sm"></i>
+            </div>
+            <p class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Xotira (server)</p>
+        </div>
+        {% if memory %}
+        <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1.5">
+            <span>{{ memory.used_mb }} / {{ memory.total_mb }} MB</span>
+            <span class="font-bold {% if memory.used_pct >= 90 %}text-red-500{% elif memory.used_pct >= 75 %}text-orange-500{% else %}text-gray-600 dark:text-gray-300{% endif %}">{{ memory.used_pct }}%</span>
+        </div>
+        <div class="w-full h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+            <div class="h-full rounded-full {% if memory.used_pct >= 90 %}bg-red-500{% elif memory.used_pct >= 75 %}bg-orange-400{% else %}bg-emerald-500{% endif %}" style="width: {{ memory.used_pct }}%"></div>
+        </div>
+        {% if process_memory_mb %}
+        <p class="text-xs text-gray-400 mt-2.5">Shu worker o'zi: <span class="font-mono font-semibold text-gray-600 dark:text-gray-300">{{ process_memory_mb }} MB</span></p>
+        {% endif %}
+        {% else %}
+        <p class="text-xs text-gray-400">Bu muhitda xotira ma'lumoti mavjud emas.</p>
+        {% endif %}
+    </div>
+
+    <!-- Disk -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-hard-drive text-indigo-500 text-sm"></i>
+            </div>
+            <p class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Disk</p>
+        </div>
+        {% if disk %}
+        <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1.5">
+            <span>{{ disk.used_gb }} / {{ disk.total_gb }} GB</span>
+            <span class="font-bold {% if disk.used_pct >= 90 %}text-red-500{% elif disk.used_pct >= 75 %}text-orange-500{% else %}text-gray-600 dark:text-gray-300{% endif %}">{{ disk.used_pct }}%</span>
+        </div>
+        <div class="w-full h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+            <div class="h-full rounded-full {% if disk.used_pct >= 90 %}bg-red-500{% elif disk.used_pct >= 75 %}bg-orange-400{% else %}bg-emerald-500{% endif %}" style="width: {{ disk.used_pct }}%"></div>
+        </div>
+        <p class="text-xs text-gray-400 mt-2.5">Bo'sh: <span class="font-mono font-semibold text-gray-600 dark:text-gray-300">{{ disk.free_gb }} GB</span></p>
+        {% else %}
+        <p class="text-xs text-gray-400">Disk ma'lumoti olinmadi.</p>
+        {% endif %}
+    </div>
+
+    <!-- CPU load -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-microchip text-teal-500 text-sm"></i>
+            </div>
+            <p class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Protsessor yuklamasi</p>
+        </div>
+        {% if load_avg %}
+        <div class="grid grid-cols-3 gap-2 text-center">
+            <div>
+                <p class="text-lg font-extrabold text-gray-900 dark:text-white">{{ load_avg.0|floatformat:2 }}</p>
+                <p class="text-[10px] text-gray-400 uppercase">1 daq</p>
+            </div>
+            <div>
+                <p class="text-lg font-extrabold text-gray-900 dark:text-white">{{ load_avg.1|floatformat:2 }}</p>
+                <p class="text-[10px] text-gray-400 uppercase">5 daq</p>
+            </div>
+            <div>
+                <p class="text-lg font-extrabold text-gray-900 dark:text-white">{{ load_avg.2|floatformat:2 }}</p>
+                <p class="text-[10px] text-gray-400 uppercase">15 daq</p>
+            </div>
+        </div>
+        <p class="text-xs text-gray-400 mt-2.5 text-center">{{ cpu_count }} ta yadro mavjud</p>
+        {% else %}
+        <p class="text-xs text-gray-400">Bu muhitda load average mavjud emas.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Tezkor sonlar -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+    <p class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">
+        <i class="fas fa-table-list mr-1.5"></i>Ma'lumotlar bazasidagi tezkor sonlar
+    </p>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="text-center">
+            <p class="text-2xl font-extrabold text-gray-900 dark:text-white">{{ counts.orders }}</p>
+            <p class="text-xs text-gray-400 mt-0.5">Jami buyurtma</p>
+        </div>
+        <div class="text-center">
+            <p class="text-2xl font-extrabold text-yellow-500">{{ counts.active_orders }}</p>
+            <p class="text-xs text-gray-400 mt-0.5">Faol buyurtma</p>
+        </div>
+        <div class="text-center">
+            <p class="text-2xl font-extrabold text-gray-900 dark:text-white">{{ counts.drivers }}</p>
+            <p class="text-xs text-gray-400 mt-0.5">Haydovchilar</p>
+        </div>
+        <div class="text-center">
+            <p class="text-2xl font-extrabold text-gray-900 dark:text-white">{{ counts.clients }}</p>
+            <p class="text-xs text-gray-400 mt-0.5">Mijozlar</p>
+        </div>
+    </div>
+</div>
+
+<p class="text-xs text-gray-400 mt-4 text-center">
+    <i class="fas fa-circle-info mr-1"></i>Bu sahifa avtomatik yangilanmaydi — joriy holatni ko'rish uchun "Yangilash" tugmasini bosing.
+</p>
+{% endblock %}

@@ -1,7 +1,15 @@
 import os
 import sys
+import time
 
 from django.apps import AppConfig
+
+# Diqqat: bu jarayon (worker) qachon ishga tushganini eslab qolamiz — panel
+# ichidagi "Tizim holati" sahifasi shuni ko'rsatadi ("ilova qachondan beri
+# ishlayapti", worker yaqinda qulab qayta ko'tarilganmi degan savolga javob).
+# Har bir Passenger/WSGI worker o'zining `ready()`sini chaqirgani uchun bu
+# aynan JORIY workerning boshlanish vaqti, butun serverning emas.
+PROCESS_STARTED_AT = time.time()
 
 
 class TaxiConfig(AppConfig):

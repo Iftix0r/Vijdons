@@ -30,6 +30,11 @@ _MONTHLY_FINANCIAL_REPORT_HOUR = 9  # Oyning 1-kunida shu soatda (o'tgan oy hiso
 
 _TICK_SECONDS = 30
 
+# Diqqat: "Tizim holati" sahifasi shuni o'qiydi — oxirgi tick qachon
+# bo'lganini bilib, scheduler threadi qotib qolgan/o'lgan bo'lsa (kutilgan
+# ~30s dan ancha ko'p vaqt o'tgan bo'lsa) buni ko'rsatish uchun.
+last_tick_at = None
+
 
 def _claim_and_run(field, fn_name, today):
     """Shu kun uchun `field` hali belgilanmagan bo'lsa, atomik ravishda
@@ -82,11 +87,13 @@ def _run_tick():
 
 
 def _run_loop():
+    global last_tick_at
     while True:
         try:
             _run_tick()
         except Exception:
             logger.exception('Xabar scheduleri tick paytida xato berdi')
+        last_tick_at = time.time()
         time.sleep(_TICK_SECONDS)
 
 

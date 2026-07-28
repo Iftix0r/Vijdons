@@ -858,6 +858,147 @@ def ai_settings(request):
 
 
 @panel_login_required
+def system_status(request):
+    """Dasturchi/operator uchun tizim diagnostikasi: xotira, disk, protsessor
+    yuklamasi, DB ulanishi va scheduler threadining "tirikligi" — ilova
+    qotib qolgan/muammoli bo'lsa shu yerdan tezda bilib olish uchun."""
+    import os
+    import sys
+    import time
+    import shutil
+    import platform
+    import django
+    from django.conf import settings as django_settings
+    from django.db import connection
+    from . import scheduler
+    from .apps import TaxiConfig, PROCESS_STARTED_AT
+
+    now = time.time()
+
+    # ── Ilova jarayoni (worker) ──────────────────────────────────────────────
+    uptime_sec = now - PROCESS_STARTED_AT
+    _days, _rem = divmod(int(uptime_sec), 86400)
+    _hours, _rem = divmod(_rem, 3600)
+    _minutes, _ = divmod(_rem, 60)
+    if _days:
+        uptime_human = f"{_days} kun {_hours} soat"
+    elif _hours:
+        uptime_human = f"{_hours} soat {_minutes} daqiqa"
+    else:
+        uptime_human = f"{_minutes} daqiqa"
+
+    # ── Xotira (faqat Linux'da /proc/meminfo mavjud — shared hosting shunday) ──
+    memory = None
+    try:
+        meminfo = {}
+        with open('/proc/meminfo') as f:
+            for line in f:
+                key, _, rest = line.partition(':')
+                meminfo[key] = int(rest.strip().split()[0])  # KB
+        total_kb     = meminfo.get('MemTotal', 0)
+        available_kb = meminfo.get('MemAvailable', meminfo.get('MemFree', 0))
+        used_kb      = total_kb - available_kb
+        memory = {
+            'total_mb':     round(total_kb / 1024, 1),
+            'available_mb': round(available_kb / 1024, 1),
+            'used_mb':      round(used_kb / 1024, 1),
+            'used_pct':     round(used_kb / total_kb * 100, 1) if total_kb else None,
+        }
+    except Exception:
+        pass
+
+    # ── Shu Python jarayonining o'zi ishlatayotgan xotira (RSS) ─────────────
+    process_memory_mb = None
+    try:
+        import resource
+        rss_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        process_memory_mb = round(rss_kb / 1024, 1)  # Linux'da ru_maxrss KB da
+    except Exception:
+        pass
+
+    # ── Disk (dastur joylashgan diskda) ──────────────────────────────────────
+    disk = None
+    try:
+        total, used, free = shutil.disk_usage(django_settings.BASE_DIR)
+        disk = {
+            'total_gb': round(total / 1024**3, 1),
+            'used_gb':  round(used / 1024**3, 1),
+            'free_gb':  round(free / 1024**3, 1),
+            'used_pct': round(used / total * 100, 1),
+        }
+    except Exception:
+        pass
+
+    # ── Protsessor yuklamasi (faqat POSIX) ───────────────────────────────────
+    load_avg = None
+    try:
+        load_avg = os.getloadavg()  # (1min, 5min, 15min)
+    except (AttributeError, OSError):
+        pass
+    cpu_count = os.cpu_count()
+
+    # ── Ma'lumotlar bazasi ulanishi va javob tezligi ─────────────────────────
+    db = {'ok': False, 'latency_ms': None, 'size_mb': None, 'error': None}
+    try:
+        t0 = time.time()
+        with connection.cursor() as cur:
+            cur.execute('SELECT 1')
+            cur.fetchone()
+        db['latency_ms'] = round((time.time() - t0) * 1000, 1)
+        db['ok'] = True
+        try:
+            with connection.cursor() as cur:
+                cur.execute('SELECT pg_database_size(current_database())')
+                db['size_mb'] = round(cur.fetchone()[0] / 1024**2, 1)
+        except Exception:
+            pass
+    except Exception as e:
+        db['error'] = str(e)
+
+    # ── Fon rejalashtiruvchi (Telegram kunlik/haftalik xabarlar) ─────────────
+    sched = {'enabled': TaxiConfig._should_start_scheduler(), 'last_tick_ago_sec': None, 'healthy': None}
+    if scheduler.last_tick_at:
+        sched['last_tick_ago_sec'] = round(now - scheduler.last_tick_at, 1)
+        # Har 30s da bir tick bo'lishi kerak — 3 barobaridan ko'p kechiksa
+        # (~90s), thread qotib qolgan/o'lgan bo'lishi mumkin.
+        sched['healthy'] = sched['last_tick_ago_sec'] < 90
+
+    counts = {
+        'orders':  Order.objects.count(),
+        'active_orders': Order.objects.filter(status__in=Order.ACTIVE_STATUSES).count(),
+        'drivers': Driver.objects.count(),
+        'clients': Client.objects.count(),
+    }
+
+    # ── Umumiy holat (yuqoridagi banner uchun) ───────────────────────────────
+    problems = []
+    if not db['ok']:
+        problems.append("Ma'lumotlar bazasiga ulanib bo'lmayapti")
+    if sched['healthy'] is False:
+        problems.append("Fon rejalashtiruvchi qotib qolgan bo'lishi mumkin")
+    if memory and memory['used_pct'] is not None and memory['used_pct'] >= 90:
+        problems.append("Xotira deyarli tugagan")
+    if disk and disk['used_pct'] >= 90:
+        problems.append("Diskda joy deyarli qolmagan")
+
+    return render(request, 'taxi/system_status.html', {
+        'problems': problems,
+        'python_version': sys.version.split()[0],
+        'django_version':  django.get_version(),
+        'os_platform':     platform.platform(),
+        'uptime_human':     uptime_human,
+        'memory':           memory,
+        'process_memory_mb': process_memory_mb,
+        'disk':             disk,
+        'load_avg':         load_avg,
+        'cpu_count':        cpu_count,
+        'db':               db,
+        'sched':            sched,
+        'counts':           counts,
+    })
+
+
+@panel_login_required
 def panel_ai_insights(request):
     from django.utils import timezone
     from django.db.models import Sum, Count, Avg

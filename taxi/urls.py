@@ -33,6 +33,7 @@ urlpatterns = [
     path('bot/', views.bot_settings, name='bot_settings'),
     path('sms/', views.sms_settings, name='sms_settings'),
     path('ai/', views.ai_settings, name='ai_settings'),
+    path('system/', views.system_status, name='system_status'),
     path('api/ai-insights/', views.panel_ai_insights, name='panel_ai_insights'),
     path('api/ai-insights/reward/', views.panel_ai_reward_given, name='panel_ai_reward_given'),
     path('bot/admins/add/', views.bot_admin_add, name='bot_admin_add'),
