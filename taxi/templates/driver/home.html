@@ -331,9 +331,12 @@ let _sheetOpenForId = null;
 let _sheetOpenForStatus = null;
 let _sheetCloseTimer = null;
 // Haydovchi faol buyurtma oynasini qo'lda yopsa, shu buyurtma ID'si shu
-// yerga yoziladi — keyingi pollarda renderOrdersDOM() uni majburan qayta
-// OCHMAYDI (pastdagi "Buyurtmalarim" tugmasi orqaligina qayta ochiladi).
-let _orderSheetDismissedFor = null;
+// yerga (va sessionStorage'ga — DRIVER_ID bilan bog'langan holda) yoziladi —
+// keyingi pollarda, HATTO sahifa qayta ochilgan/yangilangan taqdirda ham,
+// renderOrdersDOM() uni majburan qayta OCHMAYDI (pastdagi "Buyurtmalarim"
+// tugmasi orqaligina qayta ochiladi).
+const _SS_ORDER_DISMISSED = `vijdon_order_dismissed_${DRIVER_ID}`;
+let _orderSheetDismissedFor = parseInt(sessionStorage.getItem(_SS_ORDER_DISMISSED)) || null;
 
 // Sahifa yuklanishi bilan darhol DOM ni render qilamiz
 renderOrdersDOM();
@@ -1346,7 +1349,10 @@ function _onBackdropTap(){
 // o'zi bekor bo'lmaydi/davom etadi, faqat ekrandan vaqtincha yo'qoladi.
 // Pastdagi "Buyurtmalarim" tugmasi orqali istalgan payt qayta ochiladi.
 function dismissOrderSheet(){
-  if (_sheetOpenForId != null) _orderSheetDismissedFor = _sheetOpenForId;
+  if (_sheetOpenForId != null) {
+    _orderSheetDismissedFor = _sheetOpenForId;
+    sessionStorage.setItem(_SS_ORDER_DISMISSED, String(_sheetOpenForId));
+  }
   closeSheet();
 }
 
@@ -1357,6 +1363,7 @@ function openMyOrder(){
     o.status === 'accepted' || o.status === 'on_way' || o.status === 'arrived');
   if (!activeOrder) return;
   _orderSheetDismissedFor = null;
+  sessionStorage.removeItem(_SS_ORDER_DISMISSED);
   try { closeMtxPanel(); } catch(_) {}
   _renderSheet(activeOrder.id, activeOrder);
 }
