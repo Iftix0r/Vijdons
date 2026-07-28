@@ -6,21 +6,17 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#F2F2F7">
+<meta name="theme-color" content="#0E1621">
 <title>{% block title %}Vijdon Driver{% endblock %}</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config={darkMode:'class'}</script>
 <script>
-// Sahifa chizilishidan OLDIN ishga tushishi shart — aks holda birinchi kadrda
-// yorug' (light) rejim ko'rinib, keyin qorong'iga "miltillab" o'tib qolardi (FOUC).
-(function() {
-  var saved = localStorage.getItem('vijdon_theme');
-  var dark = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  if (dark) {
-    document.documentElement.classList.add('dark');
-    document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0E1621');
-  }
-})();
+// Haydovchi ilovasi doim tungi (dark) rejimda — yorug' rejim yo'q, tanlov
+// imkoniyati qasddan berilmagan (barqaror, ko'zni charchatmaydigan bitta
+// ko'rinish). Sahifa chizilishidan OLDIN ishga tushishi shart — aks holda
+// birinchi kadrda yorug' rejim ko'rinib, keyin qorong'iga "miltillab" o'tib
+// qolardi (FOUC).
+document.documentElement.classList.add('dark');
 </script>
 <script src="https://api-maps.yandex.ru/2.1/?apikey=469e8d29-be0b-42da-9bd4-ed515dbdb741&lang=uz_UZ" type="text/javascript"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
@@ -820,15 +816,6 @@ function getCookie(n) {
   return v?v[2]:'';
 }
 
-// ── Tungi rejim (dark mode) ── Profil sahifasidagi toggle shuni chaqiradi.
-function toggleTheme() {
-  const dark = !document.documentElement.classList.contains('dark');
-  document.documentElement.classList.toggle('dark', dark);
-  localStorage.setItem('vijdon_theme', dark ? 'dark' : 'light');
-  document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#0E1621' : '#F2F2F7');
-  const tog = document.getElementById('theme-tog');
-  if (tog) tog.classList.toggle('on', dark);
-}
 document.addEventListener('DOMContentLoaded', ()=>{ Native.getLocation().catch(()=>{}); });
 
 // ══════════════════════════════════════════════════════════════════════════════
