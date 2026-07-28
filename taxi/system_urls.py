@@ -18,6 +18,9 @@ urlpatterns = [
     path('audit/', views.system_audit_log, name='system_audit_log'),
     path('run/collectstatic/', views.run_collectstatic, name='run_collectstatic'),
     path('run/migrate/', views.run_migrate, name='run_migrate'),
+
+    path('commands/', views.system_commands, name='system_commands'),
+    path('commands/<str:name>/run/', views.system_run_command, name='system_run_command'),
     path('backup/create/', views.backup_create, name='backup_create'),
     path('backup/<str:filename>/download/', views.backup_download, name='backup_download'),
     path('backup/<str:filename>/delete/', views.backup_delete, name='backup_delete'),

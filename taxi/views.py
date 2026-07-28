@@ -1069,6 +1069,22 @@ def system_status(request):
     except Exception as e:
         static_info['error'] = str(e)
 
+    # ── Integratsiyalar holati ────────────────────────────────────────────────
+    # Diqqat: hech qanday tokenning o'zi ko'rsatilmaydi — faqat "bormi/yo'qmi"
+    # (masalan bir joyni ekranga proyeksiya qilinsa ham, maxfiy kalitlar
+    # sizib chiqmasin). "Nega bot/SMS/AI ishlamayapti" degan savolga tezkor
+    # javob berish uchun.
+    bot_cfg = BotSettings.get()
+    sms_cfg = SmsSettings.get()
+    ai_cfg  = AiSettings.get()
+    maps_cfg = MapsSettings.get()
+    integrations = [
+        {'name': 'Telegram Bot', 'icon': 'fab fa-telegram', 'ok': bool(bot_cfg.bot_token and bot_cfg.group_id)},
+        {'name': 'SMS (Eskiz.uz)', 'icon': 'fas fa-comment-sms', 'ok': bool(sms_cfg.email and sms_cfg.password)},
+        {'name': 'AI (o\'sish tavsiyalari)', 'icon': 'fas fa-robot', 'ok': bool(ai_cfg.api_key)},
+        {'name': 'Maps / Geocoding', 'icon': 'fas fa-map-marked-alt', 'ok': bool(maps_cfg.is_active and (maps_cfg.api_key or maps_cfg.provider == MapsSettings.PROVIDER_NOMINATIM))},
+    ]
+
     # ── Mavjud DB backuplar ───────────────────────────────────────────────────
     backups = []
     try:
@@ -1125,6 +1141,7 @@ def system_status(request):
         'django_checks':    django_checks,
         'env_info':          env_info,
         'static_info':       static_info,
+        'integrations':      integrations,
     })
 
 
@@ -1161,6 +1178,59 @@ def system_audit_log(request):
         'staff_users': staff_users,
         'counts': counts,
     })
+
+
+# Diqqat (xavfsizlik): faqat shu ro'yxatdagi buyruqlar ishga tushirilishi
+# mumkin — foydalanuvchidan erkin buyruq nomi HECH QACHON qabul qilinmaydi
+# (aks holda `manage.py shell`/boshqa xavfli buyruqlarni ham chaqirish
+# imkoni ochilib qolardi).
+SYSTEM_ALLOWED_COMMANDS = [
+    'send_morning_greeting',
+    'send_night_greeting',
+    'send_daily_summary',
+    'send_daily_highlight',
+    'send_evening_top_drivers',
+    'send_weekly_summary',
+    'send_weekly_top_drivers',
+    'send_monthly_top_drivers',
+    'send_monthly_financial_report',
+    'send_inactive_drivers_report',
+    'send_top_hours_drivers',
+    'send_high_rejection_report',
+]
+
+
+@system_login_required
+def system_commands(request):
+    """Kunlik/haftalik/oylik Telegram hisobot buyruqlarini SSH'siz, qo'lda
+    (masalan sozlama to'g'ri ishlayaptimi tekshirish uchun) ishga tushirish."""
+    from django.core.management import load_command_class
+    commands = []
+    for name in SYSTEM_ALLOWED_COMMANDS:
+        try:
+            help_text = load_command_class('taxi', name).help
+        except Exception:
+            help_text = ''
+        commands.append({'name': name, 'help': help_text})
+    return render(request, 'taxi/system_commands.html', {'commands': commands})
+
+
+@system_login_required
+def system_run_command(request, name):
+    if request.method != 'POST' or name not in SYSTEM_ALLOWED_COMMANDS:
+        return redirect('system:system_commands')
+    import io
+    from django.core.management import call_command
+    from .utils import log_system_event
+    out = io.StringIO()
+    try:
+        call_command(name, stdout=out, stderr=out)
+        log_system_event('command_run', f"'{name}' qo'lda ishga tushirildi", request=request, detail=out.getvalue())
+        messages.success(request, f"'{name}' bajarildi: {out.getvalue().strip() or 'OK'}")
+    except Exception as e:
+        log_system_event('command_run', f"'{name}' xato berdi: {e}", level='error', request=request, detail=out.getvalue())
+        messages.error(request, f"'{name}' xatosi: {e}")
+    return redirect('system:system_commands')
 
 
 @system_login_required
