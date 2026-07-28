@@ -180,6 +180,23 @@
   </div>
 </div>
 
+<!-- Bir nechta faol (qabul qilingan) buyurtma bo'lganda #my-orders-btn shu
+     panelni ochadi — pending-drawer bilan bir xil uslubda, haydovchi
+     ro'yxatdan qaysi birini ochishni tanlaydi (avval eng oxirgi yashiringani
+     avtomatik ochilib, boshqasini tanlab bo'lmasdi). -->
+<div id="my-orders-drawer" class="ios-sheet fixed left-4 right-4 overflow-y-auto"
+     style="z-index:190;bottom:calc(env(safe-area-inset-bottom,16px) + 96px);border-radius:20px;transform:translateY(calc(100% + 200px));transition:transform .32s cubic-bezier(.32,.72,0,1);max-height:60vh">
+  <div class="px-4 py-3.5 space-y-3">
+    <div class="flex items-center justify-between">
+      <div class="ios-title font-semibold">Faol buyurtmalar</div>
+      <button type="button" onclick="closeMyOrdersDrawer()" class="w-8 h-8 rounded-full flex items-center justify-center" style="background:var(--ios-fill)">
+        <i class="fas fa-xmark" style="color:var(--ios-label3)"></i>
+      </button>
+    </div>
+    <div id="my-orders-drawer-body" class="space-y-3"></div>
+  </div>
+</div>
+
 <!-- Taksometr ishlab turganda narx/vaqt/masofa/tezlik — funksiyalar
      to'g'ridan-to'g'ri xarita ustida suzib turadi (sheet/panel ichida emas). -->
 <div id="mtx-live" style="display:none;position:fixed;z-index:16;top:calc(env(safe-area-inset-top,47px) + 152px);left:16px;right:16px;background:linear-gradient(160deg,rgba(28,28,31,.92),rgba(10,10,11,.92));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:18px;border:1px solid rgba(255,255,255,.08);box-shadow:0 10px 28px rgba(0,0,0,.35)">
@@ -368,6 +385,10 @@ let _sheetCloseTimer = null;
 // e'lon qilinishi SHART (aks holda ReferenceError butun skriptni, jumladan
 // pastdagi xarita ishga tushirish kodini, ishga tushmay qoldirardi).
 let _pendingDrawerOpen = false;
+// _updateMyOrdersBtn (renderOrdersDOM ichidan darhol chaqiriladi) faol
+// buyurtma kamayib qolsa shu panelni yopadi — xuddi yuqoridagi sababga ko'ra
+// oldindan e'lon qilinishi kerak.
+let _myOrdersDrawerOpen = false;
 // Haydovchi faol buyurtma oynasini qo'lda yopsa, shu buyurtma ID'si shu
 // yerga (va sessionStorage'ga — DRIVER_ID bilan bog'langan holda) yoziladi —
 // keyingi pollarda, HATTO sahifa qayta ochilgan/yangilangan taqdirda ham,
@@ -690,6 +711,7 @@ function togglePendingDrawer(){
   if (_pendingDrawerOpen) {
     try { closeMtxPanel(); } catch(_) {}
     try { closeSheet(); } catch(_) {}
+    try { closeMyOrdersDrawer(); } catch(_) {}
   }
   const el = document.getElementById('pending-drawer');
   if (el) el.style.transform = _pendingDrawerOpen ? 'translateY(0)' : 'translateY(calc(100% + 200px))';
@@ -697,6 +719,25 @@ function togglePendingDrawer(){
 function closePendingDrawer(){
   _pendingDrawerOpen = false;
   const el = document.getElementById('pending-drawer');
+  if (el) el.style.transform = 'translateY(calc(100% + 200px))';
+}
+
+// Bir nechta faol buyurtma yashiringan bo'lsa #my-orders-btn shu ro'yxatni
+// ochadi (pending-drawer bilan bir xil naqsh) — haydovchi qaysi birini
+// ko'rishni o'zi tanlaydi.
+function toggleMyOrdersDrawer(){
+  try { Native.vibrate(); } catch(_) {}
+  _myOrdersDrawerOpen = !_myOrdersDrawerOpen;
+  if (_myOrdersDrawerOpen) {
+    try { closeMtxPanel(); } catch(_) {}
+    try { closePendingDrawer(); } catch(_) {}
+  }
+  const el = document.getElementById('my-orders-drawer');
+  if (el) el.style.transform = _myOrdersDrawerOpen ? 'translateY(0)' : 'translateY(calc(100% + 200px))';
+}
+function closeMyOrdersDrawer(){
+  _myOrdersDrawerOpen = false;
+  const el = document.getElementById('my-orders-drawer');
   if (el) el.style.transform = 'translateY(calc(100% + 200px))';
 }
 
@@ -1204,6 +1245,7 @@ function toggleMtxPanel() {
     // Boshqa suzuvchi panellar bilan bir vaqtda ochiq turmasin.
     try { closeSheet(); } catch(_) {}
     try { closePendingDrawer(); } catch(_) {}
+    try { closeMyOrdersDrawer(); } catch(_) {}
   }
   document.getElementById('mtx-panel').style.transform = _mtxPanelOpen ? 'translateY(0)' : 'translateY(calc(100% + 200px))';
 }
@@ -1486,14 +1528,36 @@ function dismissOrderSheet(){
 
 // "Buyurtmalarim" tugmasi — faol buyurtma bo'lsa, uni qayta ochadi.
 // Haydovchida bir nechta (MAX_ACTIVE_ORDERS tagacha) faol buyurtma bo'lishi
-// mumkin — sheet bir vaqtda faqat bittasini ko'rsatadi. Shu tugma hozir
-// ko'rinmayotgan (yopilgan yoki hali navbatda turgan) buyurtmalarga o'tkazadi.
+// mumkin — sheet bir vaqtda faqat bittasini ko'rsatadi. Avval shu tugma
+// har doim "boshqa" buyurtmani avtomatik tanlab ochib yuborardi — 2+ta
+// yashiringan bo'lsa ham, aynan qaysi birini ko'rish haydovchi qo'lida
+// emas edi. Endi 1tadan ortiq yashiringan bo'lsa, pending-drawer bilan bir
+// xil uslubda ro'yxat ochiladi va haydovchi o'zi tanlaydi.
 function openMyOrder(){
-  try { Native.vibrate(); } catch(_) {}
   const activeOrders = ORDERS.filter(o =>
     o.status === 'accepted' || o.status === 'on_way' || o.status === 'arrived');
   if (!activeOrders.length) return;
-  const target = activeOrders.find(o => o.id !== _sheetOpenForId) || activeOrders[0];
+  const ov = document.getElementById('sheet-overlay');
+  const sheetActuallyOpen = ov && !ov.classList.contains('hidden');
+  const hidden = activeOrders.filter(o => !(sheetActuallyOpen && o.id === _sheetOpenForId));
+  if (hidden.length > 1) {
+    toggleMyOrdersDrawer();
+    return;
+  }
+  try { Native.vibrate(); } catch(_) {}
+  const target = hidden[0] || activeOrders[0];
+  openMyOrderById(target.id);
+}
+
+// Ro'yxatdan (yoki to'g'ridan-to'g'ri, bitta buyurtma bo'lsa) tanlangan
+// aniq buyurtmani sheet'da ochadi.
+function openMyOrderById(id){
+  const activeOrders = ORDERS.filter(o =>
+    o.status === 'accepted' || o.status === 'on_way' || o.status === 'arrived');
+  const target = activeOrders.find(o => o.id === id);
+  if (!target) return;
+  try { Native.vibrate(); } catch(_) {}
+  closeMyOrdersDrawer();
   _orderSheetDismissedFor = null;
   sessionStorage.removeItem(_SS_ORDER_DISMISSED);
   try { closeMtxPanel(); } catch(_) {}
@@ -1505,22 +1569,46 @@ function openMyOrder(){
 // (yopilgan/navbatdagi) faol buyurtma(lar) bo'lsagina ko'rinadi. Sheet ochiq
 // turgan payti (yangi qabul qilingandan keyingi odatiy holat) bitta faol
 // buyurtma uchun bu panel keraksiz, chunki tafsilotlar allaqachon ko'rinadi.
+// Bir nechtasi yashiringan bo'lsa, tanlov paneli (#my-orders-drawer) uchun
+// ro'yxatni ham shu yerda yangilab turamiz.
 function _updateMyOrdersBtn(activeOrders){
   const btn = document.getElementById('my-orders-btn');
   if (!btn) return;
   const ov = document.getElementById('sheet-overlay');
   const sheetActuallyOpen = ov && !ov.classList.contains('hidden');
   const hidden = (activeOrders||[]).filter(o => !(sheetActuallyOpen && o.id === _sheetOpenForId));
-  if (!hidden.length) { btn.style.display = 'none'; return; }
+  const label = {accepted:'Qabul qilindi',on_way:"Yo'lda",arrived:'Yetib keldim'};
+  if (!hidden.length) { btn.style.display = 'none'; closeMyOrdersDrawer(); return; }
   btn.style.display = 'flex';
   const txt = document.getElementById('my-orders-btn-text');
   if (txt) {
     if (hidden.length === 1) {
-      const label = {accepted:'Qabul qilindi',on_way:"Yo'lda",arrived:'Yetib keldim'};
       txt.textContent = `${label[hidden[0].status]||hidden[0].status} — buyurtma #${hidden[0].id}`;
     } else {
       txt.textContent = `${hidden.length} ta faol buyurtma`;
     }
+  }
+  // Faqat 1ta (yoki 0ta) yashiringan bo'lsa, tanlov qilishning hojati yo'q —
+  // panel ochiq turgan bo'lsa ham avtomatik yopamiz.
+  if (hidden.length <= 1) closeMyOrdersDrawer();
+  const body = document.getElementById('my-orders-drawer-body');
+  if (body) {
+    body.innerHTML = hidden.map(o => `
+      <div class="ios-card active:opacity-70 transition-opacity cursor-pointer"
+           onclick="openMyOrderById(${o.id})"
+           style="box-shadow:0 1px 3px rgba(0,0,0,.08)">
+        <div class="p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="ios-caption2 font-semibold px-2.5 py-1 rounded-[8px]" style="background:rgba(64,156,255,.14);color:#409CFF">${label[o.status]||o.status}</span>
+            <span class="ios-caption2" style="color:var(--ios-label3)">#${o.id}</span>
+          </div>
+          <div class="flex items-start gap-2.5">
+            <div class="w-2 h-2 rounded-full bg-[#34C759] mt-1.5 flex-shrink-0"></div>
+            <span class="ios-subhead font-medium leading-snug">${o.from_address||''}</span>
+          </div>
+          ${o.to_address?`<div class="flex items-start gap-2.5 mt-2"><i class="fas fa-location-dot text-[#FF3B30] text-xs mt-1 flex-shrink-0"></i><span class="ios-subhead leading-snug" style="color:var(--ios-label3)">${o.to_address}</span></div>`:''}
+        </div>
+      </div>`).join('');
   }
 }
 
@@ -1531,6 +1619,7 @@ function _renderSheet(id, o){
   // ochiq turmasin.
   try { closeMtxPanel(); } catch(_) {}
   try { closePendingDrawer(); } catch(_) {}
+  try { closeMyOrdersDrawer(); } catch(_) {}
   // Safar davomida (qulflangan holat) ham tab bar orqali boshqa bo'limlarga
   // o'tish imkoni qolsin deb, uni sheet ustiga ko'taramiz.
   setTabbarRaised(o.status==='accepted'||o.status==='on_way'||o.status==='arrived');
