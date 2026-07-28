@@ -837,6 +837,8 @@ class FlyerVoucher(models.Model):
     code       = models.CharField(max_length=12, unique=True, db_index=True, verbose_name='Kod')
     amount     = models.DecimalField(max_digits=10, decimal_places=0, default=3000, verbose_name="Chegirma summasi")
     batch_note = models.CharField(max_length=100, blank=True, default='', verbose_name='Partiya izohi')
+    owner_driver = models.ForeignKey(Driver, null=True, blank=True, on_delete=models.SET_NULL, related_name='owned_vouchers',
+                                      verbose_name='Vizitka egasi', help_text="Vizitka chop etilganda shu haydovchiga biriktirilgan bo'lsa")
     is_used    = models.BooleanField(default=False, verbose_name='Ishlatilgan')
     used_at    = models.DateTimeField(null=True, blank=True)
     used_by_driver = models.ForeignKey(Driver, null=True, blank=True, on_delete=models.SET_NULL, related_name='flyer_vouchers')
@@ -850,6 +852,29 @@ class FlyerVoucher(models.Model):
         verbose_name = 'Flayer kuponi'
         verbose_name_plural = 'Flayer kuponlari'
         ordering = ['-created_at']
+
+
+class VizitkaRewardLog(models.Model):
+    """Haftalik 'Mijoz olib kel' vizitka reytingida g'olib bo'lgan haydovchiga
+    bonus berilgani haqidagi yozuv — bitta haydovchiga bitta hafta uchun faqat
+    bir marta bonus berilishini kafolatlaydi (UniqueConstraint orqali)."""
+    driver     = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='vizitka_rewards')
+    week_start = models.DateField(verbose_name='Hafta boshi')
+    voucher_count = models.PositiveIntegerField(default=0, verbose_name="Shu hafta tarqatilgan vizitkalar soni")
+    amount     = models.DecimalField(max_digits=10, decimal_places=0, default=100000, verbose_name='Bonus summasi')
+    given_by   = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    given_at   = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.driver.full_name} — {self.week_start}"
+
+    class Meta:
+        verbose_name = 'Vizitka reytingi bonusi'
+        verbose_name_plural = 'Vizitka reytingi bonuslari'
+        constraints = [
+            models.UniqueConstraint(fields=['driver', 'week_start'], name='unique_driver_vizitka_reward_per_week'),
+        ]
+        ordering = ['-week_start']
 
 
 class Task(models.Model):

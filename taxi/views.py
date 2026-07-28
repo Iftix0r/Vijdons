@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
-from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher, LegalDocument, SecurityIncident, VoiceParticipant, VoiceSignal
+from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher, VizitkaRewardLog, LegalDocument, SecurityIncident, VoiceParticipant, VoiceSignal
 from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed, build_balance_receipt_pdf, build_flyer_business_card_pdf, voice_prune_stale, voice_participants_list, voice_target_kwargs, voice_signal_sender_info
 import csv
 import json
@@ -2683,14 +2683,36 @@ def driver_contract_download(request, pk):
 
 @login_required(login_url='taxi:panel_login')
 def flyer_page(request):
+    from django.utils import timezone
+    from datetime import timedelta
+
     checked_voucher = None
     check_error = None
 
     if request.method == 'POST' and 'check_code' in request.POST:
         code = request.POST.get('code', '').strip().upper()
-        checked_voucher = FlyerVoucher.objects.filter(code=code).select_related('used_by_driver').first()
+        checked_voucher = FlyerVoucher.objects.filter(code=code).select_related('used_by_driver', 'owner_driver').first()
         if not checked_voucher:
             check_error = "Bunday kod topilmadi — bu flayer soxta bo'lishi mumkin."
+
+    today = timezone.localdate()
+    week_start = today - timedelta(days=today.weekday())
+
+    driver_stats = list(
+        Driver.objects.filter(owned_vouchers__isnull=False)
+        .annotate(
+            issued_count=Count('owned_vouchers', distinct=True),
+            used_count=Count('owned_vouchers', filter=Q(owned_vouchers__is_used=True), distinct=True),
+            week_count=Count('owned_vouchers', filter=Q(owned_vouchers__is_used=True, owned_vouchers__used_at__date__gte=week_start), distinct=True),
+        )
+        .filter(issued_count__gt=0)
+        .order_by('-week_count', '-used_count', 'full_name')
+    )
+
+    week_leader = driver_stats[0] if driver_stats and driver_stats[0].week_count > 0 else None
+    week_leader_rewarded = False
+    if week_leader:
+        week_leader_rewarded = VizitkaRewardLog.objects.filter(driver=week_leader, week_start=week_start).exists()
 
     return render(request, 'taxi/flyer.html', {
         'total_vouchers': FlyerVoucher.objects.count(),
@@ -2698,14 +2720,18 @@ def flyer_page(request):
         'checked_voucher': checked_voucher,
         'check_error': check_error,
         'drivers': Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED).order_by('full_name'),
+        'driver_stats': driver_stats,
+        'week_start': week_start,
+        'week_leader': week_leader,
+        'week_leader_rewarded': week_leader_rewarded,
     })
 
 
 def flyer_verify(request, code):
     """Flayerdagi QR kod skanerlanganda ochiladigan OMMAVIY (login talab
     qilmaydigan) sahifa — mijoz telefon kamerasi bilan darhol flayer asl
-    (original) yoki soxta ekanini ko'radi."""
-    voucher = FlyerVoucher.objects.select_related('used_by_driver').filter(code=code.strip().upper()).first()
+    (original) yoki soxta ekanini, hamda kimning vizitkasi ekanini ko'radi."""
+    voucher = FlyerVoucher.objects.select_related('used_by_driver', 'owner_driver').filter(code=code.strip().upper()).first()
     return render(request, 'taxi/flyer_verify.html', {'voucher': voucher, 'code': code.strip().upper()})
 
 
@@ -2722,9 +2748,12 @@ def flyer_download(request):
     quantity = max(per_sheet, min(quantity, 300))
     quantity = ((quantity + per_sheet - 1) // per_sheet) * per_sheet  # to'liq varaqqa to'lishi kerak
 
+    owner_id = request.POST.get('owner_driver_id', '').strip()
+    owner_driver = get_object_or_404(Driver, pk=owner_id) if owner_id else None
+
     existing_codes = set(FlyerVoucher.objects.values_list('code', flat=True))
     codes = generate_voucher_codes(quantity, existing=existing_codes)
-    FlyerVoucher.objects.bulk_create([FlyerVoucher(code=code) for code in codes])
+    FlyerVoucher.objects.bulk_create([FlyerVoucher(code=code, owner_driver=owner_driver) for code in codes])
 
     if fmt == 'card':
         buf = build_flyer_business_card_pdf(codes)
@@ -2749,11 +2778,16 @@ def flyer_redeem(request):
     if voucher.is_used:
         messages.error(request, "Bu kod allaqachon ishlatilgan.")
         return redirect('taxi:flyer_page')
-    if not driver_id:
-        messages.error(request, "Haydovchini tanlang.")
-        return redirect('taxi:flyer_page')
 
-    driver = get_object_or_404(Driver, pk=driver_id)
+    # Vizitka chiqarilganda egasi biriktirilgan bo'lsa, haydovchini qo'lda
+    # tanlash shart emas — vizitka egasi avtomatik hisoblanadi.
+    if voucher.owner_driver_id:
+        driver = voucher.owner_driver
+    else:
+        if not driver_id:
+            messages.error(request, "Haydovchini tanlang.")
+            return redirect('taxi:flyer_page')
+        driver = get_object_or_404(Driver, pk=driver_id)
     amount = voucher.amount
 
     voucher.is_used = True
@@ -2776,6 +2810,57 @@ def flyer_redeem(request):
     tg_balance_changed(driver, amount, 'add')
     tg_flyer_voucher_redeemed(voucher, driver)
     messages.success(request, f"Kod tasdiqlandi — {driver.full_name} balansiga {amount} so'm qo'shildi.")
+    return redirect('taxi:flyer_page')
+
+
+@login_required(login_url='taxi:panel_login')
+@require_POST
+def flyer_reward_bonus(request):
+    """Haftalik 'Mijoz olib kel' vizitka reytingida eng ko'p vizitka
+    tarqatgan (va ishlatilgan) haydovchiga bonus balans qo'shadi. Bitta
+    haydovchiga bitta hafta uchun faqat bir marta beriladi
+    (VizitkaRewardLog.UniqueConstraint shuni kafolatlaydi)."""
+    from datetime import date as date_cls
+
+    driver_id  = request.POST.get('driver_id', '').strip()
+    week_start_str = request.POST.get('week_start', '').strip()
+    try:
+        amount = int(request.POST.get('amount', 100000))
+    except (TypeError, ValueError):
+        amount = 100000
+
+    driver = get_object_or_404(Driver, pk=driver_id)
+    try:
+        week_start = date_cls.fromisoformat(week_start_str)
+    except ValueError:
+        messages.error(request, "Noto'g'ri hafta sanasi.")
+        return redirect('taxi:flyer_page')
+
+    voucher_count = FlyerVoucher.objects.filter(
+        owner_driver=driver, is_used=True, used_at__date__gte=week_start,
+    ).count()
+
+    reward, created = VizitkaRewardLog.objects.get_or_create(
+        driver=driver, week_start=week_start,
+        defaults={'voucher_count': voucher_count, 'amount': amount, 'given_by': request.user},
+    )
+    if not created:
+        messages.error(request, f"{driver.full_name}ga shu hafta uchun bonus allaqachon berilgan.")
+        return redirect('taxi:flyer_page')
+
+    driver.balance += reward.amount
+    driver.save(update_fields=['balance'])
+    BalanceLog.objects.create(
+        driver=driver, action='add', amount=reward.amount,
+        balance_after=driver.balance, note=f"Vizitka reytingi bonusi ({week_start:%d.%m.%Y} haftasi)"
+    )
+    DriverActivityLog.objects.create(
+        driver=driver, action=DriverActivityLog.ACTION_BALANCE,
+        detail=f"+{reward.amount} UZS (vizitka reytingi bonusi)",
+        ip_address=_get_client_ip(request), user_agent=request.META.get('HTTP_USER_AGENT', ''),
+    )
+    tg_balance_changed(driver, reward.amount, 'add')
+    messages.success(request, f"{driver.full_name}ga {reward.amount} so'm vizitka bonusi berildi.")
     return redirect('taxi:flyer_page')
 
 

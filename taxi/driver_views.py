@@ -666,8 +666,17 @@ def driver_chat_send_audio(request, driver):
 
 @driver_login_required
 def driver_profile(request, driver):
+    from django.utils import timezone
+    from datetime import timedelta
+
     contract = ContractSettings.get()
     signed = driver.contract_signatures.filter(version=contract.version).exists()
+
+    today = timezone.localdate()
+    week_start = today - timedelta(days=today.weekday())
+    referral_count = driver.owned_vouchers.filter(is_used=True).count()
+    referral_count_week = driver.owned_vouchers.filter(is_used=True, used_at__date__gte=week_start).count()
+
     return render(request, 'driver/profile.html', {
         'driver':      driver,
         'active_tab':  'profile',
@@ -675,6 +684,8 @@ def driver_profile(request, driver):
         'pending_orders_count': _pending_orders_count(driver),
         'active_orders_count': _active_orders_count(driver),
         'contract_needs_signature': not signed,
+        'referral_count': referral_count,
+        'referral_count_week': referral_count_week,
     })
 
 

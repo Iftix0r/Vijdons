@@ -86,6 +86,21 @@
     </div>
   </div>
 
+  <!-- ── Takliflar (vizitka orqali keltirilgan mijozlar) ── -->
+  <div class="anim-up" style="animation-delay:100ms">
+    <div class="ios-caption2 font-semibold mb-1.5 ml-1" style="color:var(--ios-label3)">TAKLIFLAR</div>
+    <div class="ios-card rounded-[16px] p-4 flex items-center gap-3.5">
+      <div class="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0" style="background:rgba(255,149,0,.12)">
+        <i class="fas fa-id-card text-[#FF9500]"></i>
+      </div>
+      <div class="flex-1">
+        <div class="ios-subhead font-medium">Vizitka orqali kelgan mijozlar</div>
+        <div class="ios-caption mt-0.5" style="color:var(--ios-label3)">Shu hafta: {{ referral_count_week|default:0 }} ta</div>
+      </div>
+      <div class="ios-title font-bold text-[#FF9500]">{{ referral_count|default:0 }}</div>
+    </div>
+  </div>
+
   <!-- ── Car info ── -->
   <div class="anim-up" style="animation-delay:120ms">
     <div class="ios-caption2 font-semibold mb-1.5 ml-1" style="color:var(--ios-label3)">TRANSPORT VOSITASI</div>

@@ -7,8 +7,15 @@
         <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Reklama Flayeri 📣</h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Yangi mijozlarni jalb qilish uchun chop etiladigan chegirma flayeri.</p>
     </div>
-    <form method="post" action="{% url 'taxi:flyer_download' %}" class="flex items-center gap-2" id="flyer-download-form">
+    <form method="post" action="{% url 'taxi:flyer_download' %}" class="flex items-center gap-2 flex-wrap" id="flyer-download-form">
         {% csrf_token %}
+        <select name="owner_driver_id"
+                class="px-3 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white">
+            <option value="">— Umumiy (egasiz) —</option>
+            {% for driver in drivers %}
+            <option value="{{ driver.pk }}">{{ driver.full_name }} ({{ driver.car_number }})</option>
+            {% endfor %}
+        </select>
         <select name="format" id="flyer-format"
                 class="px-3 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white">
             <option value="flyer">Flayer (A4, 3 tadan)</option>
@@ -45,6 +52,56 @@
         </div>
     </div>
 
+    <!-- "Mijoz olib kel" haftalik reytingi -->
+    {% if driver_stats %}
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+            <div>
+                <p class="text-sm font-bold text-gray-800 dark:text-white"><i class="fas fa-trophy text-amber-500 mr-2"></i>Vizitka reytingi — shu hafta ({{ week_start|date:"d.m.Y" }} dan)</p>
+                <p class="text-xs text-gray-400 mt-0.5">Eng ko'p mijoz keltirgan (vizitkasi ishlatilgan) haydovchi.</p>
+            </div>
+            {% if week_leader and not week_leader_rewarded %}
+            <form method="post" action="{% url 'taxi:flyer_reward_bonus' %}" onsubmit="return confirm('{{ week_leader.full_name }}ga 100 000 so\'m bonus berilsinmi?');">
+                {% csrf_token %}
+                <input type="hidden" name="driver_id" value="{{ week_leader.pk }}">
+                <input type="hidden" name="week_start" value="{{ week_start|date:'Y-m-d' }}">
+                <input type="hidden" name="amount" value="100000">
+                <button type="submit"
+                        class="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition">
+                    <i class="fas fa-gift"></i> {{ week_leader.full_name }}ga 100 000 so'm bonus berish
+                </button>
+            </form>
+            {% elif week_leader and week_leader_rewarded %}
+            <span class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
+                <i class="fas fa-circle-check"></i> Shu haftaning bonusi berilgan
+            </span>
+            {% endif %}
+        </div>
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs font-semibold text-gray-400 uppercase border-b border-gray-100 dark:border-gray-800">
+                    <th class="px-6 py-2.5">Haydovchi</th>
+                    <th class="px-6 py-2.5 text-center">Shu hafta</th>
+                    <th class="px-6 py-2.5 text-center">Jami ishlatilgan</th>
+                    <th class="px-6 py-2.5 text-center">Jami chiqarilgan</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in driver_stats %}
+                <tr class="border-b border-gray-50 dark:border-gray-800/50 last:border-0 {% if d == week_leader %}bg-amber-50/60 dark:bg-amber-900/10{% endif %}">
+                    <td class="px-6 py-2.5 font-medium text-gray-800 dark:text-white">
+                        {% if d == week_leader %}<i class="fas fa-trophy text-amber-500 mr-1.5"></i>{% endif %}{{ d.full_name }}
+                    </td>
+                    <td class="px-6 py-2.5 text-center font-bold text-gray-900 dark:text-white">{{ d.week_count }}</td>
+                    <td class="px-6 py-2.5 text-center text-gray-500 dark:text-gray-400">{{ d.used_count }}</td>
+                    <td class="px-6 py-2.5 text-center text-gray-400">{{ d.issued_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
     <!-- Kodni tekshirish (soxtalashtirishga qarshi) -->
     <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
@@ -69,6 +126,11 @@
             {% endif %}
 
             {% if checked_voucher %}
+                {% if checked_voucher.owner_driver %}
+                <div class="flex items-center gap-2 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-sm font-semibold">
+                    <i class="fas fa-id-card"></i> Vizitka egasi: {{ checked_voucher.owner_driver.full_name }} ({{ checked_voucher.owner_driver.car_number }})
+                </div>
+                {% endif %}
                 {% if checked_voucher.is_used %}
                 <div class="flex items-center gap-2 px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-sm">
                     <i class="fas fa-circle-check text-gray-400"></i>
@@ -78,11 +140,13 @@
                 {% else %}
                 <div class="space-y-3">
                     <div class="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-sm font-semibold">
-                        <i class="fas fa-circle-check"></i> Kod haqiqiy va hali ishlatilmagan — haydovchini tanlab balansga qo'shing.
+                        <i class="fas fa-circle-check"></i>
+                        {% if checked_voucher.owner_driver %}Kod haqiqiy va hali ishlatilmagan — tasdiqlansa avtomatik egasi balansiga qo'shiladi.{% else %}Kod haqiqiy va hali ishlatilmagan — haydovchini tanlab balansga qo'shing.{% endif %}
                     </div>
                     <form method="post" action="{% url 'taxi:flyer_redeem' %}" class="flex gap-2">
                         {% csrf_token %}
                         <input type="hidden" name="code" value="{{ checked_voucher.code }}">
+                        {% if not checked_voucher.owner_driver %}
                         <select name="driver_id" required
                                 class="flex-1 px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 dark:text-white transition">
                             <option value="">— Haydovchini tanlang —</option>
@@ -90,8 +154,9 @@
                             <option value="{{ driver.pk }}">{{ driver.full_name }} ({{ driver.car_number }})</option>
                             {% endfor %}
                         </select>
+                        {% endif %}
                         <button type="submit"
-                                class="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm rounded-xl transition">
+                                class="{% if checked_voucher.owner_driver %}flex-1{% endif %} px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm rounded-xl transition">
                             Balansga qo'shish
                         </button>
                     </form>
@@ -112,6 +177,7 @@
                 <li class="flex gap-3"><span class="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>Mijoz flayerni haydovchiga ko'rsatib, safarini <b>3 000 so'mga</b> arzon oladi.</li>
                 <li class="flex gap-3"><span class="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>Haydovchi ishlatilgan flayerlarni ofisga olib keladi.</li>
                 <li class="flex gap-3"><span class="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xs font-bold flex-shrink-0">4</span>Xodim yuqoridagi <b>"Flayer kodini tekshirish"</b> orqali kodni kiritadi — kod topilsa va ishlatilmagan bo'lsa, haydovchini tanlab <b>3 000 so'm</b> uning balansiga qo'shiladi.</li>
+                <li class="flex gap-3"><span class="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs font-bold flex-shrink-0">5</span>Yuqoridagi formada partiya chiqarishda <b>aniq bir haydovchini</b> tanlasangiz, o'sha partiyadagi barcha vizitkalar shu haydovchiga biriktiriladi — mijoz QR kodni skanerlaganda kimning vizitkasi ekani darhol ko'rinadi, tasdiqlaganda esa haydovchini qayta tanlash shart bo'lmaydi.</li>
             </ol>
         </div>
     </div>
