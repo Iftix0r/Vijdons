@@ -115,6 +115,22 @@
 }
 </style>
 
+<!-- Jonli xarita — o'z joylashuvi + hozir navbatdagi boshqa haydovchilar -->
+<div class="px-4 pt-1">
+  <div class="ios-card2 rounded-[16px] overflow-hidden relative" style="width:100%;height:280px">
+    <div id="home-map" style="width:100%;height:100%;background:#1c1c1f"></div>
+    <div id="home-map-hint" class="absolute inset-0 flex items-center justify-center" style="pointer-events:none">
+      <span class="ios-caption2" style="color:rgba(255,255,255,.4)">GPS signal kutilmoqda…</span>
+    </div>
+    <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px]" style="background:rgba(20,20,22,.65);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
+      <span style="width:8px;height:8px;border-radius:50%;background:#FFD600;flex-shrink:0"></span>
+      <span class="ios-caption2 font-bold" style="color:#fff">Siz</span>
+      <span style="width:8px;height:8px;border-radius:50%;background:#34C759;flex-shrink:0;margin-left:4px"></span>
+      <span id="home-map-peers-count" class="ios-caption2 font-bold" style="color:#fff">0 haydovchi</span>
+    </div>
+  </div>
+</div>
+
 <!-- Content: JS tomonidan to'ldiriladi -->
 <!-- padding-bottom: pastda suzib turuvchi tab-bar ostida buyurtmalar
      ko'rinmay qolib ketmasligi uchun -->
@@ -798,6 +814,107 @@ document.addEventListener('visibilitychange', () => {
   }, 6000);
 })();
 {% endif %}
+
+// ── Asosiy sahifadagi jonli xarita — o'zi (sariq) + hozir navbatdagi boshqa
+// haydovchilar (yashil). Buyurtma sheet'idagi kichik xaritadan (_initSheetMap)
+// mustaqil — u faqat faol buyurtma bo'lganda, bu esa doim ko'rinadi.
+(function() {
+  const HOME_DRIVER_PHOTO = "{% if driver.photo %}{{ driver.photo.url }}{% endif %}";
+  const HOME_DRIVER_INITIAL = "{{ driver.full_name|default:'H'|first|upper }}";
+
+  let _homeMap = null;
+  let _homeMyMark = null;
+  const _homePeerMarks = {};
+
+  function _homeMarkerHtml(photoUrl, initial, color) {
+    const inner = photoUrl
+      ? `<img src="${photoUrl}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2.5px solid ${color};box-shadow:0 2px 6px rgba(0,0,0,.35)">`
+      : `<div style="width:34px;height:34px;border-radius:50%;background:#1c1c1f;border:2.5px solid ${color};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:${color}">${initial}</div>`;
+    return `<div style="position:relative;text-align:center">
+      ${inner}
+      <div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid ${color}"></div>
+    </div>`;
+  }
+
+  function _homeUpdateMine(lat, lng) {
+    if (!_homeMap) { _homeEnsureMap(lat, lng); return; }
+    if (!_homeMyMark) {
+      _homeMyMark = new ymaps.Placemark([lat, lng], {}, {
+        iconLayout: ymaps.templateLayoutFactory.createClass(_homeMarkerHtml(HOME_DRIVER_PHOTO, HOME_DRIVER_INITIAL, '#FFD600')),
+        iconShape: { type: 'Circle', coordinates: [17, 17], radius: 19 },
+        zIndex: 200,
+      });
+      _homeMap.geoObjects.add(_homeMyMark);
+    } else {
+      _homeMyMark.geometry.setCoordinates([lat, lng]);
+    }
+  }
+
+  function _homeEnsureMap(lat, lng) {
+    if (_homeMap || typeof ymaps === 'undefined' || !document.getElementById('home-map')) return;
+    ymaps.ready(() => {
+      if (_homeMap || !document.getElementById('home-map')) return;
+      _homeMap = new ymaps.Map('home-map', { center: [lat, lng], zoom: 13, controls: ['zoomControl'] });
+      const hint = document.getElementById('home-map-hint');
+      if (hint) hint.style.display = 'none';
+      _homeUpdateMine(lat, lng);
+    });
+  }
+
+  // Boshqa (navbatdagi) haydovchilarni ~8s da bir yangilaymiz — driver_map.html
+  // dagi (panel) bilan bir xil "eskisini o'chir/yangisini qo'sh" naqshi
+  function _homeRefreshPeers() {
+    if (!_homeMap) return;
+    fetch('{% url "driver:nearby_locations" %}', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => {
+        const list = d.drivers || [];
+        const seen = {};
+        list.forEach(p => {
+          seen[p.id] = true;
+          const coords = [p.latitude, p.longitude];
+          if (_homePeerMarks[p.id]) {
+            _homePeerMarks[p.id].geometry.setCoordinates(coords);
+          } else {
+            const mark = new ymaps.Placemark(coords, { hintContent: p.full_name }, {
+              iconLayout: ymaps.templateLayoutFactory.createClass(
+                _homeMarkerHtml(p.photo_url, (p.full_name || 'H').charAt(0).toUpperCase(), '#34C759')
+              ),
+              iconShape: { type: 'Circle', coordinates: [17, 17], radius: 19 },
+            });
+            _homeMap.geoObjects.add(mark);
+            _homePeerMarks[p.id] = mark;
+          }
+        });
+        Object.keys(_homePeerMarks).forEach(id => {
+          if (!seen[id]) {
+            _homeMap.geoObjects.remove(_homePeerMarks[id]);
+            delete _homePeerMarks[id];
+          }
+        });
+        const cnt = document.getElementById('home-map-peers-count');
+        if (cnt) cnt.textContent = `${list.length} haydovchi`;
+      })
+      .catch(() => {});
+  }
+
+  window.addEventListener('vijdon_location', e => {
+    if (e.detail?.lat && e.detail?.lng) _homeUpdateMine(e.detail.lat, e.detail.lng);
+  });
+
+  // Avvalgi sessiyada saqlangan koordinat bo'lsa, xaritani darhol o'sha yerdan
+  // boshlaymiz — yangi joylashuv kelguncha bo'sh/markazsiz turmasin
+  try {
+    const lat = parseFloat(sessionStorage.getItem(`vijdon_lat_${DRIVER_ID}`));
+    const lng = parseFloat(sessionStorage.getItem(`vijdon_lng_${DRIVER_ID}`));
+    if (lat && lng) _homeEnsureMap(lat, lng);
+  } catch (_) {}
+
+  if (document.getElementById('home-map')) {
+    setInterval(_homeRefreshPeers, 8000);
+    setTimeout(_homeRefreshPeers, 1500);
+  }
+})();
 
 // ── TAXIMETER ─────────────────────────────────────────────────────────────────
 // Asosiy taximetr yadrosi (tmxStart, tmxStop, _tmxTick va h.k.) endi base.html'ga

@@ -939,6 +939,32 @@ def driver_location_sync(request, driver):
 
 
 @driver_login_required
+def driver_nearby_locations(request, driver):
+    """Asosiy sahifadagi xarita uchun — hozir ish navbatidagi BOSHQA
+    haydovchilarning joylashuvi. Diqqat: bu haydovchilar bir-biriga ko'rinadi,
+    shuning uchun faqat xaritada belgi chizish uchun zarur maydonlar
+    qaytariladi — telefon raqami va balans kabi shaxsiy/moliyaviy
+    ma'lumotlar (panel uchun mo'ljallangan active_drivers_locations'dan
+    farqli o'laroq) bu yerda umuman berilmaydi."""
+    from django.utils import timezone
+    online_cutoff = timezone.now() - timezone.timedelta(seconds=120)
+    peers = Driver.objects.filter(
+        is_on_duty=True, is_active=True, approval_status=Driver.APPROVAL_APPROVED,
+        latitude__isnull=False, longitude__isnull=False,
+        last_seen__gte=online_cutoff,
+    ).exclude(pk=driver.pk)
+    data = [{
+        'id':        d.id,
+        'full_name': d.full_name,
+        'car_type':  d.car_type,
+        'photo_url': d.photo.url if d.photo else '',
+        'latitude':  d.latitude,
+        'longitude': d.longitude,
+    } for d in peers]
+    return JsonResponse({'drivers': data})
+
+
+@driver_login_required
 @require_POST
 def driver_duty_toggle(request, driver):
     # Diqqat: is_on_duty faqat YANGI buyurtma dispatch qilish uchun filtr
