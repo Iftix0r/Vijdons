@@ -362,6 +362,12 @@ let _sheetMap = null;
 let _sheetOpenForId = null;
 let _sheetOpenForStatus = null;
 let _sheetCloseTimer = null;
+// Xuddi shu TDZ sababiga ko'ra: renderOrdersDOM() (pastda, darhol chaqiriladi)
+// pending buyurtma bo'lmasa _updatePendingBar([]) -> closePendingDrawer() ni
+// chaqiradi, u esa shu o'zgaruvchiga yozadi — shuning uchun bu ham oldindan
+// e'lon qilinishi SHART (aks holda ReferenceError butun skriptni, jumladan
+// pastdagi xarita ishga tushirish kodini, ishga tushmay qoldirardi).
+let _pendingDrawerOpen = false;
 // Haydovchi faol buyurtma oynasini qo'lda yopsa, shu buyurtma ID'si shu
 // yerga (va sessionStorage'ga — DRIVER_ID bilan bog'langan holda) yoziladi —
 // keyingi pollarda, HATTO sahifa qayta ochilgan/yangilangan taqdirda ham,
@@ -678,7 +684,6 @@ function _updatePendingBar(pendingOrders){
     : `${pendingOrders.length} ta yangi buyurtma`;
 }
 
-let _pendingDrawerOpen = false;
 function togglePendingDrawer(){
   try { Native.vibrate(); } catch(_) {}
   _pendingDrawerOpen = !_pendingDrawerOpen;
