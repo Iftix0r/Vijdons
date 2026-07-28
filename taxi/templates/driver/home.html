@@ -153,6 +153,33 @@
   <i class="fas fa-chevron-up flex-shrink-0" style="color:var(--ios-label3);font-size:13px"></i>
 </div>
 
+<!-- To'planib qolgan (hali qabul qilinmagan) buyurtmalar — Telegram mini-app
+     "yig'iluvchi" panel uslubida: yashil belgi, tab-bar ustida suzib turadi,
+     bosilganda pastdan ro'yxat suzib chiqadi (buyurtmalar endi xarita ustida
+     to'g'ridan-to'g'ri kartalar bo'lib to'kilmaydi). -->
+<div id="pending-bar" onclick="togglePendingDrawer()"
+  class="flex items-center gap-3 active:opacity-80 transition-opacity"
+  style="display:none;position:fixed;z-index:15;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom,16px) + 160px);padding:10px 12px;border-radius:16px;background:var(--ios-card2);box-shadow:0 6px 18px rgba(52,199,89,.3);cursor:pointer">
+  <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style="background:#34C759">
+    <i class="fas fa-bell text-white" style="font-size:15px"></i>
+  </div>
+  <div id="pending-bar-text" class="ios-subhead font-semibold flex-1 min-w-0 truncate">Yangi buyurtmalar</div>
+  <i class="fas fa-chevron-up flex-shrink-0" style="color:#34C759;font-size:13px"></i>
+</div>
+
+<div id="pending-drawer" class="ios-sheet fixed left-4 right-4 overflow-y-auto"
+     style="z-index:190;bottom:calc(env(safe-area-inset-bottom,16px) + 96px);border-radius:20px;transform:translateY(calc(100% + 200px));transition:transform .32s cubic-bezier(.32,.72,0,1);max-height:60vh">
+  <div class="px-4 py-3.5 space-y-3">
+    <div class="flex items-center justify-between">
+      <div class="ios-title font-semibold">Yangi buyurtmalar</div>
+      <button type="button" onclick="closePendingDrawer()" class="w-8 h-8 rounded-full flex items-center justify-center" style="background:var(--ios-fill)">
+        <i class="fas fa-xmark" style="color:var(--ios-label3)"></i>
+      </button>
+    </div>
+    <div id="pending-drawer-body" class="space-y-3"></div>
+  </div>
+</div>
+
 <!-- Taksometr ishlab turganda narx/vaqt/masofa/tezlik — funksiyalar
      to'g'ridan-to'g'ri xarita ustida suzib turadi (sheet/panel ichida emas). -->
 <div id="mtx-live" style="display:none;position:fixed;z-index:16;top:calc(env(safe-area-inset-top,47px) + 152px);left:16px;right:16px;background:linear-gradient(160deg,rgba(28,28,31,.92),rgba(10,10,11,.92));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:18px;border:1px solid rgba(255,255,255,.08);box-shadow:0 10px 28px rgba(0,0,0,.35)">
@@ -347,9 +374,10 @@ let _orderSheetDismissedFor = parseInt(sessionStorage.getItem(_SS_ORDER_DISMISSE
 renderOrdersDOM();
 
 // Kutilayotgan buyurtma kartasini uzoq bosganda tezkor menyu (manzilni
-// nusxalash / xaritada ochish) — kartalar renderOrdersDOM() orqali qayta
-// chizilib turgani uchun #orders-wrap ustida delegatsiya qilingan.
-attachLongPress(document.getElementById('orders-wrap'), '.po-card', el => {
+// nusxalash / xaritada ochish) — kartalar endi renderOrdersDOM() orqali
+// #pending-drawer-body ichida qayta chizilib turgani uchun shu yerda
+// delegatsiya qilingan.
+attachLongPress(document.getElementById('pending-drawer-body'), '.po-card', el => {
   const o = ORDERS.find(x => x.id === Number(el.dataset.orderId));
   if (!o) return [];
   const items = [
@@ -571,43 +599,24 @@ function renderOrdersDOM() {
   // yetmagan bo'lsa) — pending buyurtmalar ro'yxati faol buyurtma(lar) bo'lsa
   // ham ko'rsatiladi, shu bilan yana buyurtma qabul qilish imkoni qoladi.
   const pendingOrders = ORDERS.filter(o => o.status === 'pending');
+  wrap.innerHTML = '';
   if (activeOrders.length >= MAX_ACTIVE_ORDERS) {
-    wrap.innerHTML = '';
     _setMapSearchBadge(false);
+    _updatePendingBar([]);
     return;
   }
 
-  // Faol qidiruv indikatori — skeleton/shimmer: kelayotgan buyurtma qanday
-  // ko'rinishini oldindan "soya" kartochka sifatida ko'rsatadi (ustidan
-  // yorug'lik o'tib turadi), haqiqiy buyurtma kartasi tuzilishini takrorlaydi
-  const _skeletonCard = (fade) => `
-    <div class="ios-card rounded-[16px] p-4" style="${fade?'opacity:.55':''}">
-      <div class="flex items-center justify-between mb-3">
-        <div class="skeleton" style="width:64px;height:16px"></div>
-        <div class="skeleton" style="width:32px;height:12px"></div>
-      </div>
-      <div class="space-y-2 mb-3">
-        <div class="skeleton" style="width:88%;height:13px"></div>
-        <div class="skeleton" style="width:58%;height:13px"></div>
-      </div>
-      <div class="flex items-center justify-between pt-3" style="border-top:.5px solid var(--ios-sep)">
-        <div class="skeleton" style="width:70px;height:19px"></div>
-        <div class="skeleton" style="width:44px;height:12px"></div>
-      </div>
-    </div>`;
   // Qidiruv indikatori endi xarita ustida suzib turadi (_setMapSearchBadge) —
   // hali hech narsa topilmagan bo'lsa "Buyurtma qidirilmoqda", allaqachon 1+
   // buyurtma topilgan bo'lsa "Yana buyurtmalar qidirilmoqda" (qidiruv davom
-  // etmoqda — topilganlar pastda turibdi).
+  // etmoqda — topilganlar #pending-drawer'da turibdi).
   _setMapSearchBadge(true, pendingOrders.length ? 'Yana buyurtmalar qidirilmoqda' : 'Buyurtma qidirilmoqda');
-
-  // Xarita endi ekranning deyarli barchasini egallaydi va qidiruv holati shu
-  // yerda (badge orqali) ko'rsatilgani uchun, hali buyurtma topilmagan holatda
-  // pastda alohida joy egallovchi skeleton kartalar kerak emas.
-  if(!pendingOrders.length) {
-    wrap.innerHTML = '';
-    return;
-  }
+  // Buyurtmalar endi xarita ustiga to'g'ridan-to'g'ri kartalar bo'lib
+  // to'kilmaydi — Telegram mini-app'idagi "yig'ilgan xabarlar" paneliga
+  // o'xshab, pastdagi yashil #pending-bar orqali (bosilganda #pending-drawer
+  // ochiladi) ko'rsatiladi.
+  _updatePendingBar(pendingOrders);
+  if(!pendingOrders.length) return;
 
   const pill = {pending:'pill-yellow'};
   const lbl  = {pending:'Kutilmoqda'};
@@ -646,12 +655,44 @@ function renderOrdersDOM() {
       </div>
     </div>`).join('');
 
-  // Qidiruv holati xarita ustidagi badge orqali ko'rsatilgani uchun bu yerda
-  // faqat topilgan buyurtmalar + qidiruv davom etayotganini eslatuvchi bitta
-  // xira (soya) karta qoladi.
-  wrap.innerHTML = `
-    <div class="space-y-3 anim-fade">${ordersHtml}${_skeletonCard(true)}</div>`;
+  const drawerBody = document.getElementById('pending-drawer-body');
+  if (drawerBody) drawerBody.innerHTML = ordersHtml;
   _startTimers();
+}
+
+// Pastki yashil "Yangi buyurtmalar" chizig'i — faqat pending buyurtma(lar)
+// bo'lsa ko'rinadi. Ular tugasa (qabul qilingan/muddati o'tgan/hech narsa
+// qolmagan), tugma yashiriladi va ochiq turgan bo'lsa drawer ham yopiladi.
+function _updatePendingBar(pendingOrders){
+  const bar = document.getElementById('pending-bar');
+  if (!bar) return;
+  if (!pendingOrders.length) {
+    bar.style.display = 'none';
+    closePendingDrawer();
+    return;
+  }
+  bar.style.display = 'flex';
+  const txt = document.getElementById('pending-bar-text');
+  if (txt) txt.textContent = pendingOrders.length === 1
+    ? '1 ta yangi buyurtma'
+    : `${pendingOrders.length} ta yangi buyurtma`;
+}
+
+let _pendingDrawerOpen = false;
+function togglePendingDrawer(){
+  try { Native.vibrate(); } catch(_) {}
+  _pendingDrawerOpen = !_pendingDrawerOpen;
+  if (_pendingDrawerOpen) {
+    try { closeMtxPanel(); } catch(_) {}
+    try { closeSheet(); } catch(_) {}
+  }
+  const el = document.getElementById('pending-drawer');
+  if (el) el.style.transform = _pendingDrawerOpen ? 'translateY(0)' : 'translateY(calc(100% + 200px))';
+}
+function closePendingDrawer(){
+  _pendingDrawerOpen = false;
+  const el = document.getElementById('pending-drawer');
+  if (el) el.style.transform = 'translateY(calc(100% + 200px))';
 }
 
 // ── Pull-to-refresh ──────────────────────────────────────────────────────────
@@ -1110,7 +1151,11 @@ if (navigator.geolocation) {
 function toggleMtxPanel() {
   try { Native.vibrate(); } catch(_) {}
   _mtxPanelOpen = !_mtxPanelOpen;
-  if (_mtxPanelOpen) { try { closeSheet(); } catch(_) {} } // ikkala panel bir vaqtda ochiq turmasin
+  if (_mtxPanelOpen) {
+    // Boshqa suzuvchi panellar bilan bir vaqtda ochiq turmasin.
+    try { closeSheet(); } catch(_) {}
+    try { closePendingDrawer(); } catch(_) {}
+  }
   document.getElementById('mtx-panel').style.transform = _mtxPanelOpen ? 'translateY(0)' : 'translateY(calc(100% + 200px))';
 }
 
@@ -1433,8 +1478,10 @@ function _updateMyOrdersBtn(activeOrders){
 function _renderSheet(id, o){
   _sheetOpenForId = id;
   _sheetOpenForStatus = o.status;
-  // Ikkala suzuvchi panel (buyurtma va taksometr) bir vaqtda ochiq turmasin.
+  // Boshqa suzuvchi panellar (taksometr, yangi buyurtmalar) bilan bir vaqtda
+  // ochiq turmasin.
   try { closeMtxPanel(); } catch(_) {}
+  try { closePendingDrawer(); } catch(_) {}
   // Safar davomida (qulflangan holat) ham tab bar orqali boshqa bo'limlarga
   // o'tish imkoni qolsin deb, uni sheet ustiga ko'taramiz.
   setTabbarRaised(o.status==='accepted'||o.status==='on_way'||o.status==='arrived');
