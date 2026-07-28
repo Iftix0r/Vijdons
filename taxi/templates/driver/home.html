@@ -24,9 +24,6 @@
         <div class="flex items-center gap-1.5 mt-0.5">
           <span class="w-[7px] h-[7px] rounded-full flex-shrink-0 {% if driver.is_on_duty %}bg-[#34C759]{% else %}bg-[#8E8E93]{% endif %}
                 {% if driver.is_on_duty %}animate-pulse{% endif %}"></span>
-          <span class="ios-caption font-medium {% if driver.is_on_duty %}text-[#34C759]{% else %}text-[#8E8E93]{% endif %}" style="white-space:nowrap">
-            {% if driver.is_on_duty %}Ish navbatida{% else %}Oflayn{% endif %}
-          </span>
         </div>
       </div>
     </div>
