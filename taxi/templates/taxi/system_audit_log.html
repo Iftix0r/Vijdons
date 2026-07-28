@@ -1,0 +1,128 @@
+{% extends 'taxi/system_base.html' %}
+{% block title %}Xavfsizlik / Jurnal — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-end gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Xavfsizlik / Jurnal 🛡️</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Kim kirdi, kim sozlamalarni o'zgartirdi, server xatolari — hammasi shu yerda.</p>
+    </div>
+</div>
+
+<!-- Kimda qanday huquq bor -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 mb-5">
+    <p class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">
+        <i class="fas fa-users-gear mr-1.5"></i>Kimda qanday huquq bor
+    </p>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold border-b border-gray-100 dark:border-gray-800">
+                    <th class="py-2 pr-3">Foydalanuvchi</th>
+                    <th class="py-2 pr-3">Rol</th>
+                    <th class="py-2 pr-3">Faolmi</th>
+                    <th class="py-2 pr-3">Oxirgi kirish</th>
+                    <th class="py-2 pr-3">Ro'yxatdan o'tgan</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50 dark:divide-gray-800">
+                {% for u in staff_users %}
+                <tr>
+                    <td class="py-2.5 pr-3 font-semibold text-gray-800 dark:text-white">{{ u.username }}</td>
+                    <td class="py-2.5 pr-3">
+                        {% if u.is_superuser %}
+                        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-2 py-1 rounded-full">
+                            <i class="fas fa-terminal text-[9px]"></i> Tizim (superuser)
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-full">
+                            Admin
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="py-2.5 pr-3">
+                        {% if u.is_active %}
+                        <span class="text-emerald-600 dark:text-emerald-400 text-xs font-semibold"><i class="fas fa-circle text-[6px] mr-1"></i>Faol</span>
+                        {% else %}
+                        <span class="text-red-500 text-xs font-semibold"><i class="fas fa-circle text-[6px] mr-1"></i>O'chirilgan</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-2.5 pr-3 text-xs text-gray-500 dark:text-gray-400">{{ u.last_login|date:"d.m.Y H:i"|default:"— hech qachon —" }}</td>
+                    <td class="py-2.5 pr-3 text-xs text-gray-500 dark:text-gray-400">{{ u.date_joined|date:"d.m.Y" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Jurnal -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <p class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+            <i class="fas fa-list-ul mr-1.5"></i>Hodisalar jurnali
+        </p>
+        <div class="flex items-center gap-1.5 text-xs">
+            <a href="?" class="px-3 py-1.5 rounded-lg font-semibold transition-colors {% if not level %}bg-gray-800 dark:bg-gray-100 text-white dark:text-gray-900{% else %}bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700{% endif %}">
+                Hammasi ({{ counts.error|add:counts.warning|add:counts.info }})
+            </a>
+            <a href="?level=error" class="px-3 py-1.5 rounded-lg font-semibold transition-colors {% if level == 'error' %}bg-red-500 text-white{% else %}bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100{% endif %}">
+                Xatolar ({{ counts.error }})
+            </a>
+            <a href="?level=warning" class="px-3 py-1.5 rounded-lg font-semibold transition-colors {% if level == 'warning' %}bg-orange-500 text-white{% else %}bg-orange-50 dark:bg-orange-900/20 text-orange-500 hover:bg-orange-100{% endif %}">
+                Ogohlantirish ({{ counts.warning }})
+            </a>
+            <a href="?level=info" class="px-3 py-1.5 rounded-lg font-semibold transition-colors {% if level == 'info' %}bg-blue-500 text-white{% else %}bg-blue-50 dark:bg-blue-900/20 text-blue-500 hover:bg-blue-100{% endif %}">
+                Info ({{ counts.info }})
+            </a>
+        </div>
+    </div>
+
+    {% if page_obj %}
+    <div class="space-y-2">
+        {% for e in page_obj %}
+        <div class="border border-gray-100 dark:border-gray-800 rounded-xl p-3 {% if e.level == 'error' %}bg-red-50/50 dark:bg-red-900/10{% elif e.level == 'warning' %}bg-orange-50/50 dark:bg-orange-900/10{% endif %}">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full
+                            {% if e.level == 'error' %}bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400
+                            {% elif e.level == 'warning' %}bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400
+                            {% else %}bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400{% endif %}">
+                            {{ e.get_level_display }}
+                        </span>
+                        <span class="text-xs font-mono text-gray-400">{{ e.event_type }}</span>
+                        {% if e.user %}<span class="text-xs text-gray-500 dark:text-gray-400"><i class="fas fa-user text-[9px] mr-0.5"></i>{{ e.user.username }}</span>{% endif %}
+                        {% if e.ip_address %}<span class="text-xs font-mono text-gray-400">{{ e.ip_address }}</span>{% endif %}
+                    </div>
+                    <p class="text-sm text-gray-700 dark:text-gray-300 mt-1">{{ e.message }}</p>
+                    {% if e.path %}<p class="text-xs font-mono text-gray-400 mt-0.5">{{ e.path }}</p>{% endif %}
+                </div>
+                <span class="text-xs text-gray-400 flex-shrink-0 whitespace-nowrap">{{ e.created_at|date:"d.m.Y H:i:s" }}</span>
+            </div>
+            {% if e.detail %}
+            <details class="mt-2">
+                <summary class="text-xs text-red-500 cursor-pointer font-semibold">Traceback ko'rish</summary>
+                <pre class="text-[11px] mt-2 p-3 bg-gray-900 text-gray-200 rounded-lg overflow-x-auto whitespace-pre-wrap">{{ e.detail }}</pre>
+            </details>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="flex items-center justify-center gap-2 mt-5 text-sm">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% if level %}&level={{ level }}{% endif %}" class="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-semibold">Oldingi</a>
+        {% endif %}
+        <span class="text-gray-400 text-xs">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if level %}&level={{ level }}{% endif %}" class="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-semibold">Keyingi</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% else %}
+    <p class="text-xs text-gray-400">Hali hech narsa qayd etilmagan.</p>
+    {% endif %}
+</div>
+{% endblock %}

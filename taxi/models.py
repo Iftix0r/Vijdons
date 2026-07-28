@@ -684,6 +684,40 @@ class PanelEvent(models.Model):
         ordering = ['-created_at']
 
 
+class SystemAuditLog(models.Model):
+    """Tizim (dasturchi) paneli uchun xavfsizlik/audit jurnali — PanelEvent'dan
+    ATAYLAB alohida: PanelEvent operator panelidagi OVOZLI bildirishnoma
+    feedini boshqaradi (kundalik ish hodisalari), bu esa faqat /system/
+    panelida ko'rinadigan, operatorlarga aloqasi yo'q texnik/xavfsizlik
+    yozuvlari uchun (muvaffaqiyatsiz kirish urinishlari, sozlama
+    o'zgarishlari, backup amallari, server xatolari/traceback)."""
+    LEVEL_INFO    = 'info'
+    LEVEL_WARNING = 'warning'
+    LEVEL_ERROR   = 'error'
+    LEVEL_CHOICES = [
+        (LEVEL_INFO,    'Info'),
+        (LEVEL_WARNING, 'Ogohlantirish'),
+        (LEVEL_ERROR,   'Xato'),
+    ]
+
+    level      = models.CharField(max_length=10, choices=LEVEL_CHOICES, default=LEVEL_INFO, verbose_name='Daraja')
+    event_type = models.CharField(max_length=50, verbose_name='Hodisa turi')
+    message    = models.CharField(max_length=500, blank=True, default='', verbose_name='Xabar')
+    detail     = models.TextField(blank=True, default='', verbose_name="Tafsilot (masalan traceback)")
+    user       = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', verbose_name='Foydalanuvchi')
+    ip_address = models.GenericIPAddressField(null=True, blank=True, verbose_name='IP manzil')
+    path       = models.CharField(max_length=300, blank=True, default='', verbose_name='Manzil (path)')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Vaqt')
+
+    def __str__(self):
+        return f"[{self.level}] {self.event_type} — {self.created_at:%d.%m.%Y %H:%M}"
+
+    class Meta:
+        verbose_name = 'Tizim jurnali yozuvi'
+        verbose_name_plural = 'Tizim jurnali'
+        ordering = ['-created_at']
+
+
 class PanelSound(models.Model):
     """Operator panel va haydovchi ilovasi uchun har bir hodisaga tayinlangan audio fayl."""
     EVENT_CHOICES = PANEL_SOUND_EVENTS + DRIVER_SOUND_EVENTS

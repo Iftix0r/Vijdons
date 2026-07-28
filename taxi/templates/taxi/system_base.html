@@ -114,6 +114,10 @@
            class="nav-link {% if request.resolver_match.url_name == 'system_status' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-server w-5 text-center"></i> Tizim holati
         </a>
+        <a href="{% url 'system:system_audit_log' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'system_audit_log' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-user-shield w-5 text-center"></i> Xavfsizlik / Jurnal
+        </a>
 
         <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest font-bold text-gray-400 dark:text-gray-600">Sozlamalar</p>
         <a href="{% url 'system:tariff_settings' %}"

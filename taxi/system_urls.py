@@ -15,6 +15,7 @@ urlpatterns = [
     path('logout/', views.system_logout, name='system_logout'),
 
     path('', views.system_status, name='system_status'),
+    path('audit/', views.system_audit_log, name='system_audit_log'),
     path('backup/create/', views.backup_create, name='backup_create'),
     path('backup/<str:filename>/download/', views.backup_download, name='backup_download'),
     path('backup/<str:filename>/delete/', views.backup_delete, name='backup_delete'),

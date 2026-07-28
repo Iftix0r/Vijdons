@@ -200,6 +200,28 @@ def log_panel_event(event_type, message=''):
         pass
 
 
+def log_system_event(event_type, message='', level='info', request=None, user=None, detail=''):
+    """Tizim (dasturchi) paneli uchun xavfsizlik/audit yozuvi — PanelEvent'dan
+    ATAYLAB alohida (operatorlarning ovozli bildirishnoma feedini
+    "iflos"lamasin deb), faqat /system/ panelidagi Jurnal sahifasida ko'rinadi."""
+    try:
+        from taxi.models import SystemAuditLog
+        ip = None
+        path = ''
+        if request is not None:
+            path = request.path
+            xff = request.META.get('HTTP_X_FORWARDED_FOR')
+            ip = xff.split(',')[0].strip() if xff else request.META.get('REMOTE_ADDR')
+            if user is None and request.user.is_authenticated:
+                user = request.user
+        SystemAuditLog.objects.create(
+            event_type=event_type, message=message[:500], level=level,
+            user=user, ip_address=ip, path=path[:300], detail=detail,
+        )
+    except Exception:
+        pass
+
+
 # ── Guruh jonli ovozli aloqa ("efir") — umumiy yordamchilar ─────────────────
 # Haydovchi (taxi/driver_views.py) va operator panel (taxi/views.py) tomonlari
 # bir xil "efir" xonasini ulashadi, shuning uchun ikkalasi ham shu funksiyalardan

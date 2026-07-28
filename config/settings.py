@@ -34,6 +34,27 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
 ]
 
+# DEBUG=False bo'lganda ushlanmagan xatolar (500) endi brauzerda ko'rinmaydi —
+# shu sabab ularni SystemAuditLog jadvaliga yozib boramiz, /system/ panelidagi
+# "Xavfsizlik / Jurnal" sahifasi shu yerdan o'qiydi (SSH/DEBUG kerak emas).
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'system_audit': {
+            'level': 'ERROR',
+            'class': 'taxi.logging_handlers.SystemAuditLogHandler',
+        },
+    },
+    'loggers': {
+        'django.request': {
+            'handlers': ['system_audit'],
+            'level': 'ERROR',
+            'propagate': True,
+        },
+    },
+}
+
 
 # Application definition
 

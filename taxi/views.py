@@ -764,6 +764,8 @@ def bot_settings(request):
         bot.notify_flyer_redeemed      = 'notify_flyer_redeemed'      in request.POST
         bot.notify_monthly_financial_report = 'notify_monthly_financial_report' in request.POST
         bot.save()
+        from .utils import log_system_event
+        log_system_event('settings_changed', 'Bot sozlamalari o\'zgartirildi', request=request)
         # SITE_URL ni settings ga yozish
         site_url = request.POST.get('site_url', '').strip()
         if site_url:
@@ -852,6 +854,8 @@ def sms_settings(request):
             sms.sms_cancelled = 'sms_cancelled' in request.POST
             sms.save()
             saved = True
+            from .utils import log_system_event
+            log_system_event('settings_changed', 'SMS sozlamalari o\'zgartirildi', request=request)
     sms_notifs = [
         ('sms_accepted',  'Buyurtma qabul qilindi',  '✅', sms.sms_accepted),
         ('sms_arrived',   'Haydovchi yetib keldi',   '📍', sms.sms_arrived),
@@ -877,6 +881,8 @@ def ai_settings(request):
         cfg.model   = request.POST.get('model', cfg.model)
         cfg.save()
         saved = True
+        from .utils import log_system_event
+        log_system_event('settings_changed', 'AI sozlamalari o\'zgartirildi', request=request)
     return render(request, 'taxi/ai_settings.html', {
         'cfg': cfg,
         'saved': saved,
@@ -1108,6 +1114,41 @@ def system_status(request):
 
 
 @system_login_required
+def system_audit_log(request):
+    """Kim tizimga kirdi/kira olmadi, sozlamalarni kim o'zgartirdi, server
+    xatolari (500'lar, to'liq traceback bilan) — hammasi shu yerda. Bundan
+    tashqari "kimda qanday huquq bor" (is_staff/is_superuser) ro'yxati ham
+    shu sahifada — xavfsizlik nuqtai nazaridan bittada ko'rinib turishi
+    uchun."""
+    from taxi.models import SystemAuditLog
+    from django.core.paginator import Paginator
+    from django.contrib.auth.models import User
+
+    level = request.GET.get('level', '').strip()
+    qs = SystemAuditLog.objects.select_related('user').all()
+    if level in ('info', 'warning', 'error'):
+        qs = qs.filter(level=level)
+
+    paginator = Paginator(qs, 50)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    staff_users = User.objects.filter(is_staff=True).order_by('-is_superuser', 'username')
+
+    counts = {
+        'error':   SystemAuditLog.objects.filter(level='error').count(),
+        'warning': SystemAuditLog.objects.filter(level='warning').count(),
+        'info':    SystemAuditLog.objects.filter(level='info').count(),
+    }
+
+    return render(request, 'taxi/system_audit_log.html', {
+        'page_obj': page_obj,
+        'level': level,
+        'staff_users': staff_users,
+        'counts': counts,
+    })
+
+
+@system_login_required
 def backup_create(request):
     """`pg_dump` orqali joriy PostgreSQL bazasining to'liq nusxasini oladi va
     gzip qilib backups/ papkasiga saqlaydi. Kichik/o'rta hajmdagi baza uchun
@@ -1154,7 +1195,8 @@ def backup_create(request):
             with open(sql_path, 'rb') as fin, gzip.open(gz_path, 'wb') as fout:
                 shutil.copyfileobj(fin, fout)
             os.remove(sql_path)
-            log_panel_event('panel_backup_created', f'vijdon_backup_{ts}.sql.gz')
+            from .utils import log_system_event
+            log_system_event('backup_created', f'vijdon_backup_{ts}.sql.gz', request=request)
             messages.success(request, f"Backup yaratildi: vijdon_backup_{ts}.sql.gz")
     except FileNotFoundError:
         messages.error(request, "pg_dump topilmadi — serverda PostgreSQL klient dasturlari o'rnatilmagan bo'lishi mumkin.")
@@ -1190,7 +1232,8 @@ def backup_delete(request, filename):
         path = os.path.join(_backups_dir(), filename)
         if os.path.isfile(path):
             os.remove(path)
-            log_panel_event('panel_backup_deleted', filename)
+            from .utils import log_system_event
+            log_system_event('backup_deleted', filename, level='warning', request=request)
             messages.success(request, f"{filename} o'chirildi.")
     return redirect('system:system_status')
 
@@ -1535,6 +1578,8 @@ def maps_settings(request):
         maps.yandex_mapkit_key = request.POST.get('yandex_mapkit_key', '').strip()
         maps.is_active         = request.POST.get('is_active') == 'on'
         maps.save()
+        from .utils import log_system_event
+        log_system_event('settings_changed', 'Maps sozlamalari o\'zgartirildi', request=request)
         return redirect('system:maps_settings')
     return render(request, 'taxi/maps_settings.html', {'maps': maps})
 
@@ -1554,6 +1599,8 @@ def tariff_settings(request):
             tariff.dispatch_timeout      = int(request.POST.get('dispatch_timeout', tariff.dispatch_timeout))
             tariff.operator_phone        = request.POST.get('operator_phone', tariff.operator_phone).strip() or tariff.operator_phone
             tariff.save()
+            from .utils import log_system_event
+            log_system_event('settings_changed', 'Tariff sozlamalari o\'zgartirildi', request=request)
         except (InvalidOperation, ValueError):
             pass
         return redirect('system:tariff_settings')
@@ -2543,7 +2590,11 @@ def panel_login(request):
         user = authenticate(request, username=username, password=password)
         if user and user.is_staff:
             login(request, user)
+            from .utils import log_system_event
+            log_system_event('panel_login_success', f"'{username}' panelga kirdi", request=request, user=user)
             return redirect(request.GET.get('next', 'taxi:panel_dashboard'))
+        from .utils import log_system_event
+        log_system_event('panel_login_failed', f"'{username}' — noto'g'ri login/parol", level='warning', request=request)
         messages.error(request, "Login yoki parol noto'g'ri!")
     return render(request, 'taxi/login.html')
 
@@ -2568,7 +2619,16 @@ def system_login(request):
         user = authenticate(request, username=username, password=password)
         if user and user.is_staff and user.is_superuser:
             login(request, user)
+            from .utils import log_system_event
+            log_system_event('system_login_success', f"'{username}' tizim paneliga kirdi", request=request, user=user)
             return redirect(request.GET.get('next', 'system:system_status'))
+        from .utils import log_system_event
+        # Diqqat: bu ayniqsa muhim signal — is_staff bo'lib, lekin is_superuser
+        # bo'lmagan (oddiy admin) hisob shu yerga kirishga urinishi ham
+        # "warning" sifatida qayd etiladi, chunki bu ruxsat chegarasini
+        # tekshirib ko'rish (yoki huquqni suiiste'mol qilishga urinish)
+        # bo'lishi mumkin.
+        log_system_event('system_login_failed', f"'{username}' — noto'g'ri login/parol yoki tizim huquqi yo'q", level='warning', request=request)
         messages.error(request, "Login yoki parol noto'g'ri, yoki sizda tizim paneliga kirish huquqi yo'q!")
     return render(request, 'taxi/system_login.html')
 
