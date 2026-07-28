@@ -1051,6 +1051,21 @@ document.addEventListener('visibilitychange', () => {
     if (e.detail?.lat && e.detail?.lng) _homeUpdateMine(e.detail.lat, e.detail.lng);
   });
 
+  // Diqqat: yuqoridagi eventni FAQAT Flutter qobig'i yuboradi. Agar biror
+  // sabab bilan (masalan joylashuv ruxsati hali so'ralmagan, yoki oddiy
+  // brauzerda ochilgan bo'lsa) bu event kelmasa, xarita "GPS signal
+  // kutilmoqda…" holatida ABADIY qotib qolar edi — shu sabab brauzerning
+  // o'zining geolocation API'sini ham zaxira manba sifatida ishga tushiramiz
+  // (initNavLocation/_mtxWatch'dagi bilan bir xil naqsh). Ikkalasi ham
+  // xuddi shu _homeUpdateMine()ga yozgani uchun ziddiyat yo'q.
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(
+      pos => _homeUpdateMine(pos.coords.latitude, pos.coords.longitude),
+      () => {},
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 10000 }
+    );
+  }
+
   // Avvalgi sessiyada saqlangan koordinat bo'lsa, xaritani darhol o'sha yerdan
   // boshlaymiz — yangi joylashuv kelguncha bo'sh/markazsiz turmasin
   try {
