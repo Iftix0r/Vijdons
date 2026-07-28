@@ -602,6 +602,21 @@ def tg_order_rejected(order, driver):
     )
 
 
+def tg_order_deleted(order):
+    # Diqqat: log_panel_event bu yerda CHAQIRILMAYDI — chaqiruvchi (order_delete
+    # view'i) buyurtmani o'chirishdan oldin buni allaqachon o'zi yozadi, aks
+    # holda panel ovozli bildirishnomasi feedida ikkita bir xil yozuv paydo bo'lardi.
+    cfg = _cfg()
+    if cfg and not cfg.notify_deleted:
+        return
+    lines = [f"🗑️ <b>Buyurtma o'chirildi — #{order.id}</b>"]
+    if order.driver_id:
+        lines.append(f"🚗 Haydovchi: <b>{order.driver.full_name}</b>")
+    lines.append(f"👤 {order.client.full_name or '—'} | <code>{order.client.phone_number}</code>")
+    lines.append(f"📍 {order.from_address}" + (f" → {order.to_address}" if order.to_address else ""))
+    send_telegram('\n'.join(lines))
+
+
 def tg_driver_registered(driver):
     log_panel_event('panel_driver_registered', f"{driver.full_name} | {driver.phone_number}")
     cfg = _cfg()

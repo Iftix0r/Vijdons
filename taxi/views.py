@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher, VizitkaRewardLog, LegalDocument, SecurityIncident, VoiceParticipant, VoiceSignal
-from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed, build_balance_receipt_pdf, build_flyer_business_card_pdf, voice_prune_stale, voice_participants_list, voice_target_kwargs, voice_signal_sender_info
+from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, tg_order_deleted, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed, build_balance_receipt_pdf, build_flyer_business_card_pdf, voice_prune_stale, voice_participants_list, voice_target_kwargs, voice_signal_sender_info
 import csv
 import json
 
@@ -273,6 +273,7 @@ def order_delete(request, pk):
         if order.driver_id and order.status in Order.ACTIVE_STATUSES:
             _refund_order_commission(order, order.driver, "o'chirildi")
         log_panel_event('panel_order_deleted', f"Buyurtma #{order.id} — {order.from_address}")
+        tg_order_deleted(order)
         order.delete()
     return redirect('taxi:order_list')
 
@@ -681,6 +682,7 @@ def bot_settings(request):
         bot.notify_completed       = 'notify_completed'       in request.POST
         bot.notify_cancelled       = 'notify_cancelled'       in request.POST
         bot.notify_rejected        = 'notify_rejected'        in request.POST
+        bot.notify_deleted         = 'notify_deleted'         in request.POST
         bot.notify_driver_register = 'notify_driver_register' in request.POST
         bot.notify_driver_approved = 'notify_driver_approved' in request.POST
         bot.notify_driver_rejected = 'notify_driver_rejected' in request.POST
@@ -731,6 +733,7 @@ def bot_settings(request):
         ('notify_completed',  'Buyurtma yakunlandi',      '🏁', bot.notify_completed),
         ('notify_cancelled',  'Buyurtma bekor qilindi',   '❌', bot.notify_cancelled),
         ('notify_rejected',   'Buyurtma rad etildi',      '🔄', bot.notify_rejected),
+        ('notify_deleted',    "Buyurtma o'chirildi",      '🗑️', bot.notify_deleted),
     ]
     driver_notifs = [
         ('notify_driver_register', "Yangi haydovchi ro'yxatdan o'tdi", '🆕', bot.notify_driver_register),

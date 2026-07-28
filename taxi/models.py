@@ -209,6 +209,7 @@ class BotSettings(models.Model):
     notify_completed      = models.BooleanField(default=True,  verbose_name='Buyurtma yakunlandi')
     notify_cancelled      = models.BooleanField(default=True,  verbose_name='Buyurtma bekor qilindi')
     notify_rejected       = models.BooleanField(default=False, verbose_name='Buyurtma rad etildi')
+    notify_deleted        = models.BooleanField(default=True,  verbose_name="Buyurtma o'chirildi")
     notify_driver_register= models.BooleanField(default=True,  verbose_name="Yangi haydovchi ro'yxatdan o'tdi")
     notify_driver_approved= models.BooleanField(default=True,  verbose_name='Haydovchi tasdiqlandi')
     notify_driver_rejected= models.BooleanField(default=True,  verbose_name='Haydovchi rad etildi')
