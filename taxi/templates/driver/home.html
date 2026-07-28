@@ -1019,6 +1019,16 @@ document.addEventListener('visibilitychange', () => {
   // (yuqoridagi eventlar orqali) haydovchi belgisi normal qo'shiladi.
   const TASHKENT_LAT = 41.311081, TASHKENT_LNG = 69.240562;
   setTimeout(() => {
+    // Diqqat: agar shu vaqtgacha ham `ymaps` umuman yuklanmagan bo'lsa
+    // (masalan brauzerning reklama/tracker blokeri api-maps.yandex.ru
+    // skriptini bloklagan bo'lsa) — bu "GPS kutilmoqda" bilan HECH QANDAY
+    // bog'liq emas, xarita SKRIPTINING o'ZI kelmagan. Haydovchini chalg'itib
+    // "GPS" deb yozib turishning o'rniga, aniq sababni ko'rsatamiz.
+    if (typeof ymaps === 'undefined') {
+      const hint = document.getElementById('home-map-hint');
+      if (hint) hint.textContent = "Xarita yuklanmadi — brauzeringizdagi reklama/shield blokerini shu sayt uchun o'chirib, sahifani yangilang";
+      return;
+    }
     if (!_homeMap) _homeEnsureMap(TASHKENT_LAT, TASHKENT_LNG, true);
   }, 6000);
 
