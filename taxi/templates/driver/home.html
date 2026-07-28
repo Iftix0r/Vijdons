@@ -300,6 +300,7 @@
 {% block extra_js %}
 <script>
 const IS_ON_DUTY = {{ driver.is_on_duty|yesno:'true,false' }};
+const MAX_ACTIVE_ORDERS = {{ max_active_orders|default:2 }};
 const DRIVER_ID = {{ driver.id }};
 const DRIVER_NAME = "{{ driver.full_name|first|upper }}";
 let DRIVER_BALANCE = {{ driver_balance_int }};
@@ -483,10 +484,12 @@ async function loadOrders() {
     // sheet'ni yashirib qo'yishi mumkin bo'lgan holatlarida) aynan shu poll
     // ekranni "tiklaydigan" yagona joy bo'lishi mumkin — boshqa hech narsa
     // o'zgarmagani uchun yuqoridagi tarmoqlarning birortasi ham ishlamaydi.
-    const _active = ORDERS.find(o => o.status === 'accepted' || o.status === 'on_way' || o.status === 'arrived');
-    if (_active) {
-      _updateMyOrdersBtn(_active);
-      if (_orderSheetDismissedFor !== _active.id) _ensureActiveSheet(_active);
+    const _activeOrders = ORDERS.filter(o => o.status === 'accepted' || o.status === 'on_way' || o.status === 'arrived');
+    if (_activeOrders.length) {
+      _updateMyOrdersBtn(_activeOrders);
+      const _sheetOrder = _activeOrders.find(o => o.id === _sheetOpenForId) ||
+                           _activeOrders.find(o => o.id !== _orderSheetDismissedFor);
+      if (_sheetOrder) _ensureActiveSheet(_sheetOrder);
     }
   } catch(_){}
 }
@@ -532,26 +535,36 @@ function renderOrdersDOM() {
     return;
   }
 
-  // Haydovchida bajarilayotgan buyurtma (accepted/on_way/arrived) bo'lsa —
-  // buyurtma tafsilotlari ekrani (sheet) OCHIQ turadi, "Buyurtma qidirilmoqda"
-  // holati ko'rinmaydi. Faqat "Yakunlash" (yoki bekor qilish) bosilib,
-  // buyurtma tugagandan keyingina yangi qidiruv holati qaytadi. Haydovchi
-  // buyurtma oynasini qo'lda yopgan bo'lsa (_orderSheetDismissedFor), uni
-  // majburan qayta ochmaymiz — pastdagi "Buyurtmalarim" tugmasi shu uchun bor.
-  const activeOrder = ORDERS.find(o =>
+  // Haydovchida bajarilayotgan buyurtma(lar) (accepted/on_way/arrived) bo'lsa
+  // — buyurtma tafsilotlari ekrani (sheet) OCHIQ turadi. Endi haydovchi
+  // MAX_ACTIVE_ORDERS tagacha bir vaqtning o'zida bir nechta buyurtmani
+  // boshqarishi mumkin — sheet bir vaqtda faqat bittasini ko'rsatadi (hozir
+  // ochiq turgani, hali faol bo'lsa, davom etadi), qolganlari "Buyurtmalarim"
+  // panelida (pastda, tab-bar ustida) sanaladi va bosilganda almashtiriladi.
+  // Haydovchi buyurtma oynasini qo'lda yopgan bo'lsa (_orderSheetDismissedFor),
+  // uni majburan qayta ochmaymiz.
+  const activeOrders = ORDERS.filter(o =>
     o.status === 'accepted' || o.status === 'on_way' || o.status === 'arrived');
-  _updateMyOrdersBtn(activeOrder);
-  if (activeOrder) {
+  _updateMyOrdersBtn(activeOrders);
+  const sheetOrder = activeOrders.length
+    ? (activeOrders.find(o => o.id === _sheetOpenForId) ||
+       activeOrders.find(o => o.id !== _orderSheetDismissedFor) ||
+       null)
+    : null;
+  if (sheetOrder) {
     _setMapSearchBadge(false);
-    if (_orderSheetDismissedFor !== activeOrder.id) _ensureActiveSheet(activeOrder);
-    return;
+    _ensureActiveSheet(sheetOrder);
   }
 
-  // Liniyaga chiqqandan keyin (Start holatida) statistika/balans/mashina kartalari
-  // ko'rsatilmaydi (yuqoridagi statsHtml faqat oflaynda ishlatiladi) — Asosiy
-  // sahifa endi faqat hali qabul qilinmagan (pending) buyurtmalarni yoki qidiruv
-  // animatsiyasini ko'rsatadi.
+  // Yangi buyurtma qabul qilish uchun hali joy bo'lsa (MAX_ACTIVE_ORDERS ga
+  // yetmagan bo'lsa) — pending buyurtmalar ro'yxati faol buyurtma(lar) bo'lsa
+  // ham ko'rsatiladi, shu bilan yana buyurtma qabul qilish imkoni qoladi.
   const pendingOrders = ORDERS.filter(o => o.status === 'pending');
+  if (activeOrders.length >= MAX_ACTIVE_ORDERS) {
+    wrap.innerHTML = '';
+    _setMapSearchBadge(false);
+    return;
+  }
 
   // Faol qidiruv indikatori — skeleton/shimmer: kelayotgan buyurtma qanday
   // ko'rinishini oldindan "soya" kartochka sifatida ko'rsatadi (ustidan
@@ -1359,38 +1372,50 @@ function dismissOrderSheet(){
   if (_sheetOpenForId != null) {
     _orderSheetDismissedFor = _sheetOpenForId;
     sessionStorage.setItem(_SS_ORDER_DISMISSED, String(_sheetOpenForId));
-    const activeOrder = ORDERS.find(o => o.id === _sheetOpenForId);
-    if (activeOrder) _updateMyOrdersBtn(activeOrder);
   }
   closeSheet();
+  const activeOrders = ORDERS.filter(o =>
+    o.status === 'accepted' || o.status === 'on_way' || o.status === 'arrived');
+  _updateMyOrdersBtn(activeOrders);
 }
 
 // "Buyurtmalarim" tugmasi — faol buyurtma bo'lsa, uni qayta ochadi.
+// Haydovchida bir nechta (MAX_ACTIVE_ORDERS tagacha) faol buyurtma bo'lishi
+// mumkin — sheet bir vaqtda faqat bittasini ko'rsatadi. Shu tugma hozir
+// ko'rinmayotgan (yopilgan yoki hali navbatda turgan) buyurtmalarga o'tkazadi.
 function openMyOrder(){
   try { Native.vibrate(); } catch(_) {}
-  const activeOrder = ORDERS.find(o =>
+  const activeOrders = ORDERS.filter(o =>
     o.status === 'accepted' || o.status === 'on_way' || o.status === 'arrived');
-  if (!activeOrder) return;
+  if (!activeOrders.length) return;
+  const target = activeOrders.find(o => o.id !== _sheetOpenForId) || activeOrders[0];
   _orderSheetDismissedFor = null;
   sessionStorage.removeItem(_SS_ORDER_DISMISSED);
-  _updateMyOrdersBtn(activeOrder);
   try { closeMtxPanel(); } catch(_) {}
-  _renderSheet(activeOrder.id, activeOrder);
+  _renderSheet(target.id, target);
+  _updateMyOrdersBtn(activeOrders);
 }
 
-// Ekranga qadalgan "Buyurtmalarim" tugmasi — faqat faol buyurtma bo'lsa ko'rinadi.
-// Bu panel FAQAT haydovchi buyurtma oynasini o'zi yopib qo'ygan bo'lsa
-// ko'rinadi — oyna ochiq turgan payti (yangi qabul qilingandan keyingi odatiy
-// holat) bu panel keraksiz, chunki tafsilotlar allaqachon ko'rinib turadi.
-function _updateMyOrdersBtn(activeOrder){
+// Ekranga qadalgan "Buyurtmalarim" paneli — hozir sheet'da ko'rinmayotgan
+// (yopilgan/navbatdagi) faol buyurtma(lar) bo'lsagina ko'rinadi. Sheet ochiq
+// turgan payti (yangi qabul qilingandan keyingi odatiy holat) bitta faol
+// buyurtma uchun bu panel keraksiz, chunki tafsilotlar allaqachon ko'rinadi.
+function _updateMyOrdersBtn(activeOrders){
   const btn = document.getElementById('my-orders-btn');
   if (!btn) return;
-  const show = !!activeOrder && _orderSheetDismissedFor === activeOrder.id;
-  btn.style.display = show ? 'flex' : 'none';
-  if (show) {
-    const label = {accepted:'Qabul qilindi',on_way:"Yo'lda",arrived:'Yetib keldim'};
-    const txt = document.getElementById('my-orders-btn-text');
-    if (txt) txt.textContent = `${label[activeOrder.status]||activeOrder.status} — buyurtma #${activeOrder.id}`;
+  const ov = document.getElementById('sheet-overlay');
+  const sheetActuallyOpen = ov && !ov.classList.contains('hidden');
+  const hidden = (activeOrders||[]).filter(o => !(sheetActuallyOpen && o.id === _sheetOpenForId));
+  if (!hidden.length) { btn.style.display = 'none'; return; }
+  btn.style.display = 'flex';
+  const txt = document.getElementById('my-orders-btn-text');
+  if (txt) {
+    if (hidden.length === 1) {
+      const label = {accepted:'Qabul qilindi',on_way:"Yo'lda",arrived:'Yetib keldim'};
+      txt.textContent = `${label[hidden[0].status]||hidden[0].status} — buyurtma #${hidden[0].id}`;
+    } else {
+      txt.textContent = `${hidden.length} ta faol buyurtma`;
+    }
   }
 }
 

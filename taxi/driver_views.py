@@ -193,30 +193,33 @@ def driver_home(request, driver):
     # holda ular abadiy faqat bitta (javob bermagan) haydovchiga "osilib qoladi"
     dispatch_cutoff = timezone.now() - timezone.timedelta(seconds=_tariff.dispatch_timeout)
 
-    # Haydovchi hozir biror buyurtmani bajarayotgan bo'lsa (accepted/on_way/
-    # arrived) — uni bezovta qilmaslik uchun boshqa (hali hech kim olmagan)
-    # buyurtmalar butunlay ko'rsatilmaydi va yangi buyurtma bildirishnomasi
-    # kelmaydi. Joriy buyurtma yakunlangach (yoki bekor qilingach) navbatdagi
-    # buyurtmalar yana ko'rinadi.
-    active_order = Order.objects.filter(
-        driver=driver, status__in=['accepted', 'on_way', 'arrived']
-    ).select_related('client', 'driver').first()
+    # Haydovchida bajarilayotgan buyurtma(lar) (accepted/on_way/arrived)
+    # bo'lsa ham — ular Order.MAX_ACTIVE_PER_DRIVER (hozircha 2) tagacha bo'lsa,
+    # haydovchi yana bitta yangi buyurtma qabul qila oladi, shu sabab pending
+    # buyurtmalar HAM ko'rsatiladi va bildirishnoma keladi. Faqat allaqachon
+    # limitga yetgan bo'lsa, yangi (hali hech kim olmagan) buyurtmalar
+    # ko'rsatilmaydi — aks holda qabul qilib bo'lmaydigan narsani ko'rsatib,
+    # haydovchini chalg'itardik.
+    active_orders = list(Order.objects.filter(
+        driver=driver, status__in=Order.ACTIVE_STATUSES
+    ).select_related('client', 'driver'))
 
-    if active_order:
-        base_qs = [active_order]
+    if len(active_orders) >= Order.MAX_ACTIVE_PER_DRIVER:
+        base_qs = active_orders
     else:
         # Diqqat: haydovchi avval "Rad etish" bosgan bo'lsa ham, agar buyurtma
         # hali ham hech kim tomonidan olinmagan (pending) bo'lib qolsa, umumiy
         # ro'yxatda ko'rinishda davom etadi — rad etish faqat avtomatik
         # yuborish (dispatch) navbatidan chiqarib yuboradi, buyurtmani
         # butunlay yashirmaydi.
-        base_qs = Order.objects.select_related('client', 'driver').filter(
+        pending_qs = Order.objects.select_related('client', 'driver').filter(
             Q(status='pending', dispatched_to=driver) |
             Q(status='pending', dispatched_to__isnull=True) |
             Q(status='pending', dispatched_at__lt=dispatch_cutoff)
         ).exclude(
             status__in=['cancelled', 'completed']
         ).order_by('-created_at')
+        base_qs = active_orders + list(pending_qs)
 
     # Destination mode: faqat yo'nalish atrofidagi buyurtmalar
     if driver.destination_mode and driver.destination_lat and driver.destination_lng:
@@ -293,6 +296,7 @@ def driver_home(request, driver):
         'tariff_base_price': int(_tariff.base_price),
         'tariff_per_km': int(_tariff.price_per_km),
         'tariff_commission': int(_tariff.commission),
+        'max_active_orders': Order.MAX_ACTIVE_PER_DRIVER,
         'driver_balance_int': int(driver.balance),
         'today_earned': int(today_stats['earned'] or 0),
         'today_trips': today_stats['trips'] or 0,
@@ -309,25 +313,28 @@ def driver_orders_json(request, driver):
     # qolgan bo'lsa ham) hamma haydovchiga ko'rinsin — driver_home dagi bilan bir xil
     dispatch_cutoff = timezone.now() - timezone.timedelta(seconds=TariffSettings.get().dispatch_timeout)
 
-    # Haydovchi hozir biror buyurtmani bajarayotgan bo'lsa — driver_home dagi
-    # bilan bir xil mantiq: boshqa buyurtmalar butunlay ko'rsatilmaydi.
-    active_order = Order.objects.filter(
-        driver=driver, status__in=['accepted', 'on_way', 'arrived']
-    ).select_related('client').first()
+    # Haydovchi hozir biror buyurtmani bajarayotgan bo'lsa ham — driver_home
+    # dagi bilan bir xil mantiq: Order.MAX_ACTIVE_PER_DRIVER ga yetmagan bo'lsa,
+    # yana bitta buyurtma qabul qilishi mumkin, shu sabab pending buyurtmalar
+    # ham ko'rinadi/bildirishnoma keladi.
+    active_orders = list(Order.objects.filter(
+        driver=driver, status__in=Order.ACTIVE_STATUSES
+    ).select_related('client'))
 
-    if active_order:
-        qs = [active_order]
+    if len(active_orders) >= Order.MAX_ACTIVE_PER_DRIVER:
+        qs = active_orders
     else:
         # rad etilgan bo'lsa ham, hali hech kim olmagan (pending) buyurtma
         # umumiy ro'yxatda ko'rinishda davom etadi — driver_home dagi bilan
         # bir xil mantiq
-        qs = Order.objects.select_related('client').filter(
+        pending_qs = Order.objects.select_related('client').filter(
             Q(status='pending', dispatched_to=driver) |
             Q(status='pending', dispatched_to__isnull=True) |
             Q(status='pending', dispatched_at__lt=dispatch_cutoff)
         ).exclude(
             status__in=['cancelled', 'completed']
         ).order_by('-created_at')
+        qs = active_orders + list(pending_qs)
 
     orders_data = []
     for o in qs:
