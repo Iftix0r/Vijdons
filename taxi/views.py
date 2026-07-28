@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.db.models import Q, Count
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import user_passes_test
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher, VizitkaRewardLog, LegalDocument, SecurityIncident, VoiceParticipant, VoiceSignal
@@ -15,6 +15,18 @@ ONLINE_THRESHOLD_SECONDS = 120  # last_seen shundan yangi bo'lsa — online (yas
 PENDING_ORDER_AGING_SECONDS = 120  # buyurtma shuncha vaqt haydovchisiz tursa — operator e'tiboriga chiqadi
 TOPUP_AGING_HOURS = 3  # to'lov so'rovi shuncha soat hal qilinmasa — dashboardda ogohlantirish chiqadi
 
+# Diqqat (xavfsizlik): oddiy login_required faqat "session autentifikatsiya
+# qilinganmi" ni tekshiradi — driver/client ilovalari HAM shu bilan bir xil
+# Django autentifikatsiya tizimidan (bir xil User modeli, bir xil sessiya
+# cookie) foydalangani uchun, agar panel view'lari ham shunchaki login_required
+# bilan cheklansa, o'z hisobiga kirgan HAR QANDAY haydovchi yoki mijoz ham
+# panel URL'lariga (jumladan balans o'zgartiruvchilariga) to'g'ridan-to'g'ri
+# kirib ketishi mumkin edi — aynan shu sabab bilan bir haydovchi panelga kirib,
+# o'z balansini o'zgartirib olgan edi. Shuning uchun panelning BARCHA
+# view'lari uchun `is_staff`ni ham tekshiruvchi shu decorator ishlatiladi.
+panel_login_required = user_passes_test(
+    lambda u: u.is_authenticated and u.is_staff, login_url='taxi:panel_login')
+
 
 def _get_client_ip(request):
     x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -25,7 +37,7 @@ def _get_client_ip(request):
 
 # ── Order ──────────────────────────────────────────────────────────────────────
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def order_detail(request, pk):
     order = get_object_or_404(
         Order.objects.select_related('client', 'driver', 'dispatched_to')
@@ -40,7 +52,7 @@ def order_detail(request, pk):
     })
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def client_detail(request, pk):
     from django.db.models import Sum, Count
     client = get_object_or_404(Client, pk=pk)
@@ -58,7 +70,7 @@ def client_detail(request, pk):
     })
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def order_create(request):
     if request.method == 'POST':
         phone_number  = request.POST.get('phone_number', '').strip()
@@ -171,7 +183,7 @@ def _refund_order_commission(order, driver, reason):
     return commission
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def order_update_status(request, pk):
     order = get_object_or_404(Order, pk=pk)
     if request.method == 'POST':
@@ -216,7 +228,7 @@ def order_update_status(request, pk):
     return redirect(request.META.get('HTTP_REFERER', 'taxi:order_list'))
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def order_cancel_reassign(request, pk):
     """Haydovchi operatorga qo'ng'iroq qilib buyurtmani bekor qilishni so'raganda
     ishlatiladi: haydovchidan yechilgan komissiya unga qaytariladi, buyurtma undan
@@ -264,7 +276,7 @@ def order_cancel_reassign(request, pk):
     return redirect(request.META.get('HTTP_REFERER', 'taxi:order_list'))
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def order_delete(request, pk):
     order = get_object_or_404(Order, pk=pk)
     if request.method == 'POST':
@@ -280,7 +292,7 @@ def order_delete(request, pk):
 
 # ── Driver ─────────────────────────────────────────────────────────────────────
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def driver_create(request):
     if request.method == 'POST':
         full_name    = request.POST.get('full_name', '').strip()
@@ -302,7 +314,7 @@ def driver_create(request):
     return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def driver_delete(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == 'POST':
@@ -313,7 +325,7 @@ def driver_delete(request, pk):
     return redirect('taxi:driver_list')
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def driver_toggle_active(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == 'POST':
@@ -330,7 +342,7 @@ def driver_toggle_active(request, pk):
     return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def driver_approve(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == 'POST':
@@ -350,7 +362,7 @@ def driver_approve(request, pk):
     return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def driver_recharge(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == 'POST':
@@ -380,7 +392,7 @@ def driver_recharge(request, pk):
 
 # ── Driver Detail ─────────────────────────────────────────────────────────────
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def driver_detail(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     logs   = driver.activity_logs.all()[:100]
@@ -397,7 +409,7 @@ def driver_detail(request, pk):
 
 # ── Client ─────────────────────────────────────────────────────────────────────
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def client_create(request):
     if request.method == 'POST':
         full_name    = request.POST.get('full_name', '').strip()
@@ -410,7 +422,7 @@ def client_create(request):
     return redirect(request.META.get('HTTP_REFERER', 'taxi:client_list'))
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def client_delete(request, pk):
     client = get_object_or_404(Client, pk=pk)
     if request.method == 'POST':
@@ -418,7 +430,7 @@ def client_delete(request, pk):
     return redirect('taxi:client_list')
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def client_block_toggle(request, pk):
     client = get_object_or_404(Client, pk=pk)
     if request.method == 'POST':
@@ -429,7 +441,7 @@ def client_block_toggle(request, pk):
 
 # ── Pages ──────────────────────────────────────────────────────────────────────
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def panel_dashboard(request):
     from django.utils import timezone
     from django.db.models import Sum, Avg, Count
@@ -546,7 +558,7 @@ def panel_dashboard(request):
     return render(request, 'taxi/panel.html', context)
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def aging_orders_count(request):
     from django.utils import timezone
     cutoff = timezone.now() - timezone.timedelta(seconds=PENDING_ORDER_AGING_SECONDS)
@@ -554,7 +566,7 @@ def aging_orders_count(request):
     return JsonResponse({'count': count})
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def order_list(request):
     qs = Order.objects.select_related('client', 'driver')
     q      = request.GET.get('q', '').strip()
@@ -587,7 +599,7 @@ def order_list(request):
     return render(request, 'taxi/order_list.html', context)
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def driver_list(request):
     from django.db.models import Case, When, Value, IntegerField
     from django.utils import timezone
@@ -643,7 +655,7 @@ def driver_list(request):
     })
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def client_list(request):
     q      = request.GET.get('q', '').strip()
     filter_ = request.GET.get('filter', '').strip()
@@ -662,7 +674,7 @@ def client_list(request):
 
 # ── Tariff Settings ────────────────────────────────────────────────────────────
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def bot_settings(request):
     from django.conf import settings as django_settings
     bot = BotSettings.get()
@@ -771,7 +783,7 @@ def bot_settings(request):
     })
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def sms_settings(request):
     sms = SmsSettings.get()
     saved = False
@@ -813,7 +825,7 @@ def sms_settings(request):
 
 # ── AI o'sish tavsiyalari ─────────────────────────────────────────────────────
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def ai_settings(request):
     cfg = AiSettings.get()
     saved = False
@@ -829,7 +841,7 @@ def ai_settings(request):
     })
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def panel_ai_insights(request):
     from django.utils import timezone
     from django.db.models import Sum, Count, Avg
@@ -959,7 +971,7 @@ def panel_ai_insights(request):
     return JsonResponse({'ok': False, 'error': result}, status=400)
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 @require_POST
 def panel_ai_reward_given(request):
     """Operator AI tavsiya qilgan sovg'ani haydovchi/mijozga qo'lda berganini
@@ -991,7 +1003,7 @@ def panel_ai_reward_given(request):
     return JsonResponse({'ok': True})
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def bot_admin_add(request):
     if request.method == 'POST':
         chat_id   = request.POST.get('chat_id', '').strip()
@@ -1001,7 +1013,7 @@ def bot_admin_add(request):
     return redirect('taxi:bot_settings')
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def bot_admin_delete(request, pk):
     admin = get_object_or_404(BotAdmin, pk=pk)
     if request.method == 'POST':
@@ -1009,7 +1021,7 @@ def bot_admin_delete(request, pk):
     return redirect('taxi:bot_settings')
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def bot_admin_toggle(request, pk):
     admin = get_object_or_404(BotAdmin, pk=pk)
     if request.method == 'POST':
@@ -1018,7 +1030,7 @@ def bot_admin_toggle(request, pk):
     return redirect('taxi:bot_settings')
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def sound_settings(request):
     from .constants import PANEL_SOUND_EVENTS, DRIVER_SOUND_EVENTS
     all_keys = [k for k, _ in PANEL_SOUND_EVENTS + DRIVER_SOUND_EVENTS]
@@ -1160,7 +1172,7 @@ def client_bot_webhook(request):
     return HttpResponse('ok')
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def maps_settings(request):
     maps = MapsSettings.get()
     if request.method == 'POST':
@@ -1173,7 +1185,7 @@ def maps_settings(request):
     return render(request, 'taxi/maps_settings.html', {'maps': maps})
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def tariff_settings(request):
     tariff = TariffSettings.get()
     if request.method == 'POST':
@@ -1196,7 +1208,7 @@ def tariff_settings(request):
 
 # ── SOS ──────────────────────────────────────────────────────────────────────────────
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def sos_list(request):
     qs = SosAlert.objects.select_related('driver').order_by('-created_at')
     status_filter = request.GET.get('status', '')
@@ -1209,7 +1221,7 @@ def sos_list(request):
     })
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def sos_resolve(request, pk):
     alert = get_object_or_404(SosAlert, pk=pk)
     if request.method == 'POST':
@@ -1229,7 +1241,7 @@ def sos_count(request):
 
 # ── Balans to'ldirish so'rovlari (admin panel) ──────────────────────────────
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def topup_list(request):
     from django.db.models import Sum
     from django.utils import timezone
@@ -1295,7 +1307,7 @@ def topup_list(request):
     })
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def balance_log_export_csv(request):
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename="balans_tarixi.csv"'
@@ -1325,7 +1337,7 @@ def balance_log_export_csv(request):
     return response
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def balance_log_receipt_pdf(request, pk):
     log = get_object_or_404(BalanceLog.objects.select_related('driver'), pk=pk)
     buf = build_balance_receipt_pdf(log)
@@ -1334,7 +1346,7 @@ def balance_log_receipt_pdf(request, pk):
     return response
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def topup_resolve(request, pk):
     topup = get_object_or_404(BalanceTopupRequest, pk=pk)
     if request.method == 'POST' and topup.status == BalanceTopupRequest.STATUS_PENDING:
@@ -1371,7 +1383,7 @@ def topup_resolve(request, pk):
     return redirect(request.META.get('HTTP_REFERER', 'taxi:topup_list'))
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def panel_events_api(request):
     """Operator panel ovozli bildirishnomasi uchun polling endpoint.
     ?since=<id> dan keyingi hodisalarni, har biri uchun mos ovoz URL bilan qaytaradi."""
@@ -1987,7 +1999,7 @@ def operator_bot_set_webhook(request):
         return JsonResponse({'ok': False, 'message': str(e)})
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def driver_map(request):
     from taxi.models import MapsSettings
     drivers = Driver.objects.filter(
@@ -2003,7 +2015,7 @@ def driver_map(request):
     })
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def active_drivers_locations(request):
     from django.utils import timezone
     drivers = Driver.objects.filter(
@@ -2035,7 +2047,7 @@ def active_drivers_locations(request):
 
 # ── Operator Chat ──────────────────────────────────────────────────────────────────
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def operator_chat(request):
     drivers = Driver.objects.filter(approval_status=Driver.APPROVAL_APPROVED).order_by('full_name')
     driver_data = []
@@ -2092,7 +2104,7 @@ def operator_chat_unread(request):
     return JsonResponse({'unread': count})
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 @require_POST
 def operator_chat_typing(request):
     """AJAX: operator xabar yozayotganini haydovchi ilovasiga bildirish uchun belgi qo'yadi."""
@@ -2130,7 +2142,12 @@ def _send_fcm_to_driver(driver, title, body):
 # ── Login / Logout ─────────────────────────────────────────────────────────────
 
 def panel_login(request):
-    if request.user.is_authenticated:
+    # Diqqat: faqat is_authenticated emas, is_staff ham tekshiriladi — aks
+    # holda (masalan) haydovchi hisobi bilan kirgan foydalanuvchi bu yerga
+    # kelganda "allaqachon kirgan" deb dashboard'ga yo'naltirilardi, dashboard
+    # esa (endi is_staff talab qilgani uchun) uni yana shu yerga qaytarib,
+    # cheksiz redirect siklini hosil qilardi.
+    if request.user.is_authenticated and request.user.is_staff:
         return redirect('taxi:panel_dashboard')
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
@@ -2150,7 +2167,7 @@ def panel_logout(request):
 
 # ── Driver Edit ────────────────────────────────────────────────────────────────
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def driver_edit(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == 'POST':
@@ -2183,7 +2200,7 @@ def driver_edit(request, pk):
 
 # ── Order price edit ───────────────────────────────────────────────────────────
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def order_edit_price(request, pk):
     order = get_object_or_404(Order, pk=pk)
     if request.method == 'POST':
@@ -2198,7 +2215,7 @@ def order_edit_price(request, pk):
 
 # ── Orders CSV export ──────────────────────────────────────────────────────────
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def orders_export_csv(request):
     qs = Order.objects.select_related('client', 'driver').order_by('-created_at')
     date_from = request.GET.get('date_from')
@@ -2254,7 +2271,7 @@ def _statistics_range(request):
     return period, start_date, end_date
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def statistics(request):
     from django.db.models import Sum, Count, Avg
     from django.db.models.functions import ExtractHour
@@ -2335,7 +2352,7 @@ def statistics(request):
     })
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def statistics_export_csv(request):
     from django.db.models import Sum
     from datetime import timedelta
@@ -2386,7 +2403,7 @@ def _finance_breakdown(completed_qs, field, choices):
     return rows
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def finance_dashboard(request):
     from django.db.models import Sum, Count
     from datetime import timedelta
@@ -2451,7 +2468,7 @@ def finance_dashboard(request):
     })
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def finance_export_csv(request):
     from django.db.models import Sum, Count
 
@@ -2487,7 +2504,7 @@ def finance_export_csv(request):
 DOCUMENT_EXPIRY_WARNING_DAYS = 30  # hujjat muddati shuncha kun qolganda ogohlantiriladi
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def security_dashboard(request):
     from datetime import timedelta
     from django.utils import timezone
@@ -2521,7 +2538,7 @@ def security_dashboard(request):
     })
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def security_incident_create(request):
     if request.method == 'POST':
         SecurityIncident.objects.create(
@@ -2537,7 +2554,7 @@ def security_incident_create(request):
     return redirect('taxi:security_dashboard')
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def security_incident_update(request, pk):
     incident = get_object_or_404(SecurityIncident, pk=pk)
     if request.method == 'POST':
@@ -2553,7 +2570,7 @@ def security_incident_update(request, pk):
     return redirect(request.META.get('HTTP_REFERER', 'taxi:security_dashboard'))
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def security_document_upload(request):
     if request.method == 'POST' and request.FILES.get('file'):
         LegalDocument.objects.create(
@@ -2570,7 +2587,7 @@ def security_document_upload(request):
     return redirect('taxi:security_dashboard')
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def security_document_delete(request, pk):
     document = get_object_or_404(LegalDocument, pk=pk)
     if request.method == 'POST':
@@ -2586,7 +2603,7 @@ def security_document_delete(request, pk):
 # bo'ladi. Umumiy mantiq taxi/utils.py dagi voice_* funksiyalarda — batafsili
 # uchun taxi/driver_views.py dagi driver_voice_* (haydovchi tomoni) ga qarang.
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 @require_POST
 def panel_voice_join(request):
     voice_prune_stale()
@@ -2594,7 +2611,7 @@ def panel_voice_join(request):
     return JsonResponse({'ok': True, 'participants': voice_participants_list(f'o{request.user.id}')})
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 @require_POST
 def panel_voice_leave(request):
     others = voice_participants_list(f'o{request.user.id}')
@@ -2608,7 +2625,7 @@ def panel_voice_leave(request):
     return JsonResponse({'ok': True})
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def panel_voice_heartbeat(request):
     try:
         VoiceParticipant.objects.get(operator=request.user).save(update_fields=['last_seen'])
@@ -2633,7 +2650,7 @@ def panel_voice_heartbeat(request):
     })
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 @require_POST
 def panel_voice_signal(request):
     try:
@@ -2657,7 +2674,7 @@ def panel_voice_signal(request):
 
 # ── Haydovchi shartnomasi ──────────────────────────────────────────────────────
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def contract_settings(request):
     contract = ContractSettings.get()
     saved = False
@@ -2678,7 +2695,7 @@ def contract_settings(request):
     })
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def contract_download_blank(request):
     from django.utils.text import slugify
     contract = ContractSettings.get()
@@ -2688,7 +2705,7 @@ def contract_download_blank(request):
     return response
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def driver_contract_download(request, pk):
     from django.utils.text import slugify
     driver = get_object_or_404(Driver, pk=pk)
@@ -2707,7 +2724,7 @@ def driver_contract_download(request, pk):
 
 # ── Reklama flayeri ────────────────────────────────────────────────────────────
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def flyer_page(request):
     from django.utils import timezone
     from datetime import timedelta
@@ -2761,7 +2778,7 @@ def flyer_verify(request, code):
     return render(request, 'taxi/flyer_verify.html', {'voucher': voucher, 'code': code.strip().upper()})
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 @require_POST
 def flyer_download(request):
     fmt = request.POST.get('format', 'flyer')
@@ -2793,7 +2810,7 @@ def flyer_download(request):
     return response
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 @require_POST
 def flyer_redeem(request):
     from django.utils import timezone
@@ -2839,7 +2856,7 @@ def flyer_redeem(request):
     return redirect('taxi:flyer_page')
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 @require_POST
 def flyer_reward_bonus(request):
     """Haftalik 'Mijoz olib kel' vizitka reytingida eng ko'p vizitka
@@ -2892,7 +2909,7 @@ def flyer_reward_bonus(request):
 
 # ── Vazifalar (Task board) ────────────────────────────────────────────────────
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 def task_list(request):
     if request.method == 'POST':
         title = request.POST.get('title', '').strip()
@@ -2908,7 +2925,7 @@ def task_list(request):
     })
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 @require_POST
 def task_set_status(request, pk):
     from django.utils import timezone
@@ -2922,7 +2939,7 @@ def task_set_status(request, pk):
     return JsonResponse({'ok': True})
 
 
-@login_required(login_url='taxi:panel_login')
+@panel_login_required
 @require_POST
 def task_delete(request, pk):
     Task.objects.filter(pk=pk).delete()
