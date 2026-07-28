@@ -291,7 +291,7 @@
        KATTA bo'lishi shart — aks holda pastki panel tab-bar orqasiga
        yashirinib/kesilib qolardi. -->
   <div id="sheet" class="ios-sheet absolute left-4 right-4 overflow-y-auto"
-       style="bottom:calc(env(safe-area-inset-bottom,16px) + 96px);border-radius:20px;transform:translateY(calc(100% + 200px));transition:transform .38s cubic-bezier(.32,.72,0,1);max-height:32vh">
+       style="z-index:6;bottom:calc(env(safe-area-inset-bottom,16px) + 96px);border-radius:20px;transform:translateY(calc(100% + 200px));transition:transform .38s cubic-bezier(.32,.72,0,1);max-height:32vh">
     <div id="sheet-body" class="px-4 py-3.5 space-y-2"></div>
   </div>
 </div>
@@ -438,6 +438,11 @@ async function loadOrders() {
     if(!Array.isArray(d.new_ids)) return;
 
     const serverIds = new Set(d.new_ids);
+    // Diqqat: "o'chirilgan" buyurtmani pastda topish uchun ESKI ro'yxat kerak
+    // — ORDERS quyida yangisiga almashtirilgach, o'chirilgan buyurtma unda
+    // umuman topilmay qolardi (har doim "topilmadi" bo'lib, bekor qilingan
+    // faol buyurtma haqidagi bildirishnoma HECH QACHON chiqmasdi).
+    const prevOrders = ORDERS;
     if(d.orders) ORDERS = d.orders;
 
     const added = d.new_ids.filter(id => !_known.has(id));
@@ -462,13 +467,19 @@ async function loadOrders() {
 
     const removed = [..._known].filter(id => !serverIds.has(id));
     if(removed.length) {
-      // Faol buyurtma (accepted/on_way/arrived) o'chirilgan bo'lsa — haydovchiga xabar
+      // Faol buyurtma (accepted/on_way/arrived) o'chirilgan bo'lsa — haydovchiga
+      // xabar. Diqqat: bu yerda ESKI ro'yxatdan (prevOrders) qidiramiz — yangi
+      // ORDERS'da o'chirilgan buyurtma allaqachon yo'q.
       const removedActive = removed.filter(id => {
-        const o = ORDERS.find(x => x.id === id);
+        const o = prevOrders.find(x => x.id === id);
         return o && (o.status === 'accepted' || o.status === 'on_way' || o.status === 'arrived');
       });
       if (removedActive.length) {
-        tmxStop();
+        // Ikkita faol buyurtma bir vaqtda bo'lishi mumkin — faqat hozir jonli
+        // kuzatilayotgan (_tmxOrderId) o'sha bekor qilinganlardan biri bo'lsagina
+        // taximetrni to'xtatamiz, aks holda boshqa (davom etayotgan) buyurtma
+        // hisoblagichi ham bekorga uzilib qolardi.
+        if (removedActive.includes(_tmxOrderId)) tmxStop();
         showToast('Buyurtma bekor qilindi', 'Operator tomonidan bekor qilindi', 'error', 5000);
         Native.vibrate([100, 50, 100]);
       }

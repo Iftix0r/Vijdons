@@ -389,7 +389,11 @@ function dismissAllSheets() {
     ov.style.pointerEvents = 'none';
   });
   document.querySelectorAll('#sheet').forEach(sh => {
-    sh.style.transform = 'translateY(100%)';
+    // Diqqat: oddiy "100%" ba'zi sahifalarda (masalan Asosiy) #sheet endi
+    // pastdan bo'shliq bilan (tab-bar ustidan) joylashgani uchun to'liq
+    // yashirmasdi — qo'shimcha bo'shliq bilan har doim to'liq ekrandan
+    // tashqariga chiqarib yuboramiz (bottom:0 bo'lgan sheet'lar uchun ham xavfsiz).
+    sh.style.transform = 'translateY(calc(100% + 200px))';
   });
 }
 window.addEventListener('pagehide', dismissAllSheets);
@@ -1284,7 +1288,10 @@ function _resetSheetOverlay() {
   if (!ov || !sh) return;
   ov.classList.add('hidden');
   ov.style.pointerEvents = 'none';
-  sh.style.transform = 'translateY(100%)';
+  // dismissAllSheets() dagi bilan bir xil sabab — Asosiy sahifadagi #sheet
+  // endi pastdan bo'shliq bilan joylashgani uchun oddiy "100%" to'liq
+  // yashirmaydi.
+  sh.style.transform = 'translateY(calc(100% + 200px))';
 }
 
 function _tmxPersist() {
