@@ -190,10 +190,12 @@
   <div id="sheet-map-hint" class="flex items-center justify-center" style="position:absolute;inset:0;pointer-events:none;display:none">
     <span class="ios-caption2" style="color:rgba(255,255,255,.4)">Manzil xaritada ko'rsatilmagan</span>
   </div>
-  <div id="sheet" class="ios-sheet absolute bottom-0 left-0 right-0 overflow-y-auto"
-       style="transform:translateY(100%);transition:transform .38s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom,34px);max-height:45vh">
-    <div class="ios-sheet-handle"></div>
-    <div id="sheet-body" class="px-4 pt-3 pb-4 space-y-2.5"></div>
+  <!-- Endi ekran chetlariga yopishmagan, suzib turuvchi ixcham karta — asosiy
+       sahifadagi qalqib turuvchi elementlar (chip, tugma) kabi, xaritaning
+       katta qismi doim ochiq qolishi uchun balandligi mumkin qadar cheklangan. -->
+  <div id="sheet" class="ios-sheet absolute left-4 right-4 overflow-y-auto"
+       style="bottom:calc(env(safe-area-inset-bottom,16px) + 16px);border-radius:20px;transform:translateY(calc(100% + 40px));transition:transform .38s cubic-bezier(.32,.72,0,1);max-height:40vh">
+    <div id="sheet-body" class="px-4 py-3.5 space-y-2"></div>
   </div>
 </div>
 
@@ -1202,7 +1204,7 @@ function _renderSheet(id, o){
 function closeSheet(){
   const sh=document.getElementById('sheet');
   const ov=document.getElementById('sheet-overlay');
-  sh.style.transform='translateY(100%)';
+  sh.style.transform='translateY(calc(100% + 40px))';
   // Overlay pointer-events ni darhol o'chiramiz — animatsiya tugashini kutmasdan
   ov.style.pointerEvents='none';
   _destroySheetMap();
