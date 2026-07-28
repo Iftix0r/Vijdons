@@ -1118,7 +1118,12 @@ async function _voiceHandleSignal(sig) {
   const isNewPeer = !_voicePeers[peerId];
   const entry = _voicePeer(peerId, sig.from_name);
   if (sig.kind === 'offer') {
-    if (isNewPeer) _voicePlayJoinChime();
+    // Diqqat: VOICE_AUDIO_CONSTRAINTS'da echoCancellation:false — shu sabab,
+    // agar haydovchi hozir gapirayotgan bo'lsa (mikrofon yoniq), shu paytda
+    // qurilma karnayidan chalingan "qo'shildi" ovozi mikrofonning o'ziga
+    // "sizib kirib", boshqa hamma ishtirokchiga ham eshitilib qolar edi.
+    // Shu sabab chime faqat gapirmayotganda (mikrofon o'chiq) chalinadi.
+    if (isNewPeer && !_voiceTalking) _voicePlayJoinChime();
     await entry.pc.setRemoteDescription(new RTCSessionDescription(sig.payload));
     for (const c of entry.candQueue) { try { await entry.pc.addIceCandidate(c); } catch (_) {} }
     entry.candQueue = [];
