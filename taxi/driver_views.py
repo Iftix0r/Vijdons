@@ -423,6 +423,14 @@ def driver_order_action(request, driver, pk, action):
             locked = Order.objects.select_for_update().get(pk=pk)
             if locked.status != 'pending':
                 return JsonResponse({'ok': False, 'error': 'Bu buyurtmani boshqa haydovchi qabul qildi'}, status=409)
+            # Diqqat (xavfsizlik): buyurtma hozir aniq bir haydovchiga
+            # (dispatched_to) navbat bilan yuborilgan bo'lsa, o'sha oynada
+            # FAQAT o'sha haydovchi qabul qila oladi — aks holda boshqa
+            # haydovchi to'g'ridan-to'g'ri pk bilan so'rov yuborib, navbatni
+            # chetlab o'tib olishi mumkin edi (mobil API'dagi _order_action
+            # bu tekshiruvni allaqachon qilardi, veb panel yo'q edi).
+            if locked.dispatched_to_id and locked.dispatched_to_id != driver.id:
+                return JsonResponse({'ok': False, 'error': 'Bu buyurtma sizga yuborilmagan'}, status=403)
             active_count = Order.objects.filter(driver=driver, status__in=Order.ACTIVE_STATUSES).count()
             if active_count >= Order.MAX_ACTIVE_PER_DRIVER:
                 return JsonResponse({
@@ -1039,48 +1047,6 @@ def driver_order_eta(request, driver, pk):
             eta_min = round(distance_km / 30 * 60)
             eta_min = max(1, eta_min)
     return JsonResponse({'ok': True, 'eta_min': eta_min, 'distance_km': round(distance_km, 2) if distance_km else None})
-
-
-# ── Rating: buyurtma yakunida haydovchiga reyting berish ─────────────────────
-@driver_login_required
-@require_POST
-def driver_order_rate(request, driver, pk):
-    """Operator yoki mijoz haydovchiga reyting beradi (1-5)."""
-    order = get_object_or_404(Order, pk=pk)
-    if order.driver_id and order.driver_id != driver.id:
-        return JsonResponse({'ok': False, 'error': 'Bu buyurtma sizga tegishli emas'}, status=403)
-    if order.status != 'completed':
-        return JsonResponse({'ok': False, 'error': 'Faqat yakunlangan buyurtmaga reyting beriladi'}, status=400)
-    try:
-        stars = int(request.POST.get('stars', 0))
-        if not 1 <= stars <= 5:
-            raise ValueError
-    except (ValueError, TypeError):
-        return JsonResponse({'ok': False, 'error': '1-5 orasida reyting bering'}, status=400)
-
-    order.client_rating = stars
-    order.save(update_fields=['client_rating'])
-
-    # Haydovchi o'rtacha reytingini yangilash
-    if order.driver:
-        d = order.driver
-        old_rating = d.rating
-        rated_orders = Order.objects.filter(
-            driver=d, status='completed', client_rating__isnull=False
-        )
-        count = rated_orders.count()
-        if count > 0:
-            from django.db.models import Avg
-            avg = rated_orders.aggregate(a=Avg('client_rating'))['a']
-            d.rating = round(avg, 2)
-            d.rating_count = count
-            d.save(update_fields=['rating', 'rating_count'])
-            # Reyting 4.0 chegarasidan pastga endigina o'tgan bo'lsa ogohlantirish
-            # yuboriladi (har safar emas) — kamida 5 ta baho to'plangandan keyin.
-            if count >= 5 and old_rating >= 4.0 > d.rating:
-                from .utils import tg_low_rating_alert
-                tg_low_rating_alert(d)
-    return JsonResponse({'ok': True})
 
 
 # ── SOS ──────────────────────────────────────────────────────────────────────

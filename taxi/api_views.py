@@ -493,7 +493,8 @@ def order_cancel(request, driver, pk):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def maps_config(request):
+@driver_required
+def maps_config(request, driver):
     """Mobil ilova uchun Maps API kalitlarini qaytaradi."""
     maps = MapsSettings.get()
     return Response({'yandex_api_key': maps.yandex_mapkit_key})
@@ -503,7 +504,8 @@ def maps_config(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def reverse_geocode(request):
+@driver_required
+def reverse_geocode(request, driver):
     """Koordinatalarni manzilga aylantiradi — admin tanlagan API orqali."""
     lat = request.query_params.get('lat')
     lng = request.query_params.get('lng')
@@ -731,6 +733,15 @@ from django.http import JsonResponse as DjJsonResponse
 from .models import Client, Order
 
 def client_last_order_api(request):
+    # Diqqat (xavfsizlik): bu operator panelidagi "yangi buyurtma" formasi
+    # telefon raqami kiritilganda mijozning oxirgi manzilini avtomatik
+    # to'ldirish uchun chaqiradi (taxi/templates/taxi/base.html) — hech qanday
+    # autentifikatsiya tekshiruvisiz qoldirilgan bo'lsa, istalgan kishi
+    # internetdan telefon raqamini almashtirib (Uzbekiston raqamlari kichik,
+    # sanab chiqib bo'ladigan maydon), HAR BIR mijozning ismi va uy/olib
+    # ketish manzilini (GPS koordinatasi bilan) sizib olishi mumkin edi.
+    if not (request.user.is_authenticated and request.user.is_staff):
+        return DjJsonResponse({'found': False}, status=403)
     phone = request.GET.get('phone', '').strip()
     if not phone:
         return DjJsonResponse({'found': False})
