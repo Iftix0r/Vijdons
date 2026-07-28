@@ -439,6 +439,22 @@ def client_block_toggle(request, pk):
     return redirect('taxi:client_list')
 
 
+@panel_login_required
+def client_send_sms(request, pk):
+    client = get_object_or_404(Client, pk=pk)
+    if request.method == 'POST':
+        text = request.POST.get('text', '').strip()
+        if not text:
+            messages.error(request, 'SMS matni bo\'sh bo\'lishi mumkin emas.')
+        else:
+            ok, message = send_sms(client.phone_number, text)
+            if ok:
+                messages.success(request, f"SMS {client.phone_number} raqamiga yuborildi.")
+            else:
+                messages.error(request, f"SMS yuborilmadi: {message}")
+    return redirect(request.META.get('HTTP_REFERER', 'taxi:client_list'))
+
+
 # ── Pages ──────────────────────────────────────────────────────────────────────
 
 @panel_login_required

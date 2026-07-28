@@ -127,6 +127,11 @@
                                     class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-500 hover:bg-yellow-100 hover:text-yellow-600 transition-colors" title="Yangi buyurtma">
                                 <i class="fas fa-plus text-xs"></i>
                             </button>
+                            <!-- SMS yuborish -->
+                            <button type="button" onclick="openClientSmsModal('{{ client.pk }}', '{{ client.full_name|default:'' }}', '{{ client.phone_number }}')"
+                                    class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 hover:bg-emerald-100 hover:text-emerald-600 transition-colors" title="SMS yuborish">
+                                <i class="fas fa-comment-sms text-xs"></i>
+                            </button>
                             <!-- Blok/Ochish -->
                             <button type="button" onclick="document.getElementById('block-client-{{ client.pk }}').submit()"
                                     title="{% if client.is_blocked %}Blokdan chiqarish{% else %}Bloklash{% endif %}"

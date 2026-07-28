@@ -692,6 +692,40 @@
     </div>
 </div>
 
+<!-- Client SMS modal -->
+<div id="clientSmsModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white"><i class="fas fa-comment-sms text-emerald-500 mr-2"></i>SMS yuborish</h2>
+            <button onclick="closeModal('clientSmsModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form id="clientSmsForm" method="POST" class="px-6 py-5 space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Qabul qiluvchi</label>
+                <p id="cs_recipient" class="text-sm font-semibold text-gray-800 dark:text-white"></p>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Xabar matni</label>
+                <textarea name="text" id="cs_text" required rows="4" maxlength="500" placeholder="Xabar matnini kiriting..."
+                          class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 dark:text-white transition"></textarea>
+            </div>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('clientSmsModal')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold shadow-md shadow-emerald-200 dark:shadow-none transition">
+                    <i class="fas fa-paper-plane mr-1.5"></i>Yuborish
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Mobile sidebar overlay -->
 <div id="sidebar-overlay"></div>
 
@@ -775,6 +809,14 @@
         document.getElementById('de_car_type').value      = carType || '';
         document.getElementById('de_new_password').value  = '';
         openModal('driverEditModal');
+    }
+
+    // ── Client SMS modal ──
+    function openClientSmsModal(id, name, phone) {
+        document.getElementById('clientSmsForm').action = `/panel/clients/${id}/sms/`;
+        document.getElementById('cs_recipient').textContent = (name ? name + ' — ' : '') + phone;
+        document.getElementById('cs_text').value = '';
+        openModal('clientSmsModal');
     }
 
     // ── Yandex Map Logic ──

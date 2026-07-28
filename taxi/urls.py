@@ -47,6 +47,7 @@ urlpatterns = [
     path('clients/<int:pk>/', views.client_detail, name='client_detail'),
     path('clients/<int:pk>/delete/', views.client_delete, name='client_delete'),
     path('clients/<int:pk>/block/', views.client_block_toggle, name='client_block_toggle'),
+    path('clients/<int:pk>/sms/', views.client_send_sms, name='client_send_sms'),
 
     path('drivers/<int:pk>/edit/', views.driver_edit, name='driver_edit'),
     path('orders/<int:pk>/edit-price/', views.order_edit_price, name='order_edit_price'),

@@ -27,6 +27,10 @@
                 class="flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold rounded-xl transition-colors">
             <i class="fas fa-plus"></i> Buyurtma
         </button>
+        <button onclick="openClientSmsModal('{{ client.pk }}', '{{ client.full_name|default:'' }}', '{{ client.phone_number }}')"
+                class="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl transition-colors">
+            <i class="fas fa-comment-sms"></i> SMS
+        </button>
     </div>
 </div>
 
