@@ -115,19 +115,28 @@
 }
 </style>
 
-<!-- Jonli xarita — o'z joylashuvi + hozir navbatdagi boshqa haydovchilar -->
-<div class="px-4 pt-1">
-  <div class="ios-card2 rounded-[16px] overflow-hidden relative" style="width:100%;height:280px">
+<!-- Jonli xarita — o'z joylashuvi + hozir navbatdagi boshqa haydovchilar.
+     Chetlardan bo'shliqsiz (to'liq eninicha) — Yandex/Uber uslubidagi asosiy
+     xarita panjarasi kabi ko'proq joy egallasin. -->
+<div class="relative" style="margin-top:-4px">
+  <div class="overflow-hidden relative" style="width:100%;height:400px">
     <div id="home-map" style="width:100%;height:100%;background:#1c1c1f"></div>
     <div id="home-map-hint" class="absolute inset-0 flex items-center justify-center" style="pointer-events:none">
       <span class="ios-caption2" style="color:rgba(255,255,255,.4)">GPS signal kutilmoqda…</span>
     </div>
+    <!-- Xaritaning ostidagi kontent bilan qo'shilib ketmasligi uchun yumshoq soya -->
+    <div class="absolute left-0 right-0 bottom-0 pointer-events-none" style="height:36px;background:linear-gradient(to bottom, transparent, var(--ios-bg))"></div>
     <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px]" style="background:rgba(20,20,22,.65);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
       <span style="width:8px;height:8px;border-radius:50%;background:#FFD600;flex-shrink:0"></span>
       <span class="ios-caption2 font-bold" style="color:#fff">Siz</span>
       <span style="width:8px;height:8px;border-radius:50%;background:#34C759;flex-shrink:0;margin-left:4px"></span>
       <span id="home-map-peers-count" class="ios-caption2 font-bold" style="color:#fff">0 haydovchi</span>
     </div>
+    <button onclick="_homeMapRecenter()"
+      class="absolute bottom-3 right-2.5 w-9 h-9 rounded-full flex items-center justify-center active:opacity-60 transition-opacity"
+      style="background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
+      <i class="fas fa-location-crosshairs" style="color:#FFD600;font-size:15px"></i>
+    </button>
   </div>
 </div>
 
@@ -854,12 +863,19 @@ document.addEventListener('visibilitychange', () => {
     if (_homeMap || typeof ymaps === 'undefined' || !document.getElementById('home-map')) return;
     ymaps.ready(() => {
       if (_homeMap || !document.getElementById('home-map')) return;
-      _homeMap = new ymaps.Map('home-map', { center: [lat, lng], zoom: 13, controls: ['zoomControl'] });
+      _homeMap = new ymaps.Map('home-map', { center: [lat, lng], zoom: 14, controls: ['zoomControl'] });
       const hint = document.getElementById('home-map-hint');
       if (hint) hint.style.display = 'none';
       _homeUpdateMine(lat, lng);
     });
   }
+
+  // "Joylashuvga qaytish" tugmasi — o'z belgisi ustiga markazlashtiradi
+  window._homeMapRecenter = function() {
+    try { Native.vibrate(); } catch(_) {}
+    if (!_homeMap || !_homeMyMark) return;
+    _homeMap.setCenter(_homeMyMark.geometry.getCoordinates(), 15, { checkZoomRange: true });
+  };
 
   // Boshqa (navbatdagi) haydovchilarni ~8s da bir yangilaymiz — driver_map.html
   // dagi (panel) bilan bir xil "eskisini o'chir/yangisini qo'sh" naqshi
