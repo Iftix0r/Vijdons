@@ -2,17 +2,31 @@
 {% block title %}Taksometr{% endblock %}
 {% block content %}
 
+<!-- Jonli xarita — asosiy sahifadagi (home-map) kabi butun ekranga to'liq fon,
+     taksometr ishlayaptimi yo'qmi bundan qat'i nazar doim haydovchining joriy
+     joylashuvini ko'rsatib turadi; qolgan hamma kontent uning ustida suzadi. -->
+<div id="mtx-map" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:0;background:#1c1c1f"></div>
+<div id="mtx-map-hint" class="flex items-center justify-center" style="position:fixed;inset:0;z-index:0;pointer-events:none">
+  <span class="ios-caption2" style="color:rgba(255,255,255,.4)">GPS signal kutilmoqda…</span>
+</div>
+
 <div class="ios-navbar sticky top-3 mx-4 z-20 px-4 pt-3 pb-3">
   <div class="ios-large-title font-bold">Taksometr</div>
 </div>
 
-<div class="px-4 py-3 space-y-4">
+<!-- Diqqat: `relative` shart — xarita to'liq ekranli position:fixed fon
+     (z-index:0), pozitsiyalanmagan oddiy div undan pastda (orqasida) chizilib
+     qolardi (CSS stacking qoidasi: pozitsiyalangan elementlar, z-index:0
+     bo'lsa ham, oddiy statik kontentdan USTUNROQ chiziladi). -->
+<div class="relative px-4 py-3 space-y-4">
 
-  <p class="ios-subhead" style="color:var(--ios-label3)">
-    Yo'l-yo'lakay olingan qo'shimcha mijoz uchun mustaqil taksometr — bu buyurtma dispetcherlik orqali kelmagan,
-    narxni mijozdan o'zingiz (naqd/karta) olasiz. Boshlaganda balansingizdan
-    <b style="color:var(--ios-label)">{{ tariff_commission }} so'm</b> komissiya yechiladi, safar esa Tarixga yoziladi.
-  </p>
+  <div class="ios-card2 rounded-[14px] px-4 py-3">
+    <p class="ios-subhead" style="color:var(--ios-label3)">
+      Yo'l-yo'lakay olingan qo'shimcha mijoz uchun mustaqil taksometr — bu buyurtma dispetcherlik orqali kelmagan,
+      narxni mijozdan o'zingiz (naqd/karta) olasiz. Boshlaganda balansingizdan
+      <b style="color:var(--ios-label)">{{ tariff_commission }} so'm</b> komissiya yechiladi, safar esa Tarixga yoziladi.
+    </p>
+  </div>
 
   <div id="mtx-idle">
     <button id="mtx-start-btn" onclick="mtxStart()"
@@ -48,13 +62,6 @@
           <span id="mtx-speed" style="font-size:13px;font-weight:800;color:#fff">0</span>
           <span style="font-size:10px;color:rgba(255,255,255,.35)">km/h</span>
         </div>
-      </div>
-    </div>
-
-    <div class="ios-card2 rounded-[14px] overflow-hidden relative mt-3" style="width:100%;height:220px">
-      <div id="mtx-map" style="width:100%;height:100%;background:#1c1c1f"></div>
-      <div id="mtx-map-hint" class="absolute inset-0 flex items-center justify-center" style="pointer-events:none">
-        <span class="ios-caption2" style="color:rgba(255,255,255,.4)">GPS signal kutilmoqda…</span>
       </div>
     </div>
 
@@ -155,16 +162,22 @@ function _mtxUpdateMap(lat, lng) {
   _mtxMap.panTo([lat, lng], { flying: false });
 }
 
+// Diqqat: xarita/marker endi taksometr ishlayaptimi yo'qmi bundan qat'i
+// nazar har doim yangilanadi (masofa/iz esa faqat _mtxActive bo'lganda
+// hisoblanadi) — shu sabab bu funksiya (va u tinglayotgan location eventlari)
+// sahifa ochilishidan boshlab, start/finish holatidan mustaqil ishlaydi.
 function _mtxOnLocation(e) {
   const lat = e.detail?.lat, lng = e.detail?.lng, spd = e.detail?.speed;
-  if (!lat || !lng || !_mtxActive) return;
-  if (spd != null && spd >= 0) _mtxSpeedKmh = Math.round(spd * 3.6);
-  if (_mtxPrevLat !== null) {
-    const d = _mtxHaversine(_mtxPrevLat, _mtxPrevLng, lat, lng);
-    if (d > 0.005 && d < 2.0) { _mtxDistKm += d; _mtxPersist(); }
+  if (!lat || !lng) return;
+  if (_mtxActive) {
+    if (spd != null && spd >= 0) _mtxSpeedKmh = Math.round(spd * 3.6);
+    if (_mtxPrevLat !== null) {
+      const d = _mtxHaversine(_mtxPrevLat, _mtxPrevLng, lat, lng);
+      if (d > 0.005 && d < 2.0) { _mtxDistKm += d; _mtxPersist(); }
+    }
+    _mtxPrevLat = lat;
+    _mtxPrevLng = lng;
   }
-  _mtxPrevLat = lat;
-  _mtxPrevLng = lng;
   _mtxUpdateMap(lat, lng);
 }
 
@@ -187,15 +200,13 @@ function mtxStart() {
   _mtxPrevLat   = null;
   _mtxPrevLng   = null;
   _mtxSpeedKmh  = 0;
-  _mtxPath      = [];
+  _mtxPath      = _mtxPath.length ? [_mtxPath[_mtxPath.length - 1]] : [];
+  if (_mtxPolyline) _mtxPolyline.geometry.setCoordinates(_mtxPath);
   document.getElementById('mtx-idle').style.display    = 'none';
   document.getElementById('mtx-running').style.display = '';
-  const hint = document.getElementById('mtx-map-hint');
-  if (hint) hint.style.display = '';
   _mtxPersist();
   _mtxInterval = setInterval(_mtxRender, 1000);
   _mtxRender();
-  _mtxWatch();
   try { Native.vibrate(); } catch(_) {}
 }
 
@@ -203,16 +214,7 @@ function _mtxStop() {
   _mtxActive = false;
   clearInterval(_mtxInterval);
   _mtxInterval = null;
-  if (_mtxWatchId !== null) {
-    navigator.geolocation?.clearWatch(_mtxWatchId);
-    _mtxWatchId = null;
-  }
-  window.removeEventListener('vijdon_location', _mtxOnLocation);
   sessionStorage.removeItem('vijdon_mtx');
-  if (_mtxMap) { try { _mtxMap.destroy(); } catch(_) {} _mtxMap = null; }
-  _mtxPlacemark = null;
-  _mtxPolyline  = null;
-  _mtxPath      = [];
   document.getElementById('mtx-idle').style.display    = '';
   document.getElementById('mtx-running').style.display = 'none';
 }
@@ -262,9 +264,12 @@ function mtxFinish() {
     document.getElementById('mtx-running').style.display = '';
     _mtxInterval = setInterval(_mtxRender, 1000);
     _mtxRender();
-    _mtxWatch();
   } catch (_) {}
 })();
+
+// Xarita/joylashuvni sahifa ochilishidan boshlab, taksometr holatidan
+// mustaqil ravishda kuzatib boramiz (yuqoridagi izohga qarang).
+_mtxWatch();
 </script>
 
 {% endblock %}
