@@ -368,12 +368,6 @@ body { background: var(--ios-bg); color: var(--ios-label); }
       <span id="voice-tab-label" class="ios-caption2" style="color:#8E8E93">Efir</span>
     </button>
 
-    <a href="{% url 'driver:taximeter' %}" onclick="Native.vibrate(); dismissAllSheets()"
-       class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60 relative">
-      <i class="fas fa-gauge-high text-[24px] {% if active_tab == 'taximeter' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
-      <span class="ios-caption2 {% if active_tab == 'taximeter' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Taksometr</span>
-    </a>
-
     <a href="{% url 'driver:history' %}" onclick="Native.vibrate(); dismissAllSheets()"
        class="flex flex-col items-center gap-[3px] px-4 py-2 min-h-[56px] justify-center transition-all active:opacity-60 relative">
       <i class="fas fa-clock-rotate-left text-[24px] {% if active_tab == 'history' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>

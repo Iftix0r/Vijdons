@@ -127,6 +127,77 @@
   style="position:fixed;z-index:15;bottom:calc(env(safe-area-inset-bottom,16px) + 96px);right:16px;width:38px;height:38px;border-radius:50%;background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
   <i class="fas fa-location-crosshairs" style="color:#FFD600;font-size:15px"></i>
 </button>
+<!-- Taksometr endi alohida bo'lim emas — shu tugma xarita ustida doim
+     qadalib turadi, bosilganda funksiyalar shu (asosiy) sahifada, pastdagi
+     suzuvchi panelda ochiladi. -->
+<button id="mtx-toggle-btn" onclick="toggleMtxPanel()"
+  class="flex items-center justify-center active:opacity-60 transition-opacity"
+  style="position:fixed;z-index:15;bottom:calc(env(safe-area-inset-bottom,16px) + 96px);left:16px;width:38px;height:38px;border-radius:50%;background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
+  <i class="fas fa-gauge-high" style="color:#FFD600;font-size:15px"></i>
+</button>
+
+<!-- Taksometr paneli — asosiy xarita (#home-map) ustida suzib turuvchi ixcham
+     karta, #sheet bilan bir xil uslubda. Alohida xaritasi yo'q — haydovchining
+     joylashuvi/izi to'g'ridan-to'g'ri asosiy xaritada (_homeMap) chiziladi. -->
+<div id="mtx-panel" class="ios-sheet fixed left-4 right-4 overflow-y-auto"
+     style="z-index:190;bottom:calc(env(safe-area-inset-bottom,16px) + 16px);border-radius:20px;transform:translateY(calc(100% + 40px));transition:transform .32s cubic-bezier(.32,.72,0,1);max-height:50vh">
+  <div class="px-4 py-3.5 space-y-3">
+    <div class="flex items-center justify-between">
+      <div class="ios-title font-semibold">Taksometr</div>
+      <button type="button" onclick="closeMtxPanel()" class="w-8 h-8 rounded-full flex items-center justify-center" style="background:var(--ios-fill)">
+        <i class="fas fa-xmark" style="color:var(--ios-label3)"></i>
+      </button>
+    </div>
+
+    <div id="mtx-idle">
+      <p class="ios-caption2" style="color:var(--ios-label3)">
+        Yo'l-yo'lakay olingan qo'shimcha mijoz uchun mustaqil taksometr — bu buyurtma dispetcherlik orqali kelmagan,
+        narxni mijozdan o'zingiz (naqd/karta) olasiz. Boshlaganda balansingizdan
+        <b style="color:var(--ios-label)">{{ tariff_commission }} so'm</b> komissiya yechiladi, safar esa Tarixga yoziladi.
+      </p>
+      <button id="mtx-start-btn" onclick="mtxStart()"
+        style="width:100%;margin-top:10px;padding:16px;border:none;border-radius:14px;background:#FFD600;color:#111;font-weight:800;font-size:15px;cursor:pointer">
+        <i class="fas fa-play"></i> Taksometrni boshlash
+      </button>
+    </div>
+
+    <div id="mtx-running" style="display:none">
+      <div style="background:linear-gradient(160deg,#1c1c1f,#0a0a0b);border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,.08);box-shadow:0 10px 28px rgba(0,0,0,.4)">
+        <div style="padding:14px 16px 0;display:flex;align-items:center;gap:7px">
+          <div style="width:6px;height:6px;border-radius:50%;background:#AF52DE;box-shadow:0 0 8px #AF52DE"></div>
+          <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.6px;text-transform:uppercase">Ishlamoqda</span>
+        </div>
+        <div style="position:relative;text-align:center;padding:8px 16px 14px">
+          <div style="font-size:37px;font-weight:800;color:#FFD600;letter-spacing:-.6px;line-height:1.1;font-variant-numeric:tabular-nums">
+            <span id="mtx-price">0</span><span style="font-size:15px;font-weight:700;margin-left:5px;color:rgba(255,214,0,.55)">so'm</span>
+          </div>
+        </div>
+        <div style="height:.5px;background:rgba(255,255,255,.08);margin:0 14px"></div>
+        <div style="display:flex;gap:8px;padding:12px">
+          <div style="flex:1;display:flex;align-items:center;gap:9px;background:linear-gradient(155deg,rgba(255,255,255,.07),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:9px 10px;min-width:0">
+            <i class="fas fa-stopwatch" style="color:#AF52DE;font-size:13px"></i>
+            <span id="mtx-time" style="font-size:13px;font-weight:800;color:#fff">0:00</span>
+          </div>
+          <div style="flex:1;display:flex;align-items:center;gap:9px;background:linear-gradient(155deg,rgba(255,255,255,.07),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:9px 10px;min-width:0">
+            <i class="fas fa-route" style="color:#007AFF;font-size:13px"></i>
+            <span id="mtx-dist" style="font-size:13px;font-weight:800;color:#fff">0.00</span>
+            <span style="font-size:10px;color:rgba(255,255,255,.35)">km</span>
+          </div>
+          <div style="flex:1;display:flex;align-items:center;gap:9px;background:linear-gradient(155deg,rgba(255,255,255,.07),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:9px 10px;min-width:0">
+            <i class="fas fa-gauge-high" style="color:#34C759;font-size:13px"></i>
+            <span id="mtx-speed" style="font-size:13px;font-weight:800;color:#fff">0</span>
+            <span style="font-size:10px;color:rgba(255,255,255,.35)">km/h</span>
+          </div>
+        </div>
+      </div>
+
+      <button id="mtx-finish-btn" onclick="mtxFinish()"
+        style="width:100%;margin-top:14px;padding:16px;border:none;border-radius:16px;background:#34C759;color:#fff;font-weight:800;font-size:16px;cursor:pointer">
+        <i class="fas fa-flag-checkered"></i> Yakunlash
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- Content: JS tomonidan to'ldiriladi (haqiqiy buyurtma kartalari bo'lsa
      shu yerda, xaritadan pastda ko'rinadi) -->
@@ -821,6 +892,7 @@ document.addEventListener('visibilitychange', () => {
     ymaps.ready(() => {
       if (_homeMap || !document.getElementById('home-map')) return;
       _homeMap = new ymaps.Map('home-map', { center: [lat, lng], zoom: 14, controls: ['zoomControl'] });
+      window._homeMap = _homeMap; // Taksometr paneli (mtx) shu xaritaga o'z izini chizadi
       const hint = document.getElementById('home-map-hint');
       if (hint) hint.style.display = 'none';
       _homeUpdateMine(lat, lng);
@@ -887,6 +959,184 @@ document.addEventListener('visibilitychange', () => {
     setInterval(_homeRefreshPeers, 8000);
     setTimeout(_homeRefreshPeers, 1500);
   }
+})();
+
+// ── MUSTAQIL TAKSOMETR (yo'l-yo'lakay olingan mijoz) ─────────────────────────
+// Bu buyurtma orqali kelmagan, dispetcherlik bilmagan mijoz uchun — haydovchi
+// o'zi yoqadi/o'chiradi, narxni mijozdan naqd/karta olib o'zi to'playdi. Endi
+// alohida sahifa emas — pastdagi suzuvchi #mtx-panel shu (asosiy) sahifada
+// ochiladi, xarita sifatida esa alohida xarita ochilmaydi, shu sahifadagi
+// jonli xaritaga (window._homeMap, yuqoridagi IIFE tomonidan o'rnatiladi) shu
+// safar davomida bosib o'tilgan yo'l chizig'i qo'shiladi — haydovchining o'z
+// joylashuv nishoni ham o'sha xaritadagi (_homeMyMark) bilan bo'lishiladi,
+// alohida marker shart emas. Diqqat: bu — buyurtma qabul qilingandan keyingi
+// "Yo'lda" holatidagi taximetr vidjeti (pastdagi _tmx* kod, boshqa xususiyat)
+// bilan ARALASHTIRILMASIN, shu sabab prefiks atayin boshqa (_mtx).
+const MTX_BASE_PRICE = {{ tariff_base_price|default:0 }};
+const MTX_PER_KM     = {{ tariff_per_km|default:0 }};
+
+let _mtxActive    = false;
+let _mtxPanelOpen = false;
+let _mtxStartTime = null;
+let _mtxDistKm    = 0;
+let _mtxPrevLat   = null;
+let _mtxPrevLng   = null;
+let _mtxInterval  = null;
+let _mtxSpeedKmh  = 0;
+let _mtxPolyline  = null;
+let _mtxPath      = [];
+
+function _mtxHaversine(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 +
+            Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+            Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function _mtxPersist() {
+  sessionStorage.setItem('vijdon_mtx', JSON.stringify({ start: _mtxStartTime, dist: _mtxDistKm }));
+}
+
+function _mtxRender() {
+  if (!_mtxActive) return;
+  const elapsed = Math.max(0, Math.floor((Date.now() - _mtxStartTime) / 1000));
+  const min = Math.floor(elapsed / 60), sec = elapsed % 60;
+  const price = Math.round(MTX_BASE_PRICE + _mtxDistKm * MTX_PER_KM);
+  document.getElementById('mtx-time').textContent  = min + ':' + String(sec).padStart(2, '0');
+  document.getElementById('mtx-dist').textContent  = _mtxDistKm.toFixed(2);
+  document.getElementById('mtx-price').textContent = price.toLocaleString('uz-UZ');
+  document.getElementById('mtx-speed').textContent = _mtxSpeedKmh;
+}
+
+function _mtxEnsurePolyline() {
+  if (_mtxPolyline || !window._homeMap || typeof ymaps === 'undefined') return;
+  _mtxPolyline = new ymaps.Polyline(_mtxPath, {}, {
+    strokeColor: '#FFD600', strokeWidth: 4, strokeOpacity: 0.85,
+  });
+  window._homeMap.geoObjects.add(_mtxPolyline);
+}
+
+function _mtxOnLocation(lat, lng, spd) {
+  if (!_mtxActive || !lat || !lng) return;
+  if (spd != null && spd >= 0) _mtxSpeedKmh = Math.round(spd * 3.6);
+  if (_mtxPrevLat !== null) {
+    const d = _mtxHaversine(_mtxPrevLat, _mtxPrevLng, lat, lng);
+    if (d > 0.005 && d < 2.0) { _mtxDistKm += d; _mtxPersist(); }
+  }
+  _mtxPrevLat = lat;
+  _mtxPrevLng = lng;
+  _mtxPath.push([lat, lng]);
+  _mtxEnsurePolyline();
+  if (_mtxPolyline) _mtxPolyline.geometry.setCoordinates(_mtxPath);
+}
+
+window.addEventListener('vijdon_location', e => {
+  if (e.detail?.lat && e.detail?.lng) _mtxOnLocation(e.detail.lat, e.detail.lng, e.detail.speed);
+});
+if (navigator.geolocation) {
+  navigator.geolocation.watchPosition(
+    pos => _mtxOnLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.speed),
+    () => {},
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 3000 }
+  );
+}
+
+function toggleMtxPanel() {
+  try { Native.vibrate(); } catch(_) {}
+  _mtxPanelOpen = !_mtxPanelOpen;
+  if (_mtxPanelOpen) { try { closeSheet(); } catch(_) {} } // ikkala panel bir vaqtda ochiq turmasin
+  document.getElementById('mtx-panel').style.transform = _mtxPanelOpen ? 'translateY(0)' : 'translateY(calc(100% + 40px))';
+}
+
+function closeMtxPanel() {
+  _mtxPanelOpen = false;
+  const p = document.getElementById('mtx-panel');
+  if (p) p.style.transform = 'translateY(calc(100% + 40px))';
+}
+
+function mtxStart() {
+  if (_mtxActive) return;
+  _mtxActive    = true;
+  _mtxStartTime = Date.now();
+  _mtxDistKm    = 0;
+  _mtxPrevLat   = null;
+  _mtxPrevLng   = null;
+  _mtxSpeedKmh  = 0;
+  _mtxPath      = [];
+  if (_mtxPolyline) {
+    try { window._homeMap?.geoObjects.remove(_mtxPolyline); } catch(_) {}
+    _mtxPolyline = null;
+  }
+  document.getElementById('mtx-idle').style.display    = 'none';
+  document.getElementById('mtx-running').style.display = '';
+  _mtxPersist();
+  _mtxInterval = setInterval(_mtxRender, 1000);
+  _mtxRender();
+  try { Native.vibrate(); } catch(_) {}
+}
+
+function _mtxStop() {
+  _mtxActive = false;
+  clearInterval(_mtxInterval);
+  _mtxInterval = null;
+  sessionStorage.removeItem('vijdon_mtx');
+  if (_mtxPolyline) {
+    try { window._homeMap?.geoObjects.remove(_mtxPolyline); } catch(_) {}
+    _mtxPolyline = null;
+  }
+  document.getElementById('mtx-idle').style.display    = '';
+  document.getElementById('mtx-running').style.display = 'none';
+}
+
+function mtxFinish() {
+  if (!_mtxActive) return;
+  if (!confirm("Taksometrni yakunlaysizmi? Narxni mijozdan naqd/karta orqali o'zingiz olasiz, balansingizdan komissiya yechiladi.")) return;
+  const durationSec = Math.floor((Date.now() - _mtxStartTime) / 1000);
+  const distKm = _mtxDistKm;
+  const btn = document.getElementById('mtx-finish-btn');
+  btn.disabled = true;
+  btn.style.opacity = '.6';
+  fetch('{% url "driver:taximeter_finish" %}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': getCookie('csrftoken') },
+    body: `dist_km=${distKm.toFixed(3)}&duration_sec=${durationSec}&csrfmiddlewaretoken=${encodeURIComponent(getCookie('csrftoken') || '')}`,
+  }).then(r => r.json()).then(d => {
+    _mtxStop();
+    if (d.ok) {
+      try { showToast('Taksometr yakunlandi', `${Math.round(d.price).toLocaleString('uz-UZ')} so'm — Tarixga yozildi`, 'success', 3500); } catch(_) {}
+    } else {
+      alert(d.error || 'Xatolik yuz berdi');
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
+  }).catch(() => {
+    _mtxStop();
+    alert("Tarmoq xatosi — qayta urinib ko'ring");
+  });
+}
+
+// Sahifa qayta ochilganda (masalan boshqa tabga o'tib qaytilganda) davom
+// etayotgan taksometrni sessionStorage'dan tiklaymiz — masofa/vaqt yo'qolib
+// ketmasin (server hali bu safar haqida hech narsa bilmaydi, Yakunlash
+// bosilgandagina yoziladi). Faol bo'lsa, panelni ham ochiq holda ko'rsatamiz.
+(function() {
+  try {
+    const raw = sessionStorage.getItem('vijdon_mtx');
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (!saved.start) return;
+    _mtxActive    = true;
+    _mtxStartTime = saved.start;
+    _mtxDistKm    = saved.dist || 0;
+    document.getElementById('mtx-idle').style.display    = 'none';
+    document.getElementById('mtx-running').style.display = '';
+    _mtxInterval = setInterval(_mtxRender, 1000);
+    _mtxRender();
+    toggleMtxPanel();
+  } catch (_) {}
 })();
 
 // ── TAXIMETER ─────────────────────────────────────────────────────────────────
@@ -1048,6 +1298,8 @@ function _onBackdropTap(){
 function _renderSheet(id, o){
   _sheetOpenForId = id;
   _sheetOpenForStatus = o.status;
+  // Ikkala suzuvchi panel (buyurtma va taksometr) bir vaqtda ochiq turmasin.
+  try { closeMtxPanel(); } catch(_) {}
   // Safar davomida (qulflangan holat) ham tab bar orqali boshqa bo'limlarga
   // o'tish imkoni qolsin deb, uni sheet ustiga ko'taramiz.
   setTabbarRaised(o.status==='accepted'||o.status==='on_way'||o.status==='arrived');

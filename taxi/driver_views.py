@@ -292,6 +292,7 @@ def driver_home(request, driver):
         'tariff':      _tariff,
         'tariff_base_price': int(_tariff.base_price),
         'tariff_per_km': int(_tariff.price_per_km),
+        'tariff_commission': int(_tariff.commission),
         'driver_balance_int': int(driver.balance),
         'today_earned': int(today_stats['earned'] or 0),
         'today_trips': today_stats['trips'] or 0,
@@ -575,22 +576,6 @@ def _walkin_client():
         defaults={'full_name': "Qo'shimcha yo'lovchi (taksometr)"},
     )
     return client
-
-
-@driver_login_required
-def driver_taximeter_page(request, driver):
-    _tariff = TariffSettings.get()
-    return render(request, 'driver/taximeter.html', {
-        'driver':      driver,
-        'active_tab':  'taximeter',
-        'chat_unread': _chat_unread(driver),
-        'pending_orders_count': _pending_orders_count(driver),
-        'active_orders_count': _active_orders_count(driver),
-        'tariff_base_price': int(_tariff.base_price),
-        'tariff_per_km': int(_tariff.price_per_km),
-        'tariff_waiting_per_min': int(_tariff.waiting_price_per_minute),
-        'tariff_commission': int(_tariff.commission),
-    })
 
 
 @driver_login_required
