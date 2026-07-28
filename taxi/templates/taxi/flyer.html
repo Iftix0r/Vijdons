@@ -90,7 +90,16 @@
                 {% for d in driver_stats %}
                 <tr class="border-b border-gray-50 dark:border-gray-800/50 last:border-0 {% if d == week_leader %}bg-amber-50/60 dark:bg-amber-900/10{% endif %}">
                     <td class="px-6 py-2.5 font-medium text-gray-800 dark:text-white">
-                        {% if d == week_leader %}<i class="fas fa-trophy text-amber-500 mr-1.5"></i>{% endif %}{{ d.full_name }}
+                        <div class="flex items-center gap-2">
+                            {% if d.photo %}
+                            <img src="{{ d.photo.url }}" alt="" class="w-7 h-7 rounded-full object-cover flex-shrink-0">
+                            {% else %}
+                            <div class="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-user text-gray-400 text-xs"></i>
+                            </div>
+                            {% endif %}
+                            {% if d == week_leader %}<i class="fas fa-trophy text-amber-500"></i>{% endif %}{{ d.full_name }}
+                        </div>
                     </td>
                     <td class="px-6 py-2.5 text-center font-bold text-gray-900 dark:text-white">{{ d.week_count }}</td>
                     <td class="px-6 py-2.5 text-center text-gray-500 dark:text-gray-400">{{ d.used_count }}</td>
@@ -127,15 +136,36 @@
 
             {% if checked_voucher %}
                 {% if checked_voucher.owner_driver %}
-                <div class="flex items-center gap-2 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-sm font-semibold">
-                    <i class="fas fa-id-card"></i> Vizitka egasi: {{ checked_voucher.owner_driver.full_name }} ({{ checked_voucher.owner_driver.car_number }})
+                <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-sm">
+                    {% if checked_voucher.owner_driver.photo %}
+                    <img src="{{ checked_voucher.owner_driver.photo.url }}" alt="" class="w-10 h-10 rounded-full object-cover flex-shrink-0 ring-2 ring-white dark:ring-gray-900">
+                    {% else %}
+                    <div class="w-10 h-10 rounded-full bg-blue-200 dark:bg-blue-800 flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-id-card"></i>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <p class="font-semibold">Vizitka egasi: {{ checked_voucher.owner_driver.full_name }} ({{ checked_voucher.owner_driver.car_number }})</p>
+                        <p class="text-xs font-normal opacity-80 mt-0.5"><i class="fas fa-phone mr-1"></i>{{ checked_voucher.owner_driver.phone_number }}</p>
+                    </div>
                 </div>
                 {% endif %}
                 {% if checked_voucher.is_used %}
-                <div class="flex items-center gap-2 px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-sm">
-                    <i class="fas fa-circle-check text-gray-400"></i>
-                    Bu kod allaqachon ishlatilgan — {{ checked_voucher.used_by_driver.full_name|default:'—' }}
-                    ({{ checked_voucher.used_at|date:"d.m.Y H:i" }}).
+                <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-sm">
+                    {% if checked_voucher.used_by_driver.photo %}
+                    <img src="{{ checked_voucher.used_by_driver.photo.url }}" alt="" class="w-10 h-10 rounded-full object-cover flex-shrink-0 ring-2 ring-white dark:ring-gray-900">
+                    {% else %}
+                    <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-circle-check text-gray-400"></i>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <p>Bu kod allaqachon ishlatilgan — {{ checked_voucher.used_by_driver.full_name|default:'—' }}
+                        ({{ checked_voucher.used_at|date:"d.m.Y H:i" }}).</p>
+                        {% if checked_voucher.used_by_driver.phone_number %}
+                        <p class="text-xs opacity-80 mt-0.5"><i class="fas fa-phone mr-1"></i>{{ checked_voucher.used_by_driver.phone_number }}</p>
+                        {% endif %}
+                    </div>
                 </div>
                 {% else %}
                 <div class="space-y-3">

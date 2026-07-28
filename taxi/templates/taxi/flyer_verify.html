@@ -33,16 +33,30 @@
     </div>
 
     {% if voucher.owner_driver %}
-    <div class="flex items-center justify-center gap-2 bg-blue-50 text-blue-700 rounded-xl px-4 py-3 text-sm font-semibold mb-4">
+    <div class="flex items-center justify-center gap-3 bg-blue-50 text-blue-700 rounded-xl px-4 py-3 text-sm font-semibold mb-4">
+      {% if voucher.owner_driver.photo %}
+      <img src="{{ voucher.owner_driver.photo.url }}" alt="" class="w-10 h-10 rounded-full object-cover flex-shrink-0">
+      {% else %}
       <i class="fas fa-id-card"></i>
-      Vizitka egasi: {{ voucher.owner_driver.full_name }}
+      {% endif %}
+      <div class="text-left">
+        <p>Vizitka egasi: {{ voucher.owner_driver.full_name }}</p>
+        {% if voucher.owner_driver.phone_number %}<p class="text-xs font-normal opacity-80">{{ voucher.owner_driver.phone_number }}</p>{% endif %}
+      </div>
     </div>
     {% endif %}
 
     {% if voucher.is_used %}
-    <div class="flex items-center justify-center gap-2 bg-amber-50 text-amber-700 rounded-xl px-4 py-3 text-sm font-semibold">
+    <div class="flex items-center justify-center gap-3 bg-amber-50 text-amber-700 rounded-xl px-4 py-3 text-sm font-semibold">
+      {% if voucher.used_by_driver.photo %}
+      <img src="{{ voucher.used_by_driver.photo.url }}" alt="" class="w-10 h-10 rounded-full object-cover flex-shrink-0">
+      {% else %}
       <i class="fas fa-triangle-exclamation"></i>
-      Bu kupon allaqachon ishlatilgan{% if voucher.used_at %} ({{ voucher.used_at|date:"d.m.Y" }}){% endif %}
+      {% endif %}
+      <div class="text-left">
+        <p>Bu kupon allaqachon ishlatilgan{% if voucher.used_at %} ({{ voucher.used_at|date:"d.m.Y" }}){% endif %}</p>
+        {% if voucher.used_by_driver %}<p class="text-xs font-normal opacity-80">Ishlatgan: {{ voucher.used_by_driver.full_name }}</p>{% endif %}
+      </div>
     </div>
     {% else %}
     <div class="flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 rounded-xl px-4 py-3 text-sm font-semibold">
