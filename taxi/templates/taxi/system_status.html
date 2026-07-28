@@ -213,6 +213,63 @@
     </div>
 </div>
 
+<!-- Backup -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 mt-5">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <p class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+            <i class="fas fa-box-archive mr-1.5"></i>Ma'lumotlar bazasi zaxira nusxasi (Backup)
+        </p>
+        <form action="{% url 'taxi:backup_create' %}" method="POST" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').innerHTML='<i class=\'fas fa-spinner fa-spin mr-1.5\'></i>Yaratilmoqda... (bir necha daqiqa)';">
+            {% csrf_token %}
+            <button type="submit" class="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl transition-colors">
+                <i class="fas fa-plus"></i> Yangi backup yaratish
+            </button>
+        </form>
+    </div>
+    {% if backups %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold border-b border-gray-100 dark:border-gray-800">
+                    <th class="py-2 pr-3">Fayl</th>
+                    <th class="py-2 pr-3">Sana</th>
+                    <th class="py-2 pr-3">Hajmi</th>
+                    <th class="py-2 pr-3 text-right">Amallar</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50 dark:divide-gray-800">
+                {% for b in backups %}
+                <tr>
+                    <td class="py-2.5 pr-3 font-mono text-xs text-gray-600 dark:text-gray-300">{{ b.name }}</td>
+                    <td class="py-2.5 pr-3 text-xs text-gray-500 dark:text-gray-400">{{ b.created_at|date:"d.m.Y H:i" }}</td>
+                    <td class="py-2.5 pr-3 text-xs text-gray-500 dark:text-gray-400">{{ b.size_mb }} MB</td>
+                    <td class="py-2.5 pr-3 text-right">
+                        <div class="flex items-center justify-end gap-1">
+                            <a href="{% url 'taxi:backup_download' b.name %}"
+                               class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-500 hover:bg-blue-100 transition-colors" title="Yuklab olish">
+                                <i class="fas fa-download text-xs"></i>
+                            </a>
+                            <form action="{% url 'taxi:backup_delete' b.name %}" method="POST" onsubmit="return confirm('{{ b.name }} o\'chirilsinmi?');">
+                                {% csrf_token %}
+                                <button type="submit" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors" title="O'chirish">
+                                    <i class="fas fa-trash-can text-xs"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-xs text-gray-400">Hali backup yaratilmagan. Yuqoridagi tugma orqali birinchisini yarating.</p>
+    {% endif %}
+    <p class="text-xs text-gray-400 mt-3">
+        <i class="fas fa-circle-info mr-1"></i>Backup fayllari serverning o'zida (<code>backups/</code> papkasida) saqlanadi — muhim bo'lsa yuklab olib, boshqa joyga ham nusxalab qo'ying.
+    </p>
+</div>
+
 <p class="text-xs text-gray-400 mt-4 text-center">
     <i class="fas fa-circle-info mr-1"></i>Bu sahifa avtomatik yangilanmaydi — joriy holatni ko'rish uchun "Yangilash" tugmasini bosing.
 </p>

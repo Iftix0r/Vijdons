@@ -27,6 +27,23 @@ TOPUP_AGING_HOURS = 3  # to'lov so'rovi shuncha soat hal qilinmasa — dashboard
 panel_login_required = user_passes_test(
     lambda u: u.is_authenticated and u.is_staff, login_url='taxi:panel_login')
 
+# ── DB backup (Tizim holati sahifasi) ───────────────────────────────────────
+# Diqqat (xavfsizlik): backup fayl nomlari HAR DOIM shu qat'iy formatga mos
+# kelishi shart — download/delete view'lari foydalanuvchidan kelgan `filename`
+# ni to'g'ridan-to'g'ri fayl tizimi yo'liga aylantirgani uchun, agar bu
+# tekshiruv bo'lmasa "../../config/settings.py" kabi yo'l bilan path traversal
+# qilish mumkin bo'lardi.
+import re as _re
+BACKUP_FILENAME_RE = _re.compile(r'^vijdon_backup_\d{8}_\d{6}\.sql\.gz$')
+
+
+def _backups_dir():
+    import os
+    from django.conf import settings as django_settings
+    d = os.path.join(str(django_settings.BASE_DIR), 'backups')
+    os.makedirs(d, exist_ok=True)
+    return d
+
 
 def _get_client_ip(request):
     x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -970,6 +987,22 @@ def system_status(request):
         'clients': Client.objects.count(),
     }
 
+    # ── Mavjud DB backuplar ───────────────────────────────────────────────────
+    backups = []
+    try:
+        from datetime import datetime
+        d = _backups_dir()
+        for fn in sorted(os.listdir(d), reverse=True):
+            if BACKUP_FILENAME_RE.match(fn):
+                fp = os.path.join(d, fn)
+                backups.append({
+                    'name': fn,
+                    'size_mb': round(os.path.getsize(fp) / 1024**2, 2),
+                    'created_at': datetime.fromtimestamp(os.path.getmtime(fp)),
+                })
+    except Exception:
+        pass
+
     # ── Umumiy holat (yuqoridagi banner uchun) ───────────────────────────────
     problems = []
     if not db['ok']:
@@ -995,7 +1028,96 @@ def system_status(request):
         'db':               db,
         'sched':            sched,
         'counts':           counts,
+        'backups':          backups,
     })
+
+
+@panel_login_required
+def backup_create(request):
+    """`pg_dump` orqali joriy PostgreSQL bazasining to'liq nusxasini oladi va
+    gzip qilib backups/ papkasiga saqlaydi. Kichik/o'rta hajmdagi baza uchun
+    (bu loyiha kabi kichik-o'lchamli, bitta joyga o'rnatilgan tizim) so'rov
+    davomida sinxron bajarish yetarli — juda katta bazalarda bu alohida
+    fon vazifasiga (masalan cron) ko'chirilishi kerak bo'lardi."""
+    if request.method != 'POST':
+        return redirect('taxi:system_status')
+
+    import os
+    import gzip
+    import shutil
+    import subprocess
+    from django.conf import settings as django_settings
+    from django.utils import timezone
+
+    db = django_settings.DATABASES['default']
+    ts = timezone.localtime().strftime('%Y%m%d_%H%M%S')
+    backups_dir = _backups_dir()
+    sql_path = os.path.join(backups_dir, f'vijdon_backup_{ts}.sql')
+    gz_path = sql_path + '.gz'
+
+    env = os.environ.copy()
+    if db.get('PASSWORD'):
+        env['PGPASSWORD'] = db['PASSWORD']
+
+    try:
+        with open(sql_path, 'wb') as f:
+            result = subprocess.run(
+                [
+                    'pg_dump',
+                    '-h', db.get('HOST') or 'localhost',
+                    '-p', str(db.get('PORT') or '5432'),
+                    '-U', db['USER'],
+                    '--no-owner', '--no-privileges',
+                    db['NAME'],
+                ],
+                env=env, stdout=f, stderr=subprocess.PIPE, timeout=300,
+            )
+        if result.returncode != 0:
+            os.remove(sql_path)
+            messages.error(request, f"Backup xatosi: {result.stderr.decode(errors='ignore')[:400]}")
+        else:
+            with open(sql_path, 'rb') as fin, gzip.open(gz_path, 'wb') as fout:
+                shutil.copyfileobj(fin, fout)
+            os.remove(sql_path)
+            log_panel_event('panel_backup_created', f'vijdon_backup_{ts}.sql.gz')
+            messages.success(request, f"Backup yaratildi: vijdon_backup_{ts}.sql.gz")
+    except FileNotFoundError:
+        messages.error(request, "pg_dump topilmadi — serverda PostgreSQL klient dasturlari o'rnatilmagan bo'lishi mumkin.")
+        if os.path.exists(sql_path):
+            os.remove(sql_path)
+    except subprocess.TimeoutExpired:
+        messages.error(request, "Backup yaratish vaqti tugadi (5 daqiqadan oshdi) — baza juda katta bo'lishi mumkin.")
+        if os.path.exists(sql_path):
+            os.remove(sql_path)
+    except Exception as e:
+        messages.error(request, f"Backup xatosi: {e}")
+        if os.path.exists(sql_path):
+            os.remove(sql_path)
+    return redirect('taxi:system_status')
+
+
+@panel_login_required
+def backup_download(request, filename):
+    import os
+    from django.http import FileResponse, Http404
+    if not BACKUP_FILENAME_RE.match(filename):
+        raise Http404
+    path = os.path.join(_backups_dir(), filename)
+    if not os.path.isfile(path):
+        raise Http404
+    return FileResponse(open(path, 'rb'), as_attachment=True, filename=filename)
+
+
+@panel_login_required
+def backup_delete(request, filename):
+    import os
+    if request.method == 'POST' and BACKUP_FILENAME_RE.match(filename):
+        path = os.path.join(_backups_dir(), filename)
+        if os.path.isfile(path):
+            os.remove(path)
+            log_panel_event('panel_backup_deleted', filename)
+            messages.success(request, f"{filename} o'chirildi.")
+    return redirect('taxi:system_status')
 
 
 @panel_login_required
