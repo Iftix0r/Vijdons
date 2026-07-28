@@ -11,6 +11,8 @@ urlpatterns = [
 
     path('home/',      driver_views.driver_home,          name='home'),
     path('history/',   driver_views.driver_history,       name='history'),
+    path('taksometr/',        driver_views.driver_taximeter_page,   name='taximeter'),
+    path('taksometr/finish/', driver_views.driver_taximeter_finish, name='taximeter_finish'),
     path('chat/',      driver_views.driver_chat,          name='chat'),
     path('chat/send/', driver_views.driver_chat_send,       name='chat_send'),
     path('chat/send-audio/', driver_views.driver_chat_send_audio, name='chat_send_audio'),

@@ -1,0 +1,195 @@
+{% extends "driver/base.html" %}
+{% block title %}Taksometr{% endblock %}
+{% block content %}
+
+<div class="ios-navbar sticky top-3 mx-4 z-20 px-4 pt-3 pb-3">
+  <div class="ios-large-title font-bold">Taksometr</div>
+</div>
+
+<div class="px-4 py-3 space-y-4">
+
+  <p class="ios-subhead" style="color:var(--ios-label3)">
+    Yo'l-yo'lakay olingan qo'shimcha mijoz uchun mustaqil taksometr — bu buyurtma dispetcherlik orqali kelmagan,
+    narxni mijozdan o'zingiz (naqd/karta) olasiz. Boshlaganda balansingizdan
+    <b style="color:var(--ios-label)">{{ tariff_commission }} so'm</b> komissiya yechiladi, safar esa Tarixga yoziladi.
+  </p>
+
+  <div id="mtx-idle">
+    <button id="mtx-start-btn" onclick="mtxStart()"
+      style="width:100%;padding:18px;border:none;border-radius:16px;background:#FFD600;color:#111;font-weight:800;font-size:16px;cursor:pointer">
+      <i class="fas fa-play"></i> Taksometrni boshlash
+    </button>
+  </div>
+
+  <div id="mtx-running" style="display:none">
+    <div style="background:linear-gradient(160deg,#1c1c1f,#0a0a0b);border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,.08);box-shadow:0 10px 28px rgba(0,0,0,.4)">
+      <div style="padding:14px 16px 0;display:flex;align-items:center;gap:7px">
+        <div style="width:6px;height:6px;border-radius:50%;background:#AF52DE;box-shadow:0 0 8px #AF52DE"></div>
+        <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.6px;text-transform:uppercase">Ishlamoqda</span>
+      </div>
+      <div style="position:relative;text-align:center;padding:8px 16px 14px">
+        <div style="font-size:37px;font-weight:800;color:#FFD600;letter-spacing:-.6px;line-height:1.1;font-variant-numeric:tabular-nums">
+          <span id="mtx-price">0</span><span style="font-size:15px;font-weight:700;margin-left:5px;color:rgba(255,214,0,.55)">so'm</span>
+        </div>
+      </div>
+      <div style="height:.5px;background:rgba(255,255,255,.08);margin:0 14px"></div>
+      <div style="display:flex;gap:8px;padding:12px">
+        <div style="flex:1;display:flex;align-items:center;gap:9px;background:linear-gradient(155deg,rgba(255,255,255,.07),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:9px 10px">
+          <i class="fas fa-stopwatch" style="color:#AF52DE;font-size:13px"></i>
+          <span id="mtx-time" style="font-size:13px;font-weight:800;color:#fff">0:00</span>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;gap:9px;background:linear-gradient(155deg,rgba(255,255,255,.07),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:9px 10px">
+          <i class="fas fa-route" style="color:#007AFF;font-size:13px"></i>
+          <span id="mtx-dist" style="font-size:13px;font-weight:800;color:#fff">0.00</span>
+          <span style="font-size:10px;color:rgba(255,255,255,.35)">km</span>
+        </div>
+      </div>
+    </div>
+
+    <button id="mtx-finish-btn" onclick="mtxFinish()"
+      style="width:100%;margin-top:14px;padding:16px;border:none;border-radius:16px;background:#34C759;color:#fff;font-weight:800;font-size:16px;cursor:pointer">
+      <i class="fas fa-flag-checkered"></i> Yakunlash
+    </button>
+  </div>
+
+</div>
+
+<script>
+const MTX_BASE_PRICE = {{ tariff_base_price|default:0 }};
+const MTX_PER_KM     = {{ tariff_per_km|default:0 }};
+
+let _mtxActive    = false;
+let _mtxStartTime = null;
+let _mtxDistKm    = 0;
+let _mtxPrevLat   = null;
+let _mtxPrevLng   = null;
+let _mtxWatchId   = null;
+let _mtxInterval  = null;
+
+function _mtxHaversine(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 +
+            Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+            Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function _mtxPersist() {
+  sessionStorage.setItem('vijdon_mtx', JSON.stringify({ start: _mtxStartTime, dist: _mtxDistKm }));
+}
+
+function _mtxRender() {
+  if (!_mtxActive) return;
+  const elapsed = Math.max(0, Math.floor((Date.now() - _mtxStartTime) / 1000));
+  const min = Math.floor(elapsed / 60), sec = elapsed % 60;
+  const price = Math.round(MTX_BASE_PRICE + _mtxDistKm * MTX_PER_KM);
+  document.getElementById('mtx-time').textContent  = min + ':' + String(sec).padStart(2, '0');
+  document.getElementById('mtx-dist').textContent  = _mtxDistKm.toFixed(2);
+  document.getElementById('mtx-price').textContent = price.toLocaleString('uz-UZ');
+}
+
+function _mtxOnLocation(e) {
+  const lat = e.detail?.lat, lng = e.detail?.lng;
+  if (!lat || !lng || !_mtxActive) return;
+  if (_mtxPrevLat !== null) {
+    const d = _mtxHaversine(_mtxPrevLat, _mtxPrevLng, lat, lng);
+    if (d > 0.005 && d < 2.0) { _mtxDistKm += d; _mtxPersist(); }
+  }
+  _mtxPrevLat = lat;
+  _mtxPrevLng = lng;
+}
+
+function _mtxWatch() {
+  window.addEventListener('vijdon_location', _mtxOnLocation);
+  if (navigator.geolocation) {
+    _mtxWatchId = navigator.geolocation.watchPosition(
+      pos => _mtxOnLocation({ detail: { lat: pos.coords.latitude, lng: pos.coords.longitude } }),
+      () => {},
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 3000 }
+    );
+  }
+}
+
+function mtxStart() {
+  if (_mtxActive) return;
+  _mtxActive    = true;
+  _mtxStartTime = Date.now();
+  _mtxDistKm    = 0;
+  _mtxPrevLat   = null;
+  _mtxPrevLng   = null;
+  document.getElementById('mtx-idle').style.display    = 'none';
+  document.getElementById('mtx-running').style.display = '';
+  _mtxPersist();
+  _mtxInterval = setInterval(_mtxRender, 1000);
+  _mtxRender();
+  _mtxWatch();
+  try { Native.vibrate(); } catch(_) {}
+}
+
+function _mtxStop() {
+  _mtxActive = false;
+  clearInterval(_mtxInterval);
+  _mtxInterval = null;
+  if (_mtxWatchId !== null) {
+    navigator.geolocation?.clearWatch(_mtxWatchId);
+    _mtxWatchId = null;
+  }
+  window.removeEventListener('vijdon_location', _mtxOnLocation);
+  sessionStorage.removeItem('vijdon_mtx');
+  document.getElementById('mtx-idle').style.display    = '';
+  document.getElementById('mtx-running').style.display = 'none';
+}
+
+function mtxFinish() {
+  if (!_mtxActive) return;
+  if (!confirm("Taksometrni yakunlaysizmi? Narxni mijozdan naqd/karta orqali o'zingiz olasiz, balansingizdan komissiya yechiladi.")) return;
+  const durationSec = Math.floor((Date.now() - _mtxStartTime) / 1000);
+  const distKm = _mtxDistKm;
+  const btn = document.getElementById('mtx-finish-btn');
+  btn.disabled = true;
+  btn.style.opacity = '.6';
+  fetch('{% url "driver:taximeter_finish" %}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': getCookie('csrftoken') },
+    body: `dist_km=${distKm.toFixed(3)}&duration_sec=${durationSec}&csrfmiddlewaretoken=${encodeURIComponent(getCookie('csrftoken') || '')}`,
+  }).then(r => r.json()).then(d => {
+    _mtxStop();
+    if (d.ok) {
+      try { showToast('Taksometr yakunlandi', `${Math.round(d.price).toLocaleString('uz-UZ')} so'm — Tarixga yozildi`, 'success', 3500); } catch(_) {}
+      setTimeout(() => { window.location.href = '{% url "driver:history" %}'; }, 900);
+    } else {
+      alert(d.error || 'Xatolik yuz berdi');
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
+  }).catch(() => {
+    _mtxStop();
+    alert("Tarmoq xatosi — qayta urinib ko'ring");
+  });
+}
+
+// Sahifa qayta ochilganda (masalan boshqa tabga o'tib qaytilganda) davom
+// etayotgan taksometrni sessionStorage'dan tiklaymiz — masofa/vaqt yo'qolib
+// ketmasin (server hali bu safar haqida hech narsa bilmaydi, Yakunlash
+// bosilgandagina yoziladi).
+(function() {
+  try {
+    const raw = sessionStorage.getItem('vijdon_mtx');
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (!saved.start) return;
+    _mtxActive    = true;
+    _mtxStartTime = saved.start;
+    _mtxDistKm    = saved.dist || 0;
+    document.getElementById('mtx-idle').style.display    = 'none';
+    document.getElementById('mtx-running').style.display = '';
+    _mtxInterval = setInterval(_mtxRender, 1000);
+    _mtxRender();
+    _mtxWatch();
+  } catch (_) {}
+})();
+</script>
+
+{% endblock %}

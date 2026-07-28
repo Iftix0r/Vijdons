@@ -557,6 +557,95 @@ def driver_history(request, driver):
     })
 
 
+# ── Mustaqil taksometr (yo'l-yo'lakay olingan qo'shimcha mijoz uchun) ────────
+# Dispetcherlik orqali kelmagan, haydovchi o'zi yo'lda olib ketayotgan mijoz
+# uchun. Asosiy buyurtma taksometridan farqli — bu butunlay mustaqil, faol
+# buyurtma (accepted/on_way/arrived) sifatida saqlanmaydi (aks holda Asosiy
+# sahifadagi bitta joy uchun mavjud buyurtma bilan bir vaqtda ko'rsatilolmas
+# edi), shuning uchun GPS/vaqt hisobi to'liq frontendda yuritiladi va faqat
+# "Yakunlash" bosilganda tayyor (completed) Buyurtma sifatida yoziladi.
+
+def _walkin_client():
+    """Taksometr orqali yo'l-yo'lakay olingan mijozlar uchun umumiy tizim
+    yozuvi — bular ro'yxatdan o'tgan haqiqiy mijoz emas, shuning uchun har
+    safar yangi Client yaratish o'rniga bitta doimiy yozuv ishlatiladi."""
+    from .models import Client
+    client, _ = Client.objects.get_or_create(
+        phone_number='000',
+        defaults={'full_name': "Qo'shimcha yo'lovchi (taksometr)"},
+    )
+    return client
+
+
+@driver_login_required
+def driver_taximeter_page(request, driver):
+    _tariff = TariffSettings.get()
+    return render(request, 'driver/taximeter.html', {
+        'driver':      driver,
+        'active_tab':  'taximeter',
+        'chat_unread': _chat_unread(driver),
+        'pending_orders_count': _pending_orders_count(driver),
+        'active_orders_count': _active_orders_count(driver),
+        'tariff_base_price': int(_tariff.base_price),
+        'tariff_per_km': int(_tariff.price_per_km),
+        'tariff_waiting_per_min': int(_tariff.waiting_price_per_minute),
+        'tariff_commission': int(_tariff.commission),
+    })
+
+
+@driver_login_required
+@require_POST
+def driver_taximeter_finish(request, driver):
+    from django.utils import timezone
+
+    try:
+        dist_km = round(float(request.POST.get('dist_km', 0)), 2)
+    except (TypeError, ValueError):
+        dist_km = 0.0
+    try:
+        wait_ms = max(0, int(float(request.POST.get('wait_ms', 0))))
+    except (TypeError, ValueError):
+        wait_ms = 0
+    try:
+        duration_sec = max(0, int(float(request.POST.get('duration_sec', 0))))
+    except (TypeError, ValueError):
+        duration_sec = 0
+
+    if dist_km <= 0 and duration_sec < 30:
+        return JsonResponse({'ok': False, 'error': "Taksometr hali boshlanmagan yoki juda qisqa."}, status=400)
+
+    tariff = TariffSettings.get()
+    price = tariff.calc_price(dist_km, wait_ms / 60000)
+    started_at = timezone.now() - timezone.timedelta(seconds=duration_sec)
+
+    order = Order.objects.create(
+        client=_walkin_client(), driver=driver,
+        from_address="Yo'l-yo'lakay olingan mijoz (taksometr)",
+        status='completed',
+        payment_type='cash', car_type=driver.car_type,
+        distance_km=dist_km, tmx_dist_km=dist_km,
+        tmx_start_time=started_at, tmx_paused_ms=wait_ms,
+        price=price, commission=tariff.commission,
+    )
+
+    driver.balance -= tariff.commission
+    driver.trips_count = (driver.trips_count or 0) + 1
+    driver.save(update_fields=['balance', 'trips_count'])
+
+    _log_activity(
+        driver, DriverActivityLog.ACTION_BALANCE,
+        f"Taksometr (qo'shimcha mijoz): -{tariff.commission} UZS komissiya, buyurtma #{order.id}",
+        request,
+    )
+    tg_order_completed(order, driver)
+    tg_low_balance_alert(driver)
+
+    return JsonResponse({
+        'ok': True, 'price': float(price),
+        'new_balance': float(driver.balance), 'order_id': order.id,
+    })
+
+
 # ── Chat ──────────────────────────────────────────────────────────────────────
 
 @driver_login_required
