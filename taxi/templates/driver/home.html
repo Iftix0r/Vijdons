@@ -484,7 +484,10 @@ async function loadOrders() {
     // ekranni "tiklaydigan" yagona joy bo'lishi mumkin — boshqa hech narsa
     // o'zgarmagani uchun yuqoridagi tarmoqlarning birortasi ham ishlamaydi.
     const _active = ORDERS.find(o => o.status === 'accepted' || o.status === 'on_way' || o.status === 'arrived');
-    if (_active) _ensureActiveSheet(_active);
+    if (_active) {
+      _updateMyOrdersBtn(_active);
+      if (_orderSheetDismissedFor !== _active.id) _ensureActiveSheet(_active);
+    }
   } catch(_){}
 }
 
