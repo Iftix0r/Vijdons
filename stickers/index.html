@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>1351 VIJDON GO — Logo va Chaqiruv Stikerlari Katalogi</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --accent-yellow: #ffc72c;
+      --accent-orange: #ff9800;
+      --accent-blue: #0099ff;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', 'Montserrat', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      padding: 24px;
+      line-height: 1.5;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 36px;
+      padding: 24px;
+      background: linear-gradient(135deg, rgba(255,199,44,0.15), rgba(0,136,255,0.1));
+      border: 1px solid rgba(255,199,44,0.3);
+      border-radius: 20px;
+    }
+
+    .header-logo {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      box-shadow: 0 0 20px rgba(255,199,44,0.4);
+      margin-bottom: 12px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: var(--accent-yellow);
+      color: #000;
+      font-weight: 800;
+      font-size: 14px;
+      padding: 4px 16px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 2.3rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      background: linear-gradient(to right, #ffffff, var(--accent-yellow));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+    }
+
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(520px, 1fr));
+      gap: 28px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 600px) {
+      .grid-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .sticker-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .sticker-card:hover {
+      border-color: var(--accent-yellow);
+      transform: translateY(-4px);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .card-tag {
+      background: rgba(255,199,44,0.15);
+      color: var(--accent-yellow);
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-weight: 700;
+      border: 1px solid rgba(255,199,44,0.3);
+    }
+
+    .preview-box {
+      background: #090d14;
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      margin-bottom: 16px;
+      border: 1px stroke rgba(255,255,255,0.05);
+      min-height: 200px;
+    }
+
+    .preview-box svg {
+      width: 100%;
+      height: auto;
+      max-height: 240px;
+    }
+
+    .spec-list {
+      list-style: none;
+      margin-bottom: 20px;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    .spec-list li {
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .spec-list li::before {
+      content: "✓";
+      color: var(--accent-yellow);
+      font-weight: bold;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px 18px;
+      border-radius: 10px;
+      border: none;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+      transform: scale(1.02);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-yellow), var(--accent-orange));
+      color: #000;
+    }
+
+    /* Mockups Section */
+    .section-title {
+      max-width: 1400px;
+      margin: 48px auto 24px auto;
+      font-size: 1.6rem;
+      font-weight: 800;
+      border-left: 4px solid var(--accent-yellow);
+      padding-left: 14px;
+    }
+
+    .mockup-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      gap: 28px;
+      max-width: 1400px;
+      margin: 0 auto 40px auto;
+    }
+
+    .mockup-card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+    }
+
+    .mockup-card img {
+      width: 100%;
+      height: 400px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .mockup-info {
+      padding: 18px 22px;
+    }
+
+    .mockup-info h3 {
+      font-size: 1.15rem;
+      margin-bottom: 4px;
+      color: #fff;
+    }
+
+    .mockup-info p {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 60px;
+      padding: 24px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      border-top: 1px solid var(--card-border);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <img src="../logo.PNG" alt="Vijdon GO Logo" class="header-logo">
+    <br>
+    <span class="badge">Eski va Yangi Logo Dizaynlar To'plami</span>
+    <h1>VIJDON GO (1351) — AVTO STIKERLAR KATALOGI</h1>
+    <p class="subtitle">Mashina orqa oynasi va yon eshiklari uchun original Maskot Logo va 1351 raqamli stiker fayllari</p>
+  </header>
+
+  <h2 class="section-title">1. Original Maskot Logo Bilan Stikerlar (Premium)</h2>
+
+  <div class="grid-container">
+
+    <!-- Card 1: Rear window with Logo -->
+    <div class="sticker-card">
+      <div>
+        <div class="card-header">
+          <h2 class="card-title">Orqa Oyna — Logo + 1351 Stikeri</h2>
+          <span class="card-tag">TAVSIYA ETILADI</span>
+        </div>
+        <div class="preview-box">
+          <object type="image/svg+xml" data="1351_orqa_oyna_with_logo.svg" width="100%"></object>
+        </div>
+        <ul class="spec-list">
+          <li>Dizayn: Vijdon GO Maskot Logotipi + Katta 1351 va TAXI 24/7 yozuvi</li>
+          <li>O'lcham: 100 sm × 22 sm</li>
+          <li>Format: Ultra yuqori aniqlikdagi Vector SVG (Pechatga tayyor)</li>
+          <li>Joylashuvi: Mashina orqa oynasi markazi yoki pastki qismi</li>
+        </ul>
+      </div>
+      <div class="actions">
+        <a href="1351_orqa_oyna_with_logo.svg" download class="btn btn-primary">
+          📥 SVG Faylni Yuklash (Logo Bilan)
+        </a>
+      </div>
+    </div>
+
+    <!-- Card 2: Side door with Logo -->
+    <div class="sticker-card">
+      <div>
+        <div class="card-header">
+          <h2 class="card-title">Yon Eshiklar — Logo + 1351 Brending</h2>
+          <span class="card-tag">FULL CAR BRANDING</span>
+        </div>
+        <div class="preview-box">
+          <object type="image/svg+xml" data="1351_yon_eshik_with_logo.svg" width="100%"></object>
+        </div>
+        <ul class="spec-list">
+          <li>Dizayn: Maskot Logo + Sportiy chiziqlar + 1351 burchakli nishon</li>
+          <li>O'lcham: 125 sm × 40 sm</li>
+          <li>Moslik: Har qanday oq, qora, kulrang avtomobil eshiklariga</li>
+          <li>Chop etish: Vinil pechat (UV print) + Lamination</li>
+        </ul>
+      </div>
+      <div class="actions">
+        <a href="1351_yon_eshik_with_logo.svg" download class="btn btn-primary">
+          📥 SVG Faylni Yuklash (Logo Bilan)
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+  <h2 class="section-title">2. Text & Plotter Cut Stikerlar (Vinil Plotter Kesish Uchun)</h2>
+
+  <div class="grid-container">
+
+    <!-- Card 3 -->
+    <div class="sticker-card">
+      <div>
+        <div class="card-header">
+          <h2 class="card-title">Orqa Oyna Klassik (Yozuvli)</h2>
+          <span class="card-tag">Plotter Cut</span>
+        </div>
+        <div class="preview-box">
+          <object type="image/svg+xml" data="1351_orqa_oyna_sticker_1.svg" width="100%"></object>
+        </div>
+        <ul class="spec-list">
+          <li>O'lcham: 90 sm × 18 sm</li>
+          <li>Material: ORACAL 641/751 kesilgan vinil plenka</li>
+          <li>Elementlar: Call Icon + 1351 + VIJDON TAXI</li>
+        </ul>
+      </div>
+      <div class="actions">
+        <a href="1351_orqa_oyna_sticker_1.svg" download class="btn btn-primary">
+          📥 SVG Faylni Yuklash
+        </a>
+      </div>
+    </div>
+
+    <!-- Card 4 -->
+    <div class="sticker-card">
+      <div>
+        <div class="card-header">
+          <h2 class="card-title">Plotter Keshish Uchun 1-Rangli Siluet</h2>
+          <span class="card-tag">100% Contour Cut</span>
+        </div>
+        <div class="preview-box">
+          <object type="image/svg+xml" data="1351_plotter_monochrome.svg" width="100%"></object>
+        </div>
+        <ul class="spec-list">
+          <li>Faqat vinil plotter mashinasi uchun (Fon so'ralmaydi)</li>
+          <li>Har bir harf alohida montaj plenkasida yopishtiriladi</li>
+        </ul>
+      </div>
+      <div class="actions">
+        <a href="1351_plotter_monochrome.svg" download class="btn btn-primary">
+          📥 SVG Faylni Yuklash
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+  <h2 class="section-title">Mashinada Real Ko'rinish Namunalari</h2>
+
+  <div class="mockup-grid">
+    <div class="mockup-card">
+      <img src="mockup_rear_logo.png" alt="Logo va 1351 Orqa Oynada">
+      <div class="mockup-info">
+        <h3>Orqa Oynada Vijdon GO Logotipi va 1351</h3>
+        <p>Original Vijdon GO logotipi orqa oynaning chap qismida yorqin va ko'zga tashlanadigan qilib joylashtirilgan.</p>
+      </div>
+    </div>
+
+    <div class="mockup-card">
+      <img src="mockup_side_logo.png" alt="Logo va 1351 Yon Eshikda">
+      <div class="mockup-info">
+        <h3>Yon Eshikda Vijdon GO Logotipi va 1351 Brending</h3>
+        <p>Eshiklarda maskot logo va aerodinamik chiziqlar mashinaga zamonaviy professional ko'rinish beradi.</p>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>1351 VIJDON GO TAXI &copy; 2026 — Poligrafiyada chop etishga to'liq tayyorlangan vektor fayllar to'plami.</p>
+  </footer>
+
+</body>
+</html>

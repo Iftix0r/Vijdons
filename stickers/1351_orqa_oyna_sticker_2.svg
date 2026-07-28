@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 220" width="1000" height="220">
+  <defs>
+    <linearGradient id="neonYellow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFE600"/>
+      <stop offset="100%" stop-color="#FFA800"/>
+    </linearGradient>
+    <linearGradient id="cyanBlue" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00D2FF"/>
+      <stop offset="100%" stop-color="#0088FF"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Dark Glass Preview Background -->
+  <rect width="1000" height="220" rx="16" fill="#0A0E14"/>
+
+  <!-- Left Dynamic Wing Graphic -->
+  <path d="M 30 110 L 120 40 L 150 40 L 80 110 L 150 180 L 120 180 Z" fill="url(#neonYellow)"/>
+  <path d="M 60 110 L 130 55 L 145 55 L 85 110 L 145 165 L 130 165 Z" fill="#FFFFFF"/>
+
+  <!-- Right Dynamic Wing Graphic -->
+  <path d="M 970 110 L 880 40 L 850 40 L 920 110 L 850 180 L 880 180 Z" fill="url(#neonYellow)"/>
+  <path d="M 940 110 L 870 55 L 855 55 L 915 110 L 855 165 L 870 165 Z" fill="#FFFFFF"/>
+
+  <!-- Center Content Group -->
+  <!-- "1351" Huge Bold Number -->
+  <g font-family="'Impact', 'Trebuchet MS', sans-serif" font-weight="900" font-style="italic" text-anchor="middle">
+    <!-- Outer Glow / Stroke for Plotter Cutting Cutout -->
+    <text x="500" y="115" font-size="110" fill="url(#neonYellow)" letter-spacing="6">1351</text>
+  </g>
+
+  <!-- Top Curved Tagline -->
+  <text x="500" y="38" font-family="'Arial Black', sans-serif" font-size="20" font-weight="900" fill="#FFFFFF" letter-spacing="12" text-anchor="middle">QO'NG'IROQ QILING</text>
+
+  <!-- Bottom Brand Subtitle -->
+  <g font-family="'Arial Black', sans-serif" font-weight="900" font-style="italic" text-anchor="middle">
+    <text x="410" y="165" font-size="34" fill="#FFFFFF" letter-spacing="4">VIJDON</text>
+    <text x="540" y="165" font-size="36" fill="url(#cyanBlue)" letter-spacing="2">GO</text>
+    <text x="635" y="165" font-size="34" fill="url(#neonYellow)" letter-spacing="4">TAXI</text>
+  </g>
+
+  <!-- Decorative Dotted Line -->
+  <line x1="200" y1="185" x2="800" y2="185" stroke="url(#neonYellow)" stroke-width="3" stroke-dasharray="12 6"/>
+</svg>

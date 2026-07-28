@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400">
+  <defs>
+    <linearGradient id="taxiYellow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFD600"/>
+      <stop offset="100%" stop-color="#FF9900"/>
+    </linearGradient>
+    <linearGradient id="darkBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1A1F26"/>
+      <stop offset="100%" stop-color="#0D1117"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Door Surface Preview (White Body) -->
+  <rect width="1200" height="400" rx="20" fill="#F4F5F7" stroke="#E2E8F0" stroke-width="2"/>
+
+  <!-- Aerodynamic Racing Stripes Accent -->
+  <path d="M 50 260 L 450 60 L 1150 60 L 1110 110 L 470 110 L 100 290 Z" fill="url(#taxiYellow)"/>
+  <path d="M 20 320 L 380 140 L 1100 140 L 1070 180 L 400 180 L 70 330 Z" fill="#1A1F26"/>
+
+  <!-- Main 1351 Number Box Badge -->
+  <g transform="translate(100, 100)">
+    <!-- Yellow Angle Box -->
+    <path d="M 0 0 L 340 0 L 300 150 L 0 150 Z" fill="url(#taxiYellow)"/>
+    <path d="M 20 15 L 325 15 L 290 135 L 15 135 Z" fill="#1A1F26"/>
+    <text x="160" y="105" font-family="'Impact', 'Arial Black', sans-serif" font-size="95" font-weight="900" font-style="italic" fill="url(#taxiYellow)" text-anchor="middle" letter-spacing="4">1351</text>
+  </g>
+
+  <!-- VIJDON GO TAXI Text on Door -->
+  <g transform="translate(430, 220)">
+    <text x="0" y="50" font-family="'Arial Black', 'Montserrat', sans-serif" font-size="52" font-weight="900" font-style="italic" fill="#1A1F26" letter-spacing="4">VIJDON</text>
+    <text x="265" y="50" font-family="'Arial Black', 'Montserrat', sans-serif" font-size="54" font-weight="900" font-style="italic" fill="#0088FF" letter-spacing="2">GO</text>
+    <text x="375" y="50" font-family="'Arial Black', 'Montserrat', sans-serif" font-size="52" font-weight="900" font-style="italic" fill="url(#taxiYellow)" letter-spacing="4">TAXI</text>
+    
+    <text x="2" y="85" font-family="'Arial', sans-serif" font-size="20" font-weight="bold" fill="#556070" letter-spacing="8">24/7 TAXI XIZMATI</text>
+  </g>
+
+  <!-- Phone Call Icon Badge -->
+  <g transform="translate(970, 210)">
+    <rect width="180" height="90" rx="12" fill="#1A1F26"/>
+    <rect width="180" height="90" rx="12" fill="none" stroke="url(#taxiYellow)" stroke-width="4"/>
+    <text x="90" y="38" font-family="'Arial Black', sans-serif" font-size="14" fill="#FFFFFF" text-anchor="middle">DISPATCHER</text>
+    <text x="90" y="70" font-family="'Impact', sans-serif" font-size="32" fill="url(#taxiYellow)" text-anchor="middle">1351</text>
+  </g>
+
+</svg>

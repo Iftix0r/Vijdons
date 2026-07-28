@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 200" width="1000" height="200">
+  <defs>
+    <linearGradient id="yellowGold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFC72C"/>
+      <stop offset="100%" stop-color="#FF9E00"/>
+    </linearGradient>
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+  
+  <!-- Optional Dark Glass Background Preview (Remove when plotting) -->
+  <rect width="1000" height="200" rx="12" fill="#121820"/>
+  
+  <!-- Border Accent Lines -->
+  <path d="M 40 30 L 160 30 L 140 40 L 40 40 Z" fill="url(#yellowGold)"/>
+  <path d="M 960 30 L 840 30 L 860 40 L 960 40 Z" fill="url(#yellowGold)"/>
+
+  <!-- Phone Call Icon -->
+  <g transform="translate(70, 50)" filter="url(#dropShadow)">
+    <circle cx="45" cy="45" r="42" fill="url(#yellowGold)"/>
+    <path d="M 32 26 C 30 26 27 28 27 31 C 27 45 39 57 53 57 C 56 57 58 54 58 52 L 54 44 C 53 43 51 43 49 44 L 45 47 C 40 44 36 40 33 35 L 36 31 C 37 29 37 27 36 26 Z" fill="#121820"/>
+    <!-- Signal Waves -->
+    <path d="M 58 26 A 15 15 0 0 1 70 38" stroke="#121820" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <path d="M 64 20 A 23 23 0 0 1 80 36" stroke="#121820" stroke-width="4" fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- Main 1351 Call Number -->
+  <g font-family="'Impact', 'Arial Black', sans-serif" font-weight="900" font-style="italic">
+    <!-- Shadow / Outline effect -->
+    <text x="180" y="125" font-size="96" fill="#000000" opacity="0.6" letter-spacing="4">1351</text>
+    <!-- Main Yellow Text -->
+    <text x="176" y="122" font-size="96" fill="url(#yellowGold)" letter-spacing="4">1351</text>
+  </g>
+
+  <!-- Vertical Divider Line -->
+  <line x1="440" y1="45" x2="425" y2="145" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+
+  <!-- Brand Title "VIJDON TAXI" -->
+  <g font-family="'Montserrat', 'Arial Black', sans-serif" font-weight="900" font-style="italic">
+    <!-- VIJDON -->
+    <text x="460" y="98" font-size="52" fill="#FFFFFF" letter-spacing="3" filter="url(#dropShadow)">VIJDON</text>
+    <!-- TAXI -->
+    <text x="460" y="145" font-size="40" fill="url(#yellowGold)" letter-spacing="8">TAXI</text>
+  </g>
+
+  <!-- Call-to-action Badge -->
+  <g transform="translate(800, 65)">
+    <rect width="140" height="60" rx="8" fill="none" stroke="url(#yellowGold)" stroke-width="3"/>
+    <text x="70" y="28" font-family="'Arial Black', sans-serif" font-size="14" font-weight="bold" fill="#FFFFFF" text-anchor="middle">TEZKOR CHAQIRUV</text>
+    <text x="70" y="48" font-family="'Arial Black', sans-serif" font-size="18" font-weight="bold" fill="url(#yellowGold)" text-anchor="middle">24 / 7</text>
+  </g>
+
+  <!-- Bottom Accent Strip -->
+  <path d="M 40 165 L 960 165 L 940 172 L 60 172 Z" fill="#FFFFFF" opacity="0.9"/>
+</svg>
