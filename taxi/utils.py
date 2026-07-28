@@ -1732,7 +1732,7 @@ def generate_voucher_codes(n, existing=None):
     return list(codes)
 
 
-def build_flyer_pdf(codes):
+def build_flyer_pdf(codes, owner_driver=None):
     """Reklama flayeri: har bir A4 varag'iga 3 tadan flayer (gorizontal
     chiziqlar bo'ylab kesiladi), har bir flayerda o'ziga xos maxfiy tekshirish
     kodi VA shu kodni tekshirish sahifasiga olib boruvchi QR kod bosiladi
@@ -1781,6 +1781,13 @@ def build_flyer_pdf(codes):
     from django.contrib.staticfiles import finders
     logo_path = finders.find('taxi/img/logo.png')
 
+    driver_photo_path = None
+    if owner_driver and owner_driver.photo:
+        try:
+            driver_photo_path = owner_driver.photo.path
+        except Exception:
+            driver_photo_path = None
+
     buf = BytesIO()
     c = pdfcanvas.Canvas(buf, pagesize=A4)
 
@@ -1817,14 +1824,15 @@ def build_flyer_pdf(codes):
             c.setFillColor(DARK)
             c.rect(0, 0, block_w, strip_h, stroke=0, fill=1)
 
-            if logo_path:
+            image_path = driver_photo_path or logo_path
+            if image_path:
                 badge = 44 * mm
                 badge_x = (block_w - badge) / 2
                 badge_y = strip_h - badge - 12 * mm
                 c.setFillColor(colors.white)
                 c.roundRect(badge_x, badge_y, badge, badge, 5 * mm, stroke=0, fill=1)
                 pad = 3 * mm
-                c.drawImage(logo_path, badge_x + pad, badge_y + pad, width=badge - 2 * pad,
+                c.drawImage(image_path, badge_x + pad, badge_y + pad, width=badge - 2 * pad,
                             height=badge - 2 * pad, preserveAspectRatio=True, anchor='c', mask='auto')
             else:
                 badge_y = strip_h - 44 * mm - 12 * mm
@@ -1834,10 +1842,21 @@ def build_flyer_pdf(codes):
                 c.drawCentredString(block_w / 2, strip_h / 2 - 10, 'TAXI')
 
             c.setFillColor(colors.white)
-            c.setFont('Helvetica-Bold', 9)
-            c.drawCentredString(block_w / 2, badge_y - 9 * mm, "ISHONCHLI VA TEZ")
-            c.setFont('Helvetica', 9)
-            c.drawCentredString(block_w / 2, badge_y - 15 * mm, "taksi xizmati")
+            if owner_driver:
+                name = owner_driver.full_name or ''
+                font_size = 11
+                max_w = block_w - 8 * mm
+                while font_size > 7 and c.stringWidth(name, 'Helvetica-Bold', font_size) > max_w:
+                    font_size -= 1
+                c.setFont('Helvetica-Bold', font_size)
+                c.drawCentredString(block_w / 2, badge_y - 9 * mm, name[:24])
+                c.setFont('Helvetica', 8)
+                c.drawCentredString(block_w / 2, badge_y - 15 * mm, "shaxsiy haydovchingiz")
+            else:
+                c.setFont('Helvetica-Bold', 9)
+                c.drawCentredString(block_w / 2, badge_y - 9 * mm, "ISHONCHLI VA TEZ")
+                c.setFont('Helvetica', 9)
+                c.drawCentredString(block_w / 2, badge_y - 15 * mm, "taksi xizmati")
 
             # Blokning pastki chetida ingichka amber chiziq — nafis yakunlovchi chiziq
             c.setStrokeColor(AMBER)
@@ -1985,7 +2004,7 @@ def build_flyer_pdf(codes):
     return buf
 
 
-def build_flyer_business_card_pdf(codes):
+def build_flyer_business_card_pdf(codes, owner_driver=None):
     """Xuddi shu chegirma kuponini VIZITKA o'lchamida (90x50mm, standart CIS
     o'lchami) chop etish uchun alohida, shu kichik o'lchamga moslab
     LOYIHALANGAN (kattaroq flayerni shunchaki kichraytirish emas) PDF quradi.
@@ -2021,6 +2040,13 @@ def build_flyer_business_card_pdf(codes):
     GREEN_LIGHT = colors.HexColor('#ecfdf5')
     GREY_TEXT   = colors.HexColor('#374151')
     logo_path = finders.find('taxi/img/logo.png')
+
+    driver_photo_path = None
+    if owner_driver and owner_driver.photo:
+        try:
+            driver_photo_path = owner_driver.photo.path
+        except Exception:
+            driver_photo_path = None
 
     card_w, card_h = 90 * mm, 50 * mm
     cols, rows = 2, 5
@@ -2062,15 +2088,25 @@ def build_flyer_business_card_pdf(codes):
             block_w = 26 * mm
             c.setFillColor(DARK)
             c.rect(0, 0, block_w, card_h, stroke=0, fill=1)
-            if logo_path:
-                badge = 17 * mm
+            image_path = driver_photo_path or logo_path
+            if image_path:
+                badge = 15 * mm if owner_driver else 17 * mm
                 badge_x = (block_w - badge) / 2
-                badge_y = (card_h - badge) / 2
+                badge_y = (card_h - badge) / 2 + (2.5 * mm if owner_driver else 0)
                 c.setFillColor(colors.white)
-                c.roundRect(badge_x, badge_y, badge, badge, 2.5 * mm, stroke=0, fill=1)
-                pad = 1.6 * mm
-                c.drawImage(logo_path, badge_x + pad, badge_y + pad, width=badge - 2 * pad,
+                c.roundRect(badge_x, badge_y, badge, badge, 2.2 * mm, stroke=0, fill=1)
+                pad = 1.4 * mm
+                c.drawImage(image_path, badge_x + pad, badge_y + pad, width=badge - 2 * pad,
                             height=badge - 2 * pad, preserveAspectRatio=True, anchor='c', mask='auto')
+                if owner_driver:
+                    name = (owner_driver.full_name or '')[:20]
+                    font_size = 6.2
+                    max_w = block_w - 3 * mm
+                    while font_size > 4.5 and c.stringWidth(name, 'Helvetica-Bold', font_size) > max_w:
+                        font_size -= 0.3
+                    c.setFillColor(colors.white)
+                    c.setFont('Helvetica-Bold', font_size)
+                    c.drawCentredString(block_w / 2, badge_y - 4 * mm, name)
             c.setFillColor(AMBER)
             c.rect(block_w, 0, 1 * mm, card_h, stroke=0, fill=1)
 

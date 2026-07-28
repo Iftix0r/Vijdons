@@ -2756,10 +2756,10 @@ def flyer_download(request):
     FlyerVoucher.objects.bulk_create([FlyerVoucher(code=code, owner_driver=owner_driver) for code in codes])
 
     if fmt == 'card':
-        buf = build_flyer_business_card_pdf(codes)
+        buf = build_flyer_business_card_pdf(codes, owner_driver=owner_driver)
         filename = 'vijdon_taxi_vizitka.pdf'
     else:
-        buf = build_flyer_pdf(codes)
+        buf = build_flyer_pdf(codes, owner_driver=owner_driver)
         filename = 'vijdon_taxi_flayer.pdf'
 
     response = HttpResponse(buf.getvalue(), content_type='application/pdf')
