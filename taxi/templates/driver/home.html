@@ -991,17 +991,36 @@ document.addEventListener('visibilitychange', () => {
     }
   }
 
-  function _homeEnsureMap(lat, lng) {
+  function _homeEnsureMap(lat, lng, placeholder) {
     if (_homeMap || typeof ymaps === 'undefined' || !document.getElementById('home-map')) return;
     ymaps.ready(() => {
       if (_homeMap || !document.getElementById('home-map')) return;
       _homeMap = new ymaps.Map('home-map', { center: [lat, lng], zoom: 14, controls: ['zoomControl'] });
       window._homeMap = _homeMap; // Taksometr paneli (mtx) shu xaritaga o'z izini chizadi
       const hint = document.getElementById('home-map-hint');
-      if (hint) hint.style.display = 'none';
-      _homeUpdateMine(lat, lng);
+      // Diqqat: `placeholder` bilan chaqirilsa (haqiqiy GPS hali kelmagan,
+      // faqat xarita bo'sh qolib ketmasin deb standart markazga qo'yilgan) —
+      // haydovchi belgisini QO'YMAYMIZ (chunki u yerda emas) va "GPS
+      // kutilmoqda" matnini butunlay o'chirmasdan, xaritani ko'rish mumkin
+      // bo'lgani haqida yumshoqroq matnga almashtiramiz.
+      if (placeholder) {
+        if (hint) hint.textContent = 'Joylashuv aniqlanmoqda — xarita namunaviy markazda';
+      } else {
+        if (hint) hint.style.display = 'none';
+        _homeUpdateMine(lat, lng);
+      }
     });
   }
+
+  // Diqqat: agar hech qanday manbadan (Flutter, brauzer geolocation, avvalgi
+  // sessiya) 6 soniya ichida joylashuv kelmasa — xarita "GPS kutilmoqda"
+  // yozuvi bilan BO'SH-QORA holatda cheksiz qotib qolmasin deb, uni Toshkent
+  // markazida (standart) ko'rsatib qo'yamiz. Haqiqiy joylashuv kelishi bilan
+  // (yuqoridagi eventlar orqali) haydovchi belgisi normal qo'shiladi.
+  const TASHKENT_LAT = 41.311081, TASHKENT_LNG = 69.240562;
+  setTimeout(() => {
+    if (!_homeMap) _homeEnsureMap(TASHKENT_LAT, TASHKENT_LNG, true);
+  }, 6000);
 
   // "Joylashuvga qaytish" tugmasi — o'z belgisi ustiga markazlashtiradi
   window._homeMapRecenter = function() {
