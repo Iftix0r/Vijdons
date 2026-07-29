@@ -2089,7 +2089,9 @@ _ADMIN_MENU_KB = {
         [{'text': '🆕 Yangi buyurtma'}],
         [{'text': '📋 Buyurtmalar'}, {'text': '🚖 Haydovchilar'}],
         [{'text': '🆕 Yangi haydovchilar'}, {'text': '📊 Statistika'}],
-        [{'text': "💳 To'lov so'rovlari"}, {'text': '❓ Yordam'}],
+        [{'text': "💳 To'lov so'rovlari"}, {'text': '💰 Moliya'}],
+        [{'text': '🆘 SOS'}, {'text': '🛡 Xavfsizlik'}],
+        [{'text': '🔍 Qidiruv'}, {'text': '❓ Yordam'}],
     ],
     'resize_keyboard': True,
 }
@@ -2151,8 +2153,64 @@ def _admin_help_text():
         "💳 To'lov so'rovlari — haydovchi yuborgan to'lov cheklarini ko'rish\n"
         "/tolovtasdiq &lt;id&gt; — to'lov chekini tasdiqlash (balansga qo'shiladi)\n"
         "/tolovrad &lt;id&gt; — to'lov chekini rad etish\n"
+        "💰 Moliya — bugungi/haftalik GMV, komissiya daromadi, haydovchi ulushi\n"
+        "🆘 SOS — hal qilinmagan SOS signallar\n"
+        "/sosresolve &lt;id&gt; — SOS signalni hal qilindi deb belgilash\n"
+        "🛡 Xavfsizlik — ochiq xavfsizlik hodisalari (tuhmat/shantaj/yuridik nizo)\n"
+        "/xavfsizlikhal &lt;id&gt; — hodisani hal qilindi deb belgilash\n"
+        "🔍 Qidiruv — telefon raqami yoki ID bo'yicha haydovchi/buyurtma qidirish\n"
+        "/qidir &lt;so'rov&gt; — xuddi shu qidiruvni to'g'ridan-to'g'ri buyruq bilan\n"
         "/cancel — joriy amalni bekor qilish (masalan buyurtma yaratishni to'xtatish)"
     )
+
+
+def _admin_search(query):
+    """Telefon raqami yoki ID bo'yicha haydovchi/mijoz/buyurtmalarni qidiradi va
+    natijani tayyor HTML matn sifatida qaytaradi (bot xabari uchun)."""
+    query = query.strip()
+    digits = query.replace(' ', '').replace('+', '')
+    blocks = []
+
+    if digits.isdigit():
+        driver = Driver.objects.filter(pk=int(digits)).first()
+        if driver:
+            status = "🟢 Navbatda" if driver.is_on_duty else "⚪ Navbatda emas"
+            blocked = " 🔒 BLOKLANGAN" if not driver.is_active else ''
+            blocks.append(
+                f"🚖 <b>Haydovchi #{driver.id}</b>\n{driver.full_name} | <code>{driver.phone_number}</code>\n"
+                f"🚗 {driver.car_model} | {driver.car_number}\n💰 {driver.balance} UZS — {status}{blocked}"
+            )
+        order = Order.objects.filter(pk=int(digits)).select_related('client', 'driver').first()
+        if order:
+            status_labels = dict(Order.STATUS_CHOICES)
+            blocks.append(
+                f"📄 <b>Buyurtma #{order.id}</b> — {status_labels.get(order.status, order.status)}\n"
+                f"👤 {order.client.full_name or '—'} | <code>{order.client.phone_number}</code>\n"
+                f"🚖 Haydovchi: {order.driver.full_name if order.driver else '—'}\n"
+                f"📍 {order.from_address}" + (f" → 🏁 {order.to_address}" if order.to_address else '')
+            )
+
+    phone_drivers = Driver.objects.filter(phone_number__icontains=digits or query)[:10] if (digits or query) else []
+    for d in phone_drivers:
+        status = "🟢 Navbatda" if d.is_on_duty else "⚪ Navbatda emas"
+        blocked = " 🔒 BLOKLANGAN" if not d.is_active else ''
+        blocks.append(
+            f"🚖 <b>Haydovchi #{d.id}</b>\n{d.full_name} | <code>{d.phone_number}</code>\n"
+            f"🚗 {d.car_model} | {d.car_number}\n💰 {d.balance} UZS — {status}{blocked}"
+        )
+
+    clients = Client.objects.filter(phone_number__icontains=digits or query)[:5] if (digits or query) else []
+    for c in clients:
+        recent = Order.objects.filter(client=c).order_by('-created_at')[:3]
+        order_lines = '\n'.join(f"  #{o.id} — {dict(Order.STATUS_CHOICES).get(o.status, o.status)}" for o in recent) or '  —'
+        blocks.append(
+            f"👤 <b>Mijoz</b> {c.full_name or '—'} | <code>{c.phone_number}</code>"
+            + (" 🚫 BLOKLANGAN" if c.is_blocked else '') + f"\nOxirgi buyurtmalar:\n{order_lines}"
+        )
+
+    if not blocks:
+        return f"❌ \"{query}\" bo'yicha hech narsa topilmadi."
+    return f"🔍 <b>\"{query}\" bo'yicha natijalar:</b>\n\n" + '\n\n'.join(blocks)
 
 
 def _handle_admin_message(token, chat_id, text, location=None):
@@ -2238,6 +2296,11 @@ def _handle_admin_message(token, chat_id, text, location=None):
             + (f"🏁 Qayerga: {to_address}\n" if to_address else '')
             + (f"💰 Narx: {price:.0f} UZS\n" if price else ''),
             _ADMIN_MENU_KB)
+        return
+
+    if step == 'search_query':
+        _admin_sessions.pop(chat_id, None)
+        _admin_bot_send(token, chat_id, _admin_search(text), _ADMIN_MENU_KB)
         return
 
     # ── Menyu / buyruqlar ──
@@ -2373,6 +2436,79 @@ def _handle_admin_message(token, chat_id, text, location=None):
             _ADMIN_MENU_KB)
         return
 
+    if text in ('💰 Moliya', '/moliya'):
+        from django.utils import timezone
+        from django.db.models import Sum
+        import datetime
+        today_start = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
+        week_start = today_start - datetime.timedelta(days=today_start.weekday())
+
+        def _fin(qs):
+            gmv = float(qs.aggregate(s=Sum('price'))['s'] or 0)
+            commission = float(qs.aggregate(s=Sum('commission'))['s'] or 0)
+            return gmv, commission, gmv - commission
+
+        today_qs = Order.objects.filter(status='completed', created_at__gte=today_start)
+        week_qs  = Order.objects.filter(status='completed', created_at__gte=week_start)
+        t_gmv, t_comm, t_share = _fin(today_qs)
+        w_gmv, w_comm, w_share = _fin(week_qs)
+        _admin_bot_send(token, chat_id,
+            f"💰 <b>Moliya</b>\n\n"
+            f"<b>Bugun</b> ({today_start.strftime('%d.%m.%Y')})\n"
+            f"GMV: {t_gmv:,.0f} UZS\n"
+            f"Komissiya daromadi: {t_comm:,.0f} UZS\n"
+            f"Haydovchi ulushi: {t_share:,.0f} UZS\n\n"
+            f"<b>Shu hafta</b> ({week_start.strftime('%d.%m')} dan)\n"
+            f"GMV: {w_gmv:,.0f} UZS\n"
+            f"Komissiya daromadi: {w_comm:,.0f} UZS\n"
+            f"Haydovchi ulushi: {w_share:,.0f} UZS".replace(',', ' '),
+            _ADMIN_MENU_KB)
+        return
+
+    if text in ('🆘 SOS', '/sos'):
+        qs = SosAlert.objects.exclude(status=SosAlert.STATUS_RESOLVED).select_related('driver').order_by('-created_at')[:20]
+        if not qs:
+            _admin_bot_send(token, chat_id, "✅ Hal qilinmagan SOS signal yo'q.", _ADMIN_MENU_KB)
+            return
+        lines = []
+        for a in qs:
+            loc = f"{a.latitude:.5f}, {a.longitude:.5f}" if a.latitude and a.longitude else (a.address or '—')
+            lines.append(
+                f"<b>#{a.id}</b> — {a.driver.full_name} | <code>{a.driver.phone_number}</code>\n"
+                f"📍 {loc}\n"
+                + (f"📝 {a.note}\n" if a.note else '')
+                + f"🕐 {a.created_at:%d.%m.%Y %H:%M}"
+            )
+        lines.append("\n<i>/sosresolve id — hal qilindi deb belgilash</i>")
+        _admin_bot_send(token, chat_id, '🆘 <b>Hal qilinmagan SOS signallar:</b>\n\n' + '\n\n'.join(lines), _ADMIN_MENU_KB)
+        return
+
+    if text in ('🛡 Xavfsizlik', '/xavfsizlik'):
+        qs = SecurityIncident.objects.exclude(status=SecurityIncident.STATUS_RESOLVED).order_by('-created_at')[:20]
+        if not qs:
+            _admin_bot_send(token, chat_id, "✅ Ochiq xavfsizlik hodisasi yo'q.", _ADMIN_MENU_KB)
+            return
+        type_labels = dict(SecurityIncident.TYPE_CHOICES)
+        status_labels = dict(SecurityIncident.STATUS_CHOICES)
+        lines = []
+        for inc in qs:
+            lines.append(
+                f"<b>#{inc.id}</b> — {inc.title}\n"
+                f"Turi: {type_labels.get(inc.incident_type, inc.incident_type)} | {status_labels.get(inc.status, inc.status)}\n"
+                + (f"🚖 {inc.related_driver.full_name}\n" if inc.related_driver else '')
+                + f"🕐 {inc.created_at:%d.%m.%Y %H:%M}"
+            )
+        lines.append("\n<i>/xavfsizlikhal id — hal qilindi deb belgilash</i>")
+        _admin_bot_send(token, chat_id, '🛡 <b>Ochiq xavfsizlik hodisalari:</b>\n\n' + '\n\n'.join(lines), _ADMIN_MENU_KB)
+        return
+
+    if text in ('🔍 Qidiruv', '/qidiruv'):
+        _admin_sessions[chat_id] = {'step': 'search_query'}
+        _admin_bot_send(token, chat_id,
+            "🔍 <b>Qidiruv</b>\nHaydovchi/mijoz telefon raqami yoki buyurtma/haydovchi ID raqamini yuboring:",
+            _CANCEL_KB)
+        return
+
     if len(parts) == 2 and parts[0] in ('/buyurtma', '/qidir') and parts[1].isdigit():
         order = Order.objects.filter(pk=int(parts[1])).select_related('client', 'driver').first()
         if not order:
@@ -2392,6 +2528,43 @@ def _handle_admin_message(token, chat_id, text, location=None):
         lines.append(f"💳 To'lov: {'Naqd' if order.payment_type == 'cash' else 'Karta'}")
         lines.append(f"🕐 {order.created_at.strftime('%d.%m.%Y %H:%M')}")
         _admin_bot_send(token, chat_id, '\n'.join(lines), _ADMIN_MENU_KB)
+        return
+
+    if parts and parts[0] == '/qidir' and len(parts) >= 2:
+        _admin_bot_send(token, chat_id, _admin_search(' '.join(parts[1:])), _ADMIN_MENU_KB)
+        return
+
+    if len(parts) == 2 and parts[0] == '/sosresolve' and parts[1].isdigit():
+        alert = SosAlert.objects.filter(pk=int(parts[1])).exclude(status=SosAlert.STATUS_RESOLVED).select_related('driver').first()
+        if not alert:
+            _admin_bot_send(token, chat_id, "❌ Hal qilinmagan SOS signal topilmadi.", _ADMIN_MENU_KB)
+            return
+        from django.utils import timezone
+        admin = BotAdmin.objects.filter(chat_id=str(chat_id)).first()
+        alert.status = SosAlert.STATUS_RESOLVED
+        alert.resolved_at = timezone.now()
+        alert.resolved_by = admin.full_name if admin and admin.full_name else f'Bot ({chat_id})'
+        alert.save(update_fields=['status', 'resolved_at', 'resolved_by'])
+        from .utils import log_system_event
+        log_system_event('sos_resolved', f"SOS #{alert.id} — {alert.driver.full_name} — bot orqali hal qilindi")
+        _admin_bot_send(token, chat_id, f"✅ SOS #{alert.id} hal qilindi deb belgilandi.", _ADMIN_MENU_KB)
+        return
+
+    if len(parts) >= 2 and parts[0] == '/xavfsizlikhal' and parts[1].isdigit():
+        incident = SecurityIncident.objects.filter(pk=int(parts[1])).exclude(status=SecurityIncident.STATUS_RESOLVED).first()
+        if not incident:
+            _admin_bot_send(token, chat_id, "❌ Ochiq xavfsizlik hodisasi topilmadi.", _ADMIN_MENU_KB)
+            return
+        from django.utils import timezone
+        incident.status = SecurityIncident.STATUS_RESOLVED
+        incident.resolved_at = timezone.now()
+        note = ' '.join(parts[2:]).strip()
+        if note:
+            incident.resolution_note = note
+        incident.save(update_fields=['status', 'resolved_at', 'resolution_note'])
+        from .utils import log_system_event
+        log_system_event('security_incident_resolved', f"Xavfsizlik hodisasi #{incident.id} — {incident.title} — bot orqali hal qilindi")
+        _admin_bot_send(token, chat_id, f"✅ Xavfsizlik hodisasi #{incident.id} hal qilindi deb belgilandi.", _ADMIN_MENU_KB)
         return
 
     if len(parts) == 2 and parts[0] == '/bekor' and parts[1].isdigit():
