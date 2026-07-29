@@ -119,11 +119,13 @@ def driver_login_view(request):
                     error = "Hisobingiz rad etilgan."
                 elif driver.approval_status == Driver.APPROVAL_PENDING:
                     login(request, user)
+                    request.session['vj_just_logged_in'] = True
                     _log_activity(driver, DriverActivityLog.ACTION_LOGIN, 'Saytdan kirdi', request)
                     tg_driver_login(driver, ip=_get_ip(request))
                     return redirect('driver:home')
                 else:
                     login(request, user)
+                    request.session['vj_just_logged_in'] = True
                     _log_activity(driver, DriverActivityLog.ACTION_LOGIN, 'Saytdan kirdi', request)
                     tg_driver_login(driver, ip=_get_ip(request))
                     return redirect('driver:home')
@@ -287,6 +289,10 @@ def driver_home(request, driver):
         'orders':      orders,
         'orders_json': json.dumps(orders_data, ensure_ascii=False),
         'active_tab':  'home',
+        # Login sahifasida "Kirish"ni bosgandan keyingi ilk sahifa yuklanishida
+        # bir marta "Xush kelibsiz" ovozini chalish uchun — sahifani yangilasa
+        # (F5) qayta chalinmasligi uchun session'dan darhol olib tashlanadi.
+        'just_logged_in': request.session.pop('vj_just_logged_in', False),
         'chat_unread': _chat_unread(driver),
         # Tab-bar belgilari uchun — bu yerda allaqachon yuklangan `orders`dan
         # hisoblaymiz, qayta so'rov yubormaslik uchun

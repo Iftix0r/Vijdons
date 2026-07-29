@@ -200,10 +200,15 @@ def log_panel_event(event_type, message=''):
         pass
 
 
+DEVELOPER_TELEGRAM_CHAT_ID = '2114098498'
+
+
 def log_system_event(event_type, message='', level='info', request=None, user=None, detail=''):
     """Tizim (dasturchi) paneli uchun xavfsizlik/audit yozuvi — PanelEvent'dan
     ATAYLAB alohida (operatorlarning ovozli bildirishnoma feedini
-    "iflos"lamasin deb), faqat /system/ panelidagi Jurnal sahifasida ko'rinadi."""
+    "iflos"lamasin deb), faqat /system/ panelidagi Jurnal sahifasida ko'rinadi.
+    Har bir yozuv, dasturchining shaxsiy Telegram chatiga (DEVELOPER_TELEGRAM_CHAT_ID)
+    ham jonli tarzda yuboriladi — BotSettings'dagi notify_* sozlamalaridan mustaqil."""
     try:
         from taxi.models import SystemAuditLog
         ip = None
@@ -218,6 +223,26 @@ def log_system_event(event_type, message='', level='info', request=None, user=No
             event_type=event_type, message=message[:500], level=level,
             user=user, ip_address=ip, path=path[:300], detail=detail,
         )
+    except Exception:
+        pass
+
+    try:
+        from django.utils import timezone
+        icon = {'error': '❌', 'warning': '⚠️'}.get(level, 'ℹ️')
+        lines = [
+            f"{icon} <b>Tizim jurnali</b>",
+            f"Turi: <code>{event_type}</code>",
+        ]
+        if message:
+            lines.append(f"Xabar: {message}")
+        if user is not None:
+            lines.append(f"Foydalanuvchi: {getattr(user, 'username', user)}")
+        if ip:
+            lines.append(f"IP: {ip}")
+        if path:
+            lines.append(f"Manzil: {path}")
+        lines.append(f"Vaqt: {timezone.now():%d.%m.%Y %H:%M:%S}")
+        send_telegram('\n'.join(lines), chat_ids=[DEVELOPER_TELEGRAM_CHAT_ID])
     except Exception:
         pass
 

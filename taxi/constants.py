@@ -21,6 +21,7 @@ PANEL_SOUND_EVENTS = [
 ]
 
 DRIVER_SOUND_EVENTS = [
+    ('driver_login',           "👋 Xush kelibsiz (saytga kirganda)"),
     ('driver_new_order',       '🚨 Yangi buyurtma'),
     ('driver_accept',          '✅ Buyurtma qabul qilindi'),
     ('driver_reject',          '❌ Rad etish / bekor qilish'),

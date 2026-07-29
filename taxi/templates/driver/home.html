@@ -358,6 +358,11 @@ let TODAY_TRIPS = {{ today_trips }};
 let ORDERS = {{ orders_json|safe }};
 let _known = new Set(ORDERS.map(o => o.id));
 
+{% if just_logged_in %}
+// Login sahifasidan endigina kirgan bo'lsa — "Xush kelibsiz" ovozini bir marta chalamiz
+setTimeout(() => { try { Audio.welcome(); } catch(_) {} }, 300);
+{% endif %}
+
 // Diqqat: bu pastda (renderOrdersDOM -> _startTimers ichida) ishlatiladi, lekin
 // undan OLDIN e'lon qilinishi SHART — aks holda (kutilmoqda buyurtma bo'lganda,
 // renderOrdersDOM darhol _startTimers()ni chaqirganda) "let" o'zgaruvchisi hali
