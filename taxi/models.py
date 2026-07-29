@@ -480,6 +480,34 @@ class DriverActivityLog(models.Model):
     def __str__(self):
         return f"{self.driver.full_name} — {self.get_action_display()} ({self.created_at:%d.%m.%Y %H:%M})"
 
+    ACTION_ICONS = {
+        ACTION_LOGIN: '🔑', ACTION_LOGOUT: '🚪', ACTION_BLOCK: '🚫',
+        ACTION_UNBLOCK: '🔓', ACTION_BALANCE: '💰', ACTION_DUTY_ON: '🟢',
+        ACTION_DUTY_OFF: '🔴', ACTION_ORDER: '🚕',
+    }
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        if not is_new:
+            return
+        try:
+            from taxi.utils import notify_developer
+            icon = self.ACTION_ICONS.get(self.action, '🚕')
+            lines = [
+                f"{icon} <b>Haydovchi faolligi</b>",
+                f"Haydovchi: {self.driver.full_name} ({self.driver.phone_number})",
+                f"Amal: {self.get_action_display()}",
+            ]
+            if self.detail:
+                lines.append(f"Tafsilot: {self.detail}")
+            if self.ip_address:
+                lines.append(f"IP: {self.ip_address}")
+            lines.append(f"Vaqt: {self.created_at:%d.%m.%Y %H:%M:%S}")
+            notify_developer('\n'.join(lines))
+        except Exception:
+            pass
+
     class Meta:
         verbose_name = 'Faollik logi'
         verbose_name_plural = 'Faollik loglari'

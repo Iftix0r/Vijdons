@@ -389,6 +389,7 @@ def driver_order_action(request, driver, pk, action):
     if action == 'reject':
         if order.status == 'pending':
             order.rejected_by.add(driver)
+            _log_activity(driver, DriverActivityLog.ACTION_ORDER, f"Buyurtma #{order.id} rad etildi", request)
             if order.dispatched_to_id == driver.id:
                 order.dispatched_to = None
                 order.save(update_fields=['dispatched_to'])
@@ -456,6 +457,7 @@ def driver_order_action(request, driver, pk, action):
         tg_order_accepted(locked, driver)
         tg_low_balance_alert(driver)
         sms_order_status(locked, 'accepted')
+        _log_activity(driver, DriverActivityLog.ACTION_ORDER, f"Buyurtma #{locked.id} qabul qilindi, -{commission} UZS komissiya", request)
         return JsonResponse({'ok': True, 'new_balance': float(driver.balance)})
 
     if order.driver_id and order.driver_id != driver.id:
@@ -535,6 +537,8 @@ def driver_order_action(request, driver, pk, action):
         tg_map[new_status](order, driver)
     if new_status in ('arrived', 'completed', 'cancelled'):
         sms_order_status(order, new_status)
+
+    _log_activity(driver, DriverActivityLog.ACTION_ORDER, f"Buyurtma #{order.id} — {order.get_status_display()}", request)
 
     return JsonResponse({'ok': True})
 

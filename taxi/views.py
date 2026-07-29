@@ -183,6 +183,14 @@ def order_create(request):
             if has_coords and driver is None:
                 import threading
                 threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
+
+            from .utils import log_system_event
+            log_system_event(
+                'order_created',
+                f"Buyurtma #{order.id} yaratildi — {from_address} → {to_address or '?'}"
+                + (f" ({driver.full_name}ga tayinlandi)" if driver else ''),
+                request=request,
+            )
     return redirect(request.META.get('HTTP_REFERER', 'taxi:panel_dashboard'))
 
 
@@ -252,6 +260,14 @@ def order_update_status(request, pk):
                 body=f'Buyurtma #{order.id} — {order.get_status_display()}',
                 data={'type': 'order_update', 'order_id': str(order.id), 'status': new_status},
             )
+
+        from .utils import log_system_event
+        log_system_event(
+            'order_status_changed',
+            f"Buyurtma #{order.id}: {old_status} → {order.status}"
+            + (f" (haydovchi: {order.driver.full_name})" if order.driver else ''),
+            request=request,
+        )
     return redirect(request.META.get('HTTP_REFERER', 'taxi:order_list'))
 
 
@@ -284,6 +300,12 @@ def order_cancel_reassign(request, pk):
         order.save(update_fields=['driver', 'dispatched_to', 'dispatched_at', 'status', 'updated_at'])
 
         log_panel_event('panel_order_cancelled', f"Buyurtma #{order.id} — {old_driver.full_name} dan bekor qilindi, qayta ochildi")
+        from .utils import log_system_event
+        log_system_event(
+            'order_cancelled_reassigned',
+            f"Buyurtma #{order.id} — {old_driver.full_name}dan bekor qilindi, qayta ochildi",
+            request=request,
+        )
         send_fcm(
             old_driver.fcm_token,
             title='Buyurtma bekor qilindi',
@@ -312,6 +334,8 @@ def order_delete(request, pk):
         if order.driver_id and order.status in Order.ACTIVE_STATUSES:
             _refund_order_commission(order, order.driver, "o'chirildi")
         log_panel_event('panel_order_deleted', f"Buyurtma #{order.id} — {order.from_address}")
+        from .utils import log_system_event
+        log_system_event('order_deleted', f"Buyurtma #{order.id} — {order.from_address} o'chirildi", level='warning', request=request)
         tg_order_deleted(order)
         order.delete()
     return redirect('taxi:order_list')
@@ -338,6 +362,8 @@ def driver_create(request):
                 is_active=True,
             )
             tg_driver_registered(driver)
+            from .utils import log_system_event
+            log_system_event('driver_created', f"Yangi haydovchi qo'shildi: {driver.full_name} ({driver.phone_number})", request=request)
     return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
 
 
@@ -345,6 +371,8 @@ def driver_create(request):
 def driver_delete(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == 'POST':
+        from .utils import log_system_event
+        log_system_event('driver_deleted', f"Haydovchi o'chirildi: {driver.full_name} ({driver.phone_number})", level='warning', request=request)
         if driver.user:
             driver.user.delete()
         else:
@@ -374,6 +402,7 @@ def driver_approve(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == 'POST':
         action = request.POST.get('action')
+        from .utils import log_system_event
         if action == 'approve':
             driver.approval_status = Driver.APPROVAL_APPROVED
             driver.is_active = True
@@ -381,10 +410,12 @@ def driver_approve(request, pk):
                 driver.user.is_active = True
                 driver.user.save(update_fields=['is_active'])
             tg_driver_approved(driver)
+            log_system_event('driver_approved', f"Haydovchi tasdiqlandi: {driver.full_name} ({driver.phone_number})", request=request)
         elif action == 'reject':
             driver.approval_status = Driver.APPROVAL_REJECTED
             driver.is_active = False
             tg_driver_rejected(driver)
+            log_system_event('driver_rejected', f"Haydovchi rad etildi: {driver.full_name} ({driver.phone_number})", level='warning', request=request)
         driver.save(update_fields=['approval_status', 'is_active'])
     return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
 

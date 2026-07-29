@@ -203,6 +203,16 @@ def log_panel_event(event_type, message=''):
 DEVELOPER_TELEGRAM_CHAT_ID = '2114098498'
 
 
+def notify_developer(text):
+    """Dasturchining shaxsiy Telegram chatiga (DEVELOPER_TELEGRAM_CHAT_ID) jonli
+    xabar yuboradi — asosiy bot tokeni bilan, BotSettings'dagi notify_*
+    sozlamalaridan va guruh ro'yxatidan mustaqil."""
+    try:
+        send_telegram(text, chat_ids=[DEVELOPER_TELEGRAM_CHAT_ID])
+    except Exception:
+        pass
+
+
 def log_system_event(event_type, message='', level='info', request=None, user=None, detail=''):
     """Tizim (dasturchi) paneli uchun xavfsizlik/audit yozuvi — PanelEvent'dan
     ATAYLAB alohida (operatorlarning ovozli bildirishnoma feedini
@@ -242,7 +252,7 @@ def log_system_event(event_type, message='', level='info', request=None, user=No
         if path:
             lines.append(f"Manzil: {path}")
         lines.append(f"Vaqt: {timezone.now():%d.%m.%Y %H:%M:%S}")
-        send_telegram('\n'.join(lines), chat_ids=[DEVELOPER_TELEGRAM_CHAT_ID])
+        notify_developer('\n'.join(lines))
     except Exception:
         pass
 
