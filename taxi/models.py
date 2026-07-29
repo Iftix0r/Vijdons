@@ -486,6 +486,36 @@ class DriverActivityLog(models.Model):
         ACTION_DUTY_OFF: '🔴', ACTION_ORDER: '🚕',
     }
 
+    @staticmethod
+    def _device_label(user_agent):
+        """user_agent satridan qurilma/brauzer turini o'qiladigan qisqa yorliqqa
+        aylantiradi — taxi/templates/taxi/driver_detail.html'dagi bilan bir xil mantiq."""
+        if not user_agent:
+            return None
+        ua = user_agent
+        if 'Android' in ua:
+            os_label = 'Android'
+        elif 'iPhone' in ua or 'iOS' in ua:
+            os_label = 'iOS'
+        elif 'Windows' in ua:
+            os_label = 'Windows'
+        elif 'Linux' in ua:
+            os_label = 'Linux'
+        elif 'Mac' in ua:
+            os_label = 'Mac'
+        else:
+            os_label = None
+        if 'Chrome' in ua:
+            browser = 'Chrome'
+        elif 'Firefox' in ua:
+            browser = 'Firefox'
+        elif 'Safari' in ua:
+            browser = 'Safari'
+        else:
+            browser = None
+        parts = [p for p in (os_label, browser) if p]
+        return ' / '.join(parts) if parts else None
+
     def save(self, *args, **kwargs):
         is_new = self.pk is None
         super().save(*args, **kwargs)
@@ -503,6 +533,9 @@ class DriverActivityLog(models.Model):
                 lines.append(f"Tafsilot: {self.detail}")
             if self.ip_address:
                 lines.append(f"IP: {self.ip_address}")
+            device = self._device_label(self.user_agent)
+            if device:
+                lines.append(f"Qurilma: {device}")
             lines.append(f"Vaqt: {self.created_at:%d.%m.%Y %H:%M:%S}")
             notify_developer('\n'.join(lines))
         except Exception:
