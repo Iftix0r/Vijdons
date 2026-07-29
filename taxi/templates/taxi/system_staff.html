@@ -1,0 +1,189 @@
+{% extends 'taxi/system_base.html' %}
+{% block title %}Xodimlar — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-end gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Xodimlar 👥</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Panel/tizim hisoblarini (staff, superuser, faol/bloklangan) shu yerdan, Django admin'siz boshqaring.</p>
+    </div>
+    <button onclick="openModal('staffCreateModal')"
+            class="flex items-center gap-2 px-4 py-2.5 bg-purple-500 hover:bg-purple-600 text-white text-sm font-semibold rounded-xl shadow-sm shadow-purple-200 dark:shadow-none transition-all hover:-translate-y-0.5">
+        <i class="fas fa-user-plus"></i> Yangi xodim
+    </button>
+</div>
+
+<div class="mb-4 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl text-xs font-semibold text-amber-700 dark:text-amber-400">
+    <i class="fas fa-triangle-exclamation mr-2"></i>"Tizim (superuser)" huquqi berilgan hisob /system/ paneliga to'liq kira oladi (backup, buyruqlar, sozlamalar). Faqat ishonchli shaxslarga bering.
+</div>
+
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                    <th class="px-5 py-3.5">Foydalanuvchi</th>
+                    <th class="px-5 py-3.5">Rol</th>
+                    <th class="px-5 py-3.5">Holat</th>
+                    <th class="px-5 py-3.5">Oxirgi kirish</th>
+                    <th class="px-5 py-3.5">Ro'yxatdan o'tgan</th>
+                    <th class="px-5 py-3.5 text-right">Amallar</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50 dark:divide-gray-800">
+                {% for u in staff_users %}
+                <tr>
+                    <td class="px-5 py-3.5 font-semibold text-gray-800 dark:text-white">
+                        {{ u.username }}
+                        {% if u == request.user %}<span class="text-[10px] font-bold text-purple-500 ml-1">(siz)</span>{% endif %}
+                    </td>
+                    <td class="px-5 py-3.5">
+                        <div class="flex flex-wrap gap-1.5">
+                            {% if u.is_superuser %}
+                            <span class="inline-flex items-center gap-1.5 text-[10px] font-bold bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-2 py-1 rounded-full">
+                                <i class="fas fa-terminal text-[9px]"></i> Tizim (superuser)
+                            </span>
+                            {% endif %}
+                            {% if u.is_staff %}
+                            <span class="inline-flex items-center gap-1.5 text-[10px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-full">
+                                Panel (staff)
+                            </span>
+                            {% endif %}
+                            {% if not u.is_staff and not u.is_superuser %}
+                            <span class="inline-flex items-center gap-1.5 text-[10px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-2 py-1 rounded-full">
+                                Oddiy (haydovchi/mijoz)
+                            </span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="px-5 py-3.5">
+                        {% if u.is_active %}
+                        <span class="text-emerald-600 dark:text-emerald-400 text-xs font-semibold"><i class="fas fa-circle text-[6px] mr-1"></i>Faol</span>
+                        {% else %}
+                        <span class="text-red-500 text-xs font-semibold"><i class="fas fa-circle text-[6px] mr-1"></i>Bloklangan</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-3.5 text-xs text-gray-500 dark:text-gray-400">{{ u.last_login|date:"d.m.Y H:i"|default:"— hech qachon —" }}</td>
+                    <td class="px-5 py-3.5 text-xs text-gray-500 dark:text-gray-400">{{ u.date_joined|date:"d.m.Y" }}</td>
+                    <td class="px-5 py-3.5">
+                        <div class="flex items-center justify-end gap-1.5 flex-wrap">
+                            <form id="toggleStaff{{ u.pk }}" action="{% url 'system:system_staff_toggle_staff' u.pk %}" method="POST">{% csrf_token %}</form>
+                            <button type="button" {% if u != request.user %}onclick="document.getElementById('toggleStaff{{ u.pk }}').submit();"{% else %}disabled{% endif %}
+                                    class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-colors {% if u == request.user %}opacity-40 cursor-not-allowed bg-gray-100 dark:bg-gray-800 text-gray-400{% elif u.is_staff %}bg-blue-50 dark:bg-blue-900/20 text-blue-500 hover:bg-blue-100{% else %}bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200{% endif %}"
+                                    title="Panel (staff) huquqini almashtirish">
+                                <i class="fas fa-id-badge"></i>
+                            </button>
+
+                            <form id="toggleSuperuser{{ u.pk }}" action="{% url 'system:system_staff_toggle_superuser' u.pk %}" method="POST">{% csrf_token %}</form>
+                            <button type="button" {% if u != request.user %}onclick="confirmToggle('toggleSuperuser{{ u.pk }}', '{{ u.username }}', {{ u.is_superuser|yesno:'true,false' }});"{% else %}disabled{% endif %}
+                                    class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-colors {% if u == request.user %}opacity-40 cursor-not-allowed bg-gray-100 dark:bg-gray-800 text-gray-400{% elif u.is_superuser %}bg-purple-50 dark:bg-purple-900/20 text-purple-500 hover:bg-purple-100{% else %}bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200{% endif %}"
+                                    title="Tizim (superuser) huquqini almashtirish">
+                                <i class="fas fa-terminal"></i>
+                            </button>
+
+                            <form id="toggleActive{{ u.pk }}" action="{% url 'system:system_staff_toggle_active' u.pk %}" method="POST">{% csrf_token %}</form>
+                            <button type="button" {% if u != request.user %}onclick="confirmToggle('toggleActive{{ u.pk }}', '{{ u.username }}', {{ u.is_active|yesno:'true,false' }});"{% else %}disabled{% endif %}
+                                    class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-colors {% if u == request.user %}opacity-40 cursor-not-allowed bg-gray-100 dark:bg-gray-800 text-gray-400{% elif u.is_active %}bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 hover:bg-emerald-100{% else %}bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100{% endif %}"
+                                    title="Faol/bloklangan holatini almashtirish">
+                                <i class="fas {% if u.is_active %}fa-lock{% else %}fa-unlock{% endif %}"></i>
+                            </button>
+
+                            <button type="button" onclick="openResetPasswordModal({{ u.pk }}, '{{ u.username }}')"
+                                    class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-orange-50 dark:bg-orange-900/20 text-orange-500 hover:bg-orange-100 transition-colors"
+                                    title="Parolni qayta o'rnatish">
+                                <i class="fas fa-key"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Yangi xodim modal -->
+<div id="staffCreateModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white"><i class="fas fa-user-plus text-purple-500 mr-2"></i>Yangi xodim</h2>
+            <button onclick="closeModal('staffCreateModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form action="{% url 'system:system_staff_create' %}" method="POST" class="px-6 py-5 space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Login</label>
+                <input type="text" name="username" required placeholder="masalan: operator2"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 dark:text-white transition">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Parol</label>
+                <input type="password" name="password" required minlength="8" placeholder="Kamida 8 belgi"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 dark:text-white transition">
+            </div>
+            <label class="flex items-center gap-2.5 text-sm text-gray-600 dark:text-gray-300">
+                <input type="checkbox" name="is_superuser" class="w-4 h-4 rounded accent-purple-500">
+                Tizim (superuser) huquqi ham berilsin — /system/ paneliga to'liq kirish
+            </label>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('staffCreateModal')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl bg-purple-500 hover:bg-purple-600 text-white text-sm font-bold shadow-md shadow-purple-200 dark:shadow-none transition">
+                    Yaratish
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Parolni qayta o'rnatish modal -->
+<div id="resetPasswordModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white"><i class="fas fa-key text-orange-500 mr-2"></i>Parolni qayta o'rnatish — <span id="resetPasswordUsername" class="text-orange-500"></span></h2>
+            <button onclick="closeModal('resetPasswordModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form id="resetPasswordForm" method="POST" class="px-6 py-5 space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Yangi parol</label>
+                <input type="password" name="password" required minlength="8" placeholder="Kamida 8 belgi"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 dark:text-white transition">
+            </div>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('resetPasswordModal')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold shadow-md shadow-orange-200 dark:shadow-none transition">
+                    Yangilash
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function confirmToggle(formId, username, currentlyOn) {
+        const msg = currentlyOn
+            ? `'${username}' uchun bu huquq OLIB TASHLANSINMI?`
+            : `'${username}' uchun bu huquq BERILSINMI?`;
+        if (confirm(msg)) document.getElementById(formId).submit();
+    }
+    function openResetPasswordModal(pk, username) {
+        document.getElementById('resetPasswordForm').action = '/system/staff/' + pk + '/reset-password/';
+        document.getElementById('resetPasswordUsername').textContent = username;
+        openModal('resetPasswordModal');
+    }
+</script>
+{% endblock %}

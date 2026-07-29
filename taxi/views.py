@@ -988,6 +988,24 @@ def system_status(request):
     except Exception as e:
         db['error'] = str(e)
 
+    # ── Kesh (cache) ──────────────────────────────────────────────────────────
+    # Diqqat: loyihada Redis/Memcached ULANMAGAN — CACHES sozlanmagani uchun
+    # Django standart bo'yicha LocMemCache (jarayon xotirasida, workerlar
+    # o'rtasida ULASHILMAYDI) ishlatadi. Shu yerda qaysi backend ishlayotgani
+    # va u haqiqatan yozish/o'qishga qodirligi tekshiriladi.
+    from django.core.cache import cache as _cache
+    cache_info = {'ok': False, 'backend': _cache.__class__.__name__, 'latency_ms': None, 'error': None}
+    try:
+        t0 = time.time()
+        _cache_key = '_system_status_check'
+        _cache.set(_cache_key, 'ok', 10)
+        cache_info['ok'] = _cache.get(_cache_key) == 'ok'
+        cache_info['latency_ms'] = round((time.time() - t0) * 1000, 1)
+        if not cache_info['ok']:
+            cache_info['error'] = "Yozilgan qiymat qayta o'qib bo'lmadi"
+    except Exception as e:
+        cache_info['error'] = str(e)
+
     # ── Fon rejalashtiruvchi (Telegram kunlik/haftalik xabarlar) ─────────────
     sched = {'enabled': TaxiConfig._should_start_scheduler(), 'last_tick_ago_sec': None, 'healthy': None}
     if scheduler.last_tick_at:
@@ -1120,6 +1138,8 @@ def system_status(request):
             problems.append(f"Django: {c['msg']}")
     if not static_info['ok']:
         problems.append("Static fayllar manifesti buzilgan — `python manage.py collectstatic` ishga tushiring (aks holda sayt 500 beradi!)")
+    if not cache_info['ok']:
+        problems.append("Kesh (cache) ishlamayapti — sozlamalarni tekshiring")
 
     return render(request, 'taxi/system_status.html', {
         'problems': problems,
@@ -1142,6 +1162,7 @@ def system_status(request):
         'env_info':          env_info,
         'static_info':       static_info,
         'integrations':      integrations,
+        'cache_info':        cache_info,
     })
 
 
@@ -1231,6 +1252,103 @@ def system_run_command(request, name):
         log_system_event('command_run', f"'{name}' xato berdi: {e}", level='error', request=request, detail=out.getvalue())
         messages.error(request, f"'{name}' xatosi: {e}")
     return redirect('system:system_commands')
+
+
+# ── Xodimlar boshqaruvi (faqat /system/ panelidan, is_superuser talab qiladi) ──
+@system_login_required
+def system_staff_list(request):
+    """Barcha foydalanuvchilarni (is_staff bo'lsin yoki yo'q) ko'rish va
+    huquqlarini (staff/superuser/faol) shu yerdan, Django admin'siz
+    boshqarish uchun."""
+    from django.contrib.auth.models import User
+    users = User.objects.all().order_by('-is_superuser', '-is_staff', 'username')
+    return render(request, 'taxi/system_staff.html', {'staff_users': users})
+
+
+@system_login_required
+def system_staff_create(request):
+    from django.contrib.auth.models import User
+    from .utils import log_system_event
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+        make_superuser = 'is_superuser' in request.POST
+        if not username or not password:
+            messages.error(request, "Login va parol kiritilishi shart.")
+        elif User.objects.filter(username=username).exists():
+            messages.error(request, f"'{username}' logini band.")
+        elif len(password) < 8:
+            messages.error(request, "Parol kamida 8 belgidan iborat bo'lishi kerak.")
+        else:
+            user = User.objects.create_user(username=username, password=password, is_staff=True, is_superuser=make_superuser)
+            log_system_event('staff_created', f"Yangi xodim yaratildi: '{username}'" + (" (superuser)" if make_superuser else ""), level='warning', request=request)
+            messages.success(request, f"'{username}' yaratildi.")
+    return redirect('system:system_staff_list')
+
+
+@system_login_required
+def system_staff_toggle_staff(request, pk):
+    from django.contrib.auth.models import User
+    from .utils import log_system_event
+    target = get_object_or_404(User, pk=pk)
+    if request.method == 'POST':
+        if target == request.user:
+            messages.error(request, "O'zingizning staff huquqingizni shu yerdan olib tashlay olmaysiz.")
+        else:
+            target.is_staff = not target.is_staff
+            target.save(update_fields=['is_staff'])
+            log_system_event('staff_toggled', f"'{target.username}' uchun staff huquqi: {'yoqildi' if target.is_staff else 'o‘chirildi'}", level='warning', request=request)
+            messages.success(request, f"'{target.username}' yangilandi.")
+    return redirect('system:system_staff_list')
+
+
+@system_login_required
+def system_staff_toggle_superuser(request, pk):
+    from django.contrib.auth.models import User
+    from .utils import log_system_event
+    target = get_object_or_404(User, pk=pk)
+    if request.method == 'POST':
+        if target == request.user:
+            messages.error(request, "O'zingizning superuser huquqingizni shu yerdan olib tashlay olmaysiz.")
+        else:
+            target.is_superuser = not target.is_superuser
+            target.save(update_fields=['is_superuser'])
+            log_system_event('staff_toggled', f"'{target.username}' uchun superuser huquqi: {'yoqildi' if target.is_superuser else 'o‘chirildi'}", level='warning', request=request)
+            messages.success(request, f"'{target.username}' yangilandi.")
+    return redirect('system:system_staff_list')
+
+
+@system_login_required
+def system_staff_toggle_active(request, pk):
+    from django.contrib.auth.models import User
+    from .utils import log_system_event
+    target = get_object_or_404(User, pk=pk)
+    if request.method == 'POST':
+        if target == request.user:
+            messages.error(request, "O'zingizni shu yerdan bloklay olmaysiz.")
+        else:
+            target.is_active = not target.is_active
+            target.save(update_fields=['is_active'])
+            log_system_event('staff_toggled', f"'{target.username}' hisobi: {'faollashtirildi' if target.is_active else 'bloklandi'}", level='warning', request=request)
+            messages.success(request, f"'{target.username}' yangilandi.")
+    return redirect('system:system_staff_list')
+
+
+@system_login_required
+def system_staff_reset_password(request, pk):
+    from django.contrib.auth.models import User
+    from .utils import log_system_event
+    target = get_object_or_404(User, pk=pk)
+    if request.method == 'POST':
+        password = request.POST.get('password', '')
+        if len(password) < 8:
+            messages.error(request, "Parol kamida 8 belgidan iborat bo'lishi kerak.")
+        else:
+            target.set_password(password)
+            target.save(update_fields=['password'])
+            log_system_event('staff_password_reset', f"'{target.username}' uchun parol qayta o'rnatildi", level='warning', request=request)
+            messages.success(request, f"'{target.username}' uchun parol yangilandi.")
+    return redirect('system:system_staff_list')
 
 
 @system_login_required

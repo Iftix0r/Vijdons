@@ -52,6 +52,14 @@ LOGGING = {
             'level': 'ERROR',
             'propagate': True,
         },
+        # `taxi.*` (masalan taxi.scheduler) loggerlarida logger.exception(...)
+        # bilan yozilgan xatolar ham (fon scheduler thread'i qotib qolganda va
+        # h.k.) shu yerdan /system/ panelidagi Jurnalga tushishi uchun.
+        'taxi': {
+            'handlers': ['system_audit'],
+            'level': 'ERROR',
+            'propagate': True,
+        },
     },
 }
 

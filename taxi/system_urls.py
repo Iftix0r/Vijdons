@@ -21,6 +21,13 @@ urlpatterns = [
 
     path('commands/', views.system_commands, name='system_commands'),
     path('commands/<str:name>/run/', views.system_run_command, name='system_run_command'),
+
+    path('staff/', views.system_staff_list, name='system_staff_list'),
+    path('staff/create/', views.system_staff_create, name='system_staff_create'),
+    path('staff/<int:pk>/toggle-staff/', views.system_staff_toggle_staff, name='system_staff_toggle_staff'),
+    path('staff/<int:pk>/toggle-superuser/', views.system_staff_toggle_superuser, name='system_staff_toggle_superuser'),
+    path('staff/<int:pk>/toggle-active/', views.system_staff_toggle_active, name='system_staff_toggle_active'),
+    path('staff/<int:pk>/reset-password/', views.system_staff_reset_password, name='system_staff_reset_password'),
     path('backup/create/', views.backup_create, name='backup_create'),
     path('backup/<str:filename>/download/', views.backup_download, name='backup_download'),
     path('backup/<str:filename>/delete/', views.backup_delete, name='backup_delete'),

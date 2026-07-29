@@ -110,7 +110,34 @@
     </div>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+
+    <!-- Kesh -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 rounded-xl bg-fuchsia-50 dark:bg-fuchsia-900/20 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-bolt text-fuchsia-500 text-sm"></i>
+            </div>
+            <p class="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">Kesh (cache)</p>
+        </div>
+        {% if cache_info.ok %}
+        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2 py-1 rounded-full mb-2">
+            <i class="fas fa-circle text-[6px]"></i> Ishlayapti
+        </span>
+        <div class="space-y-1 text-xs text-gray-600 dark:text-gray-300">
+            <div class="flex justify-between gap-2"><span class="flex-shrink-0">Backend</span><span class="font-mono font-semibold text-right truncate" title="{{ cache_info.backend }}">{{ cache_info.backend }}</span></div>
+            <div class="flex justify-between"><span>Javob tezligi</span><span class="font-mono font-semibold">{{ cache_info.latency_ms }} ms</span></div>
+        </div>
+        {% if cache_info.backend == 'LocMemCache' %}
+        <p class="text-[11px] text-orange-500 mt-2.5"><i class="fas fa-triangle-exclamation mr-1"></i>Redis/Memcached ulanmagan — jarayon xotirasida, workerlar orasida ulashilmaydi.</p>
+        {% endif %}
+        {% else %}
+        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-1 rounded-full mb-2">
+            <i class="fas fa-circle text-[6px]"></i> Ishlamayapti
+        </span>
+        <p class="text-xs text-red-500 font-mono break-all">{{ cache_info.error }}</p>
+        {% endif %}
+    </div>
 
     <!-- Xotira -->
     <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
