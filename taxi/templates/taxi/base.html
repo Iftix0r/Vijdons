@@ -424,7 +424,8 @@
                     </span>
                 </div>
                 <p class="text-[11px] text-gray-400 mt-1">
-                    <b>1-bosing:</b> qayerdan (yashil) &nbsp;|&nbsp; <b>2-bosing:</b> qayerga (qizil, ixtiyoriy)
+                    <b>1-bosing:</b> qayerdan (yashil) &nbsp;|&nbsp; <b>2-bosing:</b> qayerga (qizil, ixtiyoriy) &nbsp;|&nbsp;
+                    <b>haydovchi belgisini bosing:</b> aynan o'shanga beriladi
                 </p>
             </div>
 
@@ -475,12 +476,15 @@
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Haydovchi</label>
-                    <select name="driver_id" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                    <select name="driver_id" id="om_driver_select" onchange="_onDriverSelectChange()" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
                         <option value="">— Avtomatik —</option>
                         {% for driver in active_drivers %}
                         <option value="{{ driver.pk }}">{{ driver.full_name }} ({{ driver.car_number }})</option>
                         {% endfor %}
                     </select>
+                    <p id="om_driver_map_hint" class="text-[11px] text-yellow-600 dark:text-yellow-400 mt-1 hidden">
+                        <i class="fas fa-map-marker-alt"></i> Xaritadan tanlandi
+                    </p>
                 </div>
             </div>
 
@@ -792,8 +796,51 @@
     let _omapStep   = 1; // 1=qayerdan, 2=qayerga
     let _ymapsReady = false;
     let _odriverMarks = {};
+    let _odriverInfo  = {};
     let _odriverPoll  = null;
     let _odriverCentered = false;
+    let _odriverSelectedId = null;
+
+    function _odriverIconLayout(d, selected) {
+        var borderColor = selected ? '#f59e0b' : '#3b82f6';
+        var img = d.photo_url
+            ? '<img src="' + d.photo_url + '" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2.5px solid ' + borderColor + ';box-shadow:0 2px 6px rgba(0,0,0,0.25);">'
+            : '<div style="width:34px;height:34px;border-radius:50%;background:#dbeafe;border:2.5px solid ' + borderColor + ';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#1d4ed8;box-shadow:0 2px 6px rgba(0,0,0,0.2);">' + d.full_name.charAt(0).toUpperCase() + '</div>';
+        var check = selected
+            ? '<div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:#f59e0b;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;">✓</div>'
+            : '';
+        return ymaps.templateLayoutFactory.createClass(
+            '<div style="position:relative;text-align:center;">' + img + check +
+            '<div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid ' + borderColor + ';"></div>' +
+            '</div>'
+        );
+    }
+
+    function _selectDriverFromMap(id, fullName) {
+        _odriverSelectedId = String(id);
+        var select = document.getElementById('om_driver_select');
+        if (select) select.value = String(id);
+        var hint = document.getElementById('om_driver_map_hint');
+        if (hint) {
+            hint.classList.remove('hidden');
+            hint.innerHTML = '<i class="fas fa-map-marker-alt"></i> Xaritadan tanlandi: ' + fullName;
+        }
+        Object.keys(_odriverMarks).forEach(function(mid){
+            var info = _odriverInfo[mid];
+            if (info) _odriverMarks[mid].options.set('iconLayout', _odriverIconLayout(info, mid === _odriverSelectedId));
+        });
+    }
+
+    function _onDriverSelectChange() {
+        var select = document.getElementById('om_driver_select');
+        var hint = document.getElementById('om_driver_map_hint');
+        _odriverSelectedId = select && select.value ? select.value : null;
+        if (hint) hint.classList.add('hidden');
+        Object.keys(_odriverMarks).forEach(function(mid){
+            var info = _odriverInfo[mid];
+            if (info) _odriverMarks[mid].options.set('iconLayout', _odriverIconLayout(info, mid === _odriverSelectedId));
+        });
+    }
 
     function _loadOrderMapDrivers() {
         if (!_omap) return;
@@ -815,33 +862,38 @@
                 }
                 var seen = {};
                 online.forEach(function(d){
-                    seen[d.id] = true;
+                    var id = String(d.id);
+                    seen[id] = true;
+                    _odriverInfo[id] = d;
                     var coords = [d.latitude, d.longitude];
                     var hint = d.full_name + ' · ' + d.car_model + ' ' + d.car_number;
-                    if (_odriverMarks[d.id]) {
-                        _odriverMarks[d.id].geometry.setCoordinates(coords);
+                    var selected = id === _odriverSelectedId;
+                    if (_odriverMarks[id]) {
+                        _odriverMarks[id].geometry.setCoordinates(coords);
+                        _odriverMarks[id].options.set('iconLayout', _odriverIconLayout(d, selected));
                     } else {
-                        var img = d.photo_url
-                            ? '<img src="' + d.photo_url + '" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2.5px solid #3b82f6;box-shadow:0 2px 6px rgba(0,0,0,0.25);">'
-                            : '<div style="width:34px;height:34px;border-radius:50%;background:#dbeafe;border:2.5px solid #3b82f6;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#1d4ed8;box-shadow:0 2px 6px rgba(0,0,0,0.2);">' + d.full_name.charAt(0).toUpperCase() + '</div>';
                         var pm = new ymaps.Placemark(coords, {
                             hintContent: hint
                         }, {
-                            iconLayout: ymaps.templateLayoutFactory.createClass(
-                                '<div style="position:relative;text-align:center;">' + img +
-                                '<div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid #3b82f6;"></div>' +
-                                '</div>'
-                            ),
+                            iconLayout: _odriverIconLayout(d, selected),
                             iconShape: { type: 'Circle', coordinates: [17, 17], radius: 18 }
                         });
+                        // Haydovchi belgisini bosish — o'sha haydovchi qo'lda tanlanadi
+                        // (xarita klik hodisasiga o'tib ketmasin, aks holda "qayerdan/
+                        // qayerga" pin ham qo'yilib qolardi).
+                        pm.events.add('click', function(e){
+                            if (e.stopPropagation) e.stopPropagation();
+                            _selectDriverFromMap(id, d.full_name);
+                        });
                         _omap.geoObjects.add(pm);
-                        _odriverMarks[d.id] = pm;
+                        _odriverMarks[id] = pm;
                     }
                 });
                 Object.keys(_odriverMarks).forEach(function(id){
                     if (!seen[id]) {
                         _omap.geoObjects.remove(_odriverMarks[id]);
                         delete _odriverMarks[id];
+                        delete _odriverInfo[id];
                     }
                 });
             })
@@ -854,6 +906,7 @@
             Object.keys(_odriverMarks).forEach(function(id){ _omap.geoObjects.remove(_odriverMarks[id]); });
         }
         _odriverMarks = {};
+        _odriverInfo = {};
     }
 
     ymaps.ready(function () { _ymapsReady = true; });
@@ -953,11 +1006,14 @@
             // Reset state
             _stopOrderMapDrivers();
             _odriverCentered = false;
+            _odriverSelectedId = null;
             _omap = null; _omapFromPM = null; _omapToPM = null; _omapStep = 1;
             document.getElementById('om_from_lat').value = '';
             document.getElementById('om_from_lng').value = '';
             document.getElementById('om_to_lat').value   = '';
             document.getElementById('om_to_lng').value   = '';
+            document.getElementById('om_driver_select').value = '';
+            document.getElementById('om_driver_map_hint').classList.add('hidden');
             document.getElementById('map_from_text').textContent = 'Qayerdan belgilanmagan';
             document.getElementById('map_to_text').textContent   = 'Qayerga belgilanmagan';
             document.getElementById('map_from_badge').className = 'flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/40';
