@@ -40,6 +40,13 @@
     </span>
 </div>
 
+{% if order.status == 'cancelled' and order.cancel_reason %}
+<div class="mb-5 flex items-start gap-3 px-5 py-3.5 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40">
+    <i class="fas fa-circle-info text-red-500 mt-0.5"></i>
+    <p class="text-sm text-red-700 dark:text-red-300"><b>Bekor qilish sababi:</b> {{ order.cancel_reason }}</p>
+</div>
+{% endif %}
+
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
     <!-- LEFT: asosiy ma'lumotlar -->

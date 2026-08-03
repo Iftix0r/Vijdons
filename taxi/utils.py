@@ -690,11 +690,13 @@ def tg_order_completed(order, driver):
     )
 
 
-def tg_order_cancelled(order, driver):
+def tg_order_cancelled(order, driver, reassigned=False):
     log_panel_event('panel_order_cancelled', f"Buyurtma #{order.id} — {driver.full_name}")
     cfg = _cfg()
     if cfg and not cfg.notify_cancelled:
         return
+    reason_line = f"\n📝 Sabab: {order.cancel_reason}" if order.cancel_reason else ""
+    reassign_line = "\n🔁 Boshqa haydovchilarga qayta yuborilmoqda" if reassigned else ""
     markup = {'inline_keyboard': [[
         {'text': '🔍 Buyurtma', 'url': _order_url(order.id)},
         {'text': '👤 Haydovchi', 'url': _driver_url(driver.id)},
@@ -703,7 +705,8 @@ def tg_order_cancelled(order, driver):
         f"❌ <b>Buyurtma bekor qilindi — #{order.id}</b>\n"
         f"🚗 Haydovchi: <b>{driver.full_name}</b>\n"
         f"👤 {order.client.full_name or '—'} | <code>{order.client.phone_number}</code>\n"
-        f"📍 {order.from_address}",
+        f"📍 {order.from_address}"
+        f"{reason_line}{reassign_line}",
         reply_markup=markup,
     )
 
@@ -712,6 +715,7 @@ def tg_order_cancelled(order, driver):
         f"❌ <b>Buyurtma #{order.id} bekor qilindi</b>\n"
         f"🚗 Haydovchi: <b>{driver.full_name}</b>\n"
         f"📍 {order.from_address}"
+        f"{reassign_line}"
     )
 
 

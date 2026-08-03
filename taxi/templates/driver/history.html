@@ -270,18 +270,19 @@ function openDetail(el) {
   }
 
   // Faol buyurtmalar uchun action tugmalari
+  const historyCancelBtn = `<button onclick="openCancelReasonModal((k,c)=>doHistoryAction(${id},'cancel',{reason:k,custom_reason:c}))" style="width:100%;padding:12px;border-radius:14px;background:rgba(255,59,48,.1);color:#FF3B30;font-size:14px;font-weight:700;border:1px solid rgba(255,59,48,.2);cursor:pointer">❌ Bekor qilish</button>`;
   const activeActions = {
     accepted: `<div class="space-y-2 mt-1">
       <button onclick="doHistoryAction(${id},'on_way')" style="width:100%;padding:14px;border-radius:14px;background:#AF52DE;color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer">🚗 Yo'lga chiqdim</button>
-      <button onclick="callOperator()" style="width:100%;padding:12px;border-radius:14px;background:rgba(255,59,48,.1);color:#FF3B30;font-size:14px;font-weight:700;border:1px solid rgba(255,59,48,.2);cursor:pointer">📞 Bekor qilish (Operator: ${OPERATOR_PHONE})</button>
+      ${historyCancelBtn}
     </div>`,
     on_way: `<div class="space-y-2 mt-1">
       <button onclick="doHistoryAction(${id},'complete')" style="width:100%;padding:14px;border-radius:14px;background:#34C759;color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer">📍 Yetib keldim</button>
-      <button onclick="callOperator()" style="width:100%;padding:12px;border-radius:14px;background:rgba(255,59,48,.1);color:#FF3B30;font-size:14px;font-weight:700;border:1px solid rgba(255,59,48,.2);cursor:pointer">📞 Bekor qilish (Operator: ${OPERATOR_PHONE})</button>
+      ${historyCancelBtn}
     </div>`,
     arrived: `<div class="space-y-2 mt-1">
       <button onclick="doHistoryAction(${id},'complete')" style="width:100%;padding:14px;border-radius:14px;background:#34C759;color:#fff;font-size:15px;font-weight:700;border:none;cursor:pointer">🏁 Yakunlash</button>
-      <button onclick="callOperator()" style="width:100%;padding:12px;border-radius:14px;background:rgba(255,59,48,.1);color:#FF3B30;font-size:14px;font-weight:700;border:1px solid rgba(255,59,48,.2);cursor:pointer">📞 Bekor qilish (Operator: ${OPERATOR_PHONE})</button>
+      ${historyCancelBtn}
     </div>`,
   };
 
@@ -392,7 +393,7 @@ function openDetail(el) {
   requestAnimationFrame(() => { sh.style.transform = 'translateY(0)'; });
 }
 
-async function doHistoryAction(id, action) {
+async function doHistoryAction(id, action, extra) {
   closeDetail();
   try {
     const fd = new FormData();
@@ -405,6 +406,8 @@ async function doHistoryAction(id, action) {
       fd.append('tmx_price', parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,'')) || 0);
       fd.append('tmx_time', _tmxTimeStr || '0:00');
     }
+    // Bekor qilish sababi (reason/custom_reason) — cancel-reason modali orqali.
+    if (extra) { for (const k in extra) fd.append(k, extra[k]); }
     const r = await fetch(`/driver/orders/${id}/${action}/`, {
       method: 'POST',
       headers: { 'X-CSRFToken': getCookie('csrftoken') },

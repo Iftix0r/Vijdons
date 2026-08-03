@@ -18,6 +18,21 @@ from .models import Driver, Order, ChatMessage, GroupMessage, TariffSettings, Dr
 from .utils import tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected, tg_driver_login, tg_duty_changed, tg_low_balance_alert, tg_topup_request, sms_order_status
 
 
+# Haydovchi buyurtmani o'zi bekor qilganda tanlaydigan sabablar — har biriga
+# mos matn va "boshqa haydovchilarga qayta ochiladimi" bayrog'i (True/False).
+# Kalitlar taxi/templates/driver/base.html'dagi cancel-reason modali bilan
+# BIR XIL bo'lishi shart (frontend shu kalitlarni yuboradi). "other" kaliti
+# alohida ishlaydi — bepul matn (`custom_reason`) sifatida, doim reassign=False.
+DRIVER_CANCEL_REASONS = {
+    'car_broke':        ("Mashinam buzilib qoldi", True),
+    'busy':             ("Band bo'lib qoldim / boshqa buyurtma oldim", True),
+    'incident':         ("Yo'lda hodisa/muammo yuz berdi", True),
+    'client_no_answer': ("Mijoz javob bermayapti", False),
+    'client_cancelled': ("Mijoz bekor qildi", False),
+    'client_not_found': ("Mijoz manzilda topilmadi", False),
+}
+
+
 def _get_ip(request):
     x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
     if x_forwarded:
@@ -401,17 +416,57 @@ def driver_order_action(request, driver, pk, action):
                 dispatch_order(order)
         return JsonResponse({'ok': True})
 
-    # Haydovchi endi qabul qilingan buyurtmani o'zi bekor qila olmaydi — bekor
-    # qilish uchun operatorga qo'ng'iroq qilishi kerak (operator komissiyani
-    # qaytaradi va buyurtmani boshqa haydovchilarga ochadi). Shu bilan birga,
-    # UI'dagi tugma ham qo'ng'iroqqa yo'naltiriladi (taxi/templates/driver/home.html,
-    # history.html) — bu yerdagi tekshiruv shunchaki himoya qatlami.
+    # Haydovchi qabul qilingan buyurtmani sababini ko'rsatib o'zi bekor qila
+    # oladi (taxi/templates/driver/base.html'dagi cancel-reason modali orqali).
+    # Haydovchidan kelib chiqqan sabablarda (mashina, band bo'lish, yo'ldagi
+    # hodisa) mijoz mashinasiz qolmasligi uchun buyurtma darhol boshqa
+    # haydovchilarga qayta ochiladi (DRIVER_CANCEL_REASONS'dagi reassign=True);
+    # mijozga bog'liq sabablarda (javob bermayapti/bekor qildi/topilmadi) esa
+    # to'liq yopiladi. Komissiya har ikkala holatda ham qaytariladi.
     if action == 'cancel':
-        tariff = TariffSettings.get()
-        return JsonResponse({
-            'ok': False,
-            'error': f"Buyurtmani bekor qilish uchun operatorga qo'ng'iroq qiling: {tariff.operator_phone}",
-        }, status=403)
+        if order.status not in Order.ACTIVE_STATUSES:
+            return JsonResponse({'ok': False, 'error': f"'{order.get_status_display()}' holatida bu amal mumkin emas"}, status=400)
+        if order.driver_id != driver.id:
+            return JsonResponse({'ok': False, 'error': 'Bu buyurtma sizga tegishli emas'}, status=403)
+
+        reason_key = request.POST.get('reason', '').strip()
+        custom_reason = request.POST.get('custom_reason', '').strip()
+        if reason_key == 'other':
+            if not custom_reason:
+                return JsonResponse({'ok': False, 'error': "Sababni yozing"}, status=400)
+            final_reason, should_reassign = custom_reason, False
+        elif reason_key in DRIVER_CANCEL_REASONS:
+            final_reason, should_reassign = DRIVER_CANCEL_REASONS[reason_key]
+        else:
+            return JsonResponse({'ok': False, 'error': "Bekor qilish sababini tanlang"}, status=400)
+
+        from .views import _refund_order_commission
+        _refund_order_commission(order, driver, f"haydovchi tomonidan bekor qilindi ({final_reason})")
+
+        order.cancel_reason = final_reason
+        if should_reassign:
+            order.rejected_by.add(driver)
+            order.driver = None
+            order.dispatched_to = None
+            order.dispatched_at = None
+            order.status = 'pending'
+            order.save(update_fields=['driver', 'dispatched_to', 'dispatched_at', 'status', 'cancel_reason', 'updated_at'])
+        else:
+            order.driver = None
+            order.status = 'cancelled'
+            order.save(update_fields=['driver', 'status', 'cancel_reason', 'updated_at'])
+            sms_order_status(order, 'cancelled')
+
+        _log_activity(driver, DriverActivityLog.ACTION_ORDER, f"Buyurtma #{order.id} bekor qilindi — {final_reason}", request)
+        tg_order_cancelled(order, driver, reassigned=should_reassign)
+
+        if should_reassign:
+            tariff = TariffSettings.get()
+            if order.from_lat and order.from_lng and tariff.auto_dispatch:
+                from .utils import dispatch_order
+                dispatch_order(order)
+
+        return JsonResponse({'ok': True, 'new_balance': float(driver.balance), 'reassigned': should_reassign})
 
     allowed = {
         'accept':   (['pending'],                  'accepted'),

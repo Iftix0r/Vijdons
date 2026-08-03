@@ -135,6 +135,7 @@ class Order(models.Model):
     car_type      = models.CharField(max_length=10, choices=Driver.CAR_TYPE_CHOICES, default=Driver.CAR_TYPE_LIGHT, verbose_name="Mashina turi")
     note          = models.TextField(blank=True, default='', verbose_name="Izoh")
     status        = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="Holati")
+    cancel_reason = models.CharField(max_length=255, blank=True, default='', verbose_name="Bekor qilish sababi")
     dispatched_to = models.ForeignKey(Driver, on_delete=models.SET_NULL, null=True, blank=True, related_name='dispatched_orders', verbose_name="Yuborilgan haydovchi")
     dispatched_at = models.DateTimeField(null=True, blank=True, verbose_name="Yuborilgan vaqti")
     rejected_by   = models.ManyToManyField(Driver, blank=True, related_name='rejected_orders', verbose_name="Rad etgan haydovchilar")

@@ -1192,9 +1192,9 @@ function tmxArrived() {
 }
 
 function tmxCancel() {
-  // Haydovchi qabul qilingan buyurtmani o'zi bekor qila olmaydi — operatorga
-  // qo'ng'iroq qilishi kerak.
-  callOperator();
+  if (!_tmxOrderId) return;
+  const id = _tmxOrderId;
+  openCancelReasonModal((k,c) => doAction(id, 'cancel', {reason:k, custom_reason:c}));
 }
 // ─────────────────────────────────────────────────────────────────────────────
 // Diqqat: openTelegram() endi base.html'da (barcha sahifalarda umumiy).
@@ -1447,15 +1447,16 @@ function _renderSheet(id, o){
   };
   const label={pending:'Kutilmoqda',accepted:'Qabul qilindi',on_way:"Yo'lda",arrived:'Yetib keldim'};
 
+  const cancelBtn = `<button onclick="openCancelReasonModal((k,c)=>doAction(${id},'cancel',{reason:k,custom_reason:c}))" class="ios-btn-destructive mt-2">❌ Bekor qilish</button>`;
   const btns={
     pending: `<button onclick="doAction(${id},'accept')" class="ios-btn-primary">✓ Qabul qilish</button>
               <button onclick="doAction(${id},'reject')" class="ios-btn-destructive mt-2">Rad etish</button>`,
     accepted:`<button onclick="doAction(${id},'on_way')" class="ios-btn-primary" style="background:#AF52DE;color:#fff">🚗 Yo'lga chiqdim</button>
-              <button onclick="callOperator()" class="ios-btn-destructive mt-2">📞 Bekor qilish (Operator: ${OPERATOR_PHONE})</button>`,
+              ${cancelBtn}`,
     on_way:  `<button onclick="doAction(${id},'complete')" class="ios-btn-primary" style="background:#34C759;color:#fff">📍 Yetib keldim</button>
-              <button onclick="callOperator()" class="ios-btn-destructive mt-2">📞 Bekor qilish (Operator: ${OPERATOR_PHONE})</button>`,
+              ${cancelBtn}`,
     arrived: `<button onclick="doAction(${id},'complete')" class="ios-btn-primary" style="background:#34C759;color:#fff">🏁 Yakunlash</button>
-              <button onclick="callOperator()" class="ios-btn-destructive mt-2">📞 Bekor qilish (Operator: ${OPERATOR_PHONE})</button>`,
+              ${cancelBtn}`,
   };
 
   // Asosiy narsa (status/manzil/mijoz/narx/amal tugmalari) endi xarita ustida
@@ -1615,7 +1616,7 @@ function closeSheet(){
   },380);
 }
 
-async function doAction(id,action){
+async function doAction(id,action,extra){
   // Diqqat: pastdagi (vibratsiya/tovush/Flutter ko'prigi) qadamlarning
   // har biri o'zining try/catch'iga o'ralgan — aks holda ulardan biri xato
   // bersa, butun funksiya HECH QANDAY XABARSIZ to'xtab qolar edi (foydalanuvchi
@@ -1660,6 +1661,9 @@ async function doAction(id,action){
       fd.append('tmx_price', parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,'')) || 0);
       fd.append('tmx_time', _tmxTimeStr || '0:00');
     }
+    // Masalan bekor qilish sababi (reason/custom_reason) — cancel-reason
+    // modali orqali kelgan qo'shimcha maydonlar.
+    if (extra) { for (const k in extra) fd.append(k, extra[k]); }
     const ctrl = new AbortController();
     const timeoutId = setTimeout(() => ctrl.abort(), 15000);
     const r=await fetch(`/driver/orders/${id}/${action}/`,{
@@ -1707,6 +1711,12 @@ async function doAction(id,action){
         }
       } else if(action==='cancel'){
         tmxStop();
+        _updateNavBalance(d.new_balance);
+        showToast(
+          'Bekor qilindi',
+          d.reassigned ? "Buyurtma boshqa haydovchilarga qayta yuborildi" : '',
+          'success', 3000,
+        );
         _suppressModal = true;
         _known = new Set();
         await loadOrders();

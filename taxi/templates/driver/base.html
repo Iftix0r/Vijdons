@@ -335,6 +335,34 @@ body { background: var(--ios-bg); color: var(--ios-label); }
   </div>
 </div>
 
+<!-- Buyurtmani bekor qilish sababi — barcha sahifalarda umumiy (Asosiy/Tarix).
+     Sof UI: qaysi sabab tanlanganini tashqariga (ochgan chaqiruvchiga)
+     qaytaradi, so'rovni o'zi yubormaydi — har sahifa o'z fetch/refresh
+     mantig'ini saqlab qoladi (doAction / doHistoryAction). -->
+<div id="cancel-reason-modal" class="fixed inset-0 z-[350] hidden flex items-center justify-center"
+     onclick="if(event.target===this) closeCancelReasonModal()"
+     style="background:rgba(0,0,0,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)">
+  <div class="ios-alert mx-4 w-full max-w-sm anim-scale" style="border-radius:24px;overflow:hidden;max-height:85vh;display:flex;flex-direction:column">
+    <div class="px-5 pt-5 pb-2 flex-shrink-0">
+      <div class="ios-title font-bold" style="color:var(--ios-label)">Bekor qilish sababi</div>
+      <p class="ios-caption2 mt-1" style="color:var(--ios-label3)">Sababni tanlang</p>
+    </div>
+    <div id="cancel-reason-list" class="px-5 py-2 space-y-2 overflow-y-auto" style="flex:1"></div>
+    <div id="cancel-reason-other-wrap" class="px-5 pb-2 hidden">
+      <input id="cancel-reason-other-input" type="text" placeholder="Sababni yozing..." maxlength="255" autocomplete="off"
+             class="w-full px-3.5 py-3 rounded-xl ios-subhead" style="background:var(--ios-fill);border:none;outline:none;color:var(--ios-label)">
+    </div>
+    <div class="px-5 pb-5 pt-2 space-y-2 flex-shrink-0">
+      <button id="cancel-reason-confirm" onclick="_confirmCancelReason()" disabled
+              class="ios-btn-destructive" style="opacity:.4">Bekor qilish</button>
+      <button onclick="closeCancelReasonModal()"
+              style="width:100%;padding:13px;border-radius:14px;background:var(--ios-fill);color:var(--ios-label);font-size:15px;font-weight:600;border:none;cursor:pointer">
+        Yopish
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Page content -->
 <main class="pb-safe overflow-y-auto" id="main-content" style="min-height:100vh">
   {% block content %}{% endblock %}
@@ -831,6 +859,87 @@ function getCookie(n) {
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{ Native.getLocation().catch(()=>{}); });
+
+// ── Bekor qilish sababi modali (Asosiy/Tarix sahifalarida umumiy) ──────────────
+// Diqqat: kalitlar (car_broke, busy, ...) taxi/driver_views.py'dagi
+// DRIVER_CANCEL_REASONS bilan BIR XIL bo'lishi shart — backend shu kalitlar
+// bo'yicha "boshqa haydovchilarga qayta ochiladimi" qarorini qabul qiladi.
+const CANCEL_REASONS = [
+  { key: 'car_broke',        label: "Mashinam buzilib qoldi" },
+  { key: 'busy',             label: "Band bo'lib qoldim / boshqa buyurtma oldim" },
+  { key: 'incident',         label: "Yo'lda hodisa/muammo yuz berdi" },
+  { key: 'client_no_answer', label: "Mijoz javob bermayapti" },
+  { key: 'client_cancelled', label: "Mijoz bekor qildi" },
+  { key: 'client_not_found', label: "Mijoz manzilda topilmadi" },
+];
+
+let _cancelReasonOnConfirm = null;
+let _cancelSelectedKey = null;
+
+// `onConfirm(reasonKey, customReasonText)` — modal yopilgandan keyin
+// chaqiruvchi sahifa (home.html/history.html) o'zining fetch+refresh
+// mantig'ini ishga tushiradi.
+function openCancelReasonModal(onConfirm) {
+  _cancelReasonOnConfirm = onConfirm;
+  _cancelSelectedKey = null;
+
+  const list = document.getElementById('cancel-reason-list');
+  list.innerHTML = CANCEL_REASONS.map(r => `
+    <button type="button" class="cancel-reason-opt" data-key="${r.key}" onclick="_selectCancelReason('${r.key}')"
+            style="width:100%;text-align:left;padding:12px 14px;border-radius:14px;border:none;cursor:pointer;font-size:15px;font-weight:500;background:var(--ios-fill);color:var(--ios-label)">
+      ${r.label}
+    </button>`).join('') + `
+    <button type="button" class="cancel-reason-opt" data-key="other" onclick="_selectCancelReason('other')"
+            style="width:100%;text-align:left;padding:12px 14px;border-radius:14px;border:none;cursor:pointer;font-size:15px;font-weight:500;background:var(--ios-fill);color:var(--ios-label)">
+      Boshqa sabab
+    </button>`;
+
+  document.getElementById('cancel-reason-other-wrap').classList.add('hidden');
+  document.getElementById('cancel-reason-other-input').value = '';
+  _updateCancelConfirmState();
+  document.getElementById('cancel-reason-modal').classList.remove('hidden');
+}
+
+function closeCancelReasonModal() {
+  document.getElementById('cancel-reason-modal').classList.add('hidden');
+  _cancelReasonOnConfirm = null;
+}
+
+function _selectCancelReason(key) {
+  Native.vibrate();
+  _cancelSelectedKey = key;
+  document.querySelectorAll('.cancel-reason-opt').forEach(el => {
+    const active = el.dataset.key === key;
+    el.style.background = active ? '#FF3B30' : 'var(--ios-fill)';
+    el.style.color = active ? '#fff' : 'var(--ios-label)';
+  });
+  document.getElementById('cancel-reason-other-wrap').classList.toggle('hidden', key !== 'other');
+  if (key === 'other') document.getElementById('cancel-reason-other-input').focus();
+  _updateCancelConfirmState();
+}
+
+document.addEventListener('input', e => {
+  if (e.target && e.target.id === 'cancel-reason-other-input') _updateCancelConfirmState();
+});
+
+function _updateCancelConfirmState() {
+  const btn = document.getElementById('cancel-reason-confirm');
+  if (!btn) return;
+  const otherText = document.getElementById('cancel-reason-other-input').value.trim();
+  const ok = _cancelSelectedKey && (_cancelSelectedKey !== 'other' || otherText);
+  btn.disabled = !ok;
+  btn.style.opacity = ok ? '1' : '.4';
+}
+
+function _confirmCancelReason() {
+  if (!_cancelSelectedKey) return;
+  const customText = document.getElementById('cancel-reason-other-input').value.trim();
+  if (_cancelSelectedKey === 'other' && !customText) return;
+  const cb = _cancelReasonOnConfirm;
+  const key = _cancelSelectedKey;
+  closeCancelReasonModal();
+  if (cb) cb(key, key === 'other' ? customText : '');
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // JONLI OVOZLI ALOQA ("EFIR") — ratsiya uslubi (barcha sahifalarda umumiy,
