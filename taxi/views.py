@@ -591,6 +591,13 @@ def panel_dashboard(request):
     ).order_by('expires_at')
     open_security_incidents = SecurityIncident.objects.exclude(status=SecurityIncident.STATUS_RESOLVED)
 
+    # Hozir yo'lda (taksometr yurgan) buyurtmalar — dashboarddagi "Yo'lda
+    # haydovchilar" bloki uchun. Faqat on_way/arrived holatida, chunki
+    # tmx_dist_km faqat shu holatlarda jonli yangilanadi (driver_meter_update).
+    orders_on_route = Order.objects.select_related('driver', 'client').filter(
+        status__in=('on_way', 'arrived')
+    ).order_by('-tmx_start_time')
+
     context = {
         'orders':               orders,
         'total_orders':         Order.objects.count(),
@@ -628,6 +635,8 @@ def panel_dashboard(request):
         'expiring_documents':      expiring_documents,
         'expiring_document_count': expiring_documents.count(),
         'open_security_incident_count': open_security_incidents.count(),
+        'orders_on_route':      orders_on_route,
+        'orders_on_route_count': orders_on_route.count(),
     }
     return render(request, 'taxi/panel.html', context)
 
@@ -638,6 +647,33 @@ def aging_orders_count(request):
     cutoff = timezone.now() - timezone.timedelta(seconds=PENDING_ORDER_AGING_SECONDS)
     count = Order.objects.filter(status='pending', created_at__lte=cutoff).count()
     return JsonResponse({'count': count})
+
+
+@panel_login_required
+def orders_on_route_poll(request):
+    """Dashboarddagi "Yo'lda haydovchilar" blokini jonli yangilash uchun."""
+    from django.utils import timezone
+    orders = Order.objects.select_related('driver', 'client').filter(status__in=('on_way', 'arrived'))
+    data = []
+    for o in orders:
+        started = o.tmx_start_time or o.created_at
+        data.append({
+            'id':           o.id,
+            'status':       o.status,
+            'driver_id':    o.driver_id,
+            'driver_name':  o.driver.full_name if o.driver else '',
+            'photo_url':    o.driver.photo.url if o.driver and o.driver.photo else '',
+            'car_model':    o.driver.car_model if o.driver else '',
+            'car_number':   o.driver.car_number if o.driver else '',
+            'client_name':  o.client.full_name if o.client else '',
+            'from_address': o.from_address,
+            'to_address':   o.to_address,
+            'dist_km':      float(o.tmx_dist_km or 0),
+            'price':        float(o.price or 0),
+            'started_at':   started.isoformat(),
+        })
+    data.sort(key=lambda x: x['started_at'], reverse=True)
+    return JsonResponse({'orders': data})
 
 
 @panel_login_required
