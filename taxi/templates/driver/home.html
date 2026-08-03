@@ -333,6 +333,14 @@ const OFFICE_LAT  = {{ tariff.office_lat|stringformat:'f'|default:'null' }};
 const OFFICE_LNG  = {{ tariff.office_lng|stringformat:'f'|default:'null' }};
 const OFFICE_NAME = "{{ tariff.office_name|default:'Ofis'|escapejs }}";
 
+// Internet ulanish sifati (navbar profil halqasi) — renderOrdersDOM() sahifa
+// yuklanishi bilan darhol chaqirilib _setMapSearchBadge() orqali shu
+// o'zgaruvchilarga murojaat qilgani uchun, ular ANIQ shu yerda (har qanday
+// dastlab ishga tushadigan koddan OLDIN) e'lon qilinishi SHART.
+const NET_RING_COLOR = { good: '#34C759', medium: '#FFD600', poor: '#FF3B30' };
+let _netQuality  = 'good';
+let _isSearching = false;
+
 let ORDERS = {{ orders_json|safe }};
 let _known = new Set(ORDERS.map(o => o.id));
 
@@ -572,10 +580,14 @@ function _setMapSearchBadge(visible) {
 // mavjud davriy loadOrders() so'rovining javob vaqtidan foydalanadi.
 // Buyurtma qidirilayotgan payt (_isSearching) ustunroq — halqa vaqtincha
 // sariq bo'lib turadi, tugagach joriy tarmoq sifati rangiga qaytadi.
-const NET_RING_COLOR = { good: '#34C759', medium: '#FFD600', poor: '#FF3B30' };
-let _netQuality  = 'good';
-let _isSearching = false;
-
+// Diqqat: `NET_RING_COLOR`/`_netQuality`/`_isSearching` o'zgaruvchilari bu
+// yerda EMAS, fayl boshida e'lon qilingan — chunki renderOrdersDOM() sahifa
+// yuklanishi bilan DARHOL chaqiriladi va _setMapSearchBadge() orqali
+// _isSearching'ga murojaat qiladi; agar `let` shu yerda (pastda) qolsa,
+// hali ishga tushmagan o'zgaruvchiga chaqiruv "ReferenceError: is not
+// initialized" (temporal dead zone) bilan butun skriptni to'xtatib qo'yardi
+// — aynan shu sabab bilan xarita HECH QACHON ishga tushmay, "GPS signali
+// kutilmoqda" abadiy osilib qolar edi.
 function _classifyLatencyMs(ms) {
   if (ms < 800) return 'good';
   if (ms < 2500) return 'medium';
