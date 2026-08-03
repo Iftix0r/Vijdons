@@ -73,17 +73,25 @@
    ular orasidagi piksel-osti (subpixel) bo'shliqlar (yoki hali yuklanib
    ulgurmagan plitkalar) ostidagi asl OQ fonni ko'rsatib, invert filtrsiz
    holatda deyarli sezilmas, filtrdan keyin esa qorong'u xarita ustida uzun
-   OQ chiziqlar (plitkalar choki) sifatida yaqqol ko'rinib qolgan. Shu sabab:
+   OQ chiziqlar (plitkalar choki) sifatida yaqqol ko'rinib qolgan — ayniqsa
+   xarita harakatlantirilganda (pan) plitkalar qayta joylashtirilib turgani
+   uchun yanada ko'proq sezilardi. Shu sabab:
    1) `background:#fff` — ground-pane'ning o'z foni ham OQ qilib qo'yiladi,
       shunda har qanday bo'shliq ham plitkalar bilan BIR XIL invert
       filtrdan o'tib, natijada qorong'u (mos) rangga aylanadi;
-   2) `transform:scale()` — qatlam sal kattalashtirilib, plitkalar bir-biriga
-      ustma-ust tushib, choklar yanada kamayadi. */
+   2) `transform:scale(1.05)` — qatlam sezilarli darajada kattalashtirilib,
+      plitkalar bir-biriga qattiqroq ustma-ust tushadi (avvalgi 1.015
+      yetarli bo'lmadi — pan paytida choklar hali ham ko'rinardi);
+   3) `backface-visibility`/`outline` — ba'zi brauzerlarda transform +
+      filter birga ishlatilganda subpiksel joylashuvni "yumaloqlab"
+      choklarni yashiradigan GPU renderlash yo'liga majburlaydi. */
 #home-map [class*="ground-pane"] {
   background: #fff;
   filter: invert(92%) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(1.15);
-  transform: scale(1.015);
+  transform: scale(1.05);
   transform-origin: center;
+  backface-visibility: hidden;
+  outline: 1px solid transparent;
 }
 
 /* ── "© Yandex" yozuvi/logotipini yashirish ───────────────────────────────────
