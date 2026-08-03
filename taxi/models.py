@@ -259,6 +259,8 @@ class BotSettings(models.Model):
     notify_driver_milestone   = models.BooleanField(default=True, verbose_name='Haydovchi yubileyi (safarlar soni)')
     notify_sos_to_driver_group= models.BooleanField(default=True, verbose_name='SOS signalini haydovchilar guruhiga ham yuborish')
     notify_flyer_redeemed     = models.BooleanField(default=True, verbose_name='Flayer kuponi ishlatilganda xabar')
+    notify_balance_changed_to_driver_group = models.BooleanField(default=True, verbose_name="Balans to'ldirilganda haydovchilar guruhiga ham yuborish")
+    notify_low_balance_to_driver_group     = models.BooleanField(default=True, verbose_name='Balans kam qolganda haydovchilar guruhiga ham yuborish')
 
     # Har bir kunlik/haftalik/oylik xabar oxirgi marta yuborilgan sana — bir marta
     # yuborilib ketmasligi uchun (masalan bir nechta worker jarayoni bo'lsa)

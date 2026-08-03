@@ -830,6 +830,8 @@ def bot_settings(request):
         bot.notify_duty_changed    = 'notify_duty_changed'    in request.POST
         bot.notify_balance_changed = 'notify_balance_changed' in request.POST
         bot.notify_low_balance     = 'notify_low_balance'     in request.POST
+        bot.notify_balance_changed_to_driver_group = 'notify_balance_changed_to_driver_group' in request.POST
+        bot.notify_low_balance_to_driver_group     = 'notify_low_balance_to_driver_group'     in request.POST
         bot.notify_morning_greeting    = 'notify_morning_greeting'    in request.POST
         bot.notify_evening_top_drivers = 'notify_evening_top_drivers' in request.POST
         bot.notify_night_greeting      = 'notify_night_greeting'      in request.POST
@@ -887,6 +889,8 @@ def bot_settings(request):
         ('notify_duty_changed',    "Navbat holati o'zgardi",            '🟢', bot.notify_duty_changed),
         ('notify_balance_changed', "Balans o'zgardi",                   '💰', bot.notify_balance_changed),
         ('notify_low_balance',     'Balans kam ogohlantirish',          '⚠️', bot.notify_low_balance),
+        ('notify_balance_changed_to_driver_group', "Balans to'ldirilganda haydovchilar guruhiga ham yuborish", '💚', bot.notify_balance_changed_to_driver_group),
+        ('notify_low_balance_to_driver_group',     'Balans kam qolganda haydovchilar guruhiga ham yuborish',   '⚠️', bot.notify_low_balance_to_driver_group),
         ('notify_morning_greeting',    'Ertalabki salomlashuv (07:00)',        '🌅', bot.notify_morning_greeting),
         ('notify_evening_top_drivers', 'Kechqurungi TOP-10 (20:00)',           '🏆', bot.notify_evening_top_drivers),
         ('notify_night_greeting',      'Tungi navbatchilarga salom (23:00)',   '🌙', bot.notify_night_greeting),

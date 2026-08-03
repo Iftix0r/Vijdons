@@ -760,13 +760,21 @@ def tg_balance_changed(driver, amount, action):
     if cfg and not cfg.notify_balance_changed:
         return
     emoji = '💚' if action == 'add' else '🔴'
-    send_telegram(
+    text = (
         f"{emoji} <b>Balans o'zgardi</b>\n"
         f"👤 <b>{driver.full_name}</b> | <code>{driver.phone_number}</code>\n"
         f"💰 {sign}{amount} UZS\n"
-        f"📊 Joriy balans: <b>{driver.balance} UZS</b>",
-        reply_markup=_driver_inline(driver.id),
+        f"📊 Joriy balans: <b>{driver.balance} UZS</b>"
     )
+    send_telegram(text, reply_markup=_driver_inline(driver.id))
+
+    # Balans to'ldirilganda haydovchilar guruhiga ham xabar beriladi
+    if action == 'add' and cfg and cfg.notify_balance_changed_to_driver_group:
+        _notify_driver_group(
+            f"💚 <b>Balans to'ldirildi</b>\n"
+            f"👤 <b>{driver.full_name}</b>\n"
+            f"💰 +{amount} UZS"
+        )
 
 
 def tg_low_balance_alert(driver):
@@ -794,6 +802,14 @@ def tg_low_balance_alert(driver):
         f"Haydovchi endi yangi buyurtma qabul qila olmaydi.",
         reply_markup=_driver_inline(driver.id),
     )
+
+    # Balans kam qolganda haydovchilar guruhiga ham xabar beriladi
+    if cfg and cfg.notify_low_balance_to_driver_group:
+        _notify_driver_group(
+            f"⚠️ <b>Balans kam</b>\n"
+            f"👤 <b>{driver.full_name}</b>\n"
+            f"💰 Joriy balans: <b>{driver.balance} UZS</b> (komissiya: {tariff.commission} UZS)"
+        )
 
 
 def tg_topup_request(request_obj, receipt_url):
