@@ -381,8 +381,7 @@ def order_reject(request, driver, pk):
         order.dispatched_to = None
         order.save(update_fields=['dispatched_to'])
         tg_order_rejected(order, driver)
-        import threading
-        threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
+        dispatch_order(order)
 
     return Response({'detail': 'Rad etildi.'})
 

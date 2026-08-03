@@ -196,8 +196,7 @@ def client_order_create(request, client):
 
     has_coords = bool(f_lat and f_lng)
     if has_coords and tariff.auto_dispatch:
-        import threading
-        threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
+        dispatch_order(order)
 
     return JsonResponse({'ok': True, 'order': _order_data(order)})
 

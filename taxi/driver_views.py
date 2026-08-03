@@ -396,9 +396,8 @@ def driver_order_action(request, driver, pk, action):
                 order.dispatched_to = None
                 order.save(update_fields=['dispatched_to'])
                 tg_order_rejected(order, driver)
-                import threading
                 from .utils import dispatch_order
-                threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
+                dispatch_order(order)
         return JsonResponse({'ok': True})
 
     # Haydovchi endi qabul qilingan buyurtmani o'zi bekor qila olmaydi — bekor

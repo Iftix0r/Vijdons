@@ -139,7 +139,7 @@ def order_create(request):
             # Manzil qo'lda yozilsa (from_lat yo'q) → umumiy tabloga tushadi, hammaga ko'rinadi
             has_coords = bool(f_lat and f_lng)
             if driver is None and tariff.auto_dispatch and has_coords:
-                pass  # dispatch_order() thread ichida eng yaqinga yuboradi
+                pass  # dispatch_order() pastda sinxron chaqiriladi
 
             payment_type = request.POST.get('payment_type', 'cash')
             car_type     = request.POST.get('car_type', Driver.CAR_TYPE_LIGHT)
@@ -180,9 +180,13 @@ def order_create(request):
 
             # Dispatch — faqat koordinata belgilangan bo'lsa eng yaqin haydovchiga yuboriladi
             # Koordinata yo'q (qo'lda yozilgan manzil) → umumiy tabloda qoladi, hammaga ko'rinadi
+            # Diqqat: SINXRON chaqiriladi (thread ichida emas) — aks holda order
+            # yaratilgandan keyin dispatch_order `dispatched_to`ni belgilagunga
+            # qadar bo'sh oraliqda buyurtma hammaga (umumiy tablo sifatida)
+            # ko'rinib, eng yaqin bo'lmagan haydovchi ham birinchi bo'lib qabul
+            # qilib olishi mumkin edi.
             if has_coords and driver is None:
-                import threading
-                threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
+                dispatch_order(order)
 
             from .utils import log_system_event
             log_system_event(
@@ -315,8 +319,7 @@ def order_cancel_reassign(request, pk):
 
         tariff = TariffSettings.get()
         if tariff.auto_dispatch:
-            import threading
-            threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
+            dispatch_order(order)
 
         messages.success(
             request,
@@ -1888,8 +1891,7 @@ def client_bot_webhook(request):
         )
         tg_new_order(order)
         if tariff.auto_dispatch:
-            import threading
-            threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
+            dispatch_order(order)
 
         _client_sessions.pop(chat_id, None)
         _send(chat_id,
@@ -2351,8 +2353,7 @@ def _handle_admin_message(token, chat_id, text, location=None):
         )
         tg_new_order(order)
         if tariff.auto_dispatch:
-            import threading
-            threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
+            dispatch_order(order)
 
         _admin_sessions.pop(chat_id, None)
         _admin_bot_send(token, chat_id,
@@ -2700,8 +2701,7 @@ def _handle_admin_message(token, chat_id, text, location=None):
         order.save(update_fields=['driver', 'dispatched_to', 'dispatched_at', 'status', 'updated_at'])
         log_panel_event('panel_order_cancelled', f"Buyurtma #{order.id} — admin (bot) tomonidan qayta ochildi")
         if TariffSettings.get().auto_dispatch:
-            import threading
-            threading.Thread(target=dispatch_order, args=(order,), daemon=True).start()
+            dispatch_order(order)
         _admin_bot_send(token, chat_id, f"🔄 Buyurtma #{order.id} qayta ochildi va eng yaqin haydovchiga yuborilmoqda.", _ADMIN_MENU_KB)
         return
 
