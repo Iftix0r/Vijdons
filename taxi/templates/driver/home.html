@@ -68,9 +68,17 @@
    hack"). Faqat xarita "yer" qatlamiga (ground-pane) qo'llanadi — versiyaga
    bog'liq class prefiksidan qat'iy nazar ishlashi uchun `*=` bilan mos
    keladi — belgilar/popup'lar teskari bo'lib qolmasligi uchun ularning
-   qatlamiga tegilmaydi. */
+   qatlamiga tegilmaydi.
+   Diqqat: ground-pane ko'plab alohida plitka (tile) rasmlaridan yig'iladi —
+   xarita siljitilganda/kattalashtirilganda ular orasida piksel-osti (subpixel)
+   bo'shliqlar paydo bo'lib, filtrlanmagan holida uzun OQ chiziqlar (plitkalar
+   choki) sifatida ko'rinib qolishi mumkin edi. `transform: scale()` bilan
+   qatlamni sal kattalashtirib, plitkalarni bir-biriga ustma-ust qo'yib,
+   choklarni yashiramiz. */
 #home-map [class*="ground-pane"] {
   filter: invert(92%) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(1.15);
+  transform: scale(1.015);
+  transform-origin: center;
 }
 
 /* ── "© Yandex" yozuvi/logotipini yashirish ───────────────────────────────────
