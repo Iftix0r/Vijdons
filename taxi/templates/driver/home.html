@@ -130,12 +130,6 @@
 <div id="home-map-hint" class="flex items-center justify-center" style="position:fixed;inset:0;z-index:0;pointer-events:none">
   <span class="ios-caption2" style="color:rgba(255,255,255,.4)">GPS signal kutilmoqda…</span>
 </div>
-<div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px]" style="position:fixed;z-index:15;top:calc(env(safe-area-inset-top,47px) + 108px);left:16px;background:rgba(20,20,22,.65);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
-  <span style="width:8px;height:8px;border-radius:50%;background:#FFD600;flex-shrink:0"></span>
-  <span class="ios-caption2 font-bold" style="color:#fff">Siz</span>
-  <span style="width:8px;height:8px;border-radius:50%;background:#34C759;flex-shrink:0;margin-left:4px"></span>
-  <span id="home-map-peers-count" class="ios-caption2 font-bold" style="color:#fff">0 haydovchi</span>
-</div>
 <!-- "Buyurtma qidirilmoqda" indikatori — xaritaning o'zi ustida suzib turadi
      (JS: _setMapSearchBadge), tab-bardan yuqorida qoladi -->
 <div id="map-search-badge" class="flex items-center gap-2 px-3.5 py-2 rounded-full" style="display:none;position:fixed;z-index:15;left:50%;bottom:calc(env(safe-area-inset-bottom,16px) + 96px);transform:translateX(-50%);background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,.3)">
@@ -1139,8 +1133,6 @@ document.addEventListener('visibilitychange', () => {
             delete _homePeerMarks[id];
           }
         });
-        const cnt = document.getElementById('home-map-peers-count');
-        if (cnt) cnt.textContent = `${list.length} haydovchi`;
       })
       .catch(() => {});
   }
