@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import user_passes_test
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher, VizitkaRewardLog, LegalDocument, SecurityIncident, VoiceParticipant, VoiceSignal, SavedAddress
-from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, tg_order_deleted, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed, build_balance_receipt_pdf, build_flyer_business_card_pdf, voice_prune_stale, voice_participants_list, voice_target_kwargs, voice_signal_sender_info
+from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, tg_order_deleted, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed, build_balance_receipt_pdf, build_flyer_business_card_pdf, voice_prune_stale, voice_participants_list, voice_target_kwargs, voice_signal_sender_info, voice_broadcast_audio
 import csv
 import json
 
@@ -3660,12 +3660,13 @@ def saved_address_use(request, pk):
     return JsonResponse({'ok': True})
 
 
-# ── Guruh jonli ovozli aloqa ("efir") — operator paneli tomoni ──────────────
+# ── Guruh jonli ovozli aloqa ("efir") — operator paneli tomoni, ratsiya uslubi ─
 # Haydovchilar bir-biri bilan gaplashadigan "efir"ning aynan o'zi — operator
 # ham xuddi shu xonaga (VoiceParticipant/VoiceSignal) ulanadi, shu bilan
-# haydovchilarning suhbatini eshitishi va o'zi ham hammaga gapirishi mumkin
-# bo'ladi. Umumiy mantiq taxi/utils.py dagi voice_* funksiyalarda — batafsili
-# uchun taxi/driver_views.py dagi driver_voice_* (haydovchi tomoni) ga qarang.
+# haydovchilarning xabarini eshitishi va o'zi ham hammaga bosib-gapirib
+# yuborishi mumkin bo'ladi. Umumiy mantiq taxi/utils.py dagi voice_*
+# funksiyalarda — batafsili uchun taxi/driver_views.py dagi driver_voice_*
+# (haydovchi tomoni) ga qarang.
 
 @panel_login_required
 @require_POST
@@ -3678,14 +3679,7 @@ def panel_voice_join(request):
 @panel_login_required
 @require_POST
 def panel_voice_leave(request):
-    others = voice_participants_list(f'o{request.user.id}')
     VoiceParticipant.objects.filter(operator=request.user).delete()
-    signals = []
-    for o in others:
-        kwargs = voice_target_kwargs('to', o['key'])
-        if kwargs:
-            signals.append(VoiceSignal(from_operator=request.user, kind=VoiceSignal.KIND_LEAVE, payload='', **kwargs))
-    VoiceSignal.objects.bulk_create(signals)
     return JsonResponse({'ok': True})
 
 
@@ -3697,7 +3691,7 @@ def panel_voice_heartbeat(request):
         return JsonResponse({'ok': True, 'joined': False})
     voice_prune_stale()
 
-    signals = list(VoiceSignal.objects.filter(to_operator=request.user).select_related('from_driver', 'from_operator').order_by('created_at')[:50])
+    signals = list(VoiceSignal.objects.filter(to_operator=request.user).select_related('from_driver', 'from_operator').order_by('created_at')[:10])
     signal_ids = [s.id for s in signals]
     if signal_ids:
         VoiceSignal.objects.filter(id__in=signal_ids).delete()
@@ -3706,9 +3700,9 @@ def panel_voice_heartbeat(request):
         'ok': True,
         'joined': True,
         'participants': voice_participants_list(f'o{request.user.id}'),
-        'signals': [
+        'clips': [
             dict(zip(('from', 'from_name'), voice_signal_sender_info(s)),
-                 kind=s.kind, payload=json.loads(s.payload) if s.payload else None)
+                 audio_url=request.build_absolute_uri(s.audio.url))
             for s in signals
         ],
     })
@@ -3716,24 +3710,13 @@ def panel_voice_heartbeat(request):
 
 @panel_login_required
 @require_POST
-def panel_voice_signal(request):
-    try:
-        data = json.loads(request.body)
-    except Exception:
-        return JsonResponse({'ok': False}, status=400)
-
-    kind = data.get('kind')
-    payload = data.get('payload')
-    target_kwargs = voice_target_kwargs('to', data.get('to'))
-    if not target_kwargs or kind not in dict(VoiceSignal.KIND_CHOICES):
-        return JsonResponse({'ok': False, 'error': "Noto'g'ri so'rov"}, status=400)
-
-    VoiceSignal.objects.create(
-        from_operator=request.user, kind=kind,
-        payload=json.dumps(payload) if payload is not None else '',
-        **target_kwargs,
-    )
-    return JsonResponse({'ok': True})
+def panel_voice_send_audio(request):
+    audio = request.FILES.get('audio')
+    if not audio:
+        return JsonResponse({'ok': False, 'error': "Audio fayl kerak"}, status=400)
+    voice_prune_stale()
+    delivered = voice_broadcast_audio({'from_operator': request.user}, f'o{request.user.id}', audio)
+    return JsonResponse({'ok': True, 'delivered': delivered})
 
 
 # ── Haydovchi shartnomasi ──────────────────────────────────────────────────────

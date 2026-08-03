@@ -631,34 +631,25 @@ class VoiceParticipant(models.Model):
 
 
 class VoiceSignal(models.Model):
-    """Ikki ishtirokchi (haydovchi yoki operator) orasida to'g'ridan-to'g'ri
-    (P2P) ovozli ulanish (WebRTC) o'rnatish uchun signalizatsiya xabari
-    (offer/answer/ICE candidate/leave). Faqat manzilga yetguncha (bir marta
-    o'qilgunga qadar) saqlanadi — heartbeat so'rovi orqali o'qilib, darhol
-    o'chiriladi. Har bir tomonda (from/to) aynan bittasi to'ldiriladi:
-    *_driver YOKI *_operator."""
-    KIND_OFFER     = 'offer'
-    KIND_ANSWER    = 'answer'
-    KIND_CANDIDATE = 'candidate'
-    KIND_LEAVE     = 'leave'
-    KIND_CHOICES = (
-        (KIND_OFFER,     'Offer'),
-        (KIND_ANSWER,    'Answer'),
-        (KIND_CANDIDATE, 'ICE Candidate'),
-        (KIND_LEAVE,     'Leave'),
-    )
-
+    """Ratsiya uslubidagi 'efir'da bosib gapirib yozilgan ovozli xabarni, o'sha
+    payt xonada turgan har bir boshqa ishtirokchiga birma-bir yetkazish uchun
+    navbat qatori — bitta xabar = bir nechta qator (har biri bitta qabul
+    qiluvchiga), barchasi bitta jismoniy audio faylni bo'lishadi. Har bir
+    qator manzilga yetguncha (heartbeat so'rovi orqali bir marta o'qilgunga
+    qadar) saqlanadi, shundan so'ng darhol o'chiriladi; audio fayl esa (bir
+    nechta qator bitta faylni bo'lishishi mumkinligi uchun) alohida, davriy
+    tozalash orqali (utils.voice_prune_stale) o'chiriladi. Har bir tomonda
+    (from/to) aynan bittasi to'ldiriladi: *_driver YOKI *_operator."""
     from_driver   = models.ForeignKey(Driver, on_delete=models.CASCADE, null=True, blank=True, related_name='voice_signals_sent', verbose_name='Kimdan (haydovchi)')
     from_operator = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='voice_signals_sent', verbose_name='Kimdan (operator)')
     to_driver     = models.ForeignKey(Driver, on_delete=models.CASCADE, null=True, blank=True, related_name='voice_signals_received', verbose_name='Kimga (haydovchi)')
     to_operator   = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='voice_signals_received', verbose_name='Kimga (operator)')
-    kind        = models.CharField(max_length=12, choices=KIND_CHOICES, verbose_name='Turi')
-    payload     = models.TextField(blank=True, default='', verbose_name='Ma\'lumot (JSON)')
+    audio       = models.FileField(upload_to='voice_clips/', verbose_name='Ovozli xabar')
     created_at  = models.DateTimeField(auto_now_add=True, verbose_name='Vaqt')
 
     class Meta:
-        verbose_name = 'Ovoz signali'
-        verbose_name_plural = 'Ovoz signallari'
+        verbose_name = 'Efir ovozli xabari'
+        verbose_name_plural = 'Efir ovozli xabarlari'
         ordering = ['created_at']
         indexes = [
             models.Index(fields=['to_driver', 'created_at']),

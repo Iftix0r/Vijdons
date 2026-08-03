@@ -313,9 +313,11 @@
                 <i class="fas fa-eye text-sm"></i>
             </button>
 
-            <!-- Haydovchilar "efiri" — doim tinglashda, bosilsa gapirish yoqiladi/o'chiriladi -->
-            <button id="panel-voice-btn" onclick="panelVoiceToggleTalk()" title="Haydovchilar efiri — bosib gapiring"
-                    class="relative w-9 h-9 rounded-xl bg-gray-100/80 dark:bg-gray-800/80 backdrop-blur flex items-center justify-center text-gray-400 hover:text-emerald-500 transition-colors">
+            <!-- Haydovchilar "efiri" — ratsiya uslubi: doim tinglashda, BOSIB TURGANDA yoziladi -->
+            <button id="panel-voice-btn" title="Haydovchilar efiri — bosib gapiring"
+                    onmousedown="_pvoiceStartTalk()" onmouseup="_pvoiceStopTalk()" onmouseleave="_pvoiceStopTalk()"
+                    ontouchstart="_pvoiceStartTalk(event)" ontouchend="_pvoiceStopTalk(event)"
+                    class="relative w-9 h-9 rounded-xl bg-gray-100/80 dark:bg-gray-800/80 backdrop-blur flex items-center justify-center text-gray-400 hover:text-emerald-500 transition-colors" style="-webkit-tap-highlight-color:transparent;user-select:none">
                 <i id="panel-voice-icon" class="fas fa-microphone text-sm"></i>
                 <span id="panel-voice-badge" class="hidden absolute -top-1 -right-1 bg-emerald-500 text-white text-[10px] font-bold px-1 rounded-full min-w-[16px] h-4 leading-4 text-center"></span>
             </button>
@@ -1300,96 +1302,22 @@
 
     // ══════════════════════════════════════════════════════════════════════
     // Haydovchilar guruh jonli ovozli aloqasi ("efir") — operator paneli
-    // tomoni. Haydovchilar bir-biri bilan gaplashadigan aynan o'sha "efir"
-    // xonasiga operator ham P2P WebRTC orqali ulanadi: sahifa ochilishi bilan
-    // avtomatik ravishda faqat TINGLASH uchun ulanadi (ruxsat so'ralmaydi),
-    // mikrofon tugmasi esa FAQAT gapirishni yoqadi/o'chiradi. Batafsil
-    // izohlar uchun taxi/templates/driver/base.html dagi aynan shu
-    // mexanizmga (driver tomoni) qarang — bu yerda operator faqat yana bitta
-    // ishtirokchi sifatida shu xonaga qo'shiladi.
+    // tomoni, ratsiya uslubi. Haydovchilar bir-biri bilan gaplashadigan aynan
+    // o'sha "efir" xonasiga operator ham ulanadi: sahifa ochilishi bilan
+    // avtomatik ravishda faqat kiruvchi xabarlarni qabul qilish uchun
+    // ulanadi (ruxsat so'ralmaydi), mikrofon tugmasi esa BOSIB TURILGANDA
+    // yozadi, qo'yib yuborilganda yuboradi. Batafsil izohlar uchun
+    // taxi/templates/driver/base.html dagi aynan shu mexanizmga (driver
+    // tomoni) qarang — bu yerda operator faqat yana bitta ishtirokchi
+    // sifatida shu xonaga qo'shiladi.
     // ══════════════════════════════════════════════════════════════════════
-    const PVOICE_ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
     let _pvoiceConnected      = false;
-    let _pvoiceTalking        = false;
-    let _pvoiceLocalStream    = null;
-    let _pvoicePeers          = {};
     let _pvoiceHeartbeatTimer = null;
-
-    function _pvoicePeer(peerKey, peerName) {
-        if (_pvoicePeers[peerKey]) return _pvoicePeers[peerKey];
-        const pc = new RTCPeerConnection({ iceServers: PVOICE_ICE_SERVERS });
-        if (_pvoiceLocalStream) {
-            _pvoiceLocalStream.getTracks().forEach(t => pc.addTrack(t, _pvoiceLocalStream));
-        } else {
-            pc.addTransceiver('audio', { direction: 'recvonly' });
-        }
-        pc.onicecandidate = (e) => {
-            if (e.candidate) _pvoiceSendSignal(peerKey, 'candidate', e.candidate.toJSON());
-        };
-        pc.ontrack = (e) => {
-            let audioEl = document.getElementById('pvoice-audio-' + peerKey);
-            if (!audioEl) {
-                audioEl = document.createElement('audio');
-                audioEl.id = 'pvoice-audio-' + peerKey;
-                audioEl.autoplay = true;
-                audioEl.playsInline = true;
-                document.body.appendChild(audioEl);
-            }
-            audioEl.srcObject = e.streams[0];
-            audioEl.play().catch(() => {});
-        };
-        const entry = { pc, name: peerName, candQueue: [] };
-        _pvoicePeers[peerKey] = entry;
-        return entry;
-    }
-
-    function _pvoiceSendSignal(to, kind, payload) {
-        fetch('{% url "taxi:panel_voice_signal" %}', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-            body: JSON.stringify({ to, kind, payload }),
-        }).catch(() => {});
-    }
-
-    function _pvoiceClosePeer(peerKey) {
-        const entry = _pvoicePeers[peerKey];
-        if (!entry) return;
-        try { entry.pc.close(); } catch (_) {}
-        const audioEl = document.getElementById('pvoice-audio-' + peerKey);
-        if (audioEl) audioEl.remove();
-        delete _pvoicePeers[peerKey];
-    }
-
-    async function _pvoiceEnsureLocalStream() {
-        if (_pvoiceLocalStream) return _pvoiceLocalStream;
-        let stream;
-        try {
-            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        } catch (err) {
-            return null;
-        }
-        stream.getAudioTracks().forEach(t => { t.enabled = false; });
-        _pvoiceLocalStream = stream;
-        for (const key of Object.keys(_pvoicePeers)) {
-            const entry = _pvoicePeers[key];
-            stream.getTracks().forEach(t => entry.pc.addTrack(t, stream));
-            const offer = await entry.pc.createOffer();
-            await entry.pc.setLocalDescription(offer);
-            _pvoiceSendSignal(key, 'offer', offer);
-        }
-        return stream;
-    }
-
-    async function panelVoiceToggleTalk() {
-        const stream = await _pvoiceEnsureLocalStream();
-        if (!stream) {
-            showToast('Mikrofonga ruxsat kerak');
-            return;
-        }
-        _pvoiceTalking = !_pvoiceTalking;
-        stream.getAudioTracks().forEach(t => { t.enabled = _pvoiceTalking; });
-        _pvoiceUpdateBtnUI();
-    }
+    let _pvoiceRecorder       = null;
+    let _pvoiceChunks         = [];
+    let _pvoiceRecording      = false;
+    let _pvoiceStarting       = false;
+    let _pvoiceStopRequested  = false;
 
     async function _pvoiceAutoConnect() {
         let data;
@@ -1400,18 +1328,8 @@
             data = await r.json();
         } catch (_) { return; }
         _pvoiceConnected = true;
-
-        for (const p of (data.participants || [])) {
-            const entry = _pvoicePeer(p.key, p.name);
-            const offer = await entry.pc.createOffer();
-            await entry.pc.setLocalDescription(offer);
-            _pvoiceSendSignal(p.key, 'offer', offer);
-        }
-
         _pvoiceUpdateParticipantsUI(data.participants || []);
-        _pvoiceUpdateBtnUI();
         _pvoiceHeartbeatTimer = setInterval(_pvoiceTick, 3000);
-        _pvoiceTick();
     }
 
     async function _pvoiceTick() {
@@ -1423,47 +1341,71 @@
         } catch (_) { return; }
         if (!data.joined) {
             clearInterval(_pvoiceHeartbeatTimer); _pvoiceHeartbeatTimer = null;
-            Object.keys(_pvoicePeers).forEach(key => _pvoiceClosePeer(key));
             _pvoiceConnected = false;
             _pvoiceAutoConnect();
             return;
         }
-        for (const sig of (data.signals || [])) {
-            await _pvoiceHandleSignal(sig);
-        }
+        (data.clips || []).forEach(_pvoicePlayClip);
         _pvoiceUpdateParticipantsUI(data.participants || []);
     }
 
-    async function _pvoiceHandleSignal(sig) {
-        const peerKey = sig.from;
-        if (sig.kind === 'leave') { _pvoiceClosePeer(peerKey); return; }
+    function _pvoicePlayClip(clip) {
+        try {
+            const audioEl = new Audio(clip.audio_url);
+            audioEl.play().catch(() => {});
+            showToast(`🎙️ ${clip.from_name} — efirdan ovozli xabar`);
+        } catch (_) {}
+    }
 
-        const entry = _pvoicePeer(peerKey, sig.from_name);
-        if (sig.kind === 'offer') {
-            await entry.pc.setRemoteDescription(new RTCSessionDescription(sig.payload));
-            for (const c of entry.candQueue) { try { await entry.pc.addIceCandidate(c); } catch (_) {} }
-            entry.candQueue = [];
-            const answer = await entry.pc.createAnswer();
-            await entry.pc.setLocalDescription(answer);
-            _pvoiceSendSignal(peerKey, 'answer', answer);
-        } else if (sig.kind === 'answer') {
-            await entry.pc.setRemoteDescription(new RTCSessionDescription(sig.payload));
-            for (const c of entry.candQueue) { try { await entry.pc.addIceCandidate(c); } catch (_) {} }
-            entry.candQueue = [];
-        } else if (sig.kind === 'candidate') {
-            if (entry.pc.remoteDescription && entry.pc.remoteDescription.type) {
-                try { await entry.pc.addIceCandidate(sig.payload); } catch (_) {}
-            } else {
-                entry.candQueue.push(sig.payload);
-            }
+    async function _pvoiceStartTalk(event) {
+        if (event) event.preventDefault();
+        if (_pvoiceRecording || _pvoiceStarting) return;
+        _pvoiceStarting = true;
+        _pvoiceStopRequested = false;
+        let stream;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch (err) {
+            _pvoiceStarting = false;
+            showToast('Mikrofonga ruxsat kerak');
+            return;
         }
+        _pvoiceChunks = [];
+        _pvoiceRecorder = new MediaRecorder(stream);
+        _pvoiceRecorder.ondataavailable = e => { if (e.data && e.data.size) _pvoiceChunks.push(e.data); };
+        _pvoiceRecorder.onstop = () => {
+            stream.getTracks().forEach(t => t.stop());
+            const blob = new Blob(_pvoiceChunks, { type: 'audio/webm' });
+            if (blob.size > 800) _pvoiceSendClip(blob);
+        };
+        _pvoiceRecorder.start();
+        _pvoiceRecording = true;
+        _pvoiceStarting = false;
+        _pvoiceUpdateBtnUI();
+        if (_pvoiceStopRequested) _pvoiceStopTalk();
+    }
+
+    function _pvoiceStopTalk(event) {
+        if (event) event.preventDefault();
+        if (_pvoiceStarting) { _pvoiceStopRequested = true; return; }
+        if (!_pvoiceRecording || !_pvoiceRecorder) return;
+        _pvoiceRecording = false;
+        try { _pvoiceRecorder.stop(); } catch (_) {}
+        _pvoiceUpdateBtnUI();
+    }
+
+    function _pvoiceSendClip(blob) {
+        const fd = new FormData();
+        fd.append('audio', blob, 'voice.webm');
+        fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+        fetch('{% url "taxi:panel_voice_send" %}', { method: 'POST', body: fd }).catch(() => {});
     }
 
     function _pvoiceUpdateBtnUI() {
         const icon = document.getElementById('panel-voice-icon');
         if (!icon) return;
-        icon.style.color = _pvoiceTalking ? '#10b981' : '';
-        icon.parentElement.title = _pvoiceTalking ? "Gapiryapsiz — bosib to'xtating" : 'Haydovchilar efiri — bosib gapiring';
+        icon.style.color = _pvoiceRecording ? '#10b981' : '';
+        icon.parentElement.title = _pvoiceRecording ? 'Yozilmoqda...' : 'Haydovchilar efiri — bosib gapiring';
     }
 
     function _pvoiceUpdateParticipantsUI(participants) {
@@ -1482,8 +1424,8 @@
     if (document.getElementById('panel-voice-btn')) _pvoiceAutoConnect();
 
     window.addEventListener('pagehide', () => {
-        if (_pvoiceLocalStream) {
-            try { _pvoiceLocalStream.getTracks().forEach(t => t.stop()); } catch (_) {}
+        if (_pvoiceRecording && _pvoiceRecorder) {
+            try { _pvoiceRecorder.stop(); } catch (_) {}
         }
         if (_pvoiceConnected && navigator.sendBeacon) {
             const body = new Blob(

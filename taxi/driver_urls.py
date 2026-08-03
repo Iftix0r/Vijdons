@@ -53,5 +53,5 @@ urlpatterns = [
     path('voice/join/',      driver_views.driver_voice_join,      name='voice_join'),
     path('voice/leave/',     driver_views.driver_voice_leave,     name='voice_leave'),
     path('voice/heartbeat/', driver_views.driver_voice_heartbeat, name='voice_heartbeat'),
-    path('voice/signal/',    driver_views.driver_voice_signal,    name='voice_signal'),
+    path('voice/send/',      driver_views.driver_voice_send_audio, name='voice_send'),
 ]

@@ -1199,19 +1199,16 @@ def driver_group_chat_send_audio(request, driver):
     })
 
 
-# ── Guruh jonli ovozli aloqa ("efir") — WebRTC P2P mesh signalizatsiya ────────
-# Bitta markaziy media-server (SFU) o'rniga — bu hostingda alohida server
-# ishga tushirish imkoni bo'lmagani uchun — har bir haydovchi qolgan barcha
-# faol ishtirokchilar bilan to'g'ridan-to'g'ri (P2P) WebRTC ulanish o'rnatadi.
-# Signalizatsiya (offer/answer/ICE candidate almashish) uchun alohida
-# WebSocket server o'rniga mavjud HTTP polling infratuzilmasidan foydalaniladi
-# (boshqa joylardagi chat_poll bilan bir xil uslub) — VoiceSignal jadvali
-# navbat vazifasini o'taydi. Diqqat: ko'p ishtirokchi bir vaqtda "efir"da
-# bo'lsa, mesh ulanishlar soni tezda ko'payadi (N ishtirokchi = har birida N-1
-# ulanish) — shuning uchun bu yondashuv o'nlab emas, bir necha (~6-8) faol
-# ishtirokchi uchun mo'ljallangan. Ishonchli NAT o'tish uchun TURN server yo'q
-# (faqat bepul ochiq STUN) — juda cheklangan tarmoqlarda ulanish muvaffaqiyatsiz
-# bo'lishi mumkin.
+# ── Guruh jonli ovozli aloqa ("efir") — ratsiya uslubi ────────────────────────
+# Mikrofon tugmasi bosib turilganda ovoz yoziladi, qo'yib yuborilganda audio
+# fayl serverga yuklanadi va shu payt "efir"da turgan har bir boshqa
+# ishtirokchiga alohida navbat qatori sifatida (VoiceSignal, HTTP polling
+# orqali — boshqa joylardagi chat_poll bilan bir xil uslub) yetkaziladi, u esa
+# darhol avtomatik ijro etadi. Ilgari shu yerda WebRTC P2P mesh (real vaqtda
+# uzatish) ishlatilgan edi, lekin ba'zi qurilmalar/tarmoqlarda TURN server
+# yo'qligi sabab ulanish o'rnatilmay, "kimdirga eshitilib, kimdirga
+# eshitilmaydi" muammosi chiqargan — oddiy yozib-yuborish esa oddiy HTTP fayl
+# yuklash bo'lgani uchun ancha ishonchli.
 @driver_login_required
 @require_POST
 def driver_voice_join(request, driver):
@@ -1224,15 +1221,7 @@ def driver_voice_join(request, driver):
 @driver_login_required
 @require_POST
 def driver_voice_leave(request, driver):
-    from .utils import voice_participants_list, voice_target_kwargs
-    others = voice_participants_list(f'd{driver.id}')
     VoiceParticipant.objects.filter(driver=driver).delete()
-    signals = []
-    for o in others:
-        kwargs = voice_target_kwargs('to', o['key'])
-        if kwargs:
-            signals.append(VoiceSignal(from_driver=driver, kind=VoiceSignal.KIND_LEAVE, payload='', **kwargs))
-    VoiceSignal.objects.bulk_create(signals)
     return JsonResponse({'ok': True})
 
 
@@ -1247,7 +1236,7 @@ def driver_voice_heartbeat(request, driver):
         return JsonResponse({'ok': True, 'joined': False})
     voice_prune_stale()
 
-    signals = list(VoiceSignal.objects.filter(to_driver=driver).select_related('from_driver', 'from_operator').order_by('created_at')[:50])
+    signals = list(VoiceSignal.objects.filter(to_driver=driver).select_related('from_driver', 'from_operator').order_by('created_at')[:10])
     signal_ids = [s.id for s in signals]
     if signal_ids:
         VoiceSignal.objects.filter(id__in=signal_ids).delete()
@@ -1256,9 +1245,9 @@ def driver_voice_heartbeat(request, driver):
         'ok': True,
         'joined': True,
         'participants': voice_participants_list(f'd{driver.id}'),
-        'signals': [
+        'clips': [
             dict(zip(('from', 'from_name'), voice_signal_sender_info(s)),
-                 kind=s.kind, payload=json.loads(s.payload) if s.payload else None)
+                 audio_url=request.build_absolute_uri(s.audio.url))
             for s in signals
         ],
     })
@@ -1266,22 +1255,11 @@ def driver_voice_heartbeat(request, driver):
 
 @driver_login_required
 @require_POST
-def driver_voice_signal(request, driver):
-    from .utils import voice_target_kwargs
-    try:
-        data = json.loads(request.body)
-    except Exception:
-        return JsonResponse({'ok': False}, status=400)
-
-    kind = data.get('kind')
-    payload = data.get('payload')
-    target_kwargs = voice_target_kwargs('to', data.get('to'))
-    if not target_kwargs or kind not in dict(VoiceSignal.KIND_CHOICES):
-        return JsonResponse({'ok': False, 'error': "Noto'g'ri so'rov"}, status=400)
-
-    VoiceSignal.objects.create(
-        from_driver=driver, kind=kind,
-        payload=json.dumps(payload) if payload is not None else '',
-        **target_kwargs,
-    )
-    return JsonResponse({'ok': True})
+def driver_voice_send_audio(request, driver):
+    from .utils import voice_prune_stale, voice_broadcast_audio
+    audio = request.FILES.get('audio')
+    if not audio:
+        return JsonResponse({'ok': False, 'error': 'Audio fayl kerak'}, status=400)
+    voice_prune_stale()
+    delivered = voice_broadcast_audio({'from_driver': driver}, f'd{driver.id}', audio)
+    return JsonResponse({'ok': True, 'delivered': delivered})

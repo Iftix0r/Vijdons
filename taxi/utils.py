@@ -263,17 +263,43 @@ def log_system_event(event_type, message='', level='info', request=None, user=No
 # foydalanadi. Ishtirokchi kaliti — 'd<driver_id>' yoki 'o<user_id>' shaklidagi
 # satr (masalan 'd5', 'o3') — frontend JS uchun bitta tekis ID makonini
 # ta'minlaydi, backend esa prefiksga qarab qaysi FK (driver/operator) ekanini biladi.
+#
+# Ratsiya mantig'i: mikrofon tugmasi bosib turilganda ovoz yoziladi, qo'yib
+# yuborilganda audio fayl serverga yuboriladi va o'sha payt "efir"da turgan
+# HAR BIR boshqa ishtirokchiga alohida VoiceSignal qatori sifatida navbatga
+# qo'yiladi (bittasi — bitta qabul qiluvchiga). Har bir tomon o'z heartbeat
+# so'rovida faqat o'ziga yozilgan qatorlarni o'qib, darhol o'chiradi — WebRTC
+# P2P ulanish o'rniga oddiy "yoz -> yukla -> tarqat -> avtomatik ijro et"
+# yondashuvi, shu sabab ba'zi qurilmalarda eshitilmay qolish muammosi yo'q.
 VOICE_STALE_SECONDS = 12
+# Heartbeat har ~3s da kelgani uchun, oddiy holatda har bir qabul qiluvchi
+# o'z navbatidagi audio xabarni bir necha soniya ichida o'qib-o'chiradi. Bu
+# muddat — faqat xatolik (ilova yopilib qolishi, tarmoq uzilishi va h.k.)
+# tufayli hech kim o'qimay qolgan "yetim" fayllarni tozalash uchun zaxira chegara.
+VOICE_CLIP_STALE_SECONDS = 90
 
 
 def voice_prune_stale():
     """Heartbeat uzoq vaqt kelmagan (masalan ilova yopilgan) ishtirokchilarni
-    "efir"dan olib tashlaydi."""
+    "efir"dan olib tashlaydi, shuningdek hech kim o'qimay qolgan eski ovozli
+    xabar fayllarini diskdan tozalaydi."""
     from django.utils import timezone
     import datetime
-    from taxi.models import VoiceParticipant
+    from django.core.files.storage import default_storage
+    from taxi.models import VoiceParticipant, VoiceSignal
     cutoff = timezone.now() - datetime.timedelta(seconds=VOICE_STALE_SECONDS)
     VoiceParticipant.objects.filter(last_seen__lt=cutoff).delete()
+
+    clip_cutoff = timezone.now() - datetime.timedelta(seconds=VOICE_CLIP_STALE_SECONDS)
+    stale = list(VoiceSignal.objects.filter(created_at__lt=clip_cutoff))
+    if stale:
+        paths = {s.audio.name for s in stale if s.audio}
+        VoiceSignal.objects.filter(id__in=[s.id for s in stale]).delete()
+        for path in paths:
+            try:
+                default_storage.delete(path)
+            except Exception:
+                pass
 
 
 def voice_participant_key(participant):
@@ -318,6 +344,34 @@ def voice_signal_sender_info(signal):
     if signal.from_driver_id:
         return f'd{signal.from_driver_id}', signal.from_driver.full_name
     return f'o{signal.from_operator_id}', f"Operator — {signal.from_operator.get_full_name() or signal.from_operator.username}"
+
+
+def voice_broadcast_audio(from_kwargs, exclude_key, audio_file):
+    """Bosib-gapirib yozilgan `audio_file`ni bir marta saqlaydi va hozir
+    "efir"da turgan har bir BOSHQA ishtirokchiga (o'ziga qaytarmaslik uchun
+    `exclude_key`) alohida VoiceSignal qatori sifatida navbatga qo'yadi —
+    barchasi bitta jismoniy faylni bo'lishadi (qayta yuklanmaydi). Qaytaradi:
+    nechta ishtirokchiga yetkazilgani (0 bo'lsa hech kim tinglamayotgan degani)."""
+    from taxi.models import VoiceSignal
+
+    others = voice_participants_list(exclude_key)
+    if not others:
+        return 0
+
+    first = VoiceSignal(audio=audio_file, **from_kwargs, **voice_target_kwargs('to', others[0]['key']))
+    first.save()
+
+    rest = []
+    for o in others[1:]:
+        kwargs = voice_target_kwargs('to', o['key'])
+        if not kwargs:
+            continue
+        sig = VoiceSignal(**from_kwargs, **kwargs)
+        sig.audio.name = first.audio.name
+        rest.append(sig)
+    if rest:
+        VoiceSignal.objects.bulk_create(rest)
+    return len(others)
 
 
 # ── Eskiz.uz SMS ──────────────────────────────────────────────────────────────
