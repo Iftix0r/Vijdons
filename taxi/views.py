@@ -1795,6 +1795,7 @@ def client_bot_webhook(request):
 
     chat_id = str(msg['chat']['id'])
     text    = (msg.get('text') or '').strip()
+    loc     = msg.get('location')
 
     bot = BotSettings.get()
     token = bot.client_bot_token.strip()
@@ -1834,26 +1835,54 @@ def client_bot_webhook(request):
             _send(chat_id, '❌ Telefon raqam noto\'g\'ri. Qayta kiriting:')
         else:
             _client_sessions[chat_id] = {'step': 'from', 'phone': phone}
-            _send(chat_id, '📍 <b>Qayerdan yo\'lga chiqasiz?</b>\nManzilni yozing:')
+            _send(chat_id,
+                '📍 <b>Qayerdan yo\'lga chiqasiz?</b>\nManzilni yozing yoki pastdagi tugma orqali joylashuvingizni yuboring:',
+                {'keyboard': [[{'text': '📍 Joylashuvni yuborish', 'request_location': True}]], 'resize_keyboard': True}
+            )
 
     elif step == 'from':
-        _client_sessions[chat_id] = dict(session, step='to', from_address=text)
+        if loc:
+            lat, lng = loc.get('latitude'), loc.get('longitude')
+            address  = reverse_geocode_address(lat, lng) or f'{lat:.5f}, {lng:.5f}'
+            _client_sessions[chat_id] = dict(session, step='to', from_address=address, from_lat=lat, from_lng=lng)
+        elif text:
+            _client_sessions[chat_id] = dict(session, step='to', from_address=text)
+        else:
+            _send(chat_id, '📍 Manzilni yozing yoki joylashuvingizni yuboring:')
+            from django.http import HttpResponse
+            return HttpResponse('ok')
         _send(chat_id,
-            '🏁 <b>Qayerga borasiz?</b>\nManzilni yozing yoki o\'tkazib yuboring:',
-            {'keyboard': [[{'text': "O'tkazib yuborish ➡️"}]], 'resize_keyboard': True}
+            '🏁 <b>Qayerga borasiz?</b>\nManzilni yozing, joylashuv yuboring yoki o\'tkazib yuboring:',
+            {'keyboard': [
+                [{'text': '📍 Joylashuvni yuborish', 'request_location': True}],
+                [{'text': "O'tkazib yuborish ➡️"}],
+            ], 'resize_keyboard': True}
         )
 
     elif step == 'to':
-        to_address = '' if text == "O'tkazib yuborish ➡️" else text
+        if loc:
+            to_lat, to_lng = loc.get('latitude'), loc.get('longitude')
+            to_address = reverse_geocode_address(to_lat, to_lng) or f'{to_lat:.5f}, {to_lng:.5f}'
+        elif text == "O'tkazib yuborish ➡️":
+            to_address, to_lat, to_lng = '', None, None
+        else:
+            to_address, to_lat, to_lng = text, None, None
+
         phone        = session.get('phone', '')
         from_address = session.get('from_address', '')
+        from_lat     = session.get('from_lat')
+        from_lng     = session.get('from_lng')
 
         client, _ = Client.objects.get_or_create(phone_number=phone)
         tariff    = TariffSettings.get()
         order = Order.objects.create(
             client=client,
             from_address=from_address,
+            from_lat=from_lat,
+            from_lng=from_lng,
             to_address=to_address,
+            to_lat=to_lat,
+            to_lng=to_lng,
             commission=tariff.commission,
             status='pending',
         )
