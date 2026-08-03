@@ -627,6 +627,14 @@ def tg_order_completed(order, driver):
         reply_markup=markup,
     )
 
+    # Haydovchilar guruhiga — kim yakunlagani, qancha yurgani va qancha pul topgani
+    _notify_driver_group(
+        f"🏁 <b>Buyurtma yakunlandi — #{order.id}</b>\n"
+        f"🚗 Haydovchi: <b>{driver.full_name}</b>\n"
+        f"📏 Masofa: {f'{order.distance_km:.1f} km' if order.distance_km else '—'}\n"
+        f"💰 Narx: <b>{order.price or '—'} UZS</b>"
+    )
+
 
 def tg_order_cancelled(order, driver):
     log_panel_event('panel_order_cancelled', f"Buyurtma #{order.id} — {driver.full_name}")
