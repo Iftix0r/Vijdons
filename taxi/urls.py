@@ -55,6 +55,11 @@ urlpatterns = [
     path('security/documents/upload/', views.security_document_upload, name='security_document_upload'),
     path('security/documents/<int:pk>/delete/', views.security_document_delete, name='security_document_delete'),
 
+    path('manzillar/', views.saved_addresses_list, name='saved_addresses_list'),
+    path('manzillar/add/', views.saved_address_create, name='saved_address_create'),
+    path('manzillar/<int:pk>/delete/', views.saved_address_delete, name='saved_address_delete'),
+    path('manzillar/<int:pk>/use/', views.saved_address_use, name='saved_address_use'),
+
     path('voice/join/',      views.panel_voice_join,      name='panel_voice_join'),
     path('voice/leave/',     views.panel_voice_leave,     name='panel_voice_leave'),
     path('voice/heartbeat/', views.panel_voice_heartbeat, name='panel_voice_heartbeat'),

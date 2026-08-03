@@ -1093,3 +1093,25 @@ class SecurityIncident(models.Model):
         verbose_name = "Xavfsizlik voqeasi"
         verbose_name_plural = "Xavfsizlik voqealari"
         ordering = ['-created_at']
+
+
+class SavedAddress(models.Model):
+    """Tez-tez ishlatiladigan manzillar — admin xaritadan nuqta tanlab, nom
+    berib saqlaydi (Manzillar bo'limi). Yangi buyurtma oynasida tezkor
+    tanlash uchun chiqadi — Yandex qidiruv ishlamasa ham manzilni tez
+    kiritish imkonini beradi."""
+    name        = models.CharField(max_length=100, verbose_name='Nomi', help_text="Masalan: Bozor, Aeroport, Markaziy stansiya")
+    address     = models.CharField(max_length=255, blank=True, default='', verbose_name='Manzil matni')
+    lat         = models.FloatField(verbose_name='Kenglik')
+    lng         = models.FloatField(verbose_name='Uzunlik')
+    usage_count = models.PositiveIntegerField(default=0, verbose_name='Ishlatilgan soni')
+    created_by  = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, verbose_name="Qo'shgan")
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Tezkor manzil'
+        verbose_name_plural = 'Tezkor manzillar'
+        ordering = ['-usage_count', 'name']

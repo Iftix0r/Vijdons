@@ -1,0 +1,180 @@
+{% extends 'taxi/base.html' %}
+{% block title %}Manzillar — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-center gap-4 mb-5">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+            📍 Manzillar
+        </h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            Xaritadan tanlab, nom berib saqlangan tezkor manzillar — yangi buyurtma oynasida bir bosishda tanlanadi.
+        </p>
+    </div>
+    <button onclick="openModal('newAddressModal')"
+            class="flex items-center gap-2 px-4 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold rounded-xl shadow-sm shadow-yellow-200 dark:shadow-none transition-all hover:-translate-y-0.5">
+        <i class="fas fa-map-pin"></i> Yangi manzil
+    </button>
+</div>
+
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                    <th class="px-5 py-3.5">Nomi</th>
+                    <th class="px-5 py-3.5">Manzil</th>
+                    <th class="px-5 py-3.5">Koordinata</th>
+                    <th class="px-5 py-3.5">Ishlatilgan</th>
+                    <th class="px-5 py-3.5 text-right">Amal</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
+                {% for addr in addresses %}
+                <tr class="hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-colors">
+                    <td class="px-5 py-3.5">
+                        <span class="font-semibold text-gray-800 dark:text-white text-xs">
+                            <i class="fas fa-map-pin text-yellow-500 mr-1"></i>{{ addr.name }}
+                        </span>
+                    </td>
+                    <td class="px-5 py-3.5 text-xs text-gray-600 dark:text-gray-300">{{ addr.address|default:"—" }}</td>
+                    <td class="px-5 py-3.5 text-[11px] text-gray-400 font-mono">{{ addr.lat|floatformat:5 }}, {{ addr.lng|floatformat:5 }}</td>
+                    <td class="px-5 py-3.5">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                            {{ addr.usage_count }} marta
+                        </span>
+                    </td>
+                    <td class="px-5 py-3.5 text-right">
+                        <form method="POST" action="{% url 'taxi:saved_address_delete' addr.pk %}" onsubmit="return confirm('«{{ addr.name }}» manzilini o\'chirishga ishonchingiz komilmi?')">
+                            {% csrf_token %}
+                            <button type="submit" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 hover:text-red-700 transition-colors" title="O'chirish">
+                                <i class="fas fa-trash text-xs"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-14">
+                        <div class="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-300 dark:text-gray-600 text-2xl mx-auto mb-3">
+                            <i class="fas fa-map-pin"></i>
+                        </div>
+                        <p class="font-semibold text-gray-700 dark:text-gray-300">Hali manzil saqlanmagan</p>
+                        <p class="text-xs text-gray-400 mt-1">"Yangi manzil" tugmasi orqali xaritadan nuqta tanlab qo'shing.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ══════════ Yangi manzil modal ══════════ -->
+<div id="newAddressModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-lg shadow-2xl border border-gray-100 dark:border-gray-800 max-h-[95vh] flex flex-col">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white">
+                <i class="fas fa-map-pin text-yellow-500 mr-2"></i>Yangi manzil
+            </h2>
+            <button onclick="closeModal('newAddressModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <div class="overflow-y-auto flex-1">
+        <form method="POST" action="{% url 'taxi:saved_address_create' %}" class="px-6 py-5 space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="lat" id="sa_lat">
+            <input type="hidden" name="lng" id="sa_lng">
+
+            <div id="sa_map" style="width:100%;height:240px;border-radius:12px;overflow:hidden;border:1.5px solid #e5e7eb;"></div>
+            <p id="sa_map_hint" class="text-[11px] text-gray-400">
+                <i class="fas fa-hand-pointer"></i> Xaritada nuqtani bosing
+            </p>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">
+                    <i class="fas fa-tag text-yellow-500 mr-1"></i>Nomi
+                </label>
+                <input type="text" name="name" id="sa_name" required placeholder="Masalan: Bozor, Aeroport, Markaziy stansiya"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">
+                    <i class="fas fa-map-pin text-green-500 mr-1"></i>Manzil matni <span class="text-gray-400 font-normal">(ixtiyoriy)</span>
+                </label>
+                <input type="text" name="address" id="sa_address" placeholder="Ko'cha, uy raqami..."
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+            </div>
+
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('newAddressModal')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit" id="sa_submit" disabled
+                        class="flex-1 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold shadow-md shadow-green-200 dark:shadow-none transition">
+                    <i class="fas fa-floppy-disk mr-1.5"></i>Saqlash
+                </button>
+            </div>
+        </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let _saMap = null;
+    let _saPM  = null;
+
+    function _initSavedAddressMap() {
+        if (!window.ymaps || _saMap) return;
+        ymaps.ready(function () {
+            if (_saMap) return;
+            _saMap = new ymaps.Map('sa_map', {
+                center: [41.2995, 69.2401],
+                zoom: 12,
+                controls: ['zoomControl', 'searchControl', 'fullscreenControl']
+            });
+            _saMap.events.add('click', function (e) {
+                var coords = e.get('coords');
+                if (_saPM) _saMap.geoObjects.remove(_saPM);
+                _saPM = new ymaps.Placemark(coords, {}, { preset: 'islands#yellowDotIcon' });
+                _saMap.geoObjects.add(_saPM);
+                document.getElementById('sa_lat').value = coords[0];
+                document.getElementById('sa_lng').value = coords[1];
+                document.getElementById('sa_map_hint').innerHTML = '<i class="fas fa-check text-green-500"></i> Nuqta belgilandi';
+                document.getElementById('sa_submit').disabled = !document.getElementById('sa_name').value.trim();
+                ymaps.geocode(coords, { results: 1 }).then(function (res) {
+                    var obj = res.geoObjects.get(0);
+                    if (obj) {
+                        var addrField = document.getElementById('sa_address');
+                        if (!addrField.value.trim()) addrField.value = obj.getAddressLine();
+                    }
+                }).catch(function () {});
+            });
+        });
+    }
+
+    document.getElementById('sa_name').addEventListener('input', function () {
+        document.getElementById('sa_submit').disabled = !(this.value.trim() && document.getElementById('sa_lat').value);
+    });
+
+    const _origOpenSA = openModal;
+    openModal = function (id) {
+        _origOpenSA(id);
+        if (id === 'newAddressModal') {
+            document.getElementById('sa_lat').value = '';
+            document.getElementById('sa_lng').value = '';
+            document.getElementById('sa_name').value = '';
+            document.getElementById('sa_address').value = '';
+            document.getElementById('sa_submit').disabled = true;
+            document.getElementById('sa_map_hint').innerHTML = '<i class="fas fa-hand-pointer"></i> Xaritada nuqtani bosing';
+            _saPM = null;
+            setTimeout(_initSavedAddressMap, 150);
+        }
+    };
+</script>
+{% endblock %}

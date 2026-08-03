@@ -1,4 +1,4 @@
-from .models import Driver
+from .models import Driver, SavedAddress
 
 
 def active_drivers(request):
@@ -57,6 +57,9 @@ def active_drivers(request):
         'tariff_waiting_per_min': int(tariff.waiting_price_per_minute),
         'operator_phone': tariff.operator_phone,
         'car_type_choices': Driver.CAR_TYPE_CHOICES,
+        # Yangi buyurtma oynasidagi tezkor manzil chiplari uchun — eng ko'p
+        # ishlatilgani birinchi chiqadi (SavedAddress.Meta.ordering)
+        'saved_addresses': SavedAddress.objects.all()[:20],
         # Ovozli bildirishnomalar
         'latest_event_id': PanelEvent.objects.aggregate(m=Max('id'))['m'] or 0,
         'driver_sounds_json': json.dumps(driver_sounds),

@@ -1,12 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
-from django.db.models import Q, Count
+from django.db.models import Q, Count, F
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import user_passes_test
 from django.views.decorators.http import require_POST
 from django.contrib import messages
-from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher, VizitkaRewardLog, LegalDocument, SecurityIncident, VoiceParticipant, VoiceSignal
+from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher, VizitkaRewardLog, LegalDocument, SecurityIncident, VoiceParticipant, VoiceSignal, SavedAddress
 from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, tg_order_deleted, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed, build_balance_receipt_pdf, build_flyer_business_card_pdf, voice_prune_stale, voice_participants_list, voice_target_kwargs, voice_signal_sender_info
 import csv
 import json
@@ -3600,6 +3600,52 @@ def security_document_delete(request, pk):
         document.delete()
         messages.success(request, "Hujjat o'chirildi.")
     return redirect('taxi:security_dashboard')
+
+
+# ── Tezkor manzillar (xaritadan tanlab saqlanadigan, nomli manzillar) ───────────
+
+@panel_login_required
+def saved_addresses_list(request):
+    addresses = SavedAddress.objects.all()
+    return render(request, 'taxi/saved_addresses.html', {
+        'addresses': addresses,
+    })
+
+
+@panel_login_required
+def saved_address_create(request):
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        address = request.POST.get('address', '').strip()
+        lat = request.POST.get('lat')
+        lng = request.POST.get('lng')
+        if name and lat and lng:
+            SavedAddress.objects.create(
+                name=name, address=address, lat=float(lat), lng=float(lng),
+                created_by=request.user,
+            )
+            messages.success(request, f"«{name}» manzil sifatida saqlandi.")
+        else:
+            messages.error(request, "Nomi va xaritadan nuqta tanlanishi shart.")
+    return redirect('taxi:saved_addresses_list')
+
+
+@panel_login_required
+def saved_address_delete(request, pk):
+    address = get_object_or_404(SavedAddress, pk=pk)
+    if request.method == 'POST':
+        address.delete()
+        messages.success(request, "Manzil o'chirildi.")
+    return redirect('taxi:saved_addresses_list')
+
+
+@panel_login_required
+@require_POST
+def saved_address_use(request, pk):
+    """Yangi buyurtma oynasida tezkor manzil bosilganda chaqiriladi —
+    eng ko'p ishlatilganlar ro'yxat boshida chiqishi uchun hisoblagich."""
+    SavedAddress.objects.filter(pk=pk).update(usage_count=F('usage_count') + 1)
+    return JsonResponse({'ok': True})
 
 
 # ── Guruh jonli ovozli aloqa ("efir") — operator paneli tomoni ──────────────
