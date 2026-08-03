@@ -570,7 +570,6 @@ def driver_order_create(request, driver):
     customer_name = request.POST.get('customer_name', '').strip()
     from_address  = request.POST.get('from_address', '').strip()
     to_address    = request.POST.get('to_address', '').strip()
-    payment_type  = request.POST.get('payment_type', 'cash')
     assign_to     = request.POST.get('assign_to', 'self')  # 'self' | 'others'
 
     if not phone_number or not from_address:
@@ -599,7 +598,7 @@ def driver_order_create(request, driver):
             client=client, driver=driver,
             from_address=from_address, from_lat=driver.latitude, from_lng=driver.longitude,
             to_address=to_address,
-            payment_type=payment_type, car_type=driver.car_type,
+            payment_type=Order.PAYMENT_CASH, car_type=driver.car_type,
             commission=commission,
             status='accepted',
             created_by_driver=driver,
@@ -616,7 +615,7 @@ def driver_order_create(request, driver):
         client=client,
         from_address=from_address, from_lat=driver.latitude, from_lng=driver.longitude,
         to_address=to_address,
-        payment_type=payment_type, car_type=driver.car_type,
+        payment_type=Order.PAYMENT_CASH, car_type=driver.car_type,
         commission=tariff.commission,
         status='pending',
         created_by_driver=driver,

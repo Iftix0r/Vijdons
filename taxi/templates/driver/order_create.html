@@ -38,16 +38,6 @@
   </div>
 
   <div class="ios-card2 rounded-2xl p-4 mb-4">
-    <label class="ios-footnote font-semibold" style="color:var(--ios-label3)">To'lov turi</label>
-    <div class="flex gap-2 mt-1.5">
-      <button type="button" id="oc-pay-cash" onclick="ocSetPayment('cash')"
-              class="flex-1 py-2.5 rounded-xl ios-subhead font-semibold" style="background:#FFD600;color:#000">Naqd 💵</button>
-      <button type="button" id="oc-pay-card" onclick="ocSetPayment('card')"
-              class="flex-1 py-2.5 rounded-xl ios-subhead font-semibold" style="background:var(--ios-fill);color:var(--ios-label)">Karta 💳</button>
-    </div>
-  </div>
-
-  <div class="ios-card2 rounded-2xl p-4 mb-4">
     <label class="ios-footnote font-semibold" style="color:var(--ios-label3)">Buyurtmani kim oladi?</label>
     <div class="flex gap-2 mt-1.5">
       <button type="button" id="oc-assign-self" onclick="ocSetAssign('self')"
@@ -71,16 +61,7 @@
 
 {% block extra_js %}
 <script>
-let ocPayment = 'cash';
 let ocAssign  = 'self';
-
-function ocSetPayment(v) {
-  ocPayment = v;
-  document.getElementById('oc-pay-cash').style.background = v === 'cash' ? '#FFD600' : 'var(--ios-fill)';
-  document.getElementById('oc-pay-cash').style.color      = v === 'cash' ? '#000' : 'var(--ios-label)';
-  document.getElementById('oc-pay-card').style.background = v === 'card' ? '#FFD600' : 'var(--ios-fill)';
-  document.getElementById('oc-pay-card').style.color      = v === 'card' ? '#000' : 'var(--ios-label)';
-}
 
 function ocSetAssign(v) {
   ocAssign = v;
@@ -112,7 +93,6 @@ async function ocSubmit() {
     fd.append('customer_name', name);
     fd.append('from_address', from);
     fd.append('to_address', to);
-    fd.append('payment_type', ocPayment);
     fd.append('assign_to', ocAssign);
     fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
 
@@ -134,7 +114,6 @@ async function ocSubmit() {
   }
 }
 
-ocSetPayment('cash');
 ocSetAssign('self');
 </script>
 {% endblock %}
