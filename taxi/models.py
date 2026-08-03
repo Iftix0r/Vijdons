@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 from decimal import Decimal
 from .constants import PANEL_SOUND_EVENTS, DRIVER_SOUND_EVENTS, DEFAULT_SOUND_URLS
 
@@ -49,6 +50,23 @@ class Driver(models.Model):
     last_seen             = models.DateTimeField(null=True, blank=True, verbose_name="So'nggi faollik")
     last_address          = models.CharField(max_length=500, blank=True, default='', verbose_name="So'nggi manzil")
     operator_typing_at    = models.DateTimeField(null=True, blank=True, verbose_name="Operator yozayotgan vaqt")
+    last_group_read_at    = models.DateTimeField(default=timezone.now, blank=True, verbose_name="Guruh chatini oxirgi o'qigan vaqt")
+
+    LEVEL_THRESHOLDS = (
+        (500, "Usta haydovchi"),
+        (200, "Professional"),
+        (50,  "Tajribali"),
+        (0,   "Yangi haydovchi"),
+    )
+
+    @property
+    def level(self):
+        """Jami safarlar soniga qarab hisoblanadigan daraja (xaritadagi
+        haydovchi kartochkasida ko'rsatish uchun)."""
+        for threshold, label in self.LEVEL_THRESHOLDS:
+            if self.trips_count >= threshold:
+                return label
+        return self.LEVEL_THRESHOLDS[-1][1]
 
     def __str__(self):
         return f"{self.full_name} ({self.car_number})"

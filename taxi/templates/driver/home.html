@@ -1038,6 +1038,24 @@ document.addEventListener('visibilitychange', () => {
     </div>`;
   }
 
+  // Bosilganda chiqadigan balloon — haydovchi rasmi, mashina, safarlar soni va darajasi
+  function _homePeerBalloon(p) {
+    const avatar = p.photo_url
+      ? `<img src="${p.photo_url}" style="width:48px;height:48px;border-radius:12px;object-fit:cover;float:left;margin:0 10px 6px 0">`
+      : `<div style="width:48px;height:48px;border-radius:12px;background:#1c1c1f;color:#34C759;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;float:left;margin:0 10px 6px 0">${(p.full_name || 'H').charAt(0).toUpperCase()}</div>`;
+    return `<div style="font-family:inherit;min-width:190px;padding:6px 4px;color:var(--ios-label)">
+      ${avatar}
+      <b style="font-size:14px;display:block">${p.full_name}</b>
+      <span style="font-size:11px;font-weight:700;color:#34C759">${p.level}</span>
+      <div style="clear:both"></div>
+      <div style="color:var(--ios-label3);font-size:11px;margin-top:4px">${p.car_model || ''} · <b>${p.car_number || ''}</b></div>
+      <div style="display:flex;gap:12px;margin-top:6px;font-size:12px">
+        <span><i class="fas fa-route" style="color:#8E8E93;margin-right:3px"></i>${p.trips_count} safar</span>
+        <span><i class="fas fa-star" style="color:#FFD600;margin-right:3px"></i>${p.rating.toFixed(2)}</span>
+      </div>
+    </div>`;
+  }
+
   function _homeUpdateMine(lat, lng) {
     if (!_homeMap) { _homeEnsureMap(lat, lng); return; }
     if (!_homeMyMark) {
@@ -1114,8 +1132,12 @@ document.addEventListener('visibilitychange', () => {
           const coords = [p.latitude, p.longitude];
           if (_homePeerMarks[p.id]) {
             _homePeerMarks[p.id].geometry.setCoordinates(coords);
+            _homePeerMarks[p.id].properties.set('balloonContentBody', _homePeerBalloon(p));
           } else {
-            const mark = new ymaps.Placemark(coords, { hintContent: p.full_name }, {
+            const mark = new ymaps.Placemark(coords, {
+              hintContent: p.full_name,
+              balloonContentBody: _homePeerBalloon(p),
+            }, {
               iconLayout: ymaps.templateLayoutFactory.createClass(
                 _homeMarkerHtml(p.photo_url, (p.full_name || 'H').charAt(0).toUpperCase(), '#34C759')
               ),

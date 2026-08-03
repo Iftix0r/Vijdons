@@ -50,7 +50,9 @@ def driver_login_required(fn):
 
 
 def _chat_unread(driver):
-    return ChatMessage.objects.filter(driver=driver, sender=ChatMessage.SENDER_OPERATOR, is_read=False).count()
+    individual = ChatMessage.objects.filter(driver=driver, sender=ChatMessage.SENDER_OPERATOR, is_read=False).count()
+    group = GroupMessage.objects.exclude(driver=driver).filter(created_at__gt=driver.last_group_read_at).count()
+    return individual + group
 
 
 def _pending_orders_count(driver):
@@ -964,12 +966,17 @@ def driver_nearby_locations(request, driver):
         last_seen__gte=online_cutoff,
     ).exclude(pk=driver.pk)
     data = [{
-        'id':        d.id,
-        'full_name': d.full_name,
-        'car_type':  d.car_type,
-        'photo_url': d.photo.url if d.photo else '',
-        'latitude':  d.latitude,
-        'longitude': d.longitude,
+        'id':          d.id,
+        'full_name':   d.full_name,
+        'car_type':    d.car_type,
+        'car_model':   d.car_model,
+        'car_number':  d.car_number,
+        'photo_url':   d.photo.url if d.photo else '',
+        'latitude':    d.latitude,
+        'longitude':   d.longitude,
+        'trips_count': d.trips_count,
+        'rating':      float(d.rating),
+        'level':       d.level,
     } for d in peers]
     return JsonResponse({'drivers': data})
 
@@ -1125,8 +1132,11 @@ def driver_surge_info(request, driver):
 
 @driver_login_required
 def driver_group_chat_list(request, driver):
+    from django.utils import timezone
     last_id = int(request.GET.get('last_id', 0))
     msgs = GroupMessage.objects.select_related('driver').filter(id__gt=last_id).order_by('created_at')[:100]
+    driver.last_group_read_at = timezone.now()
+    driver.save(update_fields=['last_group_read_at'])
     return JsonResponse({'messages': [
         {
             'id': m.id,
