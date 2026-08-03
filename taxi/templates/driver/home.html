@@ -1058,6 +1058,16 @@ document.addEventListener('visibilitychange', () => {
       if (_homeMap || !document.getElementById('home-map')) return;
       _homeMap = new ymaps.Map('home-map', { center: [lat, lng], zoom: 14, controls: [] });
       window._homeMap = _homeMap;
+      // Diqqat: agar `#home-map` konteyner o'lchami xarita yaratilgan paytda
+      // hali to'liq ekran o'lchamiga (layout/CSS) "o'rnashib ulgurmagan"
+      // bo'lsa, Yandex xaritasi o'sha kichikroq o'lchamda "muzlab" qolib,
+      // atrofi bo'sh (oq) ko'rinib qolishi mumkin edi — xaritani yuklanish
+      // paytida "kichkina kvadrat + atrofi bo'sh" qilib ko'rsatgan xunuk
+      // holat shundan edi. `fitToViewport()` konteyner o'lchamini qayta
+      // o'lchab, xaritani unga to'liq moslashtiradi.
+      _homeMap.container.fitToViewport();
+      setTimeout(() => { try { _homeMap.container.fitToViewport(); } catch (_) {} }, 300);
+      window.addEventListener('resize', () => { try { _homeMap.container.fitToViewport(); } catch (_) {} });
       _homeAddOfficeMark();
       const hint = document.getElementById('home-map-hint');
       // Diqqat: `placeholder` bilan chaqirilsa (haqiqiy GPS hali kelmagan,
@@ -1264,6 +1274,11 @@ function _initSheetMap(o){
     _sheetMap = new ymaps.Map('sheet-map', {
       center: driverCoords || fromCoords, zoom: 13, controls: [],
     });
+    // Sheet CSS animatsiya bilan pastdan suzib chiqqani uchun, xarita
+    // yaratilgan paytda konteyner hali yakuniy o'lchamiga yetmagan bo'lishi
+    // mumkin — animatsiya tugagach qayta o'lchab moslashtiramiz.
+    _sheetMap.container.fitToViewport();
+    setTimeout(() => { try { _sheetMap.container.fitToViewport(); } catch (_) {} }, 400);
 
     _sheetMap.geoObjects.add(new ymaps.Placemark(fromCoords, {}, {preset: 'islands#greenDotIcon'}));
     if (toCoords) {
