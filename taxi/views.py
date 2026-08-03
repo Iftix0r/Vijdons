@@ -2979,11 +2979,17 @@ def driver_map(request):
 @panel_login_required
 def active_drivers_locations(request):
     from django.utils import timezone
+    from django.db.models import Count, Q
+    today = timezone.now().date()
     drivers = Driver.objects.filter(
         is_active=True,
         approval_status=Driver.APPROVAL_APPROVED,
         latitude__isnull=False,
         longitude__isnull=False
+    ).annotate(
+        today_orders_count=Count(
+            'orders', filter=Q(orders__created_at__date=today) & ~Q(orders__status='cancelled')
+        )
     )
     now = timezone.now()
     data = []
@@ -2998,6 +3004,7 @@ def active_drivers_locations(request):
             'latitude': d.latitude,
             'longitude': d.longitude,
             'balance': str(d.balance),
+            'today_orders_count': d.today_orders_count,
             'last_address': d.last_address or '',
             'photo_url': d.photo.url if d.photo else '',
             'is_online': is_online,

@@ -479,7 +479,7 @@
                     <select name="driver_id" id="om_driver_select" onchange="_onDriverSelectChange()" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
                         <option value="">— Avtomatik —</option>
                         {% for driver in active_drivers %}
-                        <option value="{{ driver.pk }}">{{ driver.full_name }} ({{ driver.car_number }})</option>
+                        <option value="{{ driver.pk }}">{{ driver.full_name }} ({{ driver.car_number }}) — bugun: {{ driver.today_orders_count }} ta</option>
                         {% endfor %}
                     </select>
                     <p id="om_driver_map_hint" class="text-[11px] text-yellow-600 dark:text-yellow-400 mt-1 hidden">
@@ -809,21 +809,27 @@
         var check = selected
             ? '<div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:#f59e0b;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;">✓</div>'
             : '';
+        // Bugungi buyurtmalar soni — operator kam zakaz olgan haydovchini
+        // bir qarashda ko'rib, unga ham teng taqsimlab bera olsin. Ranglar:
+        // yashil (kam, 0-1) → sariq (o'rtacha, 2-4) → qizil (ko'p, 5+).
+        var cnt = d.today_orders_count || 0;
+        var cntColor = cnt <= 1 ? '#22c55e' : (cnt <= 4 ? '#f59e0b' : '#ef4444');
+        var countBadge = '<div style="position:absolute;bottom:-6px;right:-6px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:' + cntColor + ';border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;line-height:1;">' + cnt + '</div>';
         return ymaps.templateLayoutFactory.createClass(
-            '<div style="position:relative;text-align:center;">' + img + check +
+            '<div style="position:relative;text-align:center;">' + img + check + countBadge +
             '<div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid ' + borderColor + ';"></div>' +
             '</div>'
         );
     }
 
-    function _selectDriverFromMap(id, fullName) {
+    function _selectDriverFromMap(id, fullName, todayCount) {
         _odriverSelectedId = String(id);
         var select = document.getElementById('om_driver_select');
         if (select) select.value = String(id);
         var hint = document.getElementById('om_driver_map_hint');
         if (hint) {
             hint.classList.remove('hidden');
-            hint.innerHTML = '<i class="fas fa-map-marker-alt"></i> Xaritadan tanlandi: ' + fullName;
+            hint.innerHTML = '<i class="fas fa-map-marker-alt"></i> Xaritadan tanlandi: ' + fullName + ' (bugun: ' + (todayCount || 0) + ' ta)';
         }
         Object.keys(_odriverMarks).forEach(function(mid){
             var info = _odriverInfo[mid];
@@ -870,7 +876,7 @@
                     seen[id] = true;
                     _odriverInfo[id] = d;
                     var coords = [d.latitude, d.longitude];
-                    var hint = d.full_name + ' · ' + d.car_model + ' ' + d.car_number;
+                    var hint = d.full_name + ' · ' + d.car_model + ' ' + d.car_number + ' · bugun: ' + (d.today_orders_count || 0) + ' ta';
                     var selected = id === _odriverSelectedId;
                     if (_odriverMarks[id]) {
                         _odriverMarks[id].geometry.setCoordinates(coords);
@@ -887,7 +893,7 @@
                         // qayerga" pin ham qo'yilib qolardi).
                         pm.events.add('click', function(e){
                             if (e.stopPropagation) e.stopPropagation();
-                            _selectDriverFromMap(id, d.full_name);
+                            _selectDriverFromMap(id, d.full_name, d.today_orders_count);
                         });
                         _omap.geoObjects.add(pm);
                         _odriverMarks[id] = pm;

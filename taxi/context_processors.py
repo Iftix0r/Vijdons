@@ -5,11 +5,13 @@ def active_drivers(request):
     """Inject active drivers, pending driver count, VAPID key, and maps settings into every template context."""
     import json
     from django.conf import settings
-    from django.db.models import Max
+    from django.db.models import Max, Count, Q
+    from django.utils import timezone
     from .models import MapsSettings, TariffSettings, PanelEvent, PanelSound, BalanceLog, BalanceTopupRequest, SecurityIncident
     from .constants import DRIVER_SOUND_EVENTS
     maps = MapsSettings.get()
     tariff = TariffSettings.get()
+    today = timezone.now().date()
 
     sounds = PanelSound.get_map()
     driver_sounds = {}
@@ -28,8 +30,15 @@ def active_drivers(request):
         pass
 
     return {
+        # Yangi buyurtma oynasida haydovchini tanlashda "bugun nechta buyurtma
+        # oldi" ko'rinib tursin — operator kam zakaz olganlarga ham teng
+        # taqsimlab bera olsin.
         'active_drivers': Driver.objects.filter(
             is_active=True, approval_status=Driver.APPROVAL_APPROVED
+        ).annotate(
+            today_orders_count=Count(
+                'orders', filter=Q(orders__created_at__date=today) & ~Q(orders__status='cancelled')
+            )
         ).only('pk', 'full_name', 'car_number'),
         'pending_driver_count': Driver.objects.filter(
             approval_status=Driver.APPROVAL_PENDING
