@@ -7,18 +7,22 @@
 <div class="ios-navbar sticky top-3 mx-4 z-20 px-4 pt-3 pb-3">
   <div class="flex items-center justify-between" style="gap:8px">
     <div class="flex items-start gap-2.5" style="min-width:0;flex:1">
-      <!-- Profile avatar -->
-      <a href="{% url 'driver:profile' %}" onclick="Native.vibrate()" class="flex-shrink-0 active:opacity-60 transition-opacity">
-        {% if driver.photo %}
-        <img src="{{ driver.photo.url }}" alt=""
-             class="w-9 h-9 rounded-full object-cover ring-2 ring-[#FFD600]">
-        {% else %}
-        <div class="w-9 h-9 rounded-full flex items-center justify-center"
-             style="background:{{ driver.full_name|avatar_gradient }};box-shadow:0 2px 8px rgba(0,0,0,.25)">
-          <span class="ios-caption font-bold text-white">{{ driver.full_name|first|upper }}</span>
-        </div>
-        {% endif %}
-      </a>
+      <!-- Profile avatar — buyurtma qidirilayotganda atrofida sariq chiziq aylanadi (#avatar-search-ring) -->
+      <div class="relative flex-shrink-0" style="width:36px;height:36px">
+        <span id="avatar-search-ring" class="hidden" aria-hidden="true"
+              style="position:absolute;inset:-4px;border-radius:50%;border:2.5px solid transparent;border-top-color:#FFD600;animation:avatar-ring-spin .9s linear infinite"></span>
+        <a href="{% url 'driver:profile' %}" onclick="Native.vibrate()" class="relative active:opacity-60 transition-opacity" style="z-index:1">
+          {% if driver.photo %}
+          <img src="{{ driver.photo.url }}" alt=""
+               class="w-9 h-9 rounded-full object-cover ring-2 ring-[#FFD600]">
+          {% else %}
+          <div class="w-9 h-9 rounded-full flex items-center justify-center"
+               style="background:{{ driver.full_name|avatar_gradient }};box-shadow:0 2px 8px rgba(0,0,0,.25)">
+            <span class="ios-caption font-bold text-white">{{ driver.full_name|first|upper }}</span>
+          </div>
+          {% endif %}
+        </a>
+      </div>
       <div style="min-width:0;flex:1">
         <div class="ios-title font-semibold" style="color:var(--ios-label);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ driver.full_name }}</div>
       </div>
@@ -77,9 +81,8 @@
    "soya" shaklida oldindan ko'rsatib, ustidan yorug'lik o'tib turadi
    (LinkedIn/Uber uslubidagi zamonaviy loading pattern). base.html'dagi
    umumiy .skeleton/shimmer klassidan foydalaniladi. ── */
-.search-dot { animation: pulse-dot 1.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .skeleton, .search-dot { animation: none; }
+  .skeleton { animation: none; }
 }
 
 /* ── Yangi buyurtma modali "qidiruv" nuqtasidan tug'ilib chiqadi ──────────────
@@ -129,12 +132,6 @@
 <div id="home-map" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:0;background:#1c1c1f"></div>
 <div id="home-map-hint" class="flex items-center justify-center" style="position:fixed;inset:0;z-index:0;pointer-events:none">
   <span class="ios-caption2" style="color:rgba(255,255,255,.4)">GPS signal kutilmoqda…</span>
-</div>
-<!-- "Buyurtma qidirilmoqda" indikatori — xaritaning o'zi ustida suzib turadi
-     (JS: _setMapSearchBadge), tab-bardan yuqorida qoladi -->
-<div id="map-search-badge" class="flex items-center gap-2 px-3.5 py-2 rounded-full" style="display:none;position:fixed;z-index:15;left:50%;bottom:calc(env(safe-area-inset-bottom,16px) + 96px);transform:translateX(-50%);background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,.3)">
-  <span class="search-dot w-2 h-2 rounded-full flex-shrink-0" style="background:#FFD600"></span>
-  <span id="map-search-text" class="ios-subhead font-semibold" style="color:#fff;white-space:nowrap">Buyurtma qidirilmoqda</span>
 </div>
 <button onclick="_homeMapRecenter()"
   class="flex items-center justify-center active:opacity-60 transition-opacity"
@@ -211,6 +208,12 @@
 <div class="relative px-4 py-3 space-y-3" id="orders-wrap" style="padding-bottom:100px"></div>
 
 <style>
+@keyframes avatar-ring-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #avatar-search-ring { animation: none; }
+}
 @keyframes pulse-dot {
   0%,100% { opacity:1; transform:scale(1); }
   50%      { opacity:.4; transform:scale(.7); }
@@ -479,11 +482,12 @@ async function loadOrders() {
 
     const added = d.new_ids.filter(id => !_known.has(id));
     if(added.length && !_suppressModal) {
-      // "Genie" effekti uchun: "Buyurtma qidirilmoqda" nuqtasi hali shu
-      // yerda ekan, uni renderOrdersDOM() haqiqiy karta bilan ALMASHTIRIB
-      // yubormasdan OLDIN pozitsiyasini saqlab qolamiz — modal aynan shu
-      // nuqtadan "tug'ilib chiqqandek" animatsiya qilinadi.
-      const _dot = document.querySelector('.search-dot');
+      // "Genie" effekti uchun: qidirilmoqda holatini bildiruvchi profil
+      // rasmi atrofidagi halqa hali shu yerda ekan, uni renderOrdersDOM()
+      // haqiqiy karta bilan ALMASHTIRIB yubormasdan OLDIN pozitsiyasini
+      // saqlab qolamiz — modal aynan shu nuqtadan "tug'ilib chiqqandek"
+      // animatsiya qilinadi.
+      const _dot = document.getElementById('avatar-search-ring');
       const _dotRect = _dot ? _dot.getBoundingClientRect() : null;
 
       _known = serverIds;
@@ -537,16 +541,14 @@ async function loadOrders() {
   } catch(_){}
 }
 
-// "Buyurtma qidirilmoqda" indikatori endi alohida joy egallamaydi — xarita
-// ustida suzib turadigan belgi (#map-search-badge, home.html yuqorisida) sifatida
-function _setMapSearchBadge(visible, text) {
-  const badge = document.getElementById('map-search-badge');
-  if (!badge) return;
-  badge.style.display = visible ? '' : 'none';
-  if (visible && text) {
-    const t = document.getElementById('map-search-text');
-    if (t) t.textContent = text;
-  }
+// "Buyurtma qidirilmoqda" holati endi alohida pill/matn sifatida emas —
+// navbardagi profil rasmi atrofida aylanuvchi sariq chiziq (#avatar-search-ring)
+// sifatida ko'rsatiladi. `text` parametri endi ishlatilmaydi, faqat eski
+// chaqiruvlar bilan moslik uchun saqlab qo'yilgan.
+function _setMapSearchBadge(visible) {
+  const ring = document.getElementById('avatar-search-ring');
+  if (!ring) return;
+  ring.classList.toggle('hidden', !visible);
 }
 
 function renderOrdersDOM() {
