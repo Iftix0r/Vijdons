@@ -133,17 +133,6 @@
   style="position:fixed;z-index:15;top:62%;transform:translateY(-50%);right:16px;width:52px;height:52px;border-radius:50%;background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
   <i class="fas fa-location-crosshairs" style="color:#FFD600;font-size:20px"></i>
 </button>
-<!-- Taksometr endi alohida bo'lim emas — shu tugma xarita ustida doim
-     qadalib turadi. Ishlamayotganda bosilsa — pastdagi #mtx-panel (boshlash
-     ekrani) ochiladi. Ishlayotganda esa narx/vaqt/masofa/tezlik allaqachon
-     #mtx-live orqali xarita ustida ko'rinib turgani uchun, bosilganda
-     to'g'ridan-to'g'ri yakunlaydi (tasdiqlash so'rovi bilan). -->
-<button id="mtx-toggle-btn" onclick="mtxToggleBtnClick()"
-  class="flex items-center gap-2 active:opacity-70 transition-opacity"
-  style="position:fixed;z-index:15;top:62%;transform:translateY(-50%);left:16px;padding:12px 18px 12px 16px;border-radius:9999px;background:#FFD600;box-shadow:0 6px 18px rgba(255,214,0,.35),0 2px 6px rgba(0,0,0,.25)">
-  <i id="mtx-toggle-icon" class="fas fa-gauge-high" style="color:#111;font-size:19px"></i>
-  <span id="mtx-toggle-label" class="ios-body font-bold" style="color:#111">Taksometr</span>
-</button>
 
 <!-- Telegram web-appidagi "forward qilingan xabarlar" paneliga o'xshab, tab-bar
      ustida suzib turuvchi to'liq enli chiziq — faol (qabul qilingan) buyurtma
@@ -200,64 +189,6 @@
       </button>
     </div>
     <div id="my-orders-drawer-body" class="space-y-3"></div>
-  </div>
-</div>
-
-<!-- Taksometr ishlab turganda narx/vaqt/masofa/tezlik — funksiyalar
-     to'g'ridan-to'g'ri xarita ustida suzib turadi (sheet/panel ichida emas). -->
-<div id="mtx-live" style="display:none;position:fixed;z-index:16;top:calc(env(safe-area-inset-top,47px) + 152px);left:16px;right:16px;background:linear-gradient(160deg,rgba(28,28,31,.92),rgba(10,10,11,.92));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:18px;border:1px solid rgba(255,255,255,.08);box-shadow:0 10px 28px rgba(0,0,0,.35)">
-  <div style="padding:12px 16px 0;display:flex;align-items:center;gap:7px">
-    <div style="width:6px;height:6px;border-radius:50%;background:#AF52DE;box-shadow:0 0 8px #AF52DE"></div>
-    <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.6px;text-transform:uppercase">Taksometr ishlamoqda</span>
-  </div>
-  <div style="text-align:center;padding:6px 16px 12px">
-    <span id="mtx-price" style="font-size:32px;font-weight:800;color:#FFD600;letter-spacing:-.6px;font-variant-numeric:tabular-nums">0</span>
-    <span style="font-size:14px;font-weight:700;margin-left:4px;color:rgba(255,214,0,.55)">so'm</span>
-  </div>
-  <div style="height:.5px;background:rgba(255,255,255,.08);margin:0 14px"></div>
-  <div style="display:flex;gap:8px;padding:10px 12px 12px">
-    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:rgba(255,255,255,.05);border-radius:12px;padding:8px">
-      <i class="fas fa-stopwatch" style="color:#AF52DE;font-size:12px"></i>
-      <span id="mtx-time" style="font-size:12px;font-weight:800;color:#fff">0:00</span>
-    </div>
-    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:rgba(255,255,255,.05);border-radius:12px;padding:8px">
-      <i class="fas fa-route" style="color:#007AFF;font-size:12px"></i>
-      <span id="mtx-dist" style="font-size:12px;font-weight:800;color:#fff">0.00</span>
-      <span style="font-size:10px;color:rgba(255,255,255,.35)">km</span>
-    </div>
-    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:rgba(255,255,255,.05);border-radius:12px;padding:8px">
-      <i class="fas fa-gauge-high" style="color:#34C759;font-size:12px"></i>
-      <span id="mtx-speed" style="font-size:12px;font-weight:800;color:#fff">0</span>
-      <span style="font-size:10px;color:rgba(255,255,255,.35)">km/h</span>
-    </div>
-  </div>
-</div>
-
-<!-- Taksometr paneli — asosiy xarita (#home-map) ustida suzib turuvchi ixcham
-     karta, #sheet bilan bir xil uslubda. Alohida xaritasi yo'q — haydovchining
-     joylashuvi/izi to'g'ridan-to'g'ri asosiy xaritada (_homeMap) chiziladi. -->
-<div id="mtx-panel" class="ios-sheet fixed left-4 right-4 overflow-y-auto"
-     style="z-index:190;bottom:calc(env(safe-area-inset-bottom,16px) + 96px);border-radius:20px;transform:translateY(calc(100% + 200px));transition:transform .32s cubic-bezier(.32,.72,0,1);max-height:50vh">
-  <div class="px-4 py-3.5 space-y-3">
-    <div class="flex items-center justify-between">
-      <div class="ios-title font-semibold">Taksometr</div>
-      <button type="button" onclick="closeMtxPanel()" class="w-8 h-8 rounded-full flex items-center justify-center" style="background:var(--ios-fill)">
-        <i class="fas fa-xmark" style="color:var(--ios-label3)"></i>
-      </button>
-    </div>
-
-    <!-- Bu panel endi faqat boshlashdan oldingi (idle) holat uchun — safar
-         boshlangach panel yopiladi, narx/vaqt/masofa/tezlik esa #mtx-live
-         orqali to'g'ridan-to'g'ri xarita ustida ko'rsatiladi. -->
-    <p class="ios-caption2" style="color:var(--ios-label3)">
-      Yo'l-yo'lakay olingan qo'shimcha mijoz uchun mustaqil taksometr — bu buyurtma dispetcherlik orqali kelmagan,
-      narxni mijozdan o'zingiz (naqd/karta) olasiz. Boshlaganda balansingizdan
-      <b style="color:var(--ios-label)">{{ tariff_commission }} so'm</b> komissiya yechiladi, safar esa Tarixga yoziladi.
-    </p>
-    <button id="mtx-start-btn" onclick="mtxStart()"
-      style="width:100%;margin-top:10px;padding:16px;border:none;border-radius:14px;background:#FFD600;color:#111;font-weight:800;font-size:15px;cursor:pointer">
-      <i class="fas fa-play"></i> Taksometrni boshlash
-    </button>
   </div>
 </div>
 
@@ -730,7 +661,6 @@ function togglePendingDrawer(){
   try { Native.vibrate(); } catch(_) {}
   _pendingDrawerOpen = !_pendingDrawerOpen;
   if (_pendingDrawerOpen) {
-    try { closeMtxPanel(); } catch(_) {}
     try { closeSheet(); } catch(_) {}
     try { closeMyOrdersDrawer(); } catch(_) {}
   }
@@ -750,7 +680,6 @@ function toggleMyOrdersDrawer(){
   try { Native.vibrate(); } catch(_) {}
   _myOrdersDrawerOpen = !_myOrdersDrawerOpen;
   if (_myOrdersDrawerOpen) {
-    try { closeMtxPanel(); } catch(_) {}
     try { closePendingDrawer(); } catch(_) {}
   }
   const el = document.getElementById('my-orders-drawer');
@@ -1081,7 +1010,7 @@ document.addEventListener('visibilitychange', () => {
     ymaps.ready(() => {
       if (_homeMap || !document.getElementById('home-map')) return;
       _homeMap = new ymaps.Map('home-map', { center: [lat, lng], zoom: 14, controls: ['zoomControl'] });
-      window._homeMap = _homeMap; // Taksometr paneli (mtx) shu xaritaga o'z izini chizadi
+      window._homeMap = _homeMap;
       const hint = document.getElementById('home-map-hint');
       // Diqqat: `placeholder` bilan chaqirilsa (haqiqiy GPS hali kelmagan,
       // faqat xarita bo'sh qolib ketmasin deb standart markazga qo'yilgan) —
@@ -1173,9 +1102,8 @@ document.addEventListener('visibilitychange', () => {
   // sabab bilan (masalan joylashuv ruxsati hali so'ralmagan, yoki oddiy
   // brauzerda ochilgan bo'lsa) bu event kelmasa, xarita "GPS signal
   // kutilmoqda…" holatida ABADIY qotib qolar edi — shu sabab brauzerning
-  // o'zining geolocation API'sini ham zaxira manba sifatida ishga tushiramiz
-  // (initNavLocation/_mtxWatch'dagi bilan bir xil naqsh). Ikkalasi ham
-  // xuddi shu _homeUpdateMine()ga yozgani uchun ziddiyat yo'q.
+  // o'zining geolocation API'sini ham zaxira manba sifatida ishga tushiramiz.
+  // Ikkalasi ham xuddi shu _homeUpdateMine()ga yozgani uchun ziddiyat yo'q.
   if (navigator.geolocation) {
     navigator.geolocation.watchPosition(
       pos => _homeUpdateMine(pos.coords.latitude, pos.coords.longitude),
@@ -1196,207 +1124,6 @@ document.addEventListener('visibilitychange', () => {
     setInterval(_homeRefreshPeers, 8000);
     setTimeout(_homeRefreshPeers, 1500);
   }
-})();
-
-// ── MUSTAQIL TAKSOMETR (yo'l-yo'lakay olingan mijoz) ─────────────────────────
-// Bu buyurtma orqali kelmagan, dispetcherlik bilmagan mijoz uchun — haydovchi
-// o'zi yoqadi/o'chiradi, narxni mijozdan naqd/karta olib o'zi to'playdi. Endi
-// alohida sahifa emas — pastdagi suzuvchi #mtx-panel shu (asosiy) sahifada
-// ochiladi, xarita sifatida esa alohida xarita ochilmaydi, shu sahifadagi
-// jonli xaritaga (window._homeMap, yuqoridagi IIFE tomonidan o'rnatiladi) shu
-// safar davomida bosib o'tilgan yo'l chizig'i qo'shiladi — haydovchining o'z
-// joylashuv nishoni ham o'sha xaritadagi (_homeMyMark) bilan bo'lishiladi,
-// alohida marker shart emas. Diqqat: bu — buyurtma qabul qilingandan keyingi
-// "Yo'lda" holatidagi taximetr vidjeti (pastdagi _tmx* kod, boshqa xususiyat)
-// bilan ARALASHTIRILMASIN, shu sabab prefiks atayin boshqa (_mtx).
-const MTX_BASE_PRICE = {{ tariff_base_price|default:0 }};
-const MTX_PER_KM     = {{ tariff_per_km|default:0 }};
-
-let _mtxActive    = false;
-let _mtxPanelOpen = false;
-let _mtxStartTime = null;
-let _mtxDistKm    = 0;
-let _mtxPrevLat   = null;
-let _mtxPrevLng   = null;
-let _mtxInterval  = null;
-let _mtxSpeedKmh  = 0;
-let _mtxPolyline  = null;
-let _mtxPath      = [];
-
-function _mtxHaversine(lat1, lng1, lat2, lng2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat/2)**2 +
-            Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
-            Math.sin(dLng/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
-function _mtxPersist() {
-  sessionStorage.setItem('vijdon_mtx', JSON.stringify({ start: _mtxStartTime, dist: _mtxDistKm }));
-}
-
-function _mtxRender() {
-  if (!_mtxActive) return;
-  const elapsed = Math.max(0, Math.floor((Date.now() - _mtxStartTime) / 1000));
-  const min = Math.floor(elapsed / 60), sec = elapsed % 60;
-  const price = Math.round(MTX_BASE_PRICE + _mtxDistKm * MTX_PER_KM);
-  document.getElementById('mtx-time').textContent  = min + ':' + String(sec).padStart(2, '0');
-  document.getElementById('mtx-dist').textContent  = _mtxDistKm.toFixed(2);
-  document.getElementById('mtx-price').textContent = price.toLocaleString('uz-UZ');
-  document.getElementById('mtx-speed').textContent = _mtxSpeedKmh;
-}
-
-function _mtxEnsurePolyline() {
-  if (_mtxPolyline || !window._homeMap || typeof ymaps === 'undefined') return;
-  _mtxPolyline = new ymaps.Polyline(_mtxPath, {}, {
-    strokeColor: '#FFD600', strokeWidth: 4, strokeOpacity: 0.85,
-  });
-  window._homeMap.geoObjects.add(_mtxPolyline);
-}
-
-function _mtxOnLocation(lat, lng, spd) {
-  if (!_mtxActive || !lat || !lng) return;
-  if (spd != null && spd >= 0) _mtxSpeedKmh = Math.round(spd * 3.6);
-  if (_mtxPrevLat !== null) {
-    const d = _mtxHaversine(_mtxPrevLat, _mtxPrevLng, lat, lng);
-    if (d > 0.005 && d < 2.0) { _mtxDistKm += d; _mtxPersist(); }
-  }
-  _mtxPrevLat = lat;
-  _mtxPrevLng = lng;
-  _mtxPath.push([lat, lng]);
-  _mtxEnsurePolyline();
-  if (_mtxPolyline) _mtxPolyline.geometry.setCoordinates(_mtxPath);
-}
-
-window.addEventListener('vijdon_location', e => {
-  if (e.detail?.lat && e.detail?.lng) _mtxOnLocation(e.detail.lat, e.detail.lng, e.detail.speed);
-});
-if (navigator.geolocation) {
-  navigator.geolocation.watchPosition(
-    pos => _mtxOnLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.speed),
-    () => {},
-    { enableHighAccuracy: true, timeout: 8000, maximumAge: 3000 }
-  );
-}
-
-function toggleMtxPanel() {
-  try { Native.vibrate(); } catch(_) {}
-  _mtxPanelOpen = !_mtxPanelOpen;
-  if (_mtxPanelOpen) {
-    // Boshqa suzuvchi panellar bilan bir vaqtda ochiq turmasin.
-    try { closeSheet(); } catch(_) {}
-    try { closePendingDrawer(); } catch(_) {}
-    try { closeMyOrdersDrawer(); } catch(_) {}
-  }
-  document.getElementById('mtx-panel').style.transform = _mtxPanelOpen ? 'translateY(0)' : 'translateY(calc(100% + 200px))';
-}
-
-function closeMtxPanel() {
-  _mtxPanelOpen = false;
-  const p = document.getElementById('mtx-panel');
-  if (p) p.style.transform = 'translateY(calc(100% + 200px))';
-}
-
-// Ekranga qadalgan tugma: ishlamayotganda bosilsa — boshlash paneli ochiladi;
-// ishlayotganda esa narx/vaqt/masofa/tezlik allaqachon #mtx-live orqali
-// xarita ustida ko'rinib turgani uchun, bosilsa to'g'ridan-to'g'ri yakunlaydi.
-function mtxToggleBtnClick() {
-  if (_mtxActive) { mtxFinish(); return; }
-  toggleMtxPanel();
-}
-
-// Tugma yozuvi/ikonkasi holatga qarab almashadi.
-function _mtxSyncToggleBtn() {
-  const icon = document.getElementById('mtx-toggle-icon');
-  const label = document.getElementById('mtx-toggle-label');
-  if (icon) icon.className = _mtxActive ? 'fas fa-stop' : 'fas fa-gauge-high';
-  if (label) label.textContent = _mtxActive ? "To'xtatish" : 'Taksometr';
-}
-
-function mtxStart() {
-  if (_mtxActive) return;
-  _mtxActive    = true;
-  _mtxStartTime = Date.now();
-  _mtxDistKm    = 0;
-  _mtxPrevLat   = null;
-  _mtxPrevLng   = null;
-  _mtxSpeedKmh  = 0;
-  _mtxPath      = [];
-  if (_mtxPolyline) {
-    try { window._homeMap?.geoObjects.remove(_mtxPolyline); } catch(_) {}
-    _mtxPolyline = null;
-  }
-  closeMtxPanel();
-  document.getElementById('mtx-live').style.display = '';
-  _mtxSyncToggleBtn();
-  _mtxPersist();
-  _mtxInterval = setInterval(_mtxRender, 1000);
-  _mtxRender();
-  try { Native.vibrate(); } catch(_) {}
-}
-
-function _mtxStop() {
-  _mtxActive = false;
-  clearInterval(_mtxInterval);
-  _mtxInterval = null;
-  sessionStorage.removeItem('vijdon_mtx');
-  if (_mtxPolyline) {
-    try { window._homeMap?.geoObjects.remove(_mtxPolyline); } catch(_) {}
-    _mtxPolyline = null;
-  }
-  document.getElementById('mtx-live').style.display = 'none';
-  _mtxSyncToggleBtn();
-}
-
-function mtxFinish() {
-  if (!_mtxActive) return;
-  if (!confirm("Taksometrni yakunlaysizmi? Narxni mijozdan naqd/karta orqali o'zingiz olasiz, balansingizdan komissiya yechiladi.")) return;
-  const durationSec = Math.floor((Date.now() - _mtxStartTime) / 1000);
-  const distKm = _mtxDistKm;
-  const btn = document.getElementById('mtx-toggle-btn');
-  btn.disabled = true;
-  btn.style.opacity = '.6';
-  fetch('{% url "driver:taximeter_finish" %}', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': getCookie('csrftoken') },
-    body: `dist_km=${distKm.toFixed(3)}&duration_sec=${durationSec}&csrfmiddlewaretoken=${encodeURIComponent(getCookie('csrftoken') || '')}`,
-  }).then(r => r.json()).then(d => {
-    _mtxStop();
-    btn.disabled = false;
-    btn.style.opacity = '1';
-    if (d.ok) {
-      try { showToast('Taksometr yakunlandi', `${Math.round(d.price).toLocaleString('uz-UZ')} so'm — Tarixga yozildi`, 'success', 3500); } catch(_) {}
-    } else {
-      alert(d.error || 'Xatolik yuz berdi');
-    }
-  }).catch(() => {
-    _mtxStop();
-    btn.disabled = false;
-    btn.style.opacity = '1';
-    alert("Tarmoq xatosi — qayta urinib ko'ring");
-  });
-}
-
-// Sahifa qayta ochilganda (masalan boshqa tabga o'tib qaytilganda) davom
-// etayotgan taksometrni sessionStorage'dan tiklaymiz — masofa/vaqt yo'qolib
-// ketmasin (server hali bu safar haqida hech narsa bilmaydi, Yakunlash
-// bosilgandagina yoziladi).
-(function() {
-  try {
-    const raw = sessionStorage.getItem('vijdon_mtx');
-    if (!raw) return;
-    const saved = JSON.parse(raw);
-    if (!saved.start) return;
-    _mtxActive    = true;
-    _mtxStartTime = saved.start;
-    _mtxDistKm    = saved.dist || 0;
-    document.getElementById('mtx-live').style.display = '';
-    _mtxSyncToggleBtn();
-    _mtxInterval = setInterval(_mtxRender, 1000);
-    _mtxRender();
-  } catch (_) {}
 })();
 
 // ── TAXIMETER ─────────────────────────────────────────────────────────────────
@@ -1603,7 +1330,6 @@ function openMyOrderById(id){
   closeMyOrdersDrawer();
   _dismissedOrderIds.delete(id);
   _saveDismissedOrderIds();
-  try { closeMtxPanel(); } catch(_) {}
   _renderSheet(target.id, target);
   _updateMyOrdersBtn(activeOrders);
 }
@@ -1658,9 +1384,7 @@ function _updateMyOrdersBtn(activeOrders){
 function _renderSheet(id, o){
   _sheetOpenForId = id;
   _sheetOpenForStatus = o.status;
-  // Boshqa suzuvchi panellar (taksometr, yangi buyurtmalar) bilan bir vaqtda
-  // ochiq turmasin.
-  try { closeMtxPanel(); } catch(_) {}
+  // Boshqa suzuvchi panellar (yangi buyurtmalar) bilan bir vaqtda ochiq turmasin.
   try { closePendingDrawer(); } catch(_) {}
   try { closeMyOrdersDrawer(); } catch(_) {}
   // Safar davomida (qulflangan holat) ham tab bar orqali boshqa bo'limlarga
