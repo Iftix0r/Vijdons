@@ -653,6 +653,13 @@ def tg_order_cancelled(order, driver):
         reply_markup=markup,
     )
 
+    # Haydovchilar guruhiga ham — buyurtma band bo'lmay qolganini bildiradi
+    _notify_driver_group(
+        f"❌ <b>Buyurtma #{order.id} bekor qilindi</b>\n"
+        f"🚗 Haydovchi: <b>{driver.full_name}</b>\n"
+        f"📍 {order.from_address}"
+    )
+
 
 def tg_order_rejected(order, driver):
     log_panel_event('panel_order_rejected', f"Buyurtma #{order.id} — {driver.full_name} rad etdi")
