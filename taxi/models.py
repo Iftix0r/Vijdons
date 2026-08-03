@@ -137,6 +137,7 @@ class Order(models.Model):
     dispatched_to = models.ForeignKey(Driver, on_delete=models.SET_NULL, null=True, blank=True, related_name='dispatched_orders', verbose_name="Yuborilgan haydovchi")
     dispatched_at = models.DateTimeField(null=True, blank=True, verbose_name="Yuborilgan vaqti")
     rejected_by   = models.ManyToManyField(Driver, blank=True, related_name='rejected_orders', verbose_name="Rad etgan haydovchilar")
+    created_by_driver = models.ForeignKey(Driver, on_delete=models.SET_NULL, null=True, blank=True, related_name='self_registered_orders', verbose_name="Ilova orqali ro'yxatga olgan haydovchi")
     client_rating = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name="Mijoz reytingi (1-5)")
     created_at    = models.DateTimeField(auto_now_add=True, verbose_name="Yaratilgan vaqti")
     updated_at    = models.DateTimeField(auto_now=True, verbose_name="Yangilangan vaqti")

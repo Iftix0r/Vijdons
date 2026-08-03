@@ -792,6 +792,30 @@ def tg_balance_changed(driver, amount, action):
         )
 
 
+ORDER_REFERRAL_BONUS = 1000
+
+
+def pay_order_referral_bonus(order):
+    """Haydovchi ilova orqali ('Buyurtma yaratish') o'zi ro'yxatga olgan buyurtma
+    yakunlanganda, uni ro'yxatga olgan haydovchiga (buyurtmani kim bajarganidan
+    qat'iy nazar) komissiyadan tashqari qo'shimcha bonus to'lanadi — ilovadan
+    buyurtma kiritishni rag'batlantirish uchun."""
+    if not order.created_by_driver_id:
+        return
+    from decimal import Decimal
+    from taxi.models import BalanceLog
+    creator = order.created_by_driver
+    bonus = Decimal(str(ORDER_REFERRAL_BONUS))
+    creator.balance += bonus
+    creator.save(update_fields=['balance'])
+    BalanceLog.objects.create(
+        driver=creator, action=BalanceLog.ACTION_ADD, amount=bonus,
+        balance_after=creator.balance,
+        note=f"Ilova orqali ro'yxatga olingan buyurtma #{order.id} yakunlandi — bonus",
+    )
+    tg_balance_changed(creator, bonus, 'add')
+
+
 def tg_low_balance_alert(driver):
     """Komissiya yechilgandan keyin balans yetarli bo'lmasa (haydovchi endi
     yangi buyurtma qabul qila olmaydi/navbatga kira olmaydi), adminni ogohlantiradi."""

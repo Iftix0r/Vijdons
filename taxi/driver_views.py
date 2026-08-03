@@ -529,6 +529,8 @@ def driver_order_action(request, driver, pk, action):
             driver.save(update_fields=['trips_count'])
         except Exception:
             pass
+        from .utils import pay_order_referral_bonus
+        pay_order_referral_bonus(order)
 
     tg_map = {
         'on_way': tg_order_on_way, 'arrived': tg_order_arrived,
@@ -542,6 +544,90 @@ def driver_order_action(request, driver, pk, action):
     _log_activity(driver, DriverActivityLog.ACTION_ORDER, f"Buyurtma #{order.id} — {order.get_status_display()}", request)
 
     return JsonResponse({'ok': True})
+
+
+# ── Buyurtma yaratish (haydovchi ilova orqali o'zi ro'yxatga oladi) ───────────
+# Ko'chada to'g'ridan-to'g'ri (dispetcherlik orqali emas) topilgan mijoz uchun.
+# `mustaqil taksometr`dan farqi — bu yerda buyurtma darhol 'completed' emas,
+# oddiy pending/accepted -> ... -> completed jarayonidan o'tadi (haydovchi
+# o'zi ushlab qolishi yoki boshqa haydovchilarga ochib qo'yishi mumkin), va
+# yakunlanganda ro'yxatga olgan haydovchiga ORDER_REFERRAL_BONUS to'lanadi.
+
+@driver_login_required
+def driver_order_create(request, driver):
+    if request.method != 'POST':
+        return render(request, 'driver/order_create.html', {
+            'driver': driver,
+            'active_tab': 'home',
+            'chat_unread': _chat_unread(driver),
+            'pending_orders_count': _pending_orders_count(driver),
+            'active_orders_count': _active_orders_count(driver),
+        })
+
+    from .models import Client
+    from .utils import tg_new_order, dispatch_order
+
+    phone_number  = request.POST.get('phone_number', '').strip()
+    customer_name = request.POST.get('customer_name', '').strip()
+    from_address  = request.POST.get('from_address', '').strip()
+    to_address    = request.POST.get('to_address', '').strip()
+    payment_type  = request.POST.get('payment_type', 'cash')
+    assign_to     = request.POST.get('assign_to', 'self')  # 'self' | 'others'
+
+    if not phone_number or not from_address:
+        return JsonResponse({'ok': False, 'error': "Mijoz raqami va manzil kiritilishi shart"}, status=400)
+
+    tariff = TariffSettings.get()
+    client, _created = Client.objects.get_or_create(phone_number=phone_number)
+    if client.is_blocked:
+        return JsonResponse({'ok': False, 'error': "Bu mijoz bloklangan"}, status=400)
+    if customer_name and not client.full_name:
+        client.full_name = customer_name
+        client.save(update_fields=['full_name'])
+
+    if assign_to == 'self':
+        active_count = Order.objects.filter(driver=driver, status__in=Order.ACTIVE_STATUSES).count()
+        if active_count >= Order.MAX_ACTIVE_PER_DRIVER:
+            return JsonResponse({
+                'ok': False,
+                'error': f"Bir vaqtda ko'pi bilan {Order.MAX_ACTIVE_PER_DRIVER} ta faol buyurtma olish mumkin. Avval joriy buyurtma(lar)ni yakunlang.",
+            }, status=400)
+        commission = tariff.commission
+        if driver.balance < commission:
+            return JsonResponse({'ok': False, 'error': f'Balans yetarli emas. Komissiya: {commission} UZS'}, status=400)
+
+        order = Order.objects.create(
+            client=client, driver=driver,
+            from_address=from_address, from_lat=driver.latitude, from_lng=driver.longitude,
+            to_address=to_address,
+            payment_type=payment_type, car_type=driver.car_type,
+            commission=commission,
+            status='accepted',
+            created_by_driver=driver,
+        )
+        driver.balance -= Decimal(str(commission))
+        driver.save(update_fields=['balance'])
+        _log_activity(driver, DriverActivityLog.ACTION_ORDER,
+                       f"Ilova orqali buyurtma #{order.id} yaratdi va o'zi qabul qildi, -{commission} UZS komissiya", request)
+        tg_order_accepted(order, driver)
+        tg_low_balance_alert(driver)
+        return JsonResponse({'ok': True, 'order_id': order.id, 'new_balance': float(driver.balance)})
+
+    order = Order.objects.create(
+        client=client,
+        from_address=from_address, from_lat=driver.latitude, from_lng=driver.longitude,
+        to_address=to_address,
+        payment_type=payment_type, car_type=driver.car_type,
+        commission=tariff.commission,
+        status='pending',
+        created_by_driver=driver,
+    )
+    _log_activity(driver, DriverActivityLog.ACTION_ORDER,
+                   f"Ilova orqali buyurtma #{order.id} yaratdi — boshqa haydovchilarga ochiq", request)
+    tg_new_order(order)
+    if driver.latitude and driver.longitude:
+        dispatch_order(order)
+    return JsonResponse({'ok': True, 'order_id': order.id})
 
 
 # ── History ───────────────────────────────────────────────────────────────────

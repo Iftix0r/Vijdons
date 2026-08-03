@@ -25,6 +25,7 @@ urlpatterns = [
     path('profile/contract/sign/', driver_views.driver_contract_sign, name='contract_sign'),
 
     path('orders/json/',              driver_views.driver_orders_json,   name='orders_json'),
+    path('orders/create/',            driver_views.driver_order_create,  name='order_create'),
 
     # Diqqat: bu aniq (specific) yo'llar quyidagi umumiy
     # `orders/<int:pk>/<str:action>/` naqshidan OLDIN turishi shart — aks holda
