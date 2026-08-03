@@ -193,6 +193,17 @@
                 document.getElementById('office_map_hint').innerHTML = '<i class="fas fa-check text-green-500"></i> Nuqta belgilandi';
             });
 
+            // Uzoqdan (tumanlar darajasida) haydovchilar bitta doiraviy belgi
+            // ichida "N ta" sifatida yig'ilib ko'rinadi, yaqinlashtirilganda
+            // esa klaster avtomatik yoyilib, har bir haydovchining o'z
+            // profili (rasm/ism/holat) bilan alohida belgisi chiqadi.
+            _officeDriversClusterer = new ymaps.Clusterer({
+                preset: 'islands#blueClusterIcons',
+                groupByCoordinates: false,
+                clusterDisableClickZoom: false,
+            });
+            _officeMap.geoObjects.add(_officeDriversClusterer);
+
             _officeDriversTick();
             setInterval(_officeDriversTick, 8000);
         });
@@ -202,16 +213,15 @@
     // admin ofis joylashuvini haydovchilarga nisbatan ko'rib belgilay olsin deb.
     // Operator panelidagi Live Xarita (taxi/driver_map.html) bilan bir xil
     // manba (`active_drivers_locations`) ishlatiladi.
-    let _officeDriverMarks = {};
+    let _officeDriversClusterer = null;
     function _officeDriversTick() {
-        if (!_officeMap) return;
+        if (!_officeMap || !_officeDriversClusterer) return;
         fetch('{% url "taxi:active_drivers_locations" %}')
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 const drivers = data.drivers || [];
-                const seen = {};
+                const placemarks = [];
                 drivers.forEach(function (d) {
-                    seen[d.id] = true;
                     const coords = [d.latitude, d.longitude];
                     const online = !!d.is_online;
                     const color  = online ? '#10b981' : '#ef4444';
@@ -234,36 +244,20 @@
                         ? '<img src="' + d.photo_url + '" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:3px solid ' + color + ';box-shadow:0 2px 8px rgba(0,0,0,0.25)">'
                         : '<div style="width:34px;height:34px;border-radius:50%;background:' + colorLight + ';border:3px solid ' + color + ';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:' + colorDark + ';box-shadow:0 2px 8px rgba(0,0,0,0.2)">' + d.full_name.charAt(0).toUpperCase() + '</div>';
 
-                    if (_officeDriverMarks[d.id]) {
-                        _officeDriverMarks[d.id].geometry.setCoordinates(coords);
-                        _officeDriverMarks[d.id].properties.set('balloonContentBody', balloon);
-                        if (_officeDriverMarks[d.id]._online !== online) {
-                            _officeMap.geoObjects.remove(_officeDriverMarks[d.id]);
-                            delete _officeDriverMarks[d.id];
-                        }
-                    }
-                    if (!_officeDriverMarks[d.id]) {
-                        const pm = new ymaps.Placemark(coords, {
-                            balloonContentBody: balloon,
-                            hintContent: d.full_name + ' · ' + (online ? 'Online' : 'Offline')
-                        }, {
-                            iconLayout: ymaps.templateLayoutFactory.createClass(
-                                '<div style="position:relative;text-align:center">' + img + '</div>'
-                            ),
-                            iconShape: { type: 'Circle', coordinates: [17, 17], radius: 19 }
-                        });
-                        pm._online = online;
-                        _officeMap.geoObjects.add(pm);
-                        _officeDriverMarks[d.id] = pm;
-                    }
+                    const pm = new ymaps.Placemark(coords, {
+                        balloonContentBody: balloon,
+                        hintContent: d.full_name + ' · ' + (online ? 'Online' : 'Offline')
+                    }, {
+                        iconLayout: ymaps.templateLayoutFactory.createClass(
+                            '<div style="position:relative;text-align:center">' + img + '</div>'
+                        ),
+                        iconShape: { type: 'Circle', coordinates: [17, 17], radius: 19 }
+                    });
+                    placemarks.push(pm);
                 });
 
-                Object.keys(_officeDriverMarks).forEach(function (id) {
-                    if (!seen[id]) {
-                        _officeMap.geoObjects.remove(_officeDriverMarks[id]);
-                        delete _officeDriverMarks[id];
-                    }
-                });
+                _officeDriversClusterer.removeAll();
+                _officeDriversClusterer.add(placemarks);
             })
             .catch(function () {});
     }
