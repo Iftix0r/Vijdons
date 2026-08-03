@@ -29,7 +29,25 @@
         </button>
         {% endif %}
     </form>
+    <!-- Unfreeze — faqat 3+ kun onlayn bo'lmagani uchun avtomatik muzlatilgan bo'lsa ko'rinadi -->
+    {% if driver.is_frozen %}
+    <form action="{% url 'taxi:driver_unfreeze' driver.pk %}" method="POST">
+        {% csrf_token %}
+        <button type="submit" class="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold rounded-xl shadow-sm transition-all hover:-translate-y-0.5">
+            <i class="fas fa-fire"></i> Muzlashni bekor qilish
+        </button>
+    </form>
+    {% endif %}
 </div>
+
+{% if driver.is_frozen %}
+<div class="mb-5 flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/40">
+    <i class="fas fa-snowflake text-blue-500"></i>
+    <p class="text-sm text-blue-700 dark:text-blue-300 font-medium">
+        Bu haydovchi 3+ kundan beri onlayn bo'lmagani uchun avtomatik muzlatilgan — ilovaga kirganda "Hisobingiz muzlatildi" sahifasini ko'radi. Qayta ishga tushirish uchun yuqoridagi tugmani bosing.
+    </p>
+</div>
+{% endif %}
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
@@ -51,6 +69,11 @@
                     {% else %}
                     <span class="inline-flex items-center gap-1 text-xs font-bold text-red-200 mt-0.5">
                         <i class="fas fa-ban text-[9px]"></i> Bloklangan
+                    </span>
+                    {% endif %}
+                    {% if driver.is_frozen %}
+                    <span class="inline-flex items-center gap-1 text-xs font-bold text-blue-200 mt-0.5">
+                        <i class="fas fa-snowflake text-[9px]"></i> Muzlatilgan
                     </span>
                     {% endif %}
                 </div>

@@ -32,6 +32,7 @@ class Driver(models.Model):
     car_type        = models.CharField(max_length=10, choices=CAR_TYPE_CHOICES, default=CAR_TYPE_LIGHT, verbose_name="Mashina turi")
     is_active       = models.BooleanField(default=True, verbose_name="Faol")
     approval_status = models.CharField(max_length=20, choices=APPROVAL_CHOICES, default=APPROVAL_PENDING, verbose_name="Tasdiqlash holati")
+    is_frozen       = models.BooleanField(default=False, verbose_name="Muzlatilgan", help_text="3+ kun onlayn bo'lmagani uchun avtomatik muzlatilgan — qayta ishga tushirish uchun admin blokni ochishi kerak")
     fcm_token       = models.TextField(blank=True, null=True, verbose_name="FCM Token")
     is_on_duty      = models.BooleanField(default=False, verbose_name="Ish navbatida")
     latitude        = models.FloatField(null=True, blank=True, verbose_name="Kenglik (Latitude)")
@@ -281,6 +282,7 @@ class BotSettings(models.Model):
     last_driver_engagement_noon_date    = models.DateField(null=True, blank=True)
     last_driver_engagement_evening_date = models.DateField(null=True, blank=True)
     last_driver_fun_stats_date          = models.DateField(null=True, blank=True)
+    last_freeze_inactive_drivers_date   = models.DateField(null=True, blank=True)
 
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -485,6 +487,8 @@ class DriverActivityLog(models.Model):
     ACTION_DUTY_ON  = 'duty_on'
     ACTION_DUTY_OFF = 'duty_off'
     ACTION_ORDER    = 'order'
+    ACTION_FREEZE   = 'freeze'
+    ACTION_UNFREEZE = 'unfreeze'
     ACTION_CHOICES  = (
         (ACTION_LOGIN,    'Kirish'),
         (ACTION_LOGOUT,   'Chiqish'),
@@ -494,6 +498,8 @@ class DriverActivityLog(models.Model):
         (ACTION_DUTY_ON,  'Navbatga kirdi'),
         (ACTION_DUTY_OFF, 'Navbatdan chiqdi'),
         (ACTION_ORDER,    'Buyurtma'),
+        (ACTION_FREEZE,   'Muzlatildi'),
+        (ACTION_UNFREEZE, 'Muzlash bekor qilindi'),
     )
 
     driver     = models.ForeignKey('Driver', on_delete=models.CASCADE, related_name='activity_logs', verbose_name='Haydovchi')
@@ -510,6 +516,7 @@ class DriverActivityLog(models.Model):
         ACTION_LOGIN: '🔑', ACTION_LOGOUT: '🚪', ACTION_BLOCK: '🚫',
         ACTION_UNBLOCK: '🔓', ACTION_BALANCE: '💰', ACTION_DUTY_ON: '🟢',
         ACTION_DUTY_OFF: '🔴', ACTION_ORDER: '🚕',
+        ACTION_FREEZE: '🥶', ACTION_UNFREEZE: '🔥',
     }
 
     @staticmethod

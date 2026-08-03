@@ -419,6 +419,22 @@ def driver_toggle_active(request, pk):
 
 
 @panel_login_required
+def driver_unfreeze(request, pk):
+    """3+ kun onlayn bo'lmagani uchun avtomatik muzlatilgan haydovchini
+    qayta ishga tushiradi — utils.freeze_inactive_drivers() ga qarang."""
+    driver = get_object_or_404(Driver, pk=pk)
+    if request.method == 'POST' and driver.is_frozen:
+        driver.is_frozen = False
+        driver.save(update_fields=['is_frozen'])
+        DriverActivityLog.objects.create(
+            driver=driver, action=DriverActivityLog.ACTION_UNFREEZE,
+            detail='Admin tomonidan muzlash bekor qilindi',
+            ip_address=_get_client_ip(request), user_agent=request.META.get('HTTP_USER_AGENT', ''),
+        )
+    return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
+
+
+@panel_login_required
 def driver_approve(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == 'POST':

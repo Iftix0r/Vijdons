@@ -43,6 +43,8 @@ def driver_login_required(fn):
             driver = request.user.driver_profile
         except Driver.DoesNotExist:
             return redirect('driver:login')
+        if driver.is_frozen:
+            return render(request, 'driver/frozen.html', {'driver': driver, 'tariff': TariffSettings.get()})
         if driver.approval_status != Driver.APPROVAL_APPROVED:
             return render(request, 'driver/pending.html', {'driver': driver})
         return fn(request, driver, *args, **kwargs)

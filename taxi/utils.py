@@ -1082,6 +1082,36 @@ def tg_inactive_drivers_report():
     send_telegram('\n'.join(lines))
 
 
+FREEZE_INACTIVE_DAYS = 3
+
+
+def freeze_inactive_drivers():
+    """3+ kundan beri onlayn bo'lmagan (last_seen eski yoki umuman
+    bo'lmagan) tasdiqlangan haydovchilarni avtomatik muzlatadi — keyingi
+    safar ilovaga kirganda 'Hisobingiz muzlatildi' sahifasi ko'rsatiladi,
+    qayta ishga tushirish uchun operator/admin blokni ochishi kerak bo'ladi
+    (taxi/views.py driver_unfreeze)."""
+    from datetime import timedelta
+    from django.db.models import Q
+    from django.utils import timezone
+    from taxi.models import Driver, DriverActivityLog
+
+    cutoff = timezone.now() - timedelta(days=FREEZE_INACTIVE_DAYS)
+    to_freeze = Driver.objects.filter(
+        is_active=True, approval_status=Driver.APPROVAL_APPROVED, is_frozen=False,
+    ).filter(
+        Q(last_seen__lt=cutoff) | Q(last_seen__isnull=True, registered_at__lt=cutoff)
+    )
+
+    for driver in to_freeze:
+        driver.is_frozen = True
+        driver.save(update_fields=['is_frozen'])
+        DriverActivityLog.objects.create(
+            driver=driver, action=DriverActivityLog.ACTION_FREEZE,
+            detail=f"{FREEZE_INACTIVE_DAYS}+ kun onlayn bo'lmagani uchun avtomatik muzlatildi",
+        )
+
+
 _SURGE_ALERT_COOLDOWN_MINUTES = 20
 _SURGE_ALERT_MIN_MULTIPLIER = 1.5
 
