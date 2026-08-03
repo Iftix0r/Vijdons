@@ -77,6 +77,17 @@
   filter: invert(92%) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(1.15);
 }
 
+/* ── "© Yandex" yozuvi/logotipini yashirish ───────────────────────────────────
+   DIQQAT: bu yozuv Yandex Maps API (bepul reja) foydalanish shartlariga ko'ra
+   MAJBURIY ko'rinishi kerak bo'lgan huquqiy belgi — uni yashirish shartlarni
+   buzadi va API kaliti (config/settings.py / shu shablonlardagi apikey)
+   bloklanishiga olib kelishi mumkin. Foydalanuvchi xavfni bilib turib,
+   ataylab shu ko'rinishni so'ragan. */
+#home-map [class*="copyright"],
+#sheet-map [class*="copyright"] {
+  display: none !important;
+}
+
 /* ── Qidiruv: skeleton/shimmer — kelayotgan buyurtma qanday ko'rinishini
    "soya" shaklida oldindan ko'rsatib, ustidan yorug'lik o'tib turadi
    (LinkedIn/Uber uslubidagi zamonaviy loading pattern). base.html'dagi
