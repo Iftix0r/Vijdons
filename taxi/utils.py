@@ -1438,8 +1438,18 @@ def dispatch_order(order):
     order.dispatched_at = timezone.now()
     order.save(update_fields=['dispatched_to', 'dispatched_at'])
 
+    notify_driver_new_order(order, nearest)
+    start_dispatch_timeout(order, nearest, tariff.dispatch_timeout)
+
+    return nearest
+
+
+def notify_driver_new_order(order, driver):
+    """Buyurtma biror haydovchiga tayinlanganda (avtomatik dispatch_order()
+    orqali yoki operator tomonidan qo'lda) unga FCM push, Web Push va
+    Telegram orqali xabar yuborish — ikkala holatda ham bir xil ishlaydi."""
     send_fcm(
-        nearest.fcm_token,
+        driver.fcm_token,
         title='🚖 Yangi buyurtma!',
         body=f"📍 {order.from_address}" + (f" → {order.to_address}" if order.to_address else ""),
         data={
@@ -1451,26 +1461,29 @@ def dispatch_order(order):
             'client_phone': order.client.phone_number,
         },
     )
-    # Web Push
     try:
         from taxi.driver_views import send_push_to_driver
         body = f"📍 {order.from_address}"
         if order.price:
             body += f" | 💰 {int(order.price):,} so'm"
-        send_push_to_driver(nearest, '🚖 Yangi buyurtma!', body)
+        send_push_to_driver(driver, '🚖 Yangi buyurtma!', body)
     except Exception:
         pass
-    tg_order_dispatched(order, nearest)
+    tg_order_dispatched(order, driver)
 
-    # 10 sekundlik (yoki sozlangan) kutish taymeri
+
+def start_dispatch_timeout(order, driver, timeout_seconds):
+    """Belgilangan haydovchi (avtomatik yoki operator tomonidan qo'lda
+    tayinlangan bo'lsa ham) dispatch_timeout ichida javob bermasa, uni
+    rad etganlar ro'yxatiga qo'shib, buyurtmani avtomatik bo'shatish uchun
+    fon taymeri. Shu bilan operator qo'lda tayinlagan buyurtma ham
+    javobsiz haydovchiga abadiy "osilib qolmaydi"."""
     import threading
     threading.Thread(
         target=auto_reject_timeout,
-        args=(order.id, nearest.id, tariff.dispatch_timeout),
+        args=(order.id, driver.id, timeout_seconds),
         daemon=True
     ).start()
-
-    return nearest
 
 
 def generate_growth_insights(stats):

@@ -161,19 +161,24 @@ def order_create(request):
                 status='pending',
             )
 
-            # Operator haydovchini qo'lda tanlagan bo'lsa — buyurtma FAQAT o'sha
-            # haydovchiga ko'rinishi kerak (taxi/driver_views.py'dagi pending
-            # buyurtmalar ro'yxati `dispatched_to`ga qarab filtrlaydi, `driver`
-            # maydoniga emas). Shuni belgilamasak, `dispatched_to` bo'sh qolib,
-            # buyurtma "umumiy tablo"ga tushgandek HAMMA haydovchiga ko'rinib,
-            # boshqa birov uni birinchi bo'lib qabul qilib olishi mumkin edi.
-            # dispatch_timeout o'tsa (auto-dispatch bilan bir xil mexanizm
-            # orqali), baribir umumiy tabloga tushib, boshqalarga ham ochiladi.
+            # Operator haydovchini qo'lda tanlagan bo'lsa (dropdown yoki xaritadan
+            # belgi bosib) — buyurtma FAQAT o'sha haydovchiga ko'rinishi kerak
+            # (taxi/driver_views.py'dagi pending ro'yxati `dispatched_to`ga qarab
+            # filtrlaydi, `driver` maydoniga emas). Shuningdek, avtomatik
+            # dispatch bilan bir xil push/Telegram bildirishnoma va
+            # dispatch_timeout taymeri ham ishga tushiriladi — aks holda
+            # haydovchi javob bermasa (masalan hozir band/uxlab yotgan bo'lsa),
+            # buyurtma abadiy shu haydovchiga "osilib qolar", vaqt o'tib umumiy
+            # ro'yxatda ko'rinsa ham hech kim qabul qila olmasdi (dispatched_to
+            # hech qachon tozalanmagani uchun).
             if driver is not None:
                 from django.utils import timezone
+                from .utils import notify_driver_new_order, start_dispatch_timeout
                 order.dispatched_to = driver
                 order.dispatched_at = timezone.now()
                 order.save(update_fields=['dispatched_to', 'dispatched_at'])
+                notify_driver_new_order(order, driver)
+                start_dispatch_timeout(order, driver, tariff.dispatch_timeout)
 
             # Telegram xabar
             tg_new_order(order)
@@ -232,6 +237,7 @@ def order_update_status(request, pk):
         driver_id  = request.POST.get('driver_id') or None
         if new_status in dict(Order.STATUS_CHOICES):
             order.status = new_status
+        reassigned_driver = None
         if driver_id:
             order.driver = Driver.objects.filter(pk=driver_id).first()
             # Buyurtma hali "pending" bo'lib qolayotgan bo'lsa (masalan operator
@@ -243,7 +249,15 @@ def order_update_status(request, pk):
                 from django.utils import timezone
                 order.dispatched_to = order.driver
                 order.dispatched_at = timezone.now()
+                reassigned_driver = order.driver
         order.save()
+
+        # order_create'dagi bilan bir xil: qo'lda qayta yo'naltirilgan haydovchiga
+        # ham push/Telegram xabar va javob bermasa avtomatik bo'shatuvchi taymer.
+        if reassigned_driver:
+            from .utils import notify_driver_new_order, start_dispatch_timeout
+            notify_driver_new_order(order, reassigned_driver)
+            start_dispatch_timeout(order, reassigned_driver, TariffSettings.get().dispatch_timeout)
 
         # Buyurtma qabul qilingan holatda bo'lib, endi bekor qilinsa — haydovchidan
         # ilgari yechilgan komissiya balansiga qaytariladi
