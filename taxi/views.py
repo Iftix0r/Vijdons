@@ -847,6 +847,8 @@ def bot_settings(request):
         bot.notify_daily_highlight     = 'notify_daily_highlight'     in request.POST
         bot.notify_flyer_redeemed      = 'notify_flyer_redeemed'      in request.POST
         bot.notify_monthly_financial_report = 'notify_monthly_financial_report' in request.POST
+        bot.notify_driver_engagement   = 'notify_driver_engagement'   in request.POST
+        bot.notify_driver_fun_stats    = 'notify_driver_fun_stats'    in request.POST
         bot.save()
         from .utils import log_system_event
         log_system_event('settings_changed', 'Bot sozlamalari o\'zgartirildi', request=request)
@@ -902,6 +904,8 @@ def bot_settings(request):
         ('notify_daily_highlight',     "Kunning yorqin lahzalari (20:00)",     '🌟', bot.notify_daily_highlight),
         ('notify_flyer_redeemed',      'Flayer kuponi ishlatilganda xabar',    '🎁', bot.notify_flyer_redeemed),
         ('notify_monthly_financial_report', "Oylik moliyaviy hisobot (har oy 1-kuni 09:00)", '🗓️', bot.notify_monthly_financial_report),
+        ('notify_driver_engagement', "Motivatsion/maslahat/hazil xabarlar (12:00, 18:00)", '💡', bot.notify_driver_engagement),
+        ('notify_driver_fun_stats',  "Kunlik qiziqarli statistika (16:00)",                 '📊', bot.notify_driver_fun_stats),
     ]
     return render(request, 'taxi/bot_settings.html', {
         'bot': bot,

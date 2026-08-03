@@ -16,6 +16,9 @@ logger = logging.getLogger(__name__)
 _DAILY_SCHEDULE = (
     (7,  'last_morning_greeting_date',        'tg_morning_greeting'),
     (10, 'last_inactive_drivers_report_date', 'tg_inactive_drivers_report'),
+    (12, 'last_driver_engagement_noon_date',  'tg_driver_engagement'),
+    (16, 'last_driver_fun_stats_date',        'tg_driver_fun_stats'),
+    (18, 'last_driver_engagement_evening_date', 'tg_driver_engagement'),
     (19, 'last_high_rejection_report_date',   'tg_high_rejection_report'),
     (20, 'last_evening_top_drivers_date',     'tg_evening_top_drivers'),
     (20, 'last_daily_highlight_date',         'tg_daily_highlight_trip'),

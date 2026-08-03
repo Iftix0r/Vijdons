@@ -250,6 +250,8 @@ class BotSettings(models.Model):
     notify_weekly_summary      = models.BooleanField(default=True, verbose_name='Haftalik umumiy hisobot')
     notify_daily_highlight     = models.BooleanField(default=True, verbose_name='Kunning yorqin lahzalari')
     notify_monthly_financial_report = models.BooleanField(default=True, verbose_name="Oylik moliyaviy hisobot")
+    notify_driver_engagement  = models.BooleanField(default=True, verbose_name="Motivatsion/maslahat/hazil xabarlar")
+    notify_driver_fun_stats   = models.BooleanField(default=True, verbose_name="Kunlik qiziqarli statistika")
 
     # Voqea asosida (event-based) yangi bildirishnomalar
     notify_low_rating         = models.BooleanField(default=True, verbose_name='Reyting pasayganda ogohlantirish')
@@ -273,6 +275,9 @@ class BotSettings(models.Model):
     last_weekly_summary_date         = models.DateField(null=True, blank=True)
     last_daily_highlight_date        = models.DateField(null=True, blank=True)
     last_monthly_financial_report_date = models.DateField(null=True, blank=True)
+    last_driver_engagement_noon_date    = models.DateField(null=True, blank=True)
+    last_driver_engagement_evening_date = models.DateField(null=True, blank=True)
+    last_driver_fun_stats_date          = models.DateField(null=True, blank=True)
 
     updated_at = models.DateTimeField(auto_now=True)
 

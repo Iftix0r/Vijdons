@@ -1290,6 +1290,72 @@ def tg_night_greeting():
     _notify_driver_group(text)
 
 
+_ENGAGEMENT_MESSAGES = [
+    "🦺 <b>Xavfsizlik maslahati:</b> Yo'lovchi tushishidan oldin atrofni albatta tekshiring.",
+    "🗣️ <b>Maslahat:</b> Yo'lovchi bilan yoqimli suhbat kayfiyatni ko'taradi, lekin haydashdan chalg'itmasin.",
+    "🔥 <b>Motivatsiya:</b> Har bir safar — yangi imkoniyat. Bugun ham eng yaxshisini bering!",
+    "🌟 <b>Motivatsiya:</b> Yaxshi xizmat — doimiy mijoz demakdir. Kichik xushmuomalalik katta ishonch yaratadi.",
+    "😄 Haydovchi va navigatsiya doim tortishadi: u chapga, siz o'ngga burilasiz 😅 Baribir yo'lni siz yaxshi bilasiz!",
+    "⛽ <b>Maslahat:</b> Yoqilg'i darajasini har safar oldindan tekshirib turing — yo'lda qolib ketmang.",
+    "📵 <b>Xavfsizlik maslahati:</b> Rulda telefon bilan band bo'lmang — xavfsizlik hammasidan muhim.",
+    "💪 <b>Motivatsiya:</b> Charchagan kunlar ham o'tadi, lekin mehnatingiz albatta mevasini beradi.",
+    "😂 Eng yaxshi GPS — bu tajribali haydovchining xotirasi! Lekin baribir ilovaga ham ishoning 😉",
+    "🧼 <b>Maslahat:</b> Mashinangiz toza bo'lsa, mijozlar ko'proq mamnun bo'ladi va qayta buyurtma berishadi.",
+    "🚀 <b>Motivatsiya:</b> Kichik qadamlar katta natijalarga olib keladi — har bir buyurtma muhim.",
+    "😊 <b>Maslahat:</b> Kutish vaqtida sabr-toqatli bo'ling — bu eng yaxshi hamrohingiz.",
+    "🎶 Yo'lda yoqimli musiqa safarni yanada yoqimli qiladi — lekin ovozni me'yorida tuting.",
+    "🅿️ <b>Maslahat:</b> Yo'lovchini olib ketishdan oldin to'g'ri manzilni tasdiqlab oling — vaqtni tejaydi.",
+    "🏆 <b>Motivatsiya:</b> Eng yaxshi haydovchilar — doimiy va barqaror ishlaydiganlar. Siz ham shunday bo'lyapsiz!",
+    "🌦️ Ob-havo qanday bo'lmasin, sizning kayfiyatingiz doim quyoshli bo'lsin! ☀️",
+]
+
+
+def tg_driver_engagement():
+    """Kun davomida bir necha marta (peshin va kechqurun) haydovchilar guruhiga
+    tasodifiy motivatsion so'z, foydali maslahat yoki kichik hazil xabar
+    yuboradi — guruhni jonli va qiziqarli tutish uchun."""
+    cfg = _cfg()
+    if not cfg or not cfg.notify_driver_engagement:
+        return
+    import random
+    _notify_driver_group(random.choice(_ENGAGEMENT_MESSAGES))
+
+
+def tg_driver_fun_stats():
+    """Kunning davomida yig'ilgan qiziqarli raqamlarni (bosib o'tilgan masofa,
+    yakunlangan safarlar soni, eng ko'p buyurtma qilingan hudud) haydovchilar
+    guruhiga yuboradi."""
+    cfg = _cfg()
+    if not cfg or not cfg.notify_driver_fun_stats:
+        return
+    from django.db.models import Count, Sum
+    from django.utils import timezone
+    from taxi.models import Order
+
+    today = timezone.localdate()
+    qs = Order.objects.filter(status='completed', created_at__date=today)
+    total_completed = qs.count()
+    if not total_completed:
+        return
+    total_distance = qs.aggregate(s=Sum('distance_km'))['s'] or 0
+    top_address = (
+        qs.exclude(from_address='').values('from_address')
+        .annotate(c=Count('id')).order_by('-c').first()
+    )
+
+    lines = [
+        "📊 <b>Bugungi qiziqarli raqamlar</b>",
+        f"📅 {today.strftime('%d.%m.%Y')}",
+        "",
+        f"🚕 Yakunlangan safarlar: <b>{total_completed}</b> ta",
+        f"🛣️ Jami bosib o'tilgan masofa: <b>{total_distance:.0f} km</b>",
+    ]
+    if top_address:
+        lines.append(f"📍 Eng ko'p buyurtma qilingan hudud: <b>{top_address['from_address']}</b> ({top_address['c']} marta)")
+    lines.append("\nHar bir safar — yangi tajriba! Davom eting 🚀")
+    _notify_driver_group('\n'.join(lines))
+
+
 def tg_sos_alert(alert):
     driver = alert.driver
     log_panel_event('panel_sos_alert', f"SOS #{alert.id} — {driver.full_name}")
