@@ -306,8 +306,8 @@ const DRIVER_RATING = "{% if driver.rating %}{{ driver.rating|floatformat:1 }}{%
 let TODAY_EARNED = {{ today_earned }};
 let TODAY_TRIPS = {{ today_trips }};
 
-const OFFICE_LAT  = {{ tariff.office_lat|default:'null' }};
-const OFFICE_LNG  = {{ tariff.office_lng|default:'null' }};
+const OFFICE_LAT  = {{ tariff.office_lat|stringformat:'f'|default:'null' }};
+const OFFICE_LNG  = {{ tariff.office_lng|stringformat:'f'|default:'null' }};
 const OFFICE_NAME = "{{ tariff.office_name|default:'Ofis'|escapejs }}";
 
 let ORDERS = {{ orders_json|safe }};
