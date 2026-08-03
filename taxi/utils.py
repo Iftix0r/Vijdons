@@ -1090,7 +1090,7 @@ def freeze_inactive_drivers():
     bo'lmagan) tasdiqlangan haydovchilarni avtomatik muzlatadi — keyingi
     safar ilovaga kirganda 'Hisobingiz muzlatildi' sahifasi ko'rsatiladi,
     qayta ishga tushirish uchun operator/admin blokni ochishi kerak bo'ladi
-    (taxi/views.py driver_unfreeze)."""
+    (taxi/views.py driver_toggle_frozen)."""
     from datetime import timedelta
     from django.db.models import Q
     from django.utils import timezone
