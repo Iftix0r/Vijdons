@@ -142,6 +142,12 @@
                                 <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>❌ Bekor qilindi</option>
                             </select>
                         </form>
+                        {% if order.status == 'cancelled' and order.cancel_reason %}
+                        <div class="text-[10px] text-red-500 dark:text-red-400 mt-1 flex items-center gap-1" title="{{ order.cancel_reason }}">
+                            <i class="fas fa-circle-info"></i>
+                            <span class="truncate max-w-[130px]">{{ order.cancel_reason }}</span>
+                        </div>
+                        {% endif %}
                     </td>
                     <td class="px-5 py-3.5 text-[11px] text-gray-400 whitespace-nowrap">
                         {{ order.created_at|date:"d/m/Y H:i" }}
