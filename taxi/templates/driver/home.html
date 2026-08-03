@@ -7,10 +7,12 @@
 <div class="ios-navbar sticky top-3 mx-4 z-20 px-4 pt-3 pb-3">
   <div class="flex items-center justify-between" style="gap:8px">
     <div class="flex items-start gap-2.5" style="min-width:0;flex:1">
-      <!-- Profile avatar — buyurtma qidirilayotganda atrofida sariq chiziq aylanadi (#avatar-search-ring) -->
+      <!-- Profile avatar — atrofida doim aylanuvchi chiziq (#avatar-search-ring):
+           rangi internet ulanish sifatini bildiradi (yashil/sariq/qizil),
+           buyurtma qidirilayotganda esa vaqtincha sariq bo'lib turadi. -->
       <div class="relative flex-shrink-0" style="width:36px;height:36px">
-        <span id="avatar-search-ring" class="hidden" aria-hidden="true"
-              style="position:absolute;inset:-4px;border-radius:50%;border:2.5px solid transparent;border-top-color:#FFD600;animation:avatar-ring-spin .9s linear infinite"></span>
+        <span id="avatar-search-ring" aria-hidden="true"
+              style="position:absolute;inset:-4px;border-radius:50%;border:2.5px solid transparent;border-top-color:#34C759;animation:avatar-ring-spin .9s linear infinite"></span>
         <a href="{% url 'driver:profile' %}" onclick="Native.vibrate()" class="relative active:opacity-60 transition-opacity" style="z-index:1">
           {% if driver.photo %}
           <img src="{{ driver.photo.url }}" alt=""
@@ -477,9 +479,11 @@ function _updateNavBalance(newBal) {
 }
 
 async function loadOrders() {
-  if(!navigator.onLine) return;
+  if(!navigator.onLine) { _setNetQuality('poor'); return; }
+  const _netT0 = performance.now();
   try {
     const r = await fetch('{% url "driver:orders_json" %}', {cache:'no-store'});
+    _setNetQuality(_classifyLatencyMs(performance.now() - _netT0));
     const d = await r.json();
     if(!Array.isArray(d.new_ids)) return;
 
@@ -549,17 +553,44 @@ async function loadOrders() {
                            _activeOrders.find(o => !_dismissedOrderIds.has(o.id));
       if (_sheetOrder) _ensureActiveSheet(_sheetOrder);
     }
-  } catch(_){}
+  } catch(_){ _setNetQuality('poor'); }
 }
 
 // "Buyurtma qidirilmoqda" holati endi alohida pill/matn sifatida emas —
-// navbardagi profil rasmi atrofida aylanuvchi sariq chiziq (#avatar-search-ring)
-// sifatida ko'rsatiladi. `text` parametri endi ishlatilmaydi, faqat eski
-// chaqiruvlar bilan moslik uchun saqlab qo'yilgan.
+// navbardagi profil rasmi atrofidagi halqa (#avatar-search-ring) vaqtincha
+// sariqqa o'tishi bilan ko'rsatiladi (internet sifati ranglaridan ustunroq).
+// `text` parametri endi ishlatilmaydi, faqat eski chaqiruvlar bilan moslik
+// uchun saqlab qo'yilgan.
 function _setMapSearchBadge(visible) {
+  _isSearching = visible;
+  _updateAvatarRing();
+}
+
+// ── Internet ulanish sifati — navbardagi profil halqasi ─────────────────────
+// Halqa doim aylanadi; rangi ulanish sifatini bildiradi: yashil (tez),
+// sariq (o'rtacha), qizil (yomon/uzilgan). Alohida so'rov yubormaydi —
+// mavjud davriy loadOrders() so'rovining javob vaqtidan foydalanadi.
+// Buyurtma qidirilayotgan payt (_isSearching) ustunroq — halqa vaqtincha
+// sariq bo'lib turadi, tugagach joriy tarmoq sifati rangiga qaytadi.
+const NET_RING_COLOR = { good: '#34C759', medium: '#FFD600', poor: '#FF3B30' };
+let _netQuality  = 'good';
+let _isSearching = false;
+
+function _classifyLatencyMs(ms) {
+  if (ms < 800) return 'good';
+  if (ms < 2500) return 'medium';
+  return 'poor';
+}
+
+function _setNetQuality(q) {
+  _netQuality = q;
+  _updateAvatarRing();
+}
+
+function _updateAvatarRing() {
   const ring = document.getElementById('avatar-search-ring');
   if (!ring) return;
-  ring.classList.toggle('hidden', !visible);
+  ring.style.borderTopColor = _isSearching ? '#FFD600' : NET_RING_COLOR[_netQuality];
 }
 
 function renderOrdersDOM() {
