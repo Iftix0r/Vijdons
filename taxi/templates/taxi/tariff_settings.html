@@ -98,6 +98,28 @@
                     5 km, 3 daqiqa kutish bilan: <b>{{ tariff.base_price }} + (5 × {{ tariff.price_per_km }}) + (3 × {{ tariff.waiting_price_per_minute }})</b>
                 </p>
             </div>
+
+            <div class="border-t border-gray-100 dark:border-gray-800 pt-5">
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                    <i class="fas fa-building text-indigo-500 mr-1"></i>Ofis joylashuvi
+                </label>
+                <p class="text-xs text-gray-400 mb-2">Xaritada nuqtani bosib belgilang — bu belgi haydovchilar ilovasidagi xaritada ham ko'rinadi.</p>
+                <input type="hidden" name="office_lat" id="office_lat" value="{{ tariff.office_lat|default:'' }}">
+                <input type="hidden" name="office_lng" id="office_lng" value="{{ tariff.office_lng|default:'' }}">
+                <div id="office_map" style="width:100%;height:240px;border-radius:12px;overflow:hidden;border:1.5px solid #e5e7eb;"></div>
+                <p id="office_map_hint" class="text-[11px] text-gray-400 mt-1.5">
+                    {% if tariff.office_lat and tariff.office_lng %}
+                        <i class="fas fa-check text-green-500"></i> Nuqta belgilangan — o'zgartirish uchun xaritada boshqa joyni bosing
+                    {% else %}
+                        <i class="fas fa-hand-pointer"></i> Xaritada nuqtani bosing
+                    {% endif %}
+                </p>
+                <div class="mt-3">
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Ofis nomi</label>
+                    <input type="text" name="office_name" value="{{ tariff.office_name }}" placeholder="Masalan: 1351 Taxi ofisi"
+                           class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-green-400 dark:text-white transition">
+                </div>
+            </div>
         </div>
 
         <div class="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex gap-3">
@@ -112,4 +134,47 @@
         </div>
     </form>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://api-maps.yandex.ru/2.1/?apikey=469e8d29-be0b-42da-9bd4-ed515dbdb741&lang=uz_UZ" type="text/javascript"></script>
+<script>
+    let _officeMap = null;
+    let _officePM  = null;
+
+    function _initOfficeMap() {
+        if (!window.ymaps || _officeMap) return;
+        ymaps.ready(function () {
+            if (_officeMap) return;
+            const savedLat = parseFloat(document.getElementById('office_lat').value);
+            const savedLng = parseFloat(document.getElementById('office_lng').value);
+            const hasSaved = !isNaN(savedLat) && !isNaN(savedLng);
+            const center = hasSaved ? [savedLat, savedLng] : [41.2995, 69.2401];
+
+            _officeMap = new ymaps.Map('office_map', {
+                center: center,
+                zoom: hasSaved ? 15 : 12,
+                controls: ['zoomControl', 'searchControl', 'fullscreenControl']
+            });
+
+            if (hasSaved) {
+                _officePM = new ymaps.Placemark(center, {}, { preset: 'islands#indigoDotIcon' });
+                _officeMap.geoObjects.add(_officePM);
+            }
+
+            _officeMap.events.add('click', function (e) {
+                const coords = e.get('coords');
+                if (_officePM) _officeMap.geoObjects.remove(_officePM);
+                _officePM = new ymaps.Placemark(coords, {}, { preset: 'islands#indigoDotIcon' });
+                _officeMap.geoObjects.add(_officePM);
+                document.getElementById('office_lat').value = coords[0];
+                document.getElementById('office_lng').value = coords[1];
+                document.getElementById('office_map_hint').innerHTML = '<i class="fas fa-check text-green-500"></i> Nuqta belgilandi';
+            });
+        });
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(_initOfficeMap, 150);
+    });
+</script>
 {% endblock %}

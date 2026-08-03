@@ -718,6 +718,9 @@ class TariffSettings(models.Model):
     max_dispatch_attempts = models.IntegerField(default=4, verbose_name="Maksimal urinishlar soni", help_text="Buyurtma eng ko'pi bilan nechta haydovchiga navbatma-navbat ko'rsatiladi")
     dispatch_timeout      = models.IntegerField(default=10, verbose_name="Kutish vaqti (sekund)", help_text="Har bir haydovchi qabul qilishi uchun beriladigan vaqt")
     operator_phone = models.CharField(max_length=20, default='1351', verbose_name="Operator telefon raqami", help_text="Haydovchi qabul qilingan buyurtmani bekor qilmoqchi bo'lsa, shu raqamga qo'ng'iroq qiladi")
+    office_name = models.CharField(max_length=100, blank=True, default='1351 Taxi ofisi', verbose_name="Ofis nomi", help_text="Haydovchilar xaritasidagi belgi tagida ko'rinadi")
+    office_lat  = models.FloatField(null=True, blank=True, verbose_name="Ofis Kenglik (Lat)")
+    office_lng  = models.FloatField(null=True, blank=True, verbose_name="Ofis Uzunlik (Lng)")
     updated_at    = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):

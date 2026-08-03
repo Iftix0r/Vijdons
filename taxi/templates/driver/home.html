@@ -306,6 +306,10 @@ const DRIVER_RATING = "{% if driver.rating %}{{ driver.rating|floatformat:1 }}{%
 let TODAY_EARNED = {{ today_earned }};
 let TODAY_TRIPS = {{ today_trips }};
 
+const OFFICE_LAT  = {{ tariff.office_lat|default:'null' }};
+const OFFICE_LNG  = {{ tariff.office_lng|default:'null' }};
+const OFFICE_NAME = "{{ tariff.office_name|default:'Ofis'|escapejs }}";
+
 let ORDERS = {{ orders_json|safe }};
 let _known = new Set(ORDERS.map(o => o.id));
 
@@ -1019,12 +1023,25 @@ document.addEventListener('visibilitychange', () => {
     }
   }
 
+  // Ofis joylashuvi (Bot & Tariff sozlamalari — admin xaritadan belgilaydi)
+  // — doimiy belgi sifatida xaritaga bir marta qo'shiladi, haydovchining
+  // o'z joylashuvidan farqli o'laroq harakatlanmaydi.
+  function _homeAddOfficeMark() {
+    if (!_homeMap || OFFICE_LAT === null || OFFICE_LNG === null) return;
+    const mark = new ymaps.Placemark([OFFICE_LAT, OFFICE_LNG], {
+      hintContent: OFFICE_NAME,
+      balloonContent: OFFICE_NAME,
+    }, { preset: 'islands#indigoDotIcon' });
+    _homeMap.geoObjects.add(mark);
+  }
+
   function _homeEnsureMap(lat, lng, placeholder) {
     if (_homeMap || typeof ymaps === 'undefined' || !document.getElementById('home-map')) return;
     ymaps.ready(() => {
       if (_homeMap || !document.getElementById('home-map')) return;
       _homeMap = new ymaps.Map('home-map', { center: [lat, lng], zoom: 14, controls: ['zoomControl'] });
       window._homeMap = _homeMap;
+      _homeAddOfficeMark();
       const hint = document.getElementById('home-map-hint');
       // Diqqat: `placeholder` bilan chaqirilsa (haqiqiy GPS hali kelmagan,
       // faqat xarita bo'sh qolib ketmasin deb standart markazga qo'yilgan) —

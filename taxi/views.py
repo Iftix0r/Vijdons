@@ -1965,6 +1965,11 @@ def tariff_settings(request):
             tariff.max_dispatch_attempts = int(request.POST.get('max_dispatch_attempts', tariff.max_dispatch_attempts))
             tariff.dispatch_timeout      = int(request.POST.get('dispatch_timeout', tariff.dispatch_timeout))
             tariff.operator_phone        = request.POST.get('operator_phone', tariff.operator_phone).strip() or tariff.operator_phone
+            tariff.office_name = request.POST.get('office_name', tariff.office_name).strip() or tariff.office_name
+            office_lat = request.POST.get('office_lat', '').strip()
+            office_lng = request.POST.get('office_lng', '').strip()
+            tariff.office_lat = float(office_lat) if office_lat else None
+            tariff.office_lng = float(office_lng) if office_lng else None
             tariff.save()
             from .utils import log_system_event
             log_system_event('settings_changed', 'Tariff sozlamalari o\'zgartirildi', request=request)
