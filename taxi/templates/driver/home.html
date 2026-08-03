@@ -60,6 +60,19 @@
 </div>
 
 <style>
+/* ── Xarita — Yandex Navigator'dagi kabi "tungi rejim" ko'rinishi ─────────────
+   Yandex Maps JS API 2.1 ochiq saytlar uchun tayyor qorong'u (night) plitka
+   uslubini taqdim etmaydi, shuning uchun kunduzgi plitkalarning o'zi CSS
+   filter bilan teskari-invert qilinadi — yorug' fon qorong'iga, yo'llar esa
+   och rangga aylanadi (ko'p loyihalarda ishlatiladigan mashhur "dark mode
+   hack"). Faqat xarita "yer" qatlamiga (ground-pane) qo'llanadi — versiyaga
+   bog'liq class prefiksidan qat'iy nazar ishlashi uchun `*=` bilan mos
+   keladi — belgilar/popup'lar teskari bo'lib qolmasligi uchun ularning
+   qatlamiga tegilmaydi. */
+#home-map [class*="ground-pane"] {
+  filter: invert(92%) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(1.15);
+}
+
 /* ── Qidiruv: skeleton/shimmer — kelayotgan buyurtma qanday ko'rinishini
    "soya" shaklida oldindan ko'rsatib, ustidan yorug'lik o'tib turadi
    (LinkedIn/Uber uslubidagi zamonaviy loading pattern). base.html'dagi
