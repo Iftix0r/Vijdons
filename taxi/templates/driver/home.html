@@ -991,15 +991,19 @@ document.addEventListener('visibilitychange', () => {
   let _homeMyMark = null;
   const _homePeerMarks = {};
 
-  // Haydovchi rasmi/harfi o'rniga xaritada mashina ikoni ko'rsatiladi — o'zi
-  // (sariq, #FFD600) va boshqa haydovchilar (yashil, #34C759) rangi bilan
-  // farqlanadi. Rasm/ism faqat bosilgandagi balonda (_homePeerBalloon) chiqadi.
+  // Haydovchi rasmi/harfi o'rniga xaritada tepadan ko'rinishdagi mashina
+  // siluetiga o'xshash belgi ko'rsatiladi (ikonka emas) — o'zi (sariq,
+  // #FFD600) va boshqa haydovchilar (yashil, #34C759) rangi bilan farqlanadi.
+  // Rasm/ism faqat bosilgandagi balonda (_homePeerBalloon) chiqadi.
   function _homeMarkerHtml(color) {
-    return `<div style="position:relative;text-align:center">
-      <div style="width:34px;height:34px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.35)">
-        <i class="fas fa-car-side" style="color:#1c1c1f;font-size:16px"></i>
-      </div>
-      <div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid ${color}"></div>
+    return `<div style="width:30px;height:30px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))">
+      <svg width="30" height="30" viewBox="0 0 30 30">
+        <rect x="7" y="3" width="16" height="24" rx="7" fill="${color}"/>
+        <rect x="9.5" y="7.5" width="11" height="6.5" rx="2" fill="#1c1c1f" opacity=".55"/>
+        <rect x="9.5" y="17" width="11" height="5.5" rx="2" fill="#1c1c1f" opacity=".35"/>
+        <circle cx="10.5" cy="4.5" r="1.6" fill="#1c1c1f" opacity=".4"/>
+        <circle cx="19.5" cy="4.5" r="1.6" fill="#1c1c1f" opacity=".4"/>
+      </svg>
     </div>`;
   }
 
@@ -1026,7 +1030,7 @@ document.addEventListener('visibilitychange', () => {
     if (!_homeMyMark) {
       _homeMyMark = new ymaps.Placemark([lat, lng], {}, {
         iconLayout: ymaps.templateLayoutFactory.createClass(_homeMarkerHtml('#FFD600')),
-        iconShape: { type: 'Circle', coordinates: [17, 17], radius: 19 },
+        iconShape: { type: 'Circle', coordinates: [15, 15], radius: 16 },
         zIndex: 200,
       });
       _homeMap.geoObjects.add(_homeMyMark);
@@ -1127,7 +1131,7 @@ document.addEventListener('visibilitychange', () => {
               balloonContentBody: _homePeerBalloon(p),
             }, {
               iconLayout: ymaps.templateLayoutFactory.createClass(_homeMarkerHtml('#34C759')),
-              iconShape: { type: 'Circle', coordinates: [17, 17], radius: 19 },
+              iconShape: { type: 'Circle', coordinates: [15, 15], radius: 16 },
             });
             _homeMap.geoObjects.add(mark);
             _homePeerMarks[p.id] = mark;
