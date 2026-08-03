@@ -142,6 +142,27 @@
     let _officeMap = null;
     let _officePM  = null;
 
+    // Ofis belgisi uchun alohida (haydovchi doira-avatarlaridan farqli)
+    // to'rtburchak, bino ikonkali belgi — Yandex tayyor preset ranglaridan
+    // ("indigo" kabi) foydalanish ba'zan noma'lum preset sifatida "?" belgisi
+    // bilan chizilib qolgani uchun, xavfsizroq bo'lgan maxsus iconLayout ishlatiladi.
+    function _officeMarkerLayout() {
+        return ymaps.templateLayoutFactory.createClass(
+            '<div style="position:relative;text-align:center">' +
+              '<div style="width:34px;height:34px;border-radius:10px;background:#4F46E5;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.35)">' +
+                '<i class="fas fa-building" style="color:#fff;font-size:15px"></i>' +
+              '</div>' +
+              '<div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid #4F46E5"></div>' +
+            '</div>'
+        );
+    }
+    function _newOfficePM(coords) {
+        return new ymaps.Placemark(coords, {}, {
+            iconLayout: _officeMarkerLayout(),
+            iconShape: { type: 'Circle', coordinates: [17, 17], radius: 19 },
+        });
+    }
+
     function _initOfficeMap() {
         if (!window.ymaps || _officeMap) return;
         ymaps.ready(function () {
@@ -158,14 +179,14 @@
             });
 
             if (hasSaved) {
-                _officePM = new ymaps.Placemark(center, {}, { preset: 'islands#indigoDotIcon' });
+                _officePM = _newOfficePM(center);
                 _officeMap.geoObjects.add(_officePM);
             }
 
             _officeMap.events.add('click', function (e) {
                 const coords = e.get('coords');
                 if (_officePM) _officeMap.geoObjects.remove(_officePM);
-                _officePM = new ymaps.Placemark(coords, {}, { preset: 'islands#indigoDotIcon' });
+                _officePM = _newOfficePM(coords);
                 _officeMap.geoObjects.add(_officePM);
                 document.getElementById('office_lat').value = coords[0];
                 document.getElementById('office_lng').value = coords[1];
