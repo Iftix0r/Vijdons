@@ -7,24 +7,18 @@
 <div class="ios-navbar sticky top-3 mx-4 z-20 px-4 pt-3 pb-3">
   <div class="flex items-center justify-between" style="gap:8px">
     <div class="flex items-start gap-2.5" style="min-width:0;flex:1">
-      <!-- Profile avatar — atrofida doim aylanuvchi chiziq (#avatar-search-ring):
-           rangi internet ulanish sifatini bildiradi (yashil/sariq/qizil),
-           buyurtma qidirilayotganda esa vaqtincha sariq bo'lib turadi. -->
-      <div class="relative flex-shrink-0" style="width:36px;height:36px">
-        <span id="avatar-search-ring" aria-hidden="true"
-              style="position:absolute;inset:-4px;border-radius:50%;border:2.5px solid transparent;border-top-color:#34C759;animation:avatar-ring-spin .9s linear infinite"></span>
-        <a href="{% url 'driver:profile' %}" onclick="Native.vibrate()" class="relative active:opacity-60 transition-opacity" style="z-index:1">
-          {% if driver.photo %}
-          <img src="{{ driver.photo.url }}" alt=""
-               class="w-9 h-9 rounded-full object-cover ring-2 ring-[#FFD600]">
-          {% else %}
-          <div class="w-9 h-9 rounded-full flex items-center justify-center"
-               style="background:{{ driver.full_name|avatar_gradient }};box-shadow:0 2px 8px rgba(0,0,0,.25)">
-            <span class="ios-caption font-bold text-white">{{ driver.full_name|first|upper }}</span>
-          </div>
-          {% endif %}
-        </a>
-      </div>
+      <!-- Profile avatar -->
+      <a href="{% url 'driver:profile' %}" onclick="Native.vibrate()" class="flex-shrink-0 active:opacity-60 transition-opacity">
+        {% if driver.photo %}
+        <img src="{{ driver.photo.url }}" alt=""
+             class="w-9 h-9 rounded-full object-cover ring-2 ring-[#FFD600]">
+        {% else %}
+        <div class="w-9 h-9 rounded-full flex items-center justify-center"
+             style="background:{{ driver.full_name|avatar_gradient }};box-shadow:0 2px 8px rgba(0,0,0,.25)">
+          <span class="ios-caption font-bold text-white">{{ driver.full_name|first|upper }}</span>
+        </div>
+        {% endif %}
+      </a>
       <div style="min-width:0;flex:1">
         <div class="ios-title font-semibold" style="color:var(--ios-label);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ driver.full_name }}</div>
       </div>
@@ -221,12 +215,6 @@
 <div class="relative px-4 py-3 space-y-3" id="orders-wrap" style="padding-bottom:100px"></div>
 
 <style>
-@keyframes avatar-ring-spin {
-  to { transform: rotate(360deg); }
-}
-@media (prefers-reduced-motion: reduce) {
-  #avatar-search-ring { animation: none; }
-}
 @keyframes pulse-dot {
   0%,100% { opacity:1; transform:scale(1); }
   50%      { opacity:.4; transform:scale(.7); }
@@ -332,14 +320,6 @@ let TODAY_TRIPS = {{ today_trips }};
 const OFFICE_LAT  = {{ tariff.office_lat|stringformat:'f'|default:'null' }};
 const OFFICE_LNG  = {{ tariff.office_lng|stringformat:'f'|default:'null' }};
 const OFFICE_NAME = "{{ tariff.office_name|default:'Ofis'|escapejs }}";
-
-// Internet ulanish sifati (navbar profil halqasi) — renderOrdersDOM() sahifa
-// yuklanishi bilan darhol chaqirilib _setMapSearchBadge() orqali shu
-// o'zgaruvchilarga murojaat qilgani uchun, ular ANIQ shu yerda (har qanday
-// dastlab ishga tushadigan koddan OLDIN) e'lon qilinishi SHART.
-const NET_RING_COLOR = { good: '#34C759', medium: '#FFD600', poor: '#FF3B30' };
-let _netQuality  = 'good';
-let _isSearching = false;
 
 let ORDERS = {{ orders_json|safe }};
 let _known = new Set(ORDERS.map(o => o.id));
@@ -487,11 +467,9 @@ function _updateNavBalance(newBal) {
 }
 
 async function loadOrders() {
-  if(!navigator.onLine) { _setNetQuality('poor'); return; }
-  const _netT0 = performance.now();
+  if(!navigator.onLine) return;
   try {
     const r = await fetch('{% url "driver:orders_json" %}', {cache:'no-store'});
-    _setNetQuality(_classifyLatencyMs(performance.now() - _netT0));
     const d = await r.json();
     if(!Array.isArray(d.new_ids)) return;
 
@@ -505,20 +483,12 @@ async function loadOrders() {
 
     const added = d.new_ids.filter(id => !_known.has(id));
     if(added.length && !_suppressModal) {
-      // "Genie" effekti uchun: qidirilmoqda holatini bildiruvchi profil
-      // rasmi atrofidagi halqa hali shu yerda ekan, uni renderOrdersDOM()
-      // haqiqiy karta bilan ALMASHTIRIB yubormasdan OLDIN pozitsiyasini
-      // saqlab qolamiz — modal aynan shu nuqtadan "tug'ilib chiqqandek"
-      // animatsiya qilinadi.
-      const _dot = document.getElementById('avatar-search-ring');
-      const _dotRect = _dot ? _dot.getBoundingClientRect() : null;
-
       _known = serverIds;
       renderOrdersDOM();
       Native.vibrate([60,30,60,30,120]);
       if(typeof FlutterNotify !== 'undefined') FlutterNotify.postMessage(String(added.length));
       const newOrder = ORDERS.find(o => o.id === added[0]) || null;
-      showNewOrderModal(added[0], newOrder, _dotRect);
+      showNewOrderModal(added[0], newOrder, null);
       return;
     }
 
@@ -561,49 +531,11 @@ async function loadOrders() {
                            _activeOrders.find(o => !_dismissedOrderIds.has(o.id));
       if (_sheetOrder) _ensureActiveSheet(_sheetOrder);
     }
-  } catch(_){ _setNetQuality('poor'); }
+  } catch(_){}
 }
 
-// "Buyurtma qidirilmoqda" holati endi alohida pill/matn sifatida emas —
-// navbardagi profil rasmi atrofidagi halqa (#avatar-search-ring) vaqtincha
-// sariqqa o'tishi bilan ko'rsatiladi (internet sifati ranglaridan ustunroq).
-// `text` parametri endi ishlatilmaydi, faqat eski chaqiruvlar bilan moslik
-// uchun saqlab qo'yilgan.
-function _setMapSearchBadge(visible) {
-  _isSearching = visible;
-  _updateAvatarRing();
-}
-
-// ── Internet ulanish sifati — navbardagi profil halqasi ─────────────────────
-// Halqa doim aylanadi; rangi ulanish sifatini bildiradi: yashil (tez),
-// sariq (o'rtacha), qizil (yomon/uzilgan). Alohida so'rov yubormaydi —
-// mavjud davriy loadOrders() so'rovining javob vaqtidan foydalanadi.
-// Buyurtma qidirilayotgan payt (_isSearching) ustunroq — halqa vaqtincha
-// sariq bo'lib turadi, tugagach joriy tarmoq sifati rangiga qaytadi.
-// Diqqat: `NET_RING_COLOR`/`_netQuality`/`_isSearching` o'zgaruvchilari bu
-// yerda EMAS, fayl boshida e'lon qilingan — chunki renderOrdersDOM() sahifa
-// yuklanishi bilan DARHOL chaqiriladi va _setMapSearchBadge() orqali
-// _isSearching'ga murojaat qiladi; agar `let` shu yerda (pastda) qolsa,
-// hali ishga tushmagan o'zgaruvchiga chaqiruv "ReferenceError: is not
-// initialized" (temporal dead zone) bilan butun skriptni to'xtatib qo'yardi
-// — aynan shu sabab bilan xarita HECH QACHON ishga tushmay, "GPS signali
-// kutilmoqda" abadiy osilib qolar edi.
-function _classifyLatencyMs(ms) {
-  if (ms < 800) return 'good';
-  if (ms < 2500) return 'medium';
-  return 'poor';
-}
-
-function _setNetQuality(q) {
-  _netQuality = q;
-  _updateAvatarRing();
-}
-
-function _updateAvatarRing() {
-  const ring = document.getElementById('avatar-search-ring');
-  if (!ring) return;
-  ring.style.borderTopColor = _isSearching ? '#FFD600' : NET_RING_COLOR[_netQuality];
-}
+// "Buyurtma qidirilmoqda" holati hozircha alohida ko'rsatilmaydi.
+function _setMapSearchBadge() {}
 
 function renderOrdersDOM() {
   const wrap = document.getElementById('orders-wrap');
