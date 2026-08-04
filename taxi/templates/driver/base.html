@@ -389,7 +389,7 @@ body { background: var(--ios-bg); color: var(--ios-label); }
 
     <a href="{% url 'driver:home' %}" onclick="Native.vibrate(); dismissAllSheets()"
        class="flex items-center justify-center px-3 py-2 min-h-[52px] min-w-[44px] transition-all active:opacity-60 relative">
-      <i class="fas fa-car-side text-[22px] {% if active_tab == 'home' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+      <i class="fas fa-car-side text-[26px] {% if active_tab == 'home' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
       {% if pending_orders_count > 0 %}
       <span class="ios-badge absolute top-0 right-1" style="font-size:9px;min-width:14px;height:14px">{{ pending_orders_count }}</span>
       {% endif %}
@@ -397,7 +397,7 @@ body { background: var(--ios-bg); color: var(--ios-label); }
 
     <a href="{% url 'driver:history' %}" onclick="Native.vibrate(); dismissAllSheets()"
        class="flex items-center justify-center px-3 py-2 min-h-[52px] min-w-[44px] transition-all active:opacity-60 relative">
-      <i class="fas fa-clock-rotate-left text-[22px] {% if active_tab == 'history' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+      <i class="fas fa-clock-rotate-left text-[26px] {% if active_tab == 'history' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
       {% if active_orders_count > 0 %}
       <span class="ios-badge absolute top-0 right-1" style="font-size:9px;min-width:14px;height:14px">{{ active_orders_count }}</span>
       {% endif %}
@@ -406,13 +406,13 @@ body { background: var(--ios-bg); color: var(--ios-label); }
     <!-- Yangi buyurtma — panel ustidan biroz ko'tarilgan, sariq accent tugma -->
     <a href="{% url 'driver:order_create' %}" onclick="Native.vibrate()"
        class="flex items-center justify-center active:opacity-70 transition-opacity flex-shrink-0"
-       style="width:52px;height:52px;border-radius:50%;background:#FFD600;box-shadow:0 4px 14px rgba(255,214,0,.5);transform:translateY(-14px);margin:0 2px">
-      <i class="fas fa-plus text-[20px]" style="color:#111"></i>
+       style="width:56px;height:56px;border-radius:50%;background:#FFD600;box-shadow:0 4px 14px rgba(255,214,0,.5);transform:translateY(-14px);margin:0 2px">
+      <i class="fas fa-plus text-[24px]" style="color:#111"></i>
     </a>
 
     <a href="{% url 'driver:chat' %}" onclick="Native.vibrate(); dismissAllSheets()"
        class="flex items-center justify-center px-3 py-2 min-h-[52px] min-w-[44px] transition-all active:opacity-60 relative">
-      <i class="fas fa-comment-dots text-[22px] {% if active_tab == 'chat' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+      <i class="fas fa-comment-dots text-[26px] {% if active_tab == 'chat' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
       {% if chat_unread > 0 %}
       <span class="ios-badge absolute top-0 right-1" style="font-size:9px;min-width:14px;height:14px">{{ chat_unread }}</span>
       {% endif %}
@@ -421,10 +421,10 @@ body { background: var(--ios-bg); color: var(--ios-label); }
     <a href="{% url 'driver:profile' %}" onclick="Native.vibrate(); dismissAllSheets()"
        class="flex items-center justify-center px-3 py-2 min-h-[52px] min-w-[44px] transition-all active:opacity-60 relative">
       {% if driver.photo %}
-      <img src="{{ driver.photo.url }}" alt="" class="w-7 h-7 rounded-full object-cover"
+      <img src="{{ driver.photo.url }}" alt="" class="w-8 h-8 rounded-full object-cover"
            style="{% if active_tab == 'profile' %}box-shadow:0 0 0 2px #FFD600{% else %}box-shadow:0 0 0 1.5px #8E8E93{% endif %}">
       {% else %}
-      <div class="w-7 h-7 rounded-full flex items-center justify-center"
+      <div class="w-8 h-8 rounded-full flex items-center justify-center"
            style="background:{{ driver.full_name|avatar_gradient }};{% if active_tab == 'profile' %}box-shadow:0 0 0 2px #FFD600{% endif %}">
         <span style="font-size:11px;font-weight:800;color:#fff">{{ driver.full_name|first|upper }}</span>
       </div>
