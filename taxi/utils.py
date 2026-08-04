@@ -1,4 +1,5 @@
 import math
+import re
 import urllib.request
 import urllib.parse
 import urllib.error
@@ -1755,6 +1756,21 @@ def start_dispatch_timeout(order, driver, timeout_seconds):
     ).start()
 
 
+# O'zbekcha matn faqat lotin (o', g' kabi maxsus harflar bilan) yoki kirill
+# alifbosida bo'ladi — Whisper ba'zan boshqa tilga (arabcha/forscha, xitoycha
+# va h.k.) chalkashib ketsa, natija shu skriptlardan birida chiqadi.
+_NON_UZBEK_SCRIPT_RE = re.compile(
+    '['
+    '؀-ۿݐ-ݿ'  # arabcha / forscha
+    '一-鿿぀-ヿ'  # xitoycha / yaponcha
+    '가-힯'               # koreyscha
+    'ऀ-ॿ'               # hindcha (devanagari)
+    '֐-׿'               # ibroniycha
+    '฀-๿'               # tailandcha
+    ']'
+)
+
+
 def transcribe_audio_uz(audio_bytes, filename='speech.webm', content_type='audio/webm'):
     """Ovoz yozuvini (masalan buyurtma oynasidagi mikrofon tugmasi orqali
     yozilgan manzil) OpenAI Whisper orqali o'zbekcha matnga o'giradi.
@@ -1770,12 +1786,18 @@ def transcribe_audio_uz(audio_bytes, filename='speech.webm', content_type='audio
     parts = []
     # Diqqat: OpenAI transcriptions endpointi 'uz' (o'zbekcha) tilini
     # 'language' parametrida rasman qo'llab-quvvatlamaydi (xato qaytaradi) —
-    # shu sabab tilni ko'rsatmaymiz, Whisper o'zi avtomatik aniqlaydi
-    # (baribir o'zbekchani taniy oladi, faqat hint bo'lmaydi).
-    parts.append(f'--{boundary}'.encode())
-    parts.append(b'Content-Disposition: form-data; name="model"')
-    parts.append(b'')
-    parts.append(b'whisper-1')
+    # shu sabab tilni ko'rsatmaymiz. O'rniga 'prompt' orqali o'zbekcha lotin
+    # yozuvidagi manzil namunasi beramiz — Whisper shu uslub/tilni davom
+    # ettirishga moyil bo'ladi, aks holda ba'zan arabcha/forscha kabi
+    # aloqasiz tillarga chalkashib ketishi mumkin edi.
+    for name, value in (
+        ('model',  'whisper-1'),
+        ('prompt', "Toshkent shahri, Chilonzor tumani, Bunyodkor ko'chasi, 12-uy."),
+    ):
+        parts.append(f'--{boundary}'.encode())
+        parts.append(f'Content-Disposition: form-data; name="{name}"'.encode())
+        parts.append(b'')
+        parts.append(value.encode())
     parts.append(f'--{boundary}'.encode())
     parts.append(f'Content-Disposition: form-data; name="file"; filename="{filename}"'.encode())
     parts.append(f'Content-Type: {content_type}'.encode())
@@ -1800,6 +1822,8 @@ def transcribe_audio_uz(audio_bytes, filename='speech.webm', content_type='audio
         text = (data.get('text') or '').strip()
         if not text:
             return None, "Ovozda matn topilmadi"
+        if _NON_UZBEK_SCRIPT_RE.search(text):
+            return None, "Til noto'g'ri aniqlandi (o'zbekcha emas) — iltimos, yana bir bor aniqroq gapiring"
         return text, None
     except urllib.error.HTTPError as e:
         try:
