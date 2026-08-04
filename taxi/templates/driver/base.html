@@ -366,46 +366,57 @@ body { background: var(--ios-bg); color: var(--ios-label); }
   {% block content %}{% endblock %}
 </main>
 
-<!-- Pastki tab-bar o'rniga: xarita/ekranni to'liq bo'shatish uchun,
-     navigatsiya endi yuqori-chapdagi hamburger tugmasi + ochiladigan menyu
-     orqali (Yandex Navigator'dagi kabi). "Efir" (ovozli aloqa) — bosib
-     turib gapirish kerak bo'lgani uchun alohida suzib turuvchi tugma
-     sifatida qoladi (menyu ichiga sig'maydi, chunki bosish-ushlab turish
-     harakati kerak). -->
+<!-- Pastki tab-bar + Asosiy sahifaning yuqoridagi qatori (profil/balans/
+     +buyurtma/chat) — hammasi bitta pastki hamburger tugmasi ichiga
+     jamlandi, ekran (xarita) to'liq bo'shab qoldi. -->
 <button onclick="openDriverMenu()" class="flex items-center justify-center active:opacity-60 transition-opacity relative"
-   style="position:fixed;z-index:150;top:calc(env(safe-area-inset-top,47px) + 10px);left:16px;width:48px;height:48px;border-radius:50%;background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
-  <i class="fas fa-bars" style="color:#FFD600;font-size:19px"></i>
+   style="position:fixed;z-index:150;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,16px) + 14px);width:56px;height:56px;border-radius:50%;background:rgba(20,20,22,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 16px rgba(0,0,0,.35)">
+  <i class="fas fa-bars" style="color:#FFD600;font-size:21px"></i>
   {% if pending_orders_count > 0 or active_orders_count > 0 or chat_unread > 0 %}
   <span class="ios-badge absolute -top-1 -right-1" style="font-size:10px;min-width:16px;height:16px">{{ pending_orders_count|add:active_orders_count|add:chat_unread }}</span>
   {% endif %}
 </button>
 
-<!-- Jonli ovozli aloqa ("efir") — ratsiya uslubi: tinglash doim yoniq
-     (avtomatik ulanadi), tugmani BOSIB TURGANDA ovoz yoziladi, qo'yib
-     yuborilganda avtomatik yuboriladi (JS pastda) -->
-<button id="voice-btn" type="button"
-   onmousedown="_voiceStartTalk()" onmouseup="_voiceStopTalk()" onmouseleave="_voiceStopTalk()"
-   ontouchstart="_voiceStartTalk(event)" ontouchend="_voiceStopTalk(event)"
-   class="flex items-center justify-center active:opacity-60 transition-opacity relative border-0 cursor-pointer"
-   style="position:fixed;z-index:150;top:calc(env(safe-area-inset-top,47px) + 68px);left:16px;width:48px;height:48px;border-radius:50%;background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);-webkit-tap-highlight-color:transparent;user-select:none">
-  <i id="voice-btn-icon" class="fas fa-microphone" style="color:#8E8E93;font-size:19px"></i>
-  <span id="voice-participants-badge" class="ios-badge absolute -top-1 -right-1 hidden" style="font-size:10px;min-width:16px;height:16px"></span>
-</button>
-
-<!-- Hamburger menyu — sahifalar ro'yxati (avval tab-bar'da bo'lgan) -->
-<div id="driver-menu-modal" class="fixed inset-0 z-[350] hidden flex items-center justify-center"
+<!-- Hamburger menyu — pastki navbar (Asosiy/Efir/Tarix) + Asosiy sahifaning
+     yuqoridagi qatori (profil/balans/+buyurtma/chat) shu yerga jamlandi. -->
+<div id="driver-menu-modal" class="fixed inset-0 z-[350] hidden flex items-end justify-center"
      onclick="if(event.target===this) closeDriverMenu()"
      style="background:rgba(0,0,0,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)">
-  <div class="ios-alert mx-4 w-full max-w-sm anim-scale" style="border-radius:24px;overflow:hidden">
-    <div class="px-5 pt-5 pb-3">
-      <div class="ios-title font-bold" style="color:var(--ios-label)">Menyu</div>
-    </div>
-    <div class="px-3 pb-3 space-y-1">
+  <div class="ios-alert w-full max-w-sm anim-scale" style="border-radius:24px 24px 0 0;overflow:hidden;margin-bottom:0">
+
+    <!-- Profil + balans -->
+    <a href="{% url 'driver:profile' %}" onclick="Native.vibrate(); dismissAllSheets()"
+       class="flex items-center gap-3 px-5 pt-5 pb-4 active:opacity-70 transition-opacity">
+      {% if driver.photo %}
+      <img src="{{ driver.photo.url }}" alt="" class="w-11 h-11 rounded-full object-cover ring-2 ring-[#FFD600] flex-shrink-0">
+      {% else %}
+      <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+           style="background:{{ driver.full_name|avatar_gradient }}">
+        <span class="ios-subhead font-bold text-white">{{ driver.full_name|first|upper }}</span>
+      </div>
+      {% endif %}
+      <div style="min-width:0;flex:1">
+        <div class="ios-subhead font-semibold" style="color:var(--ios-label);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ driver.full_name }}</div>
+        <div class="ios-footnote font-bold {% if driver.balance < 0 %}text-[#FF3B30]{% else %}text-[#FFD600]{% endif %}">
+          <i class="fas fa-wallet text-[10px] mr-1"></i>{{ driver.balance|floatformat:0 }} so'm
+        </div>
+      </div>
+      <i class="fas fa-chevron-right" style="color:#8E8E93;font-size:14px"></i>
+    </a>
+
+    <div style="height:1px;background:var(--ios-sep);margin:0 5px"></div>
+
+    <div class="px-3 py-2 space-y-1">
       <a href="{% url 'driver:home' %}" onclick="Native.vibrate(); dismissAllSheets()"
          class="flex items-center gap-3 px-3 py-3 rounded-xl transition-colors" style="{% if active_tab == 'home' %}background:rgba(255,214,0,.12){% endif %}">
         <i class="fas fa-car-side text-[20px] {% if active_tab == 'home' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}" style="width:24px;text-align:center"></i>
         <span class="ios-subhead {% if active_tab == 'home' %}font-semibold{% endif %}" style="color:var(--ios-label)">Asosiy</span>
         {% if pending_orders_count > 0 %}<span class="ios-badge ml-auto">{{ pending_orders_count }}</span>{% endif %}
+      </a>
+      <a href="{% url 'driver:order_create' %}" onclick="Native.vibrate(); dismissAllSheets()"
+         class="flex items-center gap-3 px-3 py-3 rounded-xl transition-colors">
+        <i class="fas fa-plus text-[20px]" style="width:24px;text-align:center;color:#FFD600"></i>
+        <span class="ios-subhead" style="color:var(--ios-label)">Yangi buyurtma</span>
       </a>
       <a href="{% url 'driver:history' %}" onclick="Native.vibrate(); dismissAllSheets()"
          class="flex items-center gap-3 px-3 py-3 rounded-xl transition-colors" style="{% if active_tab == 'history' %}background:rgba(255,214,0,.12){% endif %}">
@@ -419,13 +430,20 @@ body { background: var(--ios-bg); color: var(--ios-label); }
         <span class="ios-subhead" style="color:var(--ios-label)">Chat</span>
         {% if chat_unread > 0 %}<span class="ios-badge ml-auto">{{ chat_unread }}</span>{% endif %}
       </a>
-      <a href="{% url 'driver:profile' %}" onclick="Native.vibrate(); dismissAllSheets()"
-         class="flex items-center gap-3 px-3 py-3 rounded-xl transition-colors">
-        <i class="fas fa-user text-[20px]" style="width:24px;text-align:center;color:#8E8E93"></i>
-        <span class="ios-subhead" style="color:var(--ios-label)">Profil</span>
-      </a>
+      <!-- Efir (ovozli aloqa) — ratsiya uslubi: shu qatorni BOSIB TURGANDA
+           ovoz yoziladi, qo'yib yuborilganda avtomatik yuboriladi. Menyu
+           ochiq turgan holda ham ishlaydi. -->
+      <div id="voice-btn"
+         onmousedown="_voiceStartTalk()" onmouseup="_voiceStopTalk()" onmouseleave="_voiceStopTalk()"
+         ontouchstart="_voiceStartTalk(event)" ontouchend="_voiceStopTalk(event)"
+         class="flex items-center gap-3 px-3 py-3 rounded-xl transition-colors cursor-pointer"
+         style="-webkit-tap-highlight-color:transparent;user-select:none">
+        <i id="voice-btn-icon" class="fas fa-microphone text-[20px]" style="width:24px;text-align:center;color:#8E8E93"></i>
+        <span class="ios-subhead" style="color:var(--ios-label)">Efir (bosib turib gapiring)</span>
+        <span id="voice-participants-badge" class="ios-badge ml-auto hidden"></span>
+      </div>
     </div>
-    <div class="px-5 pb-5 pt-2">
+    <div class="px-5 pb-5 pt-2" style="padding-bottom:calc(env(safe-area-inset-bottom,16px) + 8px)">
       <button onclick="closeDriverMenu()" style="width:100%;padding:13px;border-radius:14px;background:var(--ios-fill);color:var(--ios-label);font-size:15px;font-weight:600;border:none;cursor:pointer">
         Yopish
       </button>
