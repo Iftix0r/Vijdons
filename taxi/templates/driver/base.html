@@ -45,7 +45,7 @@ body { overscroll-behavior: none; -webkit-overflow-scrolling: touch; }
 /* ── Safe Areas ── */
 .safe-top    { height: env(safe-area-inset-top, 47px); }
 .safe-bottom { height: env(safe-area-inset-bottom, 34px); }
-.pb-safe     { padding-bottom: env(safe-area-inset-bottom, 34px); } /* pastki tab-bar olib tashlandi — endi qo'shimcha joy shart emas */
+.pb-safe     { padding-bottom: calc(env(safe-area-inset-bottom, 34px) + 83px); } /* pastki panel balandligi uchun joy */
 
 /* ── iOS Colors ── */
 :root {
@@ -380,82 +380,55 @@ body { background: var(--ios-bg); color: var(--ios-label); }
   <span id="voice-participants-badge" class="ios-badge absolute -top-1 -right-1 hidden" style="font-size:10px;min-width:16px;height:16px"></span>
 </button>
 
-<!-- Pastki tab-bar + Asosiy sahifaning yuqoridagi qatori (profil/balans/
-     +buyurtma/chat) — hammasi bitta pastki hamburger tugmasi ichiga
-     jamlandi, ekran (xarita) to'liq bo'shab qoldi. -->
-<button onclick="openDriverMenu()" class="flex items-center justify-center active:opacity-60 transition-opacity relative"
-   style="position:fixed;z-index:150;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,16px) + 14px);width:56px;height:56px;border-radius:50%;background:rgba(20,20,22,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 16px rgba(0,0,0,.35)">
-  <i class="fas fa-bars" style="color:#FFD600;font-size:21px"></i>
-  {% if pending_orders_count > 0 or active_orders_count > 0 or chat_unread > 0 %}
-  <span class="ios-badge absolute -top-1 -right-1" style="font-size:10px;min-width:16px;height:16px">{{ pending_orders_count|add:active_orders_count|add:chat_unread }}</span>
-  {% endif %}
-</button>
+<!-- Pastki panel — bo'limlar doim ko'rinib turadi (hamburger/bosish shart
+     emas), Instagram/Uber uslubidagi suzib turuvchi pill panel. "Yangi
+     buyurtma" markazda ko'tarilgan (raised) accent tugma sifatida ajralib
+     turadi. -->
+<div class="fixed left-4 right-4 z-[150]" style="bottom:calc(env(safe-area-inset-bottom,16px) + 10px)">
+  <div class="flex items-center justify-around px-1 py-1" style="border-radius:9999px;background:rgba(20,20,22,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 8px 28px rgba(0,0,0,.4)">
 
-<!-- Hamburger menyu — pastki navbar (Asosiy/Efir/Tarix) + Asosiy sahifaning
-     yuqoridagi qatori (profil/balans/+buyurtma/chat) shu yerga jamlandi. -->
-<div id="driver-menu-modal" class="fixed inset-0 z-[350] hidden flex items-end justify-center"
-     onclick="if(event.target===this) closeDriverMenu()"
-     style="background:rgba(0,0,0,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)">
-  <div class="ios-alert w-full max-w-sm anim-scale" style="border-radius:24px 24px 0 0;overflow:hidden;margin-bottom:0">
-
-    <!-- Profil + balans -->
-    <a href="{% url 'driver:profile' %}" onclick="Native.vibrate(); dismissAllSheets()"
-       class="flex items-center gap-3 px-5 pt-5 pb-4 active:opacity-70 transition-opacity">
-      {% if driver.photo %}
-      <img src="{{ driver.photo.url }}" alt="" class="w-11 h-11 rounded-full object-cover ring-2 ring-[#FFD600] flex-shrink-0">
-      {% else %}
-      <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-           style="background:{{ driver.full_name|avatar_gradient }}">
-        <span class="ios-subhead font-bold text-white">{{ driver.full_name|first|upper }}</span>
-      </div>
+    <a href="{% url 'driver:home' %}" onclick="Native.vibrate(); dismissAllSheets()"
+       class="flex flex-col items-center gap-[3px] px-3 py-2 min-h-[52px] justify-center transition-all active:opacity-60 relative">
+      <i class="fas fa-car-side text-[21px] {% if active_tab == 'home' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+      {% if pending_orders_count > 0 %}
+      <span class="ios-badge absolute top-0 right-1" style="font-size:9px;min-width:14px;height:14px">{{ pending_orders_count }}</span>
       {% endif %}
-      <div style="min-width:0;flex:1">
-        <div class="ios-subhead font-semibold" style="color:var(--ios-label);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ driver.full_name }}</div>
-        <div class="ios-footnote font-bold {% if driver.balance < 0 %}text-[#FF3B30]{% else %}text-[#FFD600]{% endif %}">
-          <i class="fas fa-wallet text-[10px] mr-1"></i>{{ driver.balance|floatformat:0 }} so'm
-        </div>
-      </div>
-      <i class="fas fa-chevron-right" style="color:#8E8E93;font-size:14px"></i>
+      <span class="ios-caption2 {% if active_tab == 'home' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Asosiy</span>
     </a>
 
-    <div style="height:1px;background:var(--ios-sep);margin:0 5px"></div>
+    <a href="{% url 'driver:history' %}" onclick="Native.vibrate(); dismissAllSheets()"
+       class="flex flex-col items-center gap-[3px] px-3 py-2 min-h-[52px] justify-center transition-all active:opacity-60 relative">
+      <i class="fas fa-clock-rotate-left text-[21px] {% if active_tab == 'history' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+      {% if active_orders_count > 0 %}
+      <span class="ios-badge absolute top-0 right-1" style="font-size:9px;min-width:14px;height:14px">{{ active_orders_count }}</span>
+      {% endif %}
+      <span class="ios-caption2 {% if active_tab == 'history' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Tarix</span>
+    </a>
 
-    <div class="px-3 py-2 space-y-1">
-      <a href="{% url 'driver:home' %}" onclick="Native.vibrate(); dismissAllSheets()"
-         class="flex items-center gap-3 px-3 py-3 rounded-xl transition-colors" style="{% if active_tab == 'home' %}background:rgba(255,214,0,.12){% endif %}">
-        <i class="fas fa-car-side text-[20px] {% if active_tab == 'home' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}" style="width:24px;text-align:center"></i>
-        <span class="ios-subhead {% if active_tab == 'home' %}font-semibold{% endif %}" style="color:var(--ios-label)">Asosiy</span>
-        {% if pending_orders_count > 0 %}<span class="ios-badge ml-auto">{{ pending_orders_count }}</span>{% endif %}
-      </a>
-      <a href="{% url 'driver:order_create' %}" onclick="Native.vibrate(); dismissAllSheets()"
-         class="flex items-center gap-3 px-3 py-3 rounded-xl transition-colors">
-        <i class="fas fa-plus text-[20px]" style="width:24px;text-align:center;color:#FFD600"></i>
-        <span class="ios-subhead" style="color:var(--ios-label)">Yangi buyurtma</span>
-      </a>
-      <a href="{% url 'driver:history' %}" onclick="Native.vibrate(); dismissAllSheets()"
-         class="flex items-center gap-3 px-3 py-3 rounded-xl transition-colors" style="{% if active_tab == 'history' %}background:rgba(255,214,0,.12){% endif %}">
-        <i class="fas fa-clock-rotate-left text-[20px] {% if active_tab == 'history' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}" style="width:24px;text-align:center"></i>
-        <span class="ios-subhead {% if active_tab == 'history' %}font-semibold{% endif %}" style="color:var(--ios-label)">Tarix</span>
-        {% if active_orders_count > 0 %}<span class="ios-badge ml-auto">{{ active_orders_count }}</span>{% endif %}
-      </a>
-      <a href="{% url 'driver:chat' %}" onclick="Native.vibrate(); dismissAllSheets()"
-         class="flex items-center gap-3 px-3 py-3 rounded-xl transition-colors">
-        <i class="fas fa-comment-dots text-[20px]" style="width:24px;text-align:center;color:#8E8E93"></i>
-        <span class="ios-subhead" style="color:var(--ios-label)">Chat</span>
-        {% if chat_unread > 0 %}<span class="ios-badge ml-auto">{{ chat_unread }}</span>{% endif %}
-      </a>
-    </div>
-    <div class="px-5 pb-5 pt-2" style="padding-bottom:calc(env(safe-area-inset-bottom,16px) + 8px)">
-      <button onclick="closeDriverMenu()" style="width:100%;padding:13px;border-radius:14px;background:var(--ios-fill);color:var(--ios-label);font-size:15px;font-weight:600;border:none;cursor:pointer">
-        Yopish
-      </button>
-    </div>
+    <!-- Yangi buyurtma — panel ustidan biroz ko'tarilgan, sariq accent tugma -->
+    <a href="{% url 'driver:order_create' %}" onclick="Native.vibrate()"
+       class="flex items-center justify-center active:opacity-70 transition-opacity flex-shrink-0"
+       style="width:52px;height:52px;border-radius:50%;background:#FFD600;box-shadow:0 4px 14px rgba(255,214,0,.5);transform:translateY(-14px);margin:0 2px">
+      <i class="fas fa-plus text-[20px]" style="color:#111"></i>
+    </a>
+
+    <a href="{% url 'driver:chat' %}" onclick="Native.vibrate(); dismissAllSheets()"
+       class="flex flex-col items-center gap-[3px] px-3 py-2 min-h-[52px] justify-center transition-all active:opacity-60 relative">
+      <i class="fas fa-comment-dots text-[21px] {% if active_tab == 'chat' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+      {% if chat_unread > 0 %}
+      <span class="ios-badge absolute top-0 right-1" style="font-size:9px;min-width:14px;height:14px">{{ chat_unread }}</span>
+      {% endif %}
+      <span class="ios-caption2 {% if active_tab == 'chat' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Chat</span>
+    </a>
+
+    <a href="{% url 'driver:profile' %}" onclick="Native.vibrate(); dismissAllSheets()"
+       class="flex flex-col items-center gap-[3px] px-3 py-2 min-h-[52px] justify-center transition-all active:opacity-60 relative">
+      <i class="fas fa-user text-[21px] {% if active_tab == 'profile' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+      <span class="ios-caption2 {% if active_tab == 'profile' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Profil</span>
+    </a>
+
   </div>
 </div>
-<script>
-function openDriverMenu() { try { Native.vibrate(); } catch(_) {} document.getElementById('driver-menu-modal').classList.remove('hidden'); }
-function closeDriverMenu() { document.getElementById('driver-menu-modal').classList.add('hidden'); }
-</script>
 
 
 <script>
