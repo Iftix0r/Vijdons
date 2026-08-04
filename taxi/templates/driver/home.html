@@ -1003,27 +1003,30 @@ document.addEventListener('visibilitychange', () => {
 // haydovchilar (yashil). Buyurtma sheet'idagi kichik xaritadan (_initSheetMap)
 // mustaqil — u faqat faol buyurtma bo'lganda, bu esa doim ko'rinadi.
 (function() {
-  // Asosiy jonli xarita — v3 (ymaps3) orqali ishlaydi: tungi uslub +
-  // 3D burchak (tilt) + GPS yo'nalishi bo'yicha aylanish (azimuth), Yandex
-  // Navigator'dagiga o'xshab. Eski 2.1 API bularni umuman qo'llamaydi, shu
-  // sabab agar v3 skripti biror sabab bilan ishlamasa (yuklanmagan/
-  // bloklangan bo'lsa), pastda avtomatik ravishda eski (tekis, tungi
-  // rejimsiz) 2.1 xaritaga qaytiladi — haydovchi hech qachon xaritasiz
-  // qolib ketmaydi.
+  // Asosiy jonli xarita — Mapbox GL JS orqali ishlaydi: tungi uslub + 3D
+  // burchak (pitch) + GPS yo'nalishi bo'yicha aylanish (bearing), Yandex
+  // Navigator'dagiga o'xshab. (Avval Yandex JS API v3 sinalgan edi, lekin bu
+  // hisobda u moderatsiya/tasdiqlash talab qilgani sabab Mapbox'ga
+  // o'tildi.) Eski Yandex 2.1 API bularni umuman qo'llamaydi, shu sabab
+  // agar Mapbox skripti biror sabab bilan ishlamasa (token yaroqsiz,
+  // yuklanmagan/bloklangan bo'lsa), pastda avtomatik ravishda eski (tekis,
+  // tungi rejimsiz) 2.1 xaritaga qaytiladi — haydovchi hech qachon
+  // xaritasiz qolib ketmaydi.
   //
-  // DIQQAT — v3'ga o'tishda soddalashtirilgan/tekshirilishi kerak joylar:
-  //  1) Aylanish yo'nalishi (azimuth ishorasi) faqat haqiqiy qurilmada
+  // DIQQAT — tekshirilishi kerak joy:
+  //  1) Aylanish yo'nalishi (bearing ishorasi) faqat haqiqiy qurilmada
   //     harakatlanib tekshirilishi kerak — agar xarita teskari aylansa,
-  //     _homeUpdateHeadingV3 dagi `heading` oldiga minus qo'ying.
-  //  2) v2.1'dagi "faqat O'zbekiston ichida" cheklov (restrictMapArea) v3'da
-  //     amalga oshirilmagan — bu shunchaki qulaylik edi, funksional emas.
-  //  3) Xarita endi haydovchi joylashuvi kelgan sayin AVTOMATIK markazlanadi
+  //     _homeUpdateHeadingMapbox dagi `heading` oldiga minus qo'ying.
+  //  2) Xarita haydovchi joylashuvi kelgan sayin AVTOMATIK markazlanadi
   //     (doimiy "kuzatish" rejimi) — qo'lda surilganda vaqtincha o'chirish
   //     logikasi yo'q (soddalik uchun qasddan qoldirilgan).
   const TASHKENT_LAT = 41.311081, TASHKENT_LNG = 69.240562;
-  const NAV_TILT = 55 * Math.PI / 180; // "haydash" holatidagi doimiy 3D burchak
+  const NAV_PITCH = 55; // "haydash" holatidagi doimiy 3D burchak (daraja)
+  // O'zbekiston chegarasi — Mapbox [[g'arb,janub],[sharq,shimol]] tartibida
+  // kutadi, UZ_BOUNDS (yuqorida, v2.1 uchun) esa [lat,lng] tartibida.
+  const MAPBOX_UZ_BOUNDS = [[UZ_BOUNDS[0][1], UZ_BOUNDS[0][0]], [UZ_BOUNDS[1][1], UZ_BOUNDS[1][0]]];
 
-  let _homeMap = null, _homeMyMark = null, _homeMode = null; // mode: 'v3' | 'v2'
+  let _homeMap = null, _homeMyMark = null, _homeMode = null; // mode: 'mapbox' | 'v2'
   const _homePeerMarks = {};
   let _lastLat = null, _lastLng = null;
 
@@ -1094,22 +1097,46 @@ document.addEventListener('visibilitychange', () => {
     card._t = setTimeout(() => card.remove(), 6000);
   }
 
-  // ══════════════════ v3 — asosiy yo'l (tungi rejim + 3D + aylanish) ══════════════════
-  function _initHomeMapV3(lat, lng, placeholder) {
-    ymaps3.ready.then(() => {
-      if (_homeMap || !document.getElementById('home-map')) return;
-      const { YMap, YMapDefaultSchemeLayer, YMapDefaultFeaturesLayer, YMapMarker } = ymaps3;
-      _homeMap = new YMap(document.getElementById('home-map'), {
-        location: { center: [lng, lat], zoom: 15 },
-        camera: { tilt: NAV_TILT, azimuth: 0 },
+  // ══════════════════ Mapbox — asosiy yo'l (tungi rejim + 3D + aylanish) ══════════════════
+  function _initHomeMapMapbox(lat, lng, placeholder) {
+    if (typeof mapboxgl === 'undefined') {
+      _mapDebugBadge('Mapbox skript yuklanmadi (window.mapboxgl yo\'q)');
+      _initHomeMapV2(lat, lng, placeholder);
+      return;
+    }
+    try {
+      mapboxgl.accessToken = MAPBOX_TOKEN;
+      _homeMap = new mapboxgl.Map({
+        container: 'home-map',
+        style: 'mapbox://styles/mapbox/dark-v11',
+        center: [lng, lat],
+        zoom: 15,
+        pitch: NAV_PITCH,
+        bearing: 0,
+        minZoom: MIN_ZOOM,
+        maxBounds: MAPBOX_UZ_BOUNDS,
+        attributionControl: false,
       });
-      _homeMode = 'v3';
+      _homeMode = 'mapbox';
       window._homeMap = _homeMap;
-      _homeMap.addChild(new YMapDefaultSchemeLayer({ theme: 'dark' }));
-      _homeMap.addChild(new YMapDefaultFeaturesLayer());
+
+      // Token yaroqsiz/tarmoq xatosi bo'lsa — xarita hali "muvaffaqiyatli
+      // yaratilgan" holatda qoladi (konstruktor o'zi xato tashlamaydi),
+      // haqiqiy xato shu 'error' hodisasida keladi. Faqat hali hech narsa
+      // muvaffaqiyatli ishlamagan bo'lsa (_homeMyMark yo'q) zaxiraga o'tamiz —
+      // aks holda allaqachon ishlab turgan xaritani keyingi tasodifiy
+      // (masalan vaqtinchalik tarmoq) xato bilan buzib qo'ymaymiz.
+      _homeMap.on('error', (e) => {
+        if (_homeMyMark) return;
+        console.error('[Mapbox xarita xatosi]', e && e.error);
+        _mapDebugBadge('Mapbox xato: ' + (e && e.error && (e.error.message || String(e.error))));
+        try { _homeMap.remove(); } catch (_) {}
+        _homeMap = null; _homeMode = null;
+        _initHomeMapV2(lat, lng, placeholder);
+      });
 
       if (OFFICE_LAT !== null && OFFICE_LNG !== null) {
-        _homeMap.addChild(new YMapMarker({ coordinates: [OFFICE_LNG, OFFICE_LAT] }, _officeEl()));
+        new mapboxgl.Marker({ element: _officeEl() }).setLngLat([OFFICE_LNG, OFFICE_LAT]).addTo(_homeMap);
       }
 
       const hint = document.getElementById('home-map-hint');
@@ -1119,67 +1146,60 @@ document.addEventListener('visibilitychange', () => {
         if (hint) hint.style.display = 'none';
         _homeUpdateMine(lat, lng);
       }
-    }).catch((err) => {
-      // TASHXIS: v3 nega ishlamayotgani ekranda ham ko'rinsin (vaqtinchalik —
-      // sabab aniqlangach olib tashlanadi). Sabab topilgach shu belgi orqali
-      // xabar bering.
-      console.error('[v3 xarita xatosi]', err);
-      _v3DebugBadge('v3 xato: ' + (err && (err.message || err.name || String(err))));
-      _initHomeMapV2(lat, lng, placeholder); // v3 muvaffaqiyatsiz — eski xaritaga qaytamiz
-    });
+    } catch (err) {
+      console.error('[Mapbox xarita xatosi]', err);
+      _mapDebugBadge('Mapbox xato: ' + (err && (err.message || err.name || String(err))));
+      _initHomeMapV2(lat, lng, placeholder);
+    }
   }
 
-  function _v3DebugBadge(text) {
-    let b = document.getElementById('v3-debug-badge');
+  function _mapDebugBadge(text) {
+    let b = document.getElementById('map-debug-badge');
     if (!b) {
       b = document.createElement('div');
-      b.id = 'v3-debug-badge';
+      b.id = 'map-debug-badge';
       b.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:999;background:#dc2626;color:#fff;font-size:10px;line-height:1.4;padding:6px 9px;border-radius:8px;max-width:88vw;word-break:break-word;font-family:monospace';
       document.body.appendChild(b);
     }
     b.textContent = text;
   }
 
-  function _homeUpdateMineV3(lat, lng) {
-    const { YMapMarker } = ymaps3;
+  function _homeUpdateMineMapbox(lat, lng) {
     if (!_homeMyMark) {
-      _homeMyMark = new YMapMarker({ coordinates: [lng, lat], zIndex: 200 }, _navArrowEl());
-      _homeMap.addChild(_homeMyMark);
+      _homeMyMark = new mapboxgl.Marker({ element: _navArrowEl() }).setLngLat([lng, lat]).addTo(_homeMap);
     } else {
-      _homeMyMark.update({ coordinates: [lng, lat] });
+      _homeMyMark.setLngLat([lng, lat]);
     }
-    _homeMap.update({ location: { center: [lng, lat], duration: 400 } });
+    _homeMap.easeTo({ center: [lng, lat], duration: 400 });
   }
 
   // GPS 'heading' (0-360°, shimoldan soat yo'nalishida) kelganda xaritani
   // shu tomonga aylantiramiz — Navigator uslubi: haydash yo'nalishi doim
   // ekranning yuqorisida bo'ladi.
-  function _homeUpdateHeadingV3(heading) {
+  function _homeUpdateHeadingMapbox(heading) {
     if (heading === null || heading === undefined || isNaN(heading) || !_homeMap) return;
-    _homeMap.update({ camera: { azimuth: heading * Math.PI / 180, tilt: NAV_TILT, duration: 500 } });
+    _homeMap.easeTo({ bearing: heading, pitch: NAV_PITCH, duration: 500 });
   }
 
-  function _homeRefreshPeersV3(list) {
-    const { YMapMarker } = ymaps3;
+  function _homeRefreshPeersMapbox(list) {
     const seen = {};
     list.forEach(p => {
       seen[p.id] = true;
       const coords = [p.longitude, p.latitude];
       if (_homePeerMarks[p.id]) {
-        _homePeerMarks[p.id].marker.update({ coordinates: coords });
+        _homePeerMarks[p.id].marker.setLngLat(coords);
         _homePeerMarks[p.id].data = p;
       } else {
         const el = _markerEl('#34C759');
         el.style.cursor = 'pointer';
         el.onclick = () => _showPeerCard(_homePeerMarks[p.id].data);
-        const marker = new YMapMarker({ coordinates: coords }, el);
-        _homeMap.addChild(marker);
+        const marker = new mapboxgl.Marker({ element: el }).setLngLat(coords).addTo(_homeMap);
         _homePeerMarks[p.id] = { marker, data: p };
       }
     });
     Object.keys(_homePeerMarks).forEach(id => {
       if (!seen[id]) {
-        _homeMap.removeChild(_homePeerMarks[id].marker);
+        _homePeerMarks[id].marker.remove();
         delete _homePeerMarks[id];
       }
     });
@@ -1257,26 +1277,17 @@ document.addEventListener('visibilitychange', () => {
     });
   }
 
-  // ══════════════════ Umumiy — v3/v2'dan mustaqil chaqiriladi ══════════════════
+  // ══════════════════ Umumiy — Mapbox/v2'dan mustaqil chaqiriladi ══════════════════
   function _homeEnsureMap(lat, lng, placeholder) {
     if (_homeMap) return;
     _lastLat = lat; _lastLng = lng;
-    if (typeof ymaps3 !== 'undefined') {
-      _initHomeMapV3(lat, lng, placeholder);
-    } else {
-      // TASHXIS: v3 SKRIPTINING O'ZI umuman yuklanmagan (network/CSP/404) —
-      // bu holda _initHomeMapV3 hech qachon chaqirilmaydi, .catch() ham
-      // ishlamaydi, shu sabab bu yerda alohida belgilaymiz.
-      console.error('[v3 xarita xatosi] ymaps3 global obyekt topilmadi — skript yuklanmagan');
-      _v3DebugBadge("v3 skript yuklanmadi (window.ymaps3 yo'q)");
-      _initHomeMapV2(lat, lng, placeholder);
-    }
+    _initHomeMapMapbox(lat, lng, placeholder); // ichida o'zi Mapbox ishlamasa 2.1'ga qaytaradi
   }
 
   function _homeUpdateMine(lat, lng) {
     if (!_homeMap) { _homeEnsureMap(lat, lng); return; }
     _lastLat = lat; _lastLng = lng;
-    if (_homeMode === 'v3') _homeUpdateMineV3(lat, lng); else _homeUpdateMineV2(lat, lng);
+    if (_homeMode === 'mapbox') _homeUpdateMineMapbox(lat, lng); else _homeUpdateMineV2(lat, lng);
   }
 
   // Boshqa (navbatdagi) haydovchilarni ~8s da bir yangilaymiz
@@ -1286,7 +1297,7 @@ document.addEventListener('visibilitychange', () => {
       .then(r => r.json())
       .then(d => {
         const list = d.drivers || [];
-        if (_homeMode === 'v3') _homeRefreshPeersV3(list); else _homeRefreshPeersV2(list);
+        if (_homeMode === 'mapbox') _homeRefreshPeersMapbox(list); else _homeRefreshPeersV2(list);
       })
       .catch(() => {});
   }

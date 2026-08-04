@@ -19,14 +19,17 @@
 document.documentElement.classList.add('dark');
 </script>
 <script src="https://api-maps.yandex.ru/2.1/?apikey=469e8d29-be0b-42da-9bd4-ed515dbdb741&lang=uz_UZ" type="text/javascript"></script>
-<!-- Asosiy jonli xarita (home-map) uchun yangi v3 API — 3D burchak (tilt) va
-     yo'nalish bo'yicha aylanish (azimuth/bearing) FAQAT shu versiyada bor,
-     2.1'da umuman yo'q. 2.1 skripti boshqa xaritalar (buyurtma sheet'i,
-     operator paneli) uchun hamon kerak, shuning uchun ikkalasi ham parallel
-     yuklanadi — Yandex ularni alohida global nom (`ymaps` / `ymaps3`) bilan
-     ekspor qiladi, ziddiyat yo'q. Agar v3 skripti biror sabab bilan
-     yuklanmasa/ishlamasa, home.html eski (2.1) xaritaga qaytadi. -->
-<script src="https://api-maps.yandex.ru/v3/?apikey=da4dc2be-e520-4911-9c71-0f515249713c&lang=uz_UZ" type="text/javascript"></script>
+<!-- Asosiy jonli xarita (home-map) uchun Mapbox GL JS — 3D burchak (pitch) va
+     yo'nalish bo'yicha aylanish (bearing), tungi uslub shu orqali ishlaydi.
+     Yandex v3 (JS API 3.0) bu loyihaning hisobida moderatsiya/tasdiqlash
+     talab qilgani sabab Mapbox'ga o'tildi — Mapbox tokeni darhol ishlaydi.
+     Yandex 2.1 skripti boshqa xaritalar (buyurtma sheet'i, operator paneli)
+     uchun hamon kerak — ikkalasi ziddiyatsiz parallel yuklanadi. Agar Mapbox
+     biror sabab bilan yuklanmasa/ishlamasa, home.html eski (2.1, tekis)
+     Yandex xaritasiga avtomatik qaytadi. -->
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.js"></script>
+<script>const MAPBOX_TOKEN = 'pk.eyJ1IjoiaWZ0aXhvciIsImEiOiJjbXNlcTg1ZngwMnp5MnlzYXgyamRpNGNpIn0.1hwpJddRwqbP55xrBhW28w';</script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 <style>
 /* ── iOS System Font ── */
