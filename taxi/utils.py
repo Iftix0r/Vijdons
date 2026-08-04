@@ -1768,11 +1768,14 @@ def transcribe_audio_uz(audio_bytes, filename='speech.webm', content_type='audio
 
     boundary = uuid.uuid4().hex
     parts = []
-    for name, value in (('model', 'whisper-1'), ('language', 'uz')):
-        parts.append(f'--{boundary}'.encode())
-        parts.append(f'Content-Disposition: form-data; name="{name}"'.encode())
-        parts.append(b'')
-        parts.append(value.encode())
+    # Diqqat: OpenAI transcriptions endpointi 'uz' (o'zbekcha) tilini
+    # 'language' parametrida rasman qo'llab-quvvatlamaydi (xato qaytaradi) —
+    # shu sabab tilni ko'rsatmaymiz, Whisper o'zi avtomatik aniqlaydi
+    # (baribir o'zbekchani taniy oladi, faqat hint bo'lmaydi).
+    parts.append(f'--{boundary}'.encode())
+    parts.append(b'Content-Disposition: form-data; name="model"')
+    parts.append(b'')
+    parts.append(b'whisper-1')
     parts.append(f'--{boundary}'.encode())
     parts.append(f'Content-Disposition: form-data; name="file"; filename="{filename}"'.encode())
     parts.append(f'Content-Type: {content_type}'.encode())
