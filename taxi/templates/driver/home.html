@@ -983,7 +983,9 @@ document.addEventListener('visibilitychange', () => {
   // bilan farqlanadi.
   function _markerEl(color) {
     const el = document.createElement('div');
-    el.style.cssText = `width:40px;height:40px;border-radius:50%;background:#fff;border:2.5px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:0 3px 6px rgba(0,0,0,.4)`;
+    // z-index — o'zining belgisi (_navArrowEl, z-index:10) doim tepada
+    // ko'rinishi uchun, boshqa haydovchilar belgisi pastroqda turadi.
+    el.style.cssText = `width:40px;height:40px;border-radius:50%;background:#fff;border:2.5px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:0 3px 6px rgba(0,0,0,.4);z-index:1;position:relative`;
     el.innerHTML = '<span style="font-size:22px;line-height:1">🚖</span>';
     return el;
   }
@@ -994,14 +996,16 @@ document.addEventListener('visibilitychange', () => {
   // Mapbox (aylanish qo'llab-quvvatlaydigan) yo'lda ishlatiladi.
   function _navArrowEl() {
     const el = document.createElement('div');
-    el.style.cssText = 'width:44px;height:44px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.5))';
+    // z-index — boshqa haydovchilar belgisi ustidan bosib qo'ymasligi uchun
+    // (o'zining belgisi doim tepada ko'rinishi kerak)
+    el.style.cssText = 'width:56px;height:56px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.5));z-index:10;position:relative';
     el.innerHTML = `
-      <svg width="44" height="44" viewBox="0 0 44 44">
-        <circle cx="22" cy="22" r="19" fill="#FFD600" opacity=".16">
-          <animate attributeName="r" values="13;21;13" dur="2s" repeatCount="indefinite"/>
+      <svg width="56" height="56" viewBox="0 0 56 56">
+        <circle cx="28" cy="28" r="24" fill="#FFD600" opacity=".16">
+          <animate attributeName="r" values="17;27;17" dur="2s" repeatCount="indefinite"/>
           <animate attributeName="opacity" values=".24;.04;.24" dur="2s" repeatCount="indefinite"/>
         </circle>
-        <path d="M22,6 L34,32 L22,25 L10,32 Z" fill="#FFD600" stroke="#1c1c1f" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M28,7 L42,36 L28,28 L14,36 Z" fill="#FFD600" stroke="#1c1c1f" stroke-width="3" stroke-linejoin="round"/>
       </svg>`;
     return el;
   }
