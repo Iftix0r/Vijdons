@@ -1119,9 +1119,25 @@ document.addEventListener('visibilitychange', () => {
         if (hint) hint.style.display = 'none';
         _homeUpdateMine(lat, lng);
       }
-    }).catch(() => {
+    }).catch((err) => {
+      // TASHXIS: v3 nega ishlamayotgani ekranda ham ko'rinsin (vaqtinchalik —
+      // sabab aniqlangach olib tashlanadi). Sabab topilgach shu belgi orqali
+      // xabar bering.
+      console.error('[v3 xarita xatosi]', err);
+      _v3DebugBadge('v3 xato: ' + (err && (err.message || err.name || String(err))));
       _initHomeMapV2(lat, lng, placeholder); // v3 muvaffaqiyatsiz — eski xaritaga qaytamiz
     });
+  }
+
+  function _v3DebugBadge(text) {
+    let b = document.getElementById('v3-debug-badge');
+    if (!b) {
+      b = document.createElement('div');
+      b.id = 'v3-debug-badge';
+      b.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:999;background:#dc2626;color:#fff;font-size:10px;line-height:1.4;padding:6px 9px;border-radius:8px;max-width:88vw;word-break:break-word;font-family:monospace';
+      document.body.appendChild(b);
+    }
+    b.textContent = text;
   }
 
   function _homeUpdateMineV3(lat, lng) {
@@ -1245,8 +1261,16 @@ document.addEventListener('visibilitychange', () => {
   function _homeEnsureMap(lat, lng, placeholder) {
     if (_homeMap) return;
     _lastLat = lat; _lastLng = lng;
-    if (typeof ymaps3 !== 'undefined') _initHomeMapV3(lat, lng, placeholder);
-    else _initHomeMapV2(lat, lng, placeholder);
+    if (typeof ymaps3 !== 'undefined') {
+      _initHomeMapV3(lat, lng, placeholder);
+    } else {
+      // TASHXIS: v3 SKRIPTINING O'ZI umuman yuklanmagan (network/CSP/404) —
+      // bu holda _initHomeMapV3 hech qachon chaqirilmaydi, .catch() ham
+      // ishlamaydi, shu sabab bu yerda alohida belgilaymiz.
+      console.error('[v3 xarita xatosi] ymaps3 global obyekt topilmadi — skript yuklanmagan');
+      _v3DebugBadge("v3 skript yuklanmadi (window.ymaps3 yo'q)");
+      _initHomeMapV2(lat, lng, placeholder);
+    }
   }
 
   function _homeUpdateMine(lat, lng) {
