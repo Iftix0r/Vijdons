@@ -138,6 +138,16 @@
 <div id="home-map-hint" class="flex items-center justify-center" style="position:fixed;inset:0;z-index:0;pointer-events:none">
   <span class="ios-caption2" style="color:rgba(255,255,255,.4)">GPS signal kutilmoqda…</span>
 </div>
+<!-- Yandex Navigator'dagi kabi +/- (yaqinlashtirish/uzoqlashtirish) tugmalari -->
+<div style="position:fixed;z-index:15;top:38%;transform:translateY(-50%);right:16px;width:48px;border-radius:16px;background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);overflow:hidden">
+  <button onclick="_homeMapZoom(1)" class="flex items-center justify-center active:opacity-60 transition-opacity" style="width:48px;height:48px">
+    <i class="fas fa-plus" style="color:#FFD600;font-size:16px"></i>
+  </button>
+  <div style="height:1px;background:rgba(255,255,255,.12);margin:0 10px"></div>
+  <button onclick="_homeMapZoom(-1)" class="flex items-center justify-center active:opacity-60 transition-opacity" style="width:48px;height:48px">
+    <i class="fas fa-minus" style="color:#FFD600;font-size:16px"></i>
+  </button>
+</div>
 <button onclick="_homeMapRecenter()"
   class="flex items-center justify-center active:opacity-60 transition-opacity"
   style="position:fixed;z-index:15;top:62%;transform:translateY(-50%);right:16px;width:52px;height:52px;border-radius:50%;background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
@@ -1349,6 +1359,17 @@ document.addEventListener('visibilitychange', () => {
     }
     if (!_homeMap) _homeEnsureMap(TASHKENT_LAT, TASHKENT_LNG, true);
   }, 6000);
+
+  // +/- tugmalari — bir bosishda 1 zoom darajasiga yaqinlashtiradi/uzoqlashtiradi
+  window._homeMapZoom = function(delta) {
+    try { Native.vibrate(); } catch(_) {}
+    if (!_homeMap) return;
+    if (_homeMode === 'mapbox') {
+      _homeMap.easeTo({ zoom: _homeMap.getZoom() + delta, duration: 250, essential: true });
+    } else {
+      _homeMap.setZoom(_homeMap.getZoom() + delta, { checkZoomRange: true, duration: 250 });
+    }
+  };
 
   // "Joylashuvga qaytish" tugmasi — o'z belgisi ustiga markazlashtiradi
   window._homeMapRecenter = function() {
