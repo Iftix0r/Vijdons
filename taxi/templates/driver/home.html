@@ -71,6 +71,17 @@
   display: none !important;
 }
 
+/* ── Tungi rejim: ilova doim qora fonda (base.html'da <html> ga doimiy
+   'dark' klassi qo'shiladi), lekin Yandex xarita qatlami (klassik 2.1 API,
+   haqiqiy "night theme" imkoniyati yo'q) standart yorug' uslubda chiqadi —
+   shu nomuvofiqlikni CSS filter bilan bartaraf qilamiz. Faqat "yer" (yo'l/fon)
+   qatlamiga qo'llanadi — geo-objects (belgi, marshrut chizig'i) qatlamiga
+   TEGMAYDI, aks holda ular ham teskari rangda chiqib ko'rinmay qolardi. ── */
+#home-map [class*="ground-pane"],
+#sheet-map [class*="ground-pane"] {
+  filter: invert(92%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
 /* ── Qidiruv: skeleton/shimmer — kelayotgan buyurtma qanday ko'rinishini
    "soya" shaklida oldindan ko'rsatib, ustidan yorug'lik o'tib turadi
    (LinkedIn/Uber uslubidagi zamonaviy loading pattern). base.html'dagi
