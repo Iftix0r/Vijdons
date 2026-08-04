@@ -1003,99 +1003,182 @@ document.addEventListener('visibilitychange', () => {
 // haydovchilar (yashil). Buyurtma sheet'idagi kichik xaritadan (_initSheetMap)
 // mustaqil — u faqat faol buyurtma bo'lganda, bu esa doim ko'rinadi.
 (function() {
-  let _homeMap = null;
-  let _homeMyMark = null;
+  // Asosiy jonli xarita — v3 (ymaps3) orqali ishlaydi: tungi uslub +
+  // 3D burchak (tilt) + GPS yo'nalishi bo'yicha aylanish (azimuth), Yandex
+  // Navigator'dagiga o'xshab. Eski 2.1 API bularni umuman qo'llamaydi, shu
+  // sabab agar v3 skripti biror sabab bilan ishlamasa (yuklanmagan/
+  // bloklangan bo'lsa), pastda avtomatik ravishda eski (tekis, tungi
+  // rejimsiz) 2.1 xaritaga qaytiladi — haydovchi hech qachon xaritasiz
+  // qolib ketmaydi.
+  //
+  // DIQQAT — v3'ga o'tishda soddalashtirilgan/tekshirilishi kerak joylar:
+  //  1) Aylanish yo'nalishi (azimuth ishorasi) faqat haqiqiy qurilmada
+  //     harakatlanib tekshirilishi kerak — agar xarita teskari aylansa,
+  //     _homeUpdateHeadingV3 dagi `heading` oldiga minus qo'ying.
+  //  2) v2.1'dagi "faqat O'zbekiston ichida" cheklov (restrictMapArea) v3'da
+  //     amalga oshirilmagan — bu shunchaki qulaylik edi, funksional emas.
+  //  3) Xarita endi haydovchi joylashuvi kelgan sayin AVTOMATIK markazlanadi
+  //     (doimiy "kuzatish" rejimi) — qo'lda surilganda vaqtincha o'chirish
+  //     logikasi yo'q (soddalik uchun qasddan qoldirilgan).
+  const TASHKENT_LAT = 41.311081, TASHKENT_LNG = 69.240562;
+  const NAV_TILT = 55 * Math.PI / 180; // "haydash" holatidagi doimiy 3D burchak
+
+  let _homeMap = null, _homeMyMark = null, _homeMode = null; // mode: 'v3' | 'v2'
   const _homePeerMarks = {};
+  let _lastLat = null, _lastLng = null;
 
   // Haydovchi rasmi/harfi o'rniga taksi emoji (🚖) ko'rsatiladi — bu haqiqiy
-  // mashinaga o'xshagan tayyor grafika, qo'lda chizilgan siluetdan farqli
-  // o'laroq har bir qurilmada chiroyli va tanish ko'rinadi. O'zi (sariq
-  // chegara, #FFD600) va boshqa haydovchilar (yashil chegara, #34C759)
-  // atrofidagi halqa rangi bilan farqlanadi. Rasm/ism faqat bosilgandagi
-  // balonda (_homePeerBalloon) chiqadi.
-  function _homeMarkerHtml(color) {
-    return `<div style="width:40px;height:40px;border-radius:50%;background:#fff;border:2.5px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:0 3px 6px rgba(0,0,0,.4)">
-      <span style="font-size:22px;line-height:1">🚖</span>
-    </div>`;
+  // mashinaga o'xshagan tayyor grafika. O'zi (sariq chegara, #FFD600) va
+  // boshqa haydovchilar (yashil chegara, #34C759) atrofidagi halqa rangi
+  // bilan farqlanadi.
+  function _markerEl(color) {
+    const el = document.createElement('div');
+    el.style.cssText = `width:40px;height:40px;border-radius:50%;background:#fff;border:2.5px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:0 3px 6px rgba(0,0,0,.4)`;
+    el.innerHTML = '<span style="font-size:22px;line-height:1">🚖</span>';
+    return el;
   }
-
-  // Bosilganda chiqadigan balloon — haydovchi rasmi, mashina, safarlar soni va darajasi
-  function _homePeerBalloon(p) {
+  function _officeEl() {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:relative;text-align:center';
+    el.innerHTML =
+      '<div style="width:34px;height:34px;border-radius:10px;background:#4F46E5;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.35)">' +
+        '<i class="fas fa-building" style="color:#fff;font-size:15px"></i>' +
+      '</div>' +
+      '<div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid #4F46E5"></div>';
+    return el;
+  }
+  // Haydovchi rasmi, mashina, safarlar soni va darajasi — v2'da balonda,
+  // v3'da bosilganda pastdan chiqadigan kartada ishlatiladi (_showPeerCard).
+  function _peerCardHtml(p) {
     const avatar = p.photo_url
       ? `<img src="${p.photo_url}" style="width:48px;height:48px;border-radius:12px;object-fit:cover;float:left;margin:0 10px 6px 0">`
       : `<div style="width:48px;height:48px;border-radius:12px;background:#1c1c1f;color:#34C759;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;float:left;margin:0 10px 6px 0">${(p.full_name || 'H').charAt(0).toUpperCase()}</div>`;
-    return `<div style="font-family:inherit;min-width:190px;padding:6px 4px;color:#1c1c1f">
-      ${avatar}
+    return `${avatar}
       <b style="font-size:14px;display:block">${p.full_name}</b>
       <span style="font-size:11px;font-weight:700;color:#34C759">${p.level}</span>
       <div style="clear:both"></div>
       <div style="color:#6b6b70;font-size:11px;margin-top:4px">${p.car_model || ''} · <b>${p.car_number || ''}</b></div>
       <div style="display:flex;gap:12px;margin-top:6px;font-size:12px">
         <span><i class="fas fa-route" style="color:#8E8E93;margin-right:3px"></i>${p.trips_count} safar</span>
-        <span><i class="fas fa-star" style="color:#FFD600;margin-right:3px"></i>${p.rating.toFixed(2)}</span>
-      </div>
-    </div>`;
+        <span><i class="fas fa-star" style="color:#FFD600;margin-right:3px"></i>${(p.rating || 0).toFixed(2)}</span>
+      </div>`;
   }
-
-  function _homeUpdateMine(lat, lng) {
-    if (!_homeMap) { _homeEnsureMap(lat, lng); return; }
-    if (!_homeMyMark) {
-      _homeMyMark = new ymaps.Placemark([lat, lng], {}, {
-        iconLayout: ymaps.templateLayoutFactory.createClass(_homeMarkerHtml('#FFD600')),
-        iconShape: { type: 'Circle', coordinates: [20, 20], radius: 20 },
-        zIndex: 200,
-      });
-      _homeMap.geoObjects.add(_homeMyMark);
-    } else {
-      _homeMyMark.geometry.setCoordinates([lat, lng]);
+  // v2.1'dagi balloon o'rniga — v3'da tayyor balon/popup komponenti yo'q,
+  // shu sababli bosilganda pastdan suzib chiqadigan oddiy karta ishlatiladi.
+  function _showPeerCard(p) {
+    let card = document.getElementById('home-peer-card');
+    if (!card) {
+      card = document.createElement('div');
+      card.id = 'home-peer-card';
+      card.style.cssText = 'position:fixed;left:16px;right:16px;bottom:96px;z-index:40;background:#fff;border-radius:14px;padding:10px 12px;box-shadow:0 6px 20px rgba(0,0,0,.35);color:#1c1c1f';
+      card.onclick = () => card.remove();
+      document.body.appendChild(card);
     }
+    card.innerHTML = _peerCardHtml(p);
+    clearTimeout(card._t);
+    card._t = setTimeout(() => card.remove(), 6000);
   }
 
-  // Ofis joylashuvi (Bot & Tariff sozlamalari — admin xaritadan belgilaydi)
-  // — doimiy belgi sifatida xaritaga bir marta qo'shiladi, haydovchining
-  // o'z joylashuvidan farqli o'laroq harakatlanmaydi.
-  function _homeAddOfficeMark() {
-    if (!_homeMap || OFFICE_LAT === null || OFFICE_LNG === null) return;
-    const mark = new ymaps.Placemark([OFFICE_LAT, OFFICE_LNG], {
-      hintContent: OFFICE_NAME,
-      balloonContent: OFFICE_NAME,
-    }, {
-      iconLayout: ymaps.templateLayoutFactory.createClass(
-        '<div style="position:relative;text-align:center">' +
-          '<div style="width:34px;height:34px;border-radius:10px;background:#4F46E5;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.35)">' +
-            '<i class="fas fa-building" style="color:#fff;font-size:15px"></i>' +
-          '</div>' +
-          '<div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid #4F46E5"></div>' +
-        '</div>'
-      ),
-      iconShape: { type: 'Circle', coordinates: [17, 17], radius: 19 },
+  // ══════════════════ v3 — asosiy yo'l (tungi rejim + 3D + aylanish) ══════════════════
+  function _initHomeMapV3(lat, lng, placeholder) {
+    ymaps3.ready.then(() => {
+      if (_homeMap || !document.getElementById('home-map')) return;
+      const { YMap, YMapDefaultSchemeLayer, YMapDefaultFeaturesLayer, YMapMarker } = ymaps3;
+      _homeMap = new YMap(document.getElementById('home-map'), {
+        location: { center: [lng, lat], zoom: 15 },
+        camera: { tilt: NAV_TILT, azimuth: 0 },
+      });
+      _homeMode = 'v3';
+      window._homeMap = _homeMap;
+      _homeMap.addChild(new YMapDefaultSchemeLayer({ theme: 'dark' }));
+      _homeMap.addChild(new YMapDefaultFeaturesLayer());
+
+      if (OFFICE_LAT !== null && OFFICE_LNG !== null) {
+        _homeMap.addChild(new YMapMarker({ coordinates: [OFFICE_LNG, OFFICE_LAT] }, _officeEl()));
+      }
+
+      const hint = document.getElementById('home-map-hint');
+      if (placeholder) {
+        if (hint) hint.textContent = 'Joylashuv aniqlanmoqda — xarita namunaviy markazda';
+      } else {
+        if (hint) hint.style.display = 'none';
+        _homeUpdateMine(lat, lng);
+      }
+    }).catch(() => {
+      _initHomeMapV2(lat, lng, placeholder); // v3 muvaffaqiyatsiz — eski xaritaga qaytamiz
     });
-    _homeMap.geoObjects.add(mark);
   }
 
-  function _homeEnsureMap(lat, lng, placeholder) {
+  function _homeUpdateMineV3(lat, lng) {
+    const { YMapMarker } = ymaps3;
+    if (!_homeMyMark) {
+      _homeMyMark = new YMapMarker({ coordinates: [lng, lat], zIndex: 200 }, _markerEl('#FFD600'));
+      _homeMap.addChild(_homeMyMark);
+    } else {
+      _homeMyMark.update({ coordinates: [lng, lat] });
+    }
+    _homeMap.update({ location: { center: [lng, lat], duration: 400 } });
+  }
+
+  // GPS 'heading' (0-360°, shimoldan soat yo'nalishida) kelganda xaritani
+  // shu tomonga aylantiramiz — Navigator uslubi: haydash yo'nalishi doim
+  // ekranning yuqorisida bo'ladi.
+  function _homeUpdateHeadingV3(heading) {
+    if (heading === null || heading === undefined || isNaN(heading) || !_homeMap) return;
+    _homeMap.update({ camera: { azimuth: heading * Math.PI / 180, tilt: NAV_TILT, duration: 500 } });
+  }
+
+  function _homeRefreshPeersV3(list) {
+    const { YMapMarker } = ymaps3;
+    const seen = {};
+    list.forEach(p => {
+      seen[p.id] = true;
+      const coords = [p.longitude, p.latitude];
+      if (_homePeerMarks[p.id]) {
+        _homePeerMarks[p.id].marker.update({ coordinates: coords });
+        _homePeerMarks[p.id].data = p;
+      } else {
+        const el = _markerEl('#34C759');
+        el.style.cursor = 'pointer';
+        el.onclick = () => _showPeerCard(_homePeerMarks[p.id].data);
+        const marker = new YMapMarker({ coordinates: coords }, el);
+        _homeMap.addChild(marker);
+        _homePeerMarks[p.id] = { marker, data: p };
+      }
+    });
+    Object.keys(_homePeerMarks).forEach(id => {
+      if (!seen[id]) {
+        _homeMap.removeChild(_homePeerMarks[id].marker);
+        delete _homePeerMarks[id];
+      }
+    });
+  }
+
+  // ══════════════════ 2.1 — zaxira yo'l (tekis, tungi rejimsiz) ══════════════════
+  function _initHomeMapV2(lat, lng, placeholder) {
     if (_homeMap || typeof ymaps === 'undefined' || !document.getElementById('home-map')) return;
     ymaps.ready(() => {
       if (_homeMap || !document.getElementById('home-map')) return;
       _homeMap = new ymaps.Map('home-map', { center: [lat, lng], zoom: 14, controls: [] }, { restrictMapArea: UZ_BOUNDS, minZoom: MIN_ZOOM });
+      _homeMode = 'v2';
       window._homeMap = _homeMap;
       // Diqqat: agar `#home-map` konteyner o'lchami xarita yaratilgan paytda
       // hali to'liq ekran o'lchamiga (layout/CSS) "o'rnashib ulgurmagan"
       // bo'lsa, Yandex xaritasi o'sha kichikroq o'lchamda "muzlab" qolib,
-      // atrofi bo'sh (oq) ko'rinib qolishi mumkin edi — xaritani yuklanish
-      // paytida "kichkina kvadrat + atrofi bo'sh" qilib ko'rsatgan xunuk
-      // holat shundan edi. `fitToViewport()` konteyner o'lchamini qayta
-      // o'lchab, xaritani unga to'liq moslashtiradi.
+      // atrofi bo'sh (oq) ko'rinib qolishi mumkin edi.
       _homeMap.container.fitToViewport();
       setTimeout(() => { try { _homeMap.container.fitToViewport(); } catch (_) {} }, 300);
       window.addEventListener('resize', () => { try { _homeMap.container.fitToViewport(); } catch (_) {} });
-      _homeAddOfficeMark();
+
+      if (OFFICE_LAT !== null && OFFICE_LNG !== null) {
+        const mark = new ymaps.Placemark([OFFICE_LAT, OFFICE_LNG], { hintContent: OFFICE_NAME, balloonContent: OFFICE_NAME }, {
+          iconLayout: ymaps.templateLayoutFactory.createClass(_officeEl().outerHTML),
+          iconShape: { type: 'Circle', coordinates: [17, 17], radius: 19 },
+        });
+        _homeMap.geoObjects.add(mark);
+      }
+
       const hint = document.getElementById('home-map-hint');
-      // Diqqat: `placeholder` bilan chaqirilsa (haqiqiy GPS hali kelmagan,
-      // faqat xarita bo'sh qolib ketmasin deb standart markazga qo'yilgan) —
-      // haydovchi belgisini QO'YMAYMIZ (chunki u yerda emas) va "GPS
-      // kutilmoqda" matnini butunlay o'chirmasdan, xaritani ko'rish mumkin
-      // bo'lgani haqida yumshoqroq matnga almashtiramiz.
       if (placeholder) {
         if (hint) hint.textContent = 'Joylashuv aniqlanmoqda — xarita namunaviy markazda';
       } else {
@@ -1105,19 +1188,80 @@ document.addEventListener('visibilitychange', () => {
     });
   }
 
+  function _homeUpdateMineV2(lat, lng) {
+    if (!_homeMyMark) {
+      _homeMyMark = new ymaps.Placemark([lat, lng], {}, {
+        iconLayout: ymaps.templateLayoutFactory.createClass(_markerEl('#FFD600').outerHTML),
+        iconShape: { type: 'Circle', coordinates: [20, 20], radius: 20 },
+        zIndex: 200,
+      });
+      _homeMap.geoObjects.add(_homeMyMark);
+    } else {
+      _homeMyMark.geometry.setCoordinates([lat, lng]);
+    }
+  }
+
+  function _homeRefreshPeersV2(list) {
+    const seen = {};
+    list.forEach(p => {
+      seen[p.id] = true;
+      const coords = [p.latitude, p.longitude];
+      if (_homePeerMarks[p.id]) {
+        _homePeerMarks[p.id].geometry.setCoordinates(coords);
+        _homePeerMarks[p.id].properties.set('balloonContentBody', _peerCardHtml(p));
+      } else {
+        const mark = new ymaps.Placemark(coords, { hintContent: p.full_name, balloonContentBody: _peerCardHtml(p) }, {
+          iconLayout: ymaps.templateLayoutFactory.createClass(_markerEl('#34C759').outerHTML),
+          iconShape: { type: 'Circle', coordinates: [20, 20], radius: 20 },
+        });
+        _homeMap.geoObjects.add(mark);
+        _homePeerMarks[p.id] = mark;
+      }
+    });
+    Object.keys(_homePeerMarks).forEach(id => {
+      if (!seen[id]) {
+        _homeMap.geoObjects.remove(_homePeerMarks[id]);
+        delete _homePeerMarks[id];
+      }
+    });
+  }
+
+  // ══════════════════ Umumiy — v3/v2'dan mustaqil chaqiriladi ══════════════════
+  function _homeEnsureMap(lat, lng, placeholder) {
+    if (_homeMap) return;
+    _lastLat = lat; _lastLng = lng;
+    if (typeof ymaps3 !== 'undefined') _initHomeMapV3(lat, lng, placeholder);
+    else _initHomeMapV2(lat, lng, placeholder);
+  }
+
+  function _homeUpdateMine(lat, lng) {
+    if (!_homeMap) { _homeEnsureMap(lat, lng); return; }
+    _lastLat = lat; _lastLng = lng;
+    if (_homeMode === 'v3') _homeUpdateMineV3(lat, lng); else _homeUpdateMineV2(lat, lng);
+  }
+
+  // Boshqa (navbatdagi) haydovchilarni ~8s da bir yangilaymiz
+  function _homeRefreshPeers() {
+    if (!_homeMap) return;
+    fetch('{% url "driver:nearby_locations" %}', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => {
+        const list = d.drivers || [];
+        if (_homeMode === 'v3') _homeRefreshPeersV3(list); else _homeRefreshPeersV2(list);
+      })
+      .catch(() => {});
+  }
+
   // Diqqat: agar hech qanday manbadan (Flutter, brauzer geolocation, avvalgi
   // sessiya) 6 soniya ichida joylashuv kelmasa — xarita "GPS kutilmoqda"
   // yozuvi bilan BO'SH-QORA holatda cheksiz qotib qolmasin deb, uni Toshkent
-  // markazida (standart) ko'rsatib qo'yamiz. Haqiqiy joylashuv kelishi bilan
-  // (yuqoridagi eventlar orqali) haydovchi belgisi normal qo'shiladi.
-  const TASHKENT_LAT = 41.311081, TASHKENT_LNG = 69.240562;
+  // markazida (standart) ko'rsatib qo'yamiz.
   setTimeout(() => {
-    // Diqqat: agar shu vaqtgacha ham `ymaps` umuman yuklanmagan bo'lsa
-    // (masalan brauzerning reklama/tracker blokeri api-maps.yandex.ru
-    // skriptini bloklagan bo'lsa) — bu "GPS kutilmoqda" bilan HECH QANDAY
-    // bog'liq emas, xarita SKRIPTINING o'ZI kelmagan. Haydovchini chalg'itib
-    // "GPS" deb yozib turishning o'rniga, aniq sababni ko'rsatamiz.
-    if (typeof ymaps === 'undefined') {
+    // Diqqat: agar shu vaqtgacha ham xarita skriptlari (v3 va v2.1)
+    // umuman yuklanmagan bo'lsa (masalan brauzerning reklama/tracker
+    // blokeri api-maps.yandex.ru'ni bloklagan bo'lsa) — bu "GPS kutilmoqda"
+    // bilan HECH QANDAY bog'liq emas, xarita SKRIPTLARINING o'ZI kelmagan.
+    if (typeof ymaps === 'undefined' && typeof ymaps3 === 'undefined') {
       const hint = document.getElementById('home-map-hint');
       if (hint) hint.textContent = "Xarita yuklanmadi — brauzeringizdagi reklama/shield blokerini shu sayt uchun o'chirib, sahifani yangilang";
       return;
@@ -1128,62 +1272,33 @@ document.addEventListener('visibilitychange', () => {
   // "Joylashuvga qaytish" tugmasi — o'z belgisi ustiga markazlashtiradi
   window._homeMapRecenter = function() {
     try { Native.vibrate(); } catch(_) {}
-    if (!_homeMap || !_homeMyMark) return;
-    _homeMap.setCenter(_homeMyMark.geometry.getCoordinates(), 15, { checkZoomRange: true });
-  };
-
-  // Boshqa (navbatdagi) haydovchilarni ~8s da bir yangilaymiz — driver_map.html
-  // dagi (panel) bilan bir xil "eskisini o'chir/yangisini qo'sh" naqshi
-  function _homeRefreshPeers() {
     if (!_homeMap) return;
-    fetch('{% url "driver:nearby_locations" %}', { cache: 'no-store' })
-      .then(r => r.json())
-      .then(d => {
-        const list = d.drivers || [];
-        const seen = {};
-        list.forEach(p => {
-          seen[p.id] = true;
-          const coords = [p.latitude, p.longitude];
-          if (_homePeerMarks[p.id]) {
-            _homePeerMarks[p.id].geometry.setCoordinates(coords);
-            _homePeerMarks[p.id].properties.set('balloonContentBody', _homePeerBalloon(p));
-          } else {
-            const mark = new ymaps.Placemark(coords, {
-              hintContent: p.full_name,
-              balloonContentBody: _homePeerBalloon(p),
-            }, {
-              iconLayout: ymaps.templateLayoutFactory.createClass(_homeMarkerHtml('#34C759')),
-              iconShape: { type: 'Circle', coordinates: [20, 20], radius: 20 },
-            });
-            _homeMap.geoObjects.add(mark);
-            _homePeerMarks[p.id] = mark;
-          }
-        });
-        Object.keys(_homePeerMarks).forEach(id => {
-          if (!seen[id]) {
-            _homeMap.geoObjects.remove(_homePeerMarks[id]);
-            delete _homePeerMarks[id];
-          }
-        });
-      })
-      .catch(() => {});
-  }
+    if (_homeMode === 'v3') {
+      if (_lastLat !== null) _homeMap.update({ location: { center: [_lastLng, _lastLat], zoom: 16, duration: 400 } });
+    } else if (_homeMyMark) {
+      _homeMap.setCenter(_homeMyMark.geometry.getCoordinates(), 15, { checkZoomRange: true });
+    }
+  };
 
   window.addEventListener('vijdon_location', e => {
     if (e.detail?.lat && e.detail?.lng) _homeUpdateMine(e.detail.lat, e.detail.lng);
   });
 
-  // Diqqat: yuqoridagi eventni FAQAT Flutter qobig'i yuboradi. Agar biror
-  // sabab bilan (masalan joylashuv ruxsati hali so'ralmagan, yoki oddiy
-  // brauzerda ochilgan bo'lsa) bu event kelmasa, xarita "GPS signal
-  // kutilmoqda…" holatida ABADIY qotib qolar edi — shu sabab brauzerning
-  // o'zining geolocation API'sini ham zaxira manba sifatida ishga tushiramiz.
-  // Ikkalasi ham xuddi shu _homeUpdateMine()ga yozgani uchun ziddiyat yo'q.
+  // Diqqat: yuqoridagi eventni FAQAT Flutter qobig'i yuboradi (hozircha
+  // 'heading' yubormaydi — faqat lat/lng). Agar biror sabab bilan bu event
+  // kelmasa, brauzerning o'zining geolocation API'sini zaxira manba
+  // sifatida ishga tushiramiz — bu HAM (Flutter WebView ichida bo'lsa ham)
+  // 'heading' (GPS harakat yo'nalishi) beradi, shu orqali xaritani
+  // aylantiramiz. `enableHighAccuracy: true` heading ma'lumoti kelishi
+  // ehtimolini oshiradi, lekin batareyani ko'proq sarflaydi.
   if (navigator.geolocation) {
     navigator.geolocation.watchPosition(
-      pos => _homeUpdateMine(pos.coords.latitude, pos.coords.longitude),
+      pos => {
+        _homeUpdateMine(pos.coords.latitude, pos.coords.longitude);
+        if (_homeMode === 'v3') _homeUpdateHeadingV3(pos.coords.heading);
+      },
       () => {},
-      { enableHighAccuracy: false, timeout: 15000, maximumAge: 10000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
     );
   }
 
