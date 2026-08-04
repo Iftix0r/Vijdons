@@ -38,6 +38,7 @@ urlpatterns = [
 
     path('sync/fcm/',      driver_views.driver_fcm_sync,        name='fcm_sync'),
     path('sync/location/', driver_views.driver_location_sync,   name='location_sync'),
+    path('locations/',     driver_views.driver_nearby_locations, name='nearby_locations'),
     path('sync/push/',     driver_views.driver_push_subscribe,  name='push_subscribe'),
     path('duty/',          driver_views.driver_duty_toggle,     name='duty_toggle'),
 
