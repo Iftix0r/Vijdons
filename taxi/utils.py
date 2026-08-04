@@ -1770,6 +1770,58 @@ _NON_UZBEK_SCRIPT_RE = re.compile(
     ']'
 )
 
+# Telefon raqamni ovoz bilan aytganda Whisper ba'zan raqamlarni so'z bilan
+# ("to'qson besh" kabi) yozadi — shu so'zlarni raqamga o'giramiz.
+_UZ_PHONE_UNITS = {
+    'nol': '0', 'bir': '1', 'ikki': '2', 'uch': '3',
+    "to'rt": '4', 'tort': '4', 'besh': '5', 'olti': '6',
+    'yetti': '7', 'sakkiz': '8', "to'qqiz": '9', 'toqqiz': '9',
+}
+_UZ_PHONE_TENS = {
+    "o'n": 10, 'on': 10, 'yigirma': 20, "o'ttiz": 30, 'ottiz': 30,
+    'qirq': 40, 'ellik': 50, 'oltmish': 60, 'yetmish': 70,
+    'sakson': 80, "to'qson": 90, 'toqson': 90,
+}
+
+
+def parse_uz_spoken_phone(text):
+    """Whisper'dan kelgan matnni (raqamlar so'z bilan yoki numerik holda
+    aytilgan bo'lishi mumkin) '+998 XX XXX XX XX' formatidagi telefon
+    raqamiga o'giradi. (raqam_yoki_None, xato_matni_yoki_None) qaytaradi."""
+    norm = text.lower().replace('’', "'").replace('‘', "'").replace('`', "'")
+    tokens = re.findall(r"[a-z']+|\d+", norm)
+
+    digits = []
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok.isdigit():
+            digits.append(tok)
+            i += 1
+        elif tok in _UZ_PHONE_TENS:
+            nxt = tokens[i + 1] if i + 1 < len(tokens) else None
+            if nxt in _UZ_PHONE_UNITS and _UZ_PHONE_UNITS[nxt] != '0':
+                digits.append(str(_UZ_PHONE_TENS[tok] + int(_UZ_PHONE_UNITS[nxt])))
+                i += 2
+            else:
+                digits.append(str(_UZ_PHONE_TENS[tok]))
+                i += 1
+        elif tok in _UZ_PHONE_UNITS:
+            digits.append(_UZ_PHONE_UNITS[tok])
+            i += 1
+        else:
+            i += 1  # "raqam", "telefon", "plyus" kabi so'zlar e'tiborsiz qoldiriladi
+
+    all_digits = ''.join(digits)
+    if all_digits.startswith('998') and len(all_digits) == 12:
+        local = all_digits[3:]
+    elif len(all_digits) == 9:
+        local = all_digits
+    else:
+        return None, "Telefon raqam tushunilmadi — iltimos, raqamlarni birma-bir aniqroq ayting"
+
+    return f"+998 {local[0:2]} {local[2:5]} {local[5:7]} {local[7:9]}", None
+
 
 def transcribe_audio_uz(audio_bytes, filename='speech.webm', content_type='audio/webm'):
     """Ovoz yozuvini (masalan buyurtma oynasidagi mikrofon tugmasi orqali

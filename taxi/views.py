@@ -99,16 +99,22 @@ def client_detail(request, pk):
 
 @panel_login_required
 @require_POST
-def order_address_transcribe(request):
-    """Buyurtma oynasidagi mikrofon tugmasi — yozilgan ovozni (o'zbekcha)
-    manzil matniga o'giradi (OpenAI Whisper, taxi.utils.transcribe_audio_uz)."""
+def order_field_transcribe(request):
+    """Buyurtma oynasidagi mikrofon tugmalari (manzil/telefon/ism/izoh) —
+    yozilgan ovozni (o'zbekcha) matnga o'giradi (OpenAI Whisper,
+    taxi.utils.transcribe_audio_uz). mode='phone' bo'lsa, natija qo'shimcha
+    ravishda telefon raqam formatiga o'giriladi (taxi.utils.parse_uz_spoken_phone)."""
     audio = request.FILES.get('audio')
     if not audio:
         return JsonResponse({'ok': False, 'error': 'Audio topilmadi'}, status=400)
-    from taxi.utils import transcribe_audio_uz
+    from taxi.utils import transcribe_audio_uz, parse_uz_spoken_phone
     text, error = transcribe_audio_uz(audio.read(), filename=audio.name or 'speech.webm')
     if error:
         return JsonResponse({'ok': False, 'error': error}, status=400)
+    if request.POST.get('mode') == 'phone':
+        text, error = parse_uz_spoken_phone(text)
+        if error:
+            return JsonResponse({'ok': False, 'error': error}, status=400)
     return JsonResponse({'ok': True, 'text': text})
 
 
