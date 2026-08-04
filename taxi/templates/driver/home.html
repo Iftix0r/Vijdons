@@ -60,17 +60,6 @@
 </div>
 
 <style>
-/* ── "© Yandex" yozuvi/logotipini yashirish ───────────────────────────────────
-   DIQQAT: bu yozuv Yandex Maps API (bepul reja) foydalanish shartlariga ko'ra
-   MAJBURIY ko'rinishi kerak bo'lgan huquqiy belgi — uni yashirish shartlarni
-   buzadi va API kaliti (config/settings.py / shu shablonlardagi apikey)
-   bloklanishiga olib kelishi mumkin. Foydalanuvchi xavfni bilib turib,
-   ataylab shu ko'rinishni so'ragan. */
-#home-map [class*="copyright"],
-#sheet-map [class*="copyright"] {
-  display: none !important;
-}
-
 /* ── Qidiruv: skeleton/shimmer — kelayotgan buyurtma qanday ko'rinishini
    "soya" shaklida oldindan ko'rsatib, ustidan yorug'lik o'tib turadi
    (LinkedIn/Uber uslubidagi zamonaviy loading pattern). base.html'dagi
@@ -119,20 +108,6 @@
 }
 </style>
 
-<!-- Jonli xarita — TO'LIQ EKRAN ORQA FONI (position:fixed): navbar (yuqorida)
-     va tab-bar (pastda) buning USTIDA suzib turadi (ikkalasi ham shaffof/blur
-     fon bilan yasalgan), xarita esa ularning OSTIDA ham davom etadi — chetlardan
-     hech qanday bo'shliq/qirra qolmasin. -->
-<div id="home-map" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:0;background:#1c1c1f"></div>
-<div id="home-map-hint" class="flex items-center justify-center" style="position:fixed;inset:0;z-index:0;pointer-events:none">
-  <span class="ios-caption2" style="color:rgba(255,255,255,.4)">GPS signal kutilmoqda…</span>
-</div>
-<button onclick="_homeMapRecenter()"
-  class="flex items-center justify-center active:opacity-60 transition-opacity"
-  style="position:fixed;z-index:15;top:62%;transform:translateY(-50%);right:16px;width:52px;height:52px;border-radius:50%;background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
-  <i class="fas fa-location-crosshairs" style="color:#FFD600;font-size:20px"></i>
-</button>
-
 <!-- Telegram web-appidagi "forward qilingan xabarlar" paneliga o'xshab, tab-bar
      ustida suzib turuvchi to'liq enli chiziq — faol (qabul qilingan) buyurtma
      bo'lsagina ko'rinadi. Haydovchi buyurtma oynasini yopib qo'ysa ham, shu
@@ -149,8 +124,7 @@
 
 <!-- To'planib qolgan (hali qabul qilinmagan) buyurtmalar — Telegram mini-app
      "yig'iluvchi" panel uslubida: yashil belgi, tab-bar ustida suzib turadi,
-     bosilganda pastdan ro'yxat suzib chiqadi (buyurtmalar endi xarita ustida
-     to'g'ridan-to'g'ri kartalar bo'lib to'kilmaydi). -->
+     bosilganda pastdan ro'yxat suzib chiqadi. -->
 <div id="pending-bar" onclick="togglePendingDrawer()"
   class="flex items-center gap-3 active:opacity-80 transition-opacity"
   style="display:none;position:fixed;z-index:15;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom,16px) + 160px);padding:10px 12px;border-radius:16px;background:var(--ios-card2);box-shadow:0 6px 18px rgba(52,199,89,.3);cursor:pointer">
@@ -191,15 +165,10 @@
   </div>
 </div>
 
-<!-- Content: JS tomonidan to'ldiriladi (haqiqiy buyurtma kartalari bo'lsa
-     shu yerda, xaritadan pastda ko'rinadi) -->
+<!-- Content: JS tomonidan to'ldiriladi (haqiqiy buyurtma kartalari) -->
 <!-- padding-bottom: pastda suzib turuvchi tab-bar ostida buyurtmalar
      ko'rinmay qolib ketmasligi uchun -->
-<!-- Diqqat: `relative` shart — xarita endi to'liq ekranli `position:fixed`
-     fon (z-index:0), pozitsiyalanmagan oddiy div undan pastda (orqasida)
-     chizilib qolardi (CSS stacking qoidasi: pozitsiyalangan elementlar,
-     z-index:0 bo'lsa ham, oddiy statik kontentdan USTUNROQ chiziladi). -->
-<div class="relative px-4 py-3 space-y-3" id="orders-wrap" style="padding-bottom:100px"></div>
+<div class="px-4 py-3 space-y-3" id="orders-wrap" style="padding-bottom:100px"></div>
 
 <style>
 @keyframes pulse-dot {
@@ -259,19 +228,11 @@
 </div>
 
 <!-- ── Buyurtma qabul qilish/tafsilotlari ── -->
-<!-- Taksometrdagi bilan bir xil uslub: xarita to'liq ekran fon, asosiy
-     ma'lumot (status/manzil/mijoz/narx/amal tugmalari) to'g'ridan-to'g'ri
-     xarita ustida (#order-live) suzadi; faqat aloqa tugmalari va izoh kichik
+<!-- Asosiy ma'lumot (status/manzil/mijoz/narx/amal tugmalari) to'liq ekran
+     fon ustida (#order-live) suzadi; faqat aloqa tugmalari va izoh kichik
      pastki panelda (#sheet) qoladi — u faqat shular mavjud bo'lsagina ochiladi. -->
 <div id="sheet-overlay" class="fixed inset-0 z-[200] hidden">
-  <div id="sheet-map" class="absolute inset-0" style="background:#1c1c1f" onclick="_onBackdropTap()"></div>
-  <!-- Diqqat: bu hint butun ekranga (inset:0) markazlashtirilmaydi — aks holda
-       yuqoridagi opaque #order-live karta orqasida ko'rinmay qolishi mumkin
-       edi. Shuning uchun karta va pastki panel orasidagi bo'sh joyga
-       (~62% balandlik) qat'iy joylashtiramiz. -->
-  <div id="sheet-map-hint" class="flex items-center justify-center" style="position:absolute;top:62%;left:16px;right:16px;transform:translateY(-50%);pointer-events:none;display:none">
-    <span class="ios-caption2" style="color:rgba(255,255,255,.4)">Manzil xaritada ko'rsatilmagan</span>
-  </div>
+  <div class="absolute inset-0" style="background:#1c1c1f" onclick="_onBackdropTap()"></div>
 
   <div id="order-live" class="ios-card2 rounded-[16px]"
        style="position:absolute;z-index:5;top:calc(env(safe-area-inset-top,47px) + 16px);left:16px;right:16px;max-height:58vh;overflow-y:auto">
@@ -303,22 +264,6 @@ let DRIVER_TRIPS = {{ driver.trips_count|default:0 }};
 const DRIVER_RATING = "{% if driver.rating %}{{ driver.rating|floatformat:1 }}{% endif %}";
 let TODAY_EARNED = {{ today_earned }};
 let TODAY_TRIPS = {{ today_trips }};
-
-const OFFICE_LAT  = {{ tariff.office_lat|stringformat:'f'|default:'null' }};
-const OFFICE_LNG  = {{ tariff.office_lng|stringformat:'f'|default:'null' }};
-const OFFICE_NAME = "{{ tariff.office_name|default:'Ofis'|escapejs }}";
-
-// O'zbekiston chegaralari — xarita foydalanuvchi butun dunyo/qit'ani ko'rib
-// chalg'imasin deb, harakatlanish/kichraytirish shu hudud bilan cheklanadi.
-// Diqqat: bu to'g'ri to'rtburchak chegara, O'zbekistonning haqiqiy (noaniq
-// shakldagi) davlat chegarasi emas — shu sabab ba'zi joylarda (masalan
-// Farg'ona vodiysi yoki g'arbiy Qoraqalpog'iston) qo'shni davlat hududi ham
-// bir oz ko'rinib qolishi mumkin. `MIN_ZOOM` esa xarita hech qachon butun
-// mintaqani (bir nechta davlatni) qamrab oladigan darajada uzoqlashtirilib
-// kichraytirilmasligini ta'minlaydi — shu bilan qo'shni davlatlar deyarli
-// hech qachon sezilarli ko'rinmaydi.
-const UZ_BOUNDS = [[37.0, 55.9], [45.7, 73.3]];
-const MIN_ZOOM = 7;
 
 let ORDERS = {{ orders_json|safe }};
 let _known = new Set(ORDERS.map(o => o.id));
@@ -894,12 +839,10 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') Audio.stopNewOrder();
 });
 
-// ── Haydovchi joylashuvini kuzatish (xaritada ko'rsatish uchun) ──────────────
+// ── Haydovchi joylashuvini kuzatish (dispetcherlash uchun serverga yuborish) ──
 // Diqqat: sessionStorage kalitlari DRIVER_ID bilan bog'langan — aks holda bir
 // qurilmada (masalan sinov paytida) haydovchi almashtirilganda oldingi
 // haydovchining eski (boshqa hududdagi) koordinatasi yangisiga "yopishib qolardi".
-// Manzil endi navbar'da matn sifatida ko'rsatilmaydi — buning o'rniga jonli
-// xarita (home-map) bor.
 {% if driver.is_on_duty %}
 (function initNavLocation() {
   const SS_LAT  = `vijdon_lat_${DRIVER_ID}`;
@@ -920,10 +863,6 @@ document.addEventListener('visibilitychange', () => {
     _lastGeoLat = lat; _lastGeoLng = lng;
     sessionStorage.setItem(SS_LAT, lat);
     sessionStorage.setItem(SS_LNG, lng);
-    // Buyurtma sheet'idagi xarita (_initSheetMap) haydovchining hozirgi
-    // joylashuvini shu global o'zgaruvchilardan o'qiydi.
-    window._driverLat = lat;
-    window._driverLng = lng;
 
     // 1.5s debounce — server ga yuboramiz
     clearTimeout(_syncTimer);
@@ -963,208 +902,6 @@ document.addEventListener('visibilitychange', () => {
   }, 6000);
 })();
 {% endif %}
-
-// ── Asosiy sahifadagi jonli xarita — o'zi (sariq) + hozir navbatdagi boshqa
-// haydovchilar (yashil). Buyurtma sheet'idagi kichik xaritadan (_initSheetMap)
-// mustaqil — u faqat faol buyurtma bo'lganda, bu esa doim ko'rinadi.
-(function() {
-  let _homeMap = null;
-  let _homeMyMark = null;
-  const _homePeerMarks = {};
-
-  // Haydovchi rasmi/harfi o'rniga taksi emoji (🚖) ko'rsatiladi — bu haqiqiy
-  // mashinaga o'xshagan tayyor grafika, qo'lda chizilgan siluetdan farqli
-  // o'laroq har bir qurilmada chiroyli va tanish ko'rinadi. O'zi (sariq
-  // chegara, #FFD600) va boshqa haydovchilar (yashil chegara, #34C759)
-  // atrofidagi halqa rangi bilan farqlanadi. Rasm/ism faqat bosilgandagi
-  // balonda (_homePeerBalloon) chiqadi.
-  function _homeMarkerHtml(color) {
-    return `<div style="width:40px;height:40px;border-radius:50%;background:#fff;border:2.5px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:0 3px 6px rgba(0,0,0,.4)">
-      <span style="font-size:22px;line-height:1">🚖</span>
-    </div>`;
-  }
-
-  // Bosilganda chiqadigan balloon — haydovchi rasmi, mashina, safarlar soni va darajasi
-  function _homePeerBalloon(p) {
-    const avatar = p.photo_url
-      ? `<img src="${p.photo_url}" style="width:48px;height:48px;border-radius:12px;object-fit:cover;float:left;margin:0 10px 6px 0">`
-      : `<div style="width:48px;height:48px;border-radius:12px;background:#1c1c1f;color:#34C759;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;float:left;margin:0 10px 6px 0">${(p.full_name || 'H').charAt(0).toUpperCase()}</div>`;
-    return `<div style="font-family:inherit;min-width:190px;padding:6px 4px;color:#1c1c1f">
-      ${avatar}
-      <b style="font-size:14px;display:block">${p.full_name}</b>
-      <span style="font-size:11px;font-weight:700;color:#34C759">${p.level}</span>
-      <div style="clear:both"></div>
-      <div style="color:#6b6b70;font-size:11px;margin-top:4px">${p.car_model || ''} · <b>${p.car_number || ''}</b></div>
-      <div style="display:flex;gap:12px;margin-top:6px;font-size:12px">
-        <span><i class="fas fa-route" style="color:#8E8E93;margin-right:3px"></i>${p.trips_count} safar</span>
-        <span><i class="fas fa-star" style="color:#FFD600;margin-right:3px"></i>${p.rating.toFixed(2)}</span>
-      </div>
-    </div>`;
-  }
-
-  function _homeUpdateMine(lat, lng) {
-    if (!_homeMap) { _homeEnsureMap(lat, lng); return; }
-    if (!_homeMyMark) {
-      _homeMyMark = new ymaps.Placemark([lat, lng], {}, {
-        iconLayout: ymaps.templateLayoutFactory.createClass(_homeMarkerHtml('#FFD600')),
-        iconShape: { type: 'Circle', coordinates: [20, 20], radius: 20 },
-        zIndex: 200,
-      });
-      _homeMap.geoObjects.add(_homeMyMark);
-    } else {
-      _homeMyMark.geometry.setCoordinates([lat, lng]);
-    }
-  }
-
-  // Ofis joylashuvi (Bot & Tariff sozlamalari — admin xaritadan belgilaydi)
-  // — doimiy belgi sifatida xaritaga bir marta qo'shiladi, haydovchining
-  // o'z joylashuvidan farqli o'laroq harakatlanmaydi.
-  function _homeAddOfficeMark() {
-    if (!_homeMap || OFFICE_LAT === null || OFFICE_LNG === null) return;
-    const mark = new ymaps.Placemark([OFFICE_LAT, OFFICE_LNG], {
-      hintContent: OFFICE_NAME,
-      balloonContent: OFFICE_NAME,
-    }, {
-      iconLayout: ymaps.templateLayoutFactory.createClass(
-        '<div style="position:relative;text-align:center">' +
-          '<div style="width:34px;height:34px;border-radius:10px;background:#4F46E5;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.35)">' +
-            '<i class="fas fa-building" style="color:#fff;font-size:15px"></i>' +
-          '</div>' +
-          '<div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid #4F46E5"></div>' +
-        '</div>'
-      ),
-      iconShape: { type: 'Circle', coordinates: [17, 17], radius: 19 },
-    });
-    _homeMap.geoObjects.add(mark);
-  }
-
-  function _homeEnsureMap(lat, lng, placeholder) {
-    if (_homeMap || typeof ymaps === 'undefined' || !document.getElementById('home-map')) return;
-    ymaps.ready(() => {
-      if (_homeMap || !document.getElementById('home-map')) return;
-      _homeMap = new ymaps.Map('home-map', { center: [lat, lng], zoom: 14, controls: [] }, { restrictMapArea: UZ_BOUNDS, minZoom: MIN_ZOOM });
-      window._homeMap = _homeMap;
-      // Diqqat: agar `#home-map` konteyner o'lchami xarita yaratilgan paytda
-      // hali to'liq ekran o'lchamiga (layout/CSS) "o'rnashib ulgurmagan"
-      // bo'lsa, Yandex xaritasi o'sha kichikroq o'lchamda "muzlab" qolib,
-      // atrofi bo'sh (oq) ko'rinib qolishi mumkin edi — xaritani yuklanish
-      // paytida "kichkina kvadrat + atrofi bo'sh" qilib ko'rsatgan xunuk
-      // holat shundan edi. `fitToViewport()` konteyner o'lchamini qayta
-      // o'lchab, xaritani unga to'liq moslashtiradi.
-      _homeMap.container.fitToViewport();
-      setTimeout(() => { try { _homeMap.container.fitToViewport(); } catch (_) {} }, 300);
-      window.addEventListener('resize', () => { try { _homeMap.container.fitToViewport(); } catch (_) {} });
-      _homeAddOfficeMark();
-      const hint = document.getElementById('home-map-hint');
-      // Diqqat: `placeholder` bilan chaqirilsa (haqiqiy GPS hali kelmagan,
-      // faqat xarita bo'sh qolib ketmasin deb standart markazga qo'yilgan) —
-      // haydovchi belgisini QO'YMAYMIZ (chunki u yerda emas) va "GPS
-      // kutilmoqda" matnini butunlay o'chirmasdan, xaritani ko'rish mumkin
-      // bo'lgani haqida yumshoqroq matnga almashtiramiz.
-      if (placeholder) {
-        if (hint) hint.textContent = 'Joylashuv aniqlanmoqda — xarita namunaviy markazda';
-      } else {
-        if (hint) hint.style.display = 'none';
-        _homeUpdateMine(lat, lng);
-      }
-    });
-  }
-
-  // Diqqat: agar hech qanday manbadan (Flutter, brauzer geolocation, avvalgi
-  // sessiya) 6 soniya ichida joylashuv kelmasa — xarita "GPS kutilmoqda"
-  // yozuvi bilan BO'SH-QORA holatda cheksiz qotib qolmasin deb, uni Toshkent
-  // markazida (standart) ko'rsatib qo'yamiz. Haqiqiy joylashuv kelishi bilan
-  // (yuqoridagi eventlar orqali) haydovchi belgisi normal qo'shiladi.
-  const TASHKENT_LAT = 41.311081, TASHKENT_LNG = 69.240562;
-  setTimeout(() => {
-    // Diqqat: agar shu vaqtgacha ham `ymaps` umuman yuklanmagan bo'lsa
-    // (masalan brauzerning reklama/tracker blokeri api-maps.yandex.ru
-    // skriptini bloklagan bo'lsa) — bu "GPS kutilmoqda" bilan HECH QANDAY
-    // bog'liq emas, xarita SKRIPTINING o'ZI kelmagan. Haydovchini chalg'itib
-    // "GPS" deb yozib turishning o'rniga, aniq sababni ko'rsatamiz.
-    if (typeof ymaps === 'undefined') {
-      const hint = document.getElementById('home-map-hint');
-      if (hint) hint.textContent = "Xarita yuklanmadi — brauzeringizdagi reklama/shield blokerini shu sayt uchun o'chirib, sahifani yangilang";
-      return;
-    }
-    if (!_homeMap) _homeEnsureMap(TASHKENT_LAT, TASHKENT_LNG, true);
-  }, 6000);
-
-  // "Joylashuvga qaytish" tugmasi — o'z belgisi ustiga markazlashtiradi
-  window._homeMapRecenter = function() {
-    try { Native.vibrate(); } catch(_) {}
-    if (!_homeMap || !_homeMyMark) return;
-    _homeMap.setCenter(_homeMyMark.geometry.getCoordinates(), 15, { checkZoomRange: true });
-  };
-
-  // Boshqa (navbatdagi) haydovchilarni ~8s da bir yangilaymiz — driver_map.html
-  // dagi (panel) bilan bir xil "eskisini o'chir/yangisini qo'sh" naqshi
-  function _homeRefreshPeers() {
-    if (!_homeMap) return;
-    fetch('{% url "driver:nearby_locations" %}', { cache: 'no-store' })
-      .then(r => r.json())
-      .then(d => {
-        const list = d.drivers || [];
-        const seen = {};
-        list.forEach(p => {
-          seen[p.id] = true;
-          const coords = [p.latitude, p.longitude];
-          if (_homePeerMarks[p.id]) {
-            _homePeerMarks[p.id].geometry.setCoordinates(coords);
-            _homePeerMarks[p.id].properties.set('balloonContentBody', _homePeerBalloon(p));
-          } else {
-            const mark = new ymaps.Placemark(coords, {
-              hintContent: p.full_name,
-              balloonContentBody: _homePeerBalloon(p),
-            }, {
-              iconLayout: ymaps.templateLayoutFactory.createClass(_homeMarkerHtml('#34C759')),
-              iconShape: { type: 'Circle', coordinates: [20, 20], radius: 20 },
-            });
-            _homeMap.geoObjects.add(mark);
-            _homePeerMarks[p.id] = mark;
-          }
-        });
-        Object.keys(_homePeerMarks).forEach(id => {
-          if (!seen[id]) {
-            _homeMap.geoObjects.remove(_homePeerMarks[id]);
-            delete _homePeerMarks[id];
-          }
-        });
-      })
-      .catch(() => {});
-  }
-
-  window.addEventListener('vijdon_location', e => {
-    if (e.detail?.lat && e.detail?.lng) _homeUpdateMine(e.detail.lat, e.detail.lng);
-  });
-
-  // Diqqat: yuqoridagi eventni FAQAT Flutter qobig'i yuboradi. Agar biror
-  // sabab bilan (masalan joylashuv ruxsati hali so'ralmagan, yoki oddiy
-  // brauzerda ochilgan bo'lsa) bu event kelmasa, xarita "GPS signal
-  // kutilmoqda…" holatida ABADIY qotib qolar edi — shu sabab brauzerning
-  // o'zining geolocation API'sini ham zaxira manba sifatida ishga tushiramiz.
-  // Ikkalasi ham xuddi shu _homeUpdateMine()ga yozgani uchun ziddiyat yo'q.
-  if (navigator.geolocation) {
-    navigator.geolocation.watchPosition(
-      pos => _homeUpdateMine(pos.coords.latitude, pos.coords.longitude),
-      () => {},
-      { enableHighAccuracy: false, timeout: 15000, maximumAge: 10000 }
-    );
-  }
-
-  // Avvalgi sessiyada saqlangan koordinat bo'lsa, xaritani darhol o'sha yerdan
-  // boshlaymiz — yangi joylashuv kelguncha bo'sh/markazsiz turmasin
-  try {
-    const lat = parseFloat(sessionStorage.getItem(`vijdon_lat_${DRIVER_ID}`));
-    const lng = parseFloat(sessionStorage.getItem(`vijdon_lng_${DRIVER_ID}`));
-    if (lat && lng) _homeEnsureMap(lat, lng);
-  } catch (_) {}
-
-  if (document.getElementById('home-map')) {
-    setInterval(_homeRefreshPeers, 8000);
-    setTimeout(_homeRefreshPeers, 1500);
-  }
-})();
 
 // ── TAXIMETER ─────────────────────────────────────────────────────────────────
 // Asosiy taximetr yadrosi (tmxStart, tmxStop, _tmxTick va h.k.) endi base.html'ga

@@ -317,7 +317,6 @@ def driver_home(request, driver):
         # hisoblaymiz, qayta so'rov yubormaslik uchun
         'pending_orders_count': sum(1 for o in orders if o.status == 'pending'),
         'active_orders_count': sum(1 for o in orders if o.status in ('accepted', 'on_way', 'arrived')),
-        'tariff':      _tariff,
         'tariff_base_price': int(_tariff.base_price),
         'tariff_per_km': int(_tariff.price_per_km),
         'max_active_orders': Order.MAX_ACTIVE_PER_DRIVER,
@@ -1017,37 +1016,6 @@ def driver_location_sync(request, driver):
     except Exception:
         pass
     return JsonResponse({'ok': True})
-
-
-@driver_login_required
-def driver_nearby_locations(request, driver):
-    """Asosiy sahifadagi xarita uchun — hozir ish navbatidagi BOSHQA
-    haydovchilarning joylashuvi. Diqqat: bu haydovchilar bir-biriga ko'rinadi,
-    shuning uchun faqat xaritada belgi chizish uchun zarur maydonlar
-    qaytariladi — telefon raqami va balans kabi shaxsiy/moliyaviy
-    ma'lumotlar (panel uchun mo'ljallangan active_drivers_locations'dan
-    farqli o'laroq) bu yerda umuman berilmaydi."""
-    from django.utils import timezone
-    online_cutoff = timezone.now() - timezone.timedelta(seconds=120)
-    peers = Driver.objects.filter(
-        is_on_duty=True, is_active=True, approval_status=Driver.APPROVAL_APPROVED,
-        latitude__isnull=False, longitude__isnull=False,
-        last_seen__gte=online_cutoff,
-    ).exclude(pk=driver.pk)
-    data = [{
-        'id':          d.id,
-        'full_name':   d.full_name,
-        'car_type':    d.car_type,
-        'car_model':   d.car_model,
-        'car_number':  d.car_number,
-        'photo_url':   d.photo.url if d.photo else '',
-        'latitude':    d.latitude,
-        'longitude':   d.longitude,
-        'trips_count': d.trips_count,
-        'rating':      float(d.rating),
-        'level':       d.level,
-    } for d in peers]
-    return JsonResponse({'drivers': data})
 
 
 @driver_login_required
