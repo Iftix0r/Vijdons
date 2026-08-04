@@ -479,6 +479,7 @@ async function loadOrders() {
     } else if(d.order_creating_ping && d.order_creating_ping !== _lastOrderCreatingPing) {
       _lastOrderCreatingPing = d.order_creating_ping;
       showToast("📞 Qo'ng'iroq bo'layabdi 1351 ga", "⏳ Operator buyurtma yaratmoqda. Tez orada ilovaga tushadi, biroz kutib turishingizni so'raymiz.", 'info', 5000);
+      Audio.orderCreating();
       Native.vibrate([60, 30, 60]);
     }
 

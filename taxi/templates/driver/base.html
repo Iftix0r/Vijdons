@@ -801,6 +801,15 @@ const Audio = {
       [0.12, 'sine',  880, 0.35, 0.22],
     ]);
   },
+  orderCreating() {
+    // Telefon jiringlashiga o'xshash — ikkita takrorlanuvchi nota
+    this._playCustomOrTones('driver_order_creating', [
+      [0,    'sine', 988, 0.30, 0.16],
+      [0.20, 'sine', 988, 0.30, 0.16],
+      [0.55, 'sine', 988, 0.30, 0.16],
+      [0.75, 'sine', 988, 0.30, 0.16],
+    ]);
+  },
 };
 
 // ── Web Push Subscription ────────────────────────────────────────────────────
