@@ -1050,7 +1050,10 @@ document.addEventListener('visibilitychange', () => {
     el.style.cssText = 'width:44px;height:44px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.5))';
     el.innerHTML = `
       <svg width="44" height="44" viewBox="0 0 44 44">
-        <circle cx="22" cy="22" r="19" fill="#FFD600" opacity=".16"/>
+        <circle cx="22" cy="22" r="19" fill="#FFD600" opacity=".16">
+          <animate attributeName="r" values="13;21;13" dur="2s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values=".24;.04;.24" dur="2s" repeatCount="indefinite"/>
+        </circle>
         <path d="M22,6 L34,32 L22,25 L10,32 Z" fill="#FFD600" stroke="#1c1c1f" stroke-width="2.5" stroke-linejoin="round"/>
       </svg>`;
     return el;
@@ -1139,6 +1142,31 @@ document.addEventListener('visibilitychange', () => {
         new mapboxgl.Marker({ element: _officeEl() }).setLngLat([OFFICE_LNG, OFFICE_LAT]).addTo(_homeMap);
       }
 
+      // 3D binolar — Navigator'dagi kabi haqiqiy hajmli ko'rinish uchun.
+      // dark-v11 uslubida 'composite' manba ichida tayyor 'building' qatlami
+      // bor, faqat uni 'fill-extrusion' sifatida qo'shish kifoya. Uslub
+      // (barcha manbalar) hali to'liq yuklanmagan bo'lishi mumkin, shu sabab
+      // 'load' hodisasini kutamiz.
+      _homeMap.on('load', () => {
+        if (!_homeMap || _homeMap.getLayer('vj-3d-buildings')) return;
+        try {
+          _homeMap.addLayer({
+            id: 'vj-3d-buildings',
+            source: 'composite',
+            'source-layer': 'building',
+            filter: ['==', 'extrude', 'true'],
+            type: 'fill-extrusion',
+            minzoom: 14,
+            paint: {
+              'fill-extrusion-color': '#2a2a35',
+              'fill-extrusion-height': ['get', 'height'],
+              'fill-extrusion-base': ['get', 'min_height'],
+              'fill-extrusion-opacity': 0.85,
+            },
+          });
+        } catch (_) {} // uslubda 'building' qatlami bo'lmasa (kelajakda o'zgarsa) jim o'tkazib yuboramiz
+      });
+
       const hint = document.getElementById('home-map-hint');
       if (placeholder) {
         if (hint) hint.textContent = 'Joylashuv aniqlanmoqda — xarita namunaviy markazda';
@@ -1170,7 +1198,10 @@ document.addEventListener('visibilitychange', () => {
     } else {
       _homeMyMark.setLngLat([lng, lat]);
     }
-    _homeMap.easeTo({ center: [lng, lat], duration: 400 });
+    // `essential: true` — qurilmada "harakatni kamaytirish" (reduce motion)
+    // yoqilgan bo'lsa ham, bu animatsiya SHART (dekorativ emas, haqiqiy
+    // joylashuv o'zgarishini bildiradi) — o'tkazib yubormaydi.
+    _homeMap.easeTo({ center: [lng, lat], duration: 600, essential: true });
   }
 
   // GPS 'heading' (0-360°, shimoldan soat yo'nalishida) kelganda xaritani
@@ -1178,7 +1209,7 @@ document.addEventListener('visibilitychange', () => {
   // ekranning yuqorisida bo'ladi.
   function _homeUpdateHeadingMapbox(heading) {
     if (heading === null || heading === undefined || isNaN(heading) || !_homeMap) return;
-    _homeMap.easeTo({ bearing: heading, pitch: NAV_PITCH, duration: 500 });
+    _homeMap.easeTo({ bearing: heading, pitch: NAV_PITCH, duration: 700, essential: true });
   }
 
   function _homeRefreshPeersMapbox(list) {
@@ -1324,7 +1355,7 @@ document.addEventListener('visibilitychange', () => {
     try { Native.vibrate(); } catch(_) {}
     if (!_homeMap) return;
     if (_homeMode === 'mapbox') {
-      if (_lastLat !== null) _homeMap.easeTo({ center: [_lastLng, _lastLat], zoom: 16, duration: 400 });
+      if (_lastLat !== null) _homeMap.easeTo({ center: [_lastLng, _lastLat], zoom: 16, pitch: NAV_PITCH, duration: 500, essential: true });
     } else if (_homeMyMark) {
       _homeMap.setCenter(_homeMyMark.geometry.getCoordinates(), 15, { checkZoomRange: true });
     }
