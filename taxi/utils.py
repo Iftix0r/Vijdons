@@ -545,13 +545,23 @@ def _notify_driver_group(text, reply_markup=None):
     send_telegram(text, chat_ids=ids, reply_markup=reply_markup or _driver_group_inline())
 
 
+ORDER_CREATING_MESSAGE = (
+    "📞 Qo'ng'iroq bo'layabdi 1351 ga\n"
+    "⏳ Operator buyurtma yaratmoqda. Tez orada ilovaga tushadi, "
+    "biroz kutib turishingizni so'raymiz."
+)
+
+
 def tg_order_creating():
     """Operator buyurtma oynasini ochib, ma'lumot to'ldirayotganda haydovchilar
-    guruhiga ogohlantiruvchi xabar yuboradi — buyurtma hali yaratilmagan bo'lsa ham."""
-    _notify_driver_group(
-        "⏳ Operator buyurtma yaratmoqda. Tez orada ilovaga tushadi, "
-        "biroz kutib turishingizni so'raymiz."
-    )
+    guruhiga (Telegram) va haydovchi ilovasiga (in-app toast) ogohlantiruvchi
+    xabar yuboradi — buyurtma hali yaratilmagan bo'lsa ham."""
+    from django.utils import timezone
+    cfg = _cfg()
+    if cfg:
+        cfg.last_order_creating_at = timezone.now()
+        cfg.save(update_fields=['last_order_creating_at'])
+    _notify_driver_group(ORDER_CREATING_MESSAGE)
 
 
 def tg_new_order(order):

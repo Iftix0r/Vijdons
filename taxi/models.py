@@ -274,6 +274,7 @@ class BotSettings(models.Model):
     last_monthly_top_drivers_date    = models.DateField(null=True, blank=True)
     last_inactive_drivers_report_date= models.DateField(null=True, blank=True)
     last_surge_alert_at              = models.DateTimeField(null=True, blank=True)
+    last_order_creating_at           = models.DateTimeField(null=True, blank=True, verbose_name="Operator buyurtma yaratayotgani so'nggi bildirilgan vaqt")
     last_top_hours_drivers_date      = models.DateField(null=True, blank=True)
     last_high_rejection_report_date  = models.DateField(null=True, blank=True)
     last_daily_summary_date          = models.DateField(null=True, blank=True)

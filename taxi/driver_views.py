@@ -394,7 +394,12 @@ def driver_orders_json(request, driver):
         })
 
     ids = [o['id'] for o in orders_data]
-    return JsonResponse({'new_ids': ids, 'orders': orders_data})
+
+    from .models import BotSettings
+    cfg = BotSettings.get()
+    order_creating_ping = cfg.last_order_creating_at.isoformat() if cfg.last_order_creating_at else None
+
+    return JsonResponse({'new_ids': ids, 'orders': orders_data, 'order_creating_ping': order_creating_ping})
 
 
 # ── Order actions ─────────────────────────────────────────────────────────────
