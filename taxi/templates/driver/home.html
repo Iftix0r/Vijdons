@@ -3,55 +3,6 @@
 {% block title %}Asosiy{% endblock %}
 {% block content %}
 
-<!-- iOS Navigation Bar — chetlardan bo'shliq bilan suzib turadi -->
-<div class="ios-navbar sticky top-3 mx-4 z-20 px-4 pt-3 pb-3">
-  <div class="flex items-center justify-between" style="gap:8px">
-    <div class="flex items-start gap-2.5" style="min-width:0;flex:1">
-      <!-- Profile avatar -->
-      <a href="{% url 'driver:profile' %}" onclick="Native.vibrate()" class="flex-shrink-0 active:opacity-60 transition-opacity">
-        {% if driver.photo %}
-        <img src="{{ driver.photo.url }}" alt=""
-             class="w-9 h-9 rounded-full object-cover ring-2 ring-[#FFD600]">
-        {% else %}
-        <div class="w-9 h-9 rounded-full flex items-center justify-center"
-             style="background:{{ driver.full_name|avatar_gradient }};box-shadow:0 2px 8px rgba(0,0,0,.25)">
-          <span class="ios-caption font-bold text-white">{{ driver.full_name|first|upper }}</span>
-        </div>
-        {% endif %}
-      </a>
-      <div style="min-width:0;flex:1">
-        <div class="ios-title font-semibold" style="color:var(--ios-label);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ driver.full_name }}</div>
-      </div>
-    </div>
-    <div class="flex items-center gap-2.5 flex-shrink-0">
-      <!-- Balance chip -->
-      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] ios-card2" style="white-space:nowrap">
-        <i class="fas fa-wallet text-[10px] {% if driver.balance < 0 %}text-[#FF3B30]{% else %}text-[#FFD600]{% endif %}"></i>
-        <span class="ios-footnote font-bold {% if driver.balance < 0 %}text-[#FF3B30]{% else %}text-[#FFD600]{% endif %}" style="letter-spacing:-.2px">
-          {{ driver.balance|floatformat:0 }}
-        </span>
-        <span class="ios-caption2" style="color:var(--ios-label3)">so'm</span>
-      </div>
-      <!-- Buyurtma yaratish — diqqatni tortishi uchun sariq fon + pulslanuvchi halqa -->
-      <a href="{% url 'driver:order_create' %}" onclick="Native.vibrate()"
-         class="relative w-10 h-10 rounded-full flex items-center justify-center active:opacity-60 transition-opacity flex-shrink-0"
-         style="background:#FFD600;box-shadow:0 2px 10px rgba(255,214,0,.45)">
-        <span class="oc-pulse-ring" aria-hidden="true"></span>
-        <i class="fas fa-plus text-[18px]" style="color:#111"></i>
-      </a>
-      <!-- Chat -->
-      <a href="{% url 'driver:chat' %}" onclick="Native.vibrate()"
-         class="relative w-10 h-10 rounded-full flex items-center justify-center active:opacity-60 transition-opacity flex-shrink-0"
-         style="background:var(--ios-fill)">
-        <i class="fas fa-message text-[18px] {% if active_tab == 'chat' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
-        {% if chat_unread > 0 %}
-        <span class="ios-badge absolute -top-0.5 -right-0.5">{{ chat_unread }}</span>
-        {% endif %}
-      </a>
-    </div>
-  </div>
-</div>
-
 <!-- Pull-to-refresh -->
 <div id="ptr" class="relative flex items-center justify-center gap-2 overflow-hidden"
      style="height:0;opacity:0;transition:height .18s ease,opacity .18s ease;color:var(--ios-label3)">
@@ -233,19 +184,6 @@
   100% { transform:scale(1); }
 }
 .price-updated { animation: price-pop .25s ease-out; }
-@keyframes oc-pulse-ring {
-  0%   { transform:scale(1);   opacity:.7; }
-  100% { transform:scale(1.9); opacity:0;  }
-}
-.oc-pulse-ring {
-  position:absolute; inset:0; border-radius:9999px;
-  border:2px solid #FFD600;
-  animation:oc-pulse-ring 1.6s cubic-bezier(.4,0,.6,1) infinite;
-  pointer-events:none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .oc-pulse-ring { animation:none; }
-}
 </style>
 <div id="new-order-modal" class="fixed inset-0 z-[200] hidden flex items-center justify-center"
      onclick="if(event.target===this) closeNewOrderModal(false)"
