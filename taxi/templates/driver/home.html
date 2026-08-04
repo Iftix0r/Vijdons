@@ -270,10 +270,6 @@ const DRIVER_RATING = "{% if driver.rating %}{{ driver.rating|floatformat:1 }}{%
 let TODAY_EARNED = {{ today_earned }};
 let TODAY_TRIPS = {{ today_trips }};
 
-const OFFICE_LAT  = {{ tariff.office_lat|stringformat:'f'|default:'null' }};
-const OFFICE_LNG  = {{ tariff.office_lng|stringformat:'f'|default:'null' }};
-const OFFICE_NAME = "{{ tariff.office_name|default:'Ofis'|escapejs }}";
-
 // O'zbekiston chegaralari — xarita foydalanuvchi butun dunyo/qit'ani ko'rib
 // chalg'imasin deb, harakatlanish/kichraytirish shu hudud bilan cheklanadi.
 // Diqqat: bu to'g'ri to'rtburchak chegara, O'zbekistonning haqiqiy (noaniq
@@ -1017,16 +1013,6 @@ document.addEventListener('visibilitychange', () => {
       </svg>`;
     return el;
   }
-  function _officeEl() {
-    const el = document.createElement('div');
-    el.style.cssText = 'position:relative;text-align:center';
-    el.innerHTML =
-      '<div style="width:34px;height:34px;border-radius:10px;background:#4F46E5;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.35)">' +
-        '<i class="fas fa-building" style="color:#fff;font-size:15px"></i>' +
-      '</div>' +
-      '<div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid #4F46E5"></div>';
-    return el;
-  }
   // Haydovchi rasmi, mashina, safarlar soni va darajasi — v2'da balonda,
   // v3'da bosilganda pastdan chiqadigan kartada ishlatiladi (_showPeerCard).
   function _peerCardHtml(p) {
@@ -1096,10 +1082,6 @@ document.addEventListener('visibilitychange', () => {
         _homeMap = null; _homeMode = null;
         _initHomeMapV2(lat, lng, placeholder);
       });
-
-      if (OFFICE_LAT !== null && OFFICE_LNG !== null) {
-        new mapboxgl.Marker({ element: _officeEl() }).setLngLat([OFFICE_LNG, OFFICE_LAT]).addTo(_homeMap);
-      }
 
       // 3D binolar — Navigator'dagi kabi haqiqiy hajmli ko'rinish uchun.
       // dark-v11 uslubida 'composite' manba ichida tayyor 'building' qatlami
@@ -1210,14 +1192,6 @@ document.addEventListener('visibilitychange', () => {
       _homeMap.container.fitToViewport();
       setTimeout(() => { try { _homeMap.container.fitToViewport(); } catch (_) {} }, 300);
       window.addEventListener('resize', () => { try { _homeMap.container.fitToViewport(); } catch (_) {} });
-
-      if (OFFICE_LAT !== null && OFFICE_LNG !== null) {
-        const mark = new ymaps.Placemark([OFFICE_LAT, OFFICE_LNG], { hintContent: OFFICE_NAME, balloonContent: OFFICE_NAME }, {
-          iconLayout: ymaps.templateLayoutFactory.createClass(_officeEl().outerHTML),
-          iconShape: { type: 'Circle', coordinates: [17, 17], radius: 19 },
-        });
-        _homeMap.geoObjects.add(mark);
-      }
 
       const hint = document.getElementById('home-map-hint');
       if (placeholder) {
