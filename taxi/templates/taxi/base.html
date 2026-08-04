@@ -1064,6 +1064,11 @@
     openModal = function(id) {
         _origOpen(id);
         if (id === 'orderModal') {
+            // Haydovchilar guruhiga "buyurtma yaratilmoqda" ogohlantirishi
+            fetch("{% url 'taxi:order_notify_creating' %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': document.querySelector('#orderModal [name=csrfmiddlewaretoken]').value }
+            }).catch(function(){});
             // Reset state
             _stopOrderMapDrivers();
             _odriverCentered = false;

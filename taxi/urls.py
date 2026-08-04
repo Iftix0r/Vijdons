@@ -15,6 +15,7 @@ urlpatterns = [
     path('orders/aging/count/', views.aging_orders_count, name='aging_orders_count'),
     path('orders/on-route/', views.orders_on_route_poll, name='orders_on_route_poll'),
     path('orders/add/', views.order_create, name='order_create'),
+    path('orders/notify-creating/', views.order_notify_creating, name='order_notify_creating'),
     path('orders/<int:pk>/', views.order_detail, name='order_detail'),
     path('orders/<int:pk>/status/', views.order_update_status, name='order_update_status'),
     path('orders/<int:pk>/cancel-reassign/', views.order_cancel_reassign, name='order_cancel_reassign'),

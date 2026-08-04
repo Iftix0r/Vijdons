@@ -98,6 +98,16 @@ def client_detail(request, pk):
 
 
 @panel_login_required
+@require_POST
+def order_notify_creating(request):
+    """Yangi buyurtma oynasi ochilganda chaqiriladi — haydovchilar guruhiga
+    "buyurtma yaratilmoqda" ogohlantirishini yuboradi."""
+    from taxi.utils import tg_order_creating
+    tg_order_creating()
+    return JsonResponse({'ok': True})
+
+
+@panel_login_required
 def order_create(request):
     if request.method == 'POST':
         phone_number  = request.POST.get('phone_number', '').strip()

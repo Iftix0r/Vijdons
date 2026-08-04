@@ -545,6 +545,15 @@ def _notify_driver_group(text, reply_markup=None):
     send_telegram(text, chat_ids=ids, reply_markup=reply_markup or _driver_group_inline())
 
 
+def tg_order_creating():
+    """Operator buyurtma oynasini ochib, ma'lumot to'ldirayotganda haydovchilar
+    guruhiga ogohlantiruvchi xabar yuboradi — buyurtma hali yaratilmagan bo'lsa ham."""
+    _notify_driver_group(
+        "⏳ Operator buyurtma yaratmoqda. Tez orada ilovaga tushadi, "
+        "biroz kutib turishingizni so'raymiz."
+    )
+
+
 def tg_new_order(order):
     log_panel_event('panel_new_order', f"Buyurtma #{order.id} — {order.from_address}")
     cfg = _cfg()
