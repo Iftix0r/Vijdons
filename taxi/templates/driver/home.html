@@ -290,7 +290,6 @@ let _timerIntervals = {};
 // accepted/on_way/arrived — buyurtma bo'lgan holatda) xuddi shu ReferenceError
 // yuzaga kelib, butun skript ishga tushmay, ekran butunlay bo'sh qolib
 // ketardi (buyurtma tafsilotlari HAM, "Buyurtma qidirilmoqda" ham ko'rinmasdi).
-let _sheetMap = null;
 let _sheetOpenForId = null;
 let _sheetOpenForStatus = null;
 let _sheetCloseTimer = null;
@@ -1105,7 +1104,6 @@ function _renderSheet(id, o){
   // Safar davomida (qulflangan holat) ham tab bar orqali boshqa bo'limlarga
   // o'tish imkoni qolsin deb, uni sheet ustiga ko'taramiz.
   setTabbarRaised(o.status==='accepted'||o.status==='on_way'||o.status==='arrived');
-  _destroySheetMap();
   const pill={
     pending: 'pill-yellow', accepted:'pill-blue', on_way:'pill-purple', arrived:'pill-green'
   };
@@ -1230,9 +1228,7 @@ function _renderSheet(id, o){
 
   // Buyurtma qabul qilingandan keyin (accepted/on_way/arrived) tashqariga
   // bosib sheet'ni yopib bo'lmaydi (_onBackdropTap qulflaydi), faqat
-  // "Yakunlash"/"Bekor qilish" orqali chiqiladi — lekin endi bu holatda ham
-  // sheet oddiy (yarim ekranli, shaffof) karta bo'lib qoladi, orqasida esa
-  // asosiy sahifadagidek to'liq xarita (#sheet-map) ko'rinib turadi.
+  // "Yakunlash"/"Bekor qilish" orqali chiqiladi.
 
   // closeSheet() yopilish animatsiyasi paytida overlay'ga vaqtincha
   // pointer-events:none qo'yadi va 380ms dan keyin uni qaytadan yashiradi
@@ -1252,7 +1248,6 @@ function _renderSheet(id, o){
       _syncSheetTmx(o);
       setTimeout(() => _syncSheetTmx(o), 100);
     }
-    _initSheetMap(o);
   });
 }
 
