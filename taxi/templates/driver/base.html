@@ -366,6 +366,20 @@ body { background: var(--ios-bg); color: var(--ios-label); }
   {% block content %}{% endblock %}
 </main>
 
+<!-- Jonli ovozli aloqa ("efir") — doim ko'rinadigan, o'ng-yuqori burchakka
+     mahkamlangan tugma (menyu ichida emas, chunki bosib-ushlab-gapirish
+     harakati tez-tez va darhol kerak bo'ladi). Ratsiya uslubi: tinglash
+     doim yoniq (avtomatik ulanadi), tugmani BOSIB TURGANDA ovoz yoziladi,
+     qo'yib yuborilganda avtomatik yuboriladi. -->
+<button id="voice-btn" type="button"
+   onmousedown="_voiceStartTalk()" onmouseup="_voiceStopTalk()" onmouseleave="_voiceStopTalk()"
+   ontouchstart="_voiceStartTalk(event)" ontouchend="_voiceStopTalk(event)"
+   class="flex items-center justify-center active:opacity-60 transition-opacity relative border-0 cursor-pointer"
+   style="position:fixed;z-index:150;top:calc(env(safe-area-inset-top,47px) + 10px);right:16px;width:48px;height:48px;border-radius:50%;background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);-webkit-tap-highlight-color:transparent;user-select:none">
+  <i id="voice-btn-icon" class="fas fa-microphone" style="color:#8E8E93;font-size:19px"></i>
+  <span id="voice-participants-badge" class="ios-badge absolute -top-1 -right-1 hidden" style="font-size:10px;min-width:16px;height:16px"></span>
+</button>
+
 <!-- Pastki tab-bar + Asosiy sahifaning yuqoridagi qatori (profil/balans/
      +buyurtma/chat) — hammasi bitta pastki hamburger tugmasi ichiga
      jamlandi, ekran (xarita) to'liq bo'shab qoldi. -->
@@ -430,18 +444,6 @@ body { background: var(--ios-bg); color: var(--ios-label); }
         <span class="ios-subhead" style="color:var(--ios-label)">Chat</span>
         {% if chat_unread > 0 %}<span class="ios-badge ml-auto">{{ chat_unread }}</span>{% endif %}
       </a>
-      <!-- Efir (ovozli aloqa) — ratsiya uslubi: shu qatorni BOSIB TURGANDA
-           ovoz yoziladi, qo'yib yuborilganda avtomatik yuboriladi. Menyu
-           ochiq turgan holda ham ishlaydi. -->
-      <div id="voice-btn"
-         onmousedown="_voiceStartTalk()" onmouseup="_voiceStopTalk()" onmouseleave="_voiceStopTalk()"
-         ontouchstart="_voiceStartTalk(event)" ontouchend="_voiceStopTalk(event)"
-         class="flex items-center gap-3 px-3 py-3 rounded-xl transition-colors cursor-pointer"
-         style="-webkit-tap-highlight-color:transparent;user-select:none">
-        <i id="voice-btn-icon" class="fas fa-microphone text-[20px]" style="width:24px;text-align:center;color:#8E8E93"></i>
-        <span class="ios-subhead" style="color:var(--ios-label)">Efir (bosib turib gapiring)</span>
-        <span id="voice-participants-badge" class="ios-badge ml-auto hidden"></span>
-      </div>
     </div>
     <div class="px-5 pb-5 pt-2" style="padding-bottom:calc(env(safe-area-inset-bottom,16px) + 8px)">
       <button onclick="closeDriverMenu()" style="width:100%;padding:13px;border-radius:14px;background:var(--ios-fill);color:var(--ios-label);font-size:15px;font-weight:600;border:none;cursor:pointer">
