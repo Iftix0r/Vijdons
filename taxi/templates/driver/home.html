@@ -1307,11 +1307,11 @@ document.addEventListener('visibilitychange', () => {
   // yozuvi bilan BO'SH-QORA holatda cheksiz qotib qolmasin deb, uni Toshkent
   // markazida (standart) ko'rsatib qo'yamiz.
   setTimeout(() => {
-    // Diqqat: agar shu vaqtgacha ham xarita skriptlari (v3 va v2.1)
-    // umuman yuklanmagan bo'lsa (masalan brauzerning reklama/tracker
-    // blokeri api-maps.yandex.ru'ni bloklagan bo'lsa) — bu "GPS kutilmoqda"
-    // bilan HECH QANDAY bog'liq emas, xarita SKRIPTLARINING o'ZI kelmagan.
-    if (typeof ymaps === 'undefined' && typeof ymaps3 === 'undefined') {
+    // Diqqat: agar shu vaqtgacha ham xarita skriptlari (Mapbox va Yandex
+    // 2.1) umuman yuklanmagan bo'lsa (masalan brauzerning reklama/tracker
+    // blokeri bloklagan bo'lsa) — bu "GPS kutilmoqda" bilan HECH QANDAY
+    // bog'liq emas, xarita SKRIPTLARINING o'ZI kelmagan.
+    if (typeof ymaps === 'undefined' && typeof mapboxgl === 'undefined') {
       const hint = document.getElementById('home-map-hint');
       if (hint) hint.textContent = "Xarita yuklanmadi — brauzeringizdagi reklama/shield blokerini shu sayt uchun o'chirib, sahifani yangilang";
       return;
@@ -1323,8 +1323,8 @@ document.addEventListener('visibilitychange', () => {
   window._homeMapRecenter = function() {
     try { Native.vibrate(); } catch(_) {}
     if (!_homeMap) return;
-    if (_homeMode === 'v3') {
-      if (_lastLat !== null) _homeMap.update({ location: { center: [_lastLng, _lastLat], zoom: 16, duration: 400 } });
+    if (_homeMode === 'mapbox') {
+      if (_lastLat !== null) _homeMap.easeTo({ center: [_lastLng, _lastLat], zoom: 16, duration: 400 });
     } else if (_homeMyMark) {
       _homeMap.setCenter(_homeMyMark.geometry.getCoordinates(), 15, { checkZoomRange: true });
     }
@@ -1345,7 +1345,7 @@ document.addEventListener('visibilitychange', () => {
     navigator.geolocation.watchPosition(
       pos => {
         _homeUpdateMine(pos.coords.latitude, pos.coords.longitude);
-        if (_homeMode === 'v3') _homeUpdateHeadingV3(pos.coords.heading);
+        if (_homeMode === 'mapbox') _homeUpdateHeadingMapbox(pos.coords.heading);
       },
       () => {},
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
