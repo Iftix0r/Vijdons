@@ -388,21 +388,19 @@ body { background: var(--ios-bg); color: var(--ios-label); }
   <div class="flex items-center justify-around px-1 py-1" style="border-radius:9999px;background:rgba(20,20,22,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 8px 28px rgba(0,0,0,.4)">
 
     <a href="{% url 'driver:home' %}" onclick="Native.vibrate(); dismissAllSheets()"
-       class="flex flex-col items-center gap-[3px] px-3 py-2 min-h-[52px] justify-center transition-all active:opacity-60 relative">
-      <i class="fas fa-car-side text-[21px] {% if active_tab == 'home' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+       class="flex items-center justify-center px-3 py-2 min-h-[52px] min-w-[44px] transition-all active:opacity-60 relative">
+      <i class="fas fa-car-side text-[22px] {% if active_tab == 'home' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
       {% if pending_orders_count > 0 %}
       <span class="ios-badge absolute top-0 right-1" style="font-size:9px;min-width:14px;height:14px">{{ pending_orders_count }}</span>
       {% endif %}
-      <span class="ios-caption2 {% if active_tab == 'home' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Asosiy</span>
     </a>
 
     <a href="{% url 'driver:history' %}" onclick="Native.vibrate(); dismissAllSheets()"
-       class="flex flex-col items-center gap-[3px] px-3 py-2 min-h-[52px] justify-center transition-all active:opacity-60 relative">
-      <i class="fas fa-clock-rotate-left text-[21px] {% if active_tab == 'history' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+       class="flex items-center justify-center px-3 py-2 min-h-[52px] min-w-[44px] transition-all active:opacity-60 relative">
+      <i class="fas fa-clock-rotate-left text-[22px] {% if active_tab == 'history' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
       {% if active_orders_count > 0 %}
       <span class="ios-badge absolute top-0 right-1" style="font-size:9px;min-width:14px;height:14px">{{ active_orders_count }}</span>
       {% endif %}
-      <span class="ios-caption2 {% if active_tab == 'history' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Tarix</span>
     </a>
 
     <!-- Yangi buyurtma — panel ustidan biroz ko'tarilgan, sariq accent tugma -->
@@ -413,18 +411,24 @@ body { background: var(--ios-bg); color: var(--ios-label); }
     </a>
 
     <a href="{% url 'driver:chat' %}" onclick="Native.vibrate(); dismissAllSheets()"
-       class="flex flex-col items-center gap-[3px] px-3 py-2 min-h-[52px] justify-center transition-all active:opacity-60 relative">
-      <i class="fas fa-comment-dots text-[21px] {% if active_tab == 'chat' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
+       class="flex items-center justify-center px-3 py-2 min-h-[52px] min-w-[44px] transition-all active:opacity-60 relative">
+      <i class="fas fa-comment-dots text-[22px] {% if active_tab == 'chat' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
       {% if chat_unread > 0 %}
       <span class="ios-badge absolute top-0 right-1" style="font-size:9px;min-width:14px;height:14px">{{ chat_unread }}</span>
       {% endif %}
-      <span class="ios-caption2 {% if active_tab == 'chat' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Chat</span>
     </a>
 
     <a href="{% url 'driver:profile' %}" onclick="Native.vibrate(); dismissAllSheets()"
-       class="flex flex-col items-center gap-[3px] px-3 py-2 min-h-[52px] justify-center transition-all active:opacity-60 relative">
-      <i class="fas fa-user text-[21px] {% if active_tab == 'profile' %}text-[#FFD600]{% else %}text-[#8E8E93]{% endif %}"></i>
-      <span class="ios-caption2 {% if active_tab == 'profile' %}text-[#FFD600] font-semibold{% else %}text-[#8E8E93]{% endif %}">Profil</span>
+       class="flex items-center justify-center px-3 py-2 min-h-[52px] min-w-[44px] transition-all active:opacity-60 relative">
+      {% if driver.photo %}
+      <img src="{{ driver.photo.url }}" alt="" class="w-7 h-7 rounded-full object-cover"
+           style="{% if active_tab == 'profile' %}box-shadow:0 0 0 2px #FFD600{% else %}box-shadow:0 0 0 1.5px #8E8E93{% endif %}">
+      {% else %}
+      <div class="w-7 h-7 rounded-full flex items-center justify-center"
+           style="background:{{ driver.full_name|avatar_gradient }};{% if active_tab == 'profile' %}box-shadow:0 0 0 2px #FFD600{% endif %}">
+        <span style="font-size:11px;font-weight:800;color:#fff">{{ driver.full_name|first|upper }}</span>
+      </div>
+      {% endif %}
     </a>
 
   </div>
