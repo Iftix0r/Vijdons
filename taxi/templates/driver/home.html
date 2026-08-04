@@ -104,6 +104,14 @@
   <i class="fas fa-location-crosshairs" style="color:#FFD600;font-size:20px"></i>
 </button>
 
+<!-- Tezlik o'lchagich — Navigator'dagi kabi, chap-pastda. GPS'dan 'speed'
+     kelmasa (m/s, brauzer/qurilma bermasa yoki harakatsiz bo'lsa) "—"
+     ko'rsatiladi, aks holda km/soatga o'girib ko'rsatamiz. -->
+<div id="speedometer" style="position:fixed;z-index:15;left:16px;bottom:calc(env(safe-area-inset-bottom,16px) + 96px);width:64px;height:64px;border-radius:50%;background:rgba(20,20,22,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 14px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:center">
+  <span id="speedometer-value" class="ios-title font-bold" style="color:#FFD600;line-height:1">—</span>
+  <span class="ios-caption2" style="color:#8E8E93;line-height:1;margin-top:1px">km/soat</span>
+</div>
+
 <!-- Telegram web-appidagi "forward qilingan xabarlar" paneliga o'xshab, tab-bar
      ustida suzib turuvchi to'liq enli chiziq — faol (qabul qilingan) buyurtma
      bo'lsagina ko'rinadi. Haydovchi buyurtma oynasini yopib qo'ysa ham, shu
@@ -1327,6 +1335,20 @@ document.addEventListener('visibilitychange', () => {
     if (e.detail?.lat && e.detail?.lng) _homeUpdateMine(e.detail.lat, e.detail.lng);
   });
 
+  // GPS 'speed' (m/s) kelsa km/soatga o'girib ko'rsatamiz. Qiymat
+  // null/undefined bo'lishi mumkin (harakatsiz turganda yoki qurilma
+  // bermasa) — bunda "—" ko'rsatiladi, 0 emas (chunki bu "tezlik nol"
+  // bilan "tezlik noma'lum"ni chalkashtirib yuboradi).
+  function _updateSpeedometer(speedMps) {
+    const el = document.getElementById('speedometer-value');
+    if (!el) return;
+    if (speedMps === null || speedMps === undefined || isNaN(speedMps)) {
+      el.textContent = '—';
+      return;
+    }
+    el.textContent = Math.max(0, Math.round(speedMps * 3.6));
+  }
+
   // Diqqat: yuqoridagi eventni FAQAT Flutter qobig'i yuboradi (hozircha
   // 'heading' yubormaydi — faqat lat/lng). Agar biror sabab bilan bu event
   // kelmasa, brauzerning o'zining geolocation API'sini zaxira manba
@@ -1339,6 +1361,7 @@ document.addEventListener('visibilitychange', () => {
       pos => {
         _homeUpdateMine(pos.coords.latitude, pos.coords.longitude);
         if (_homeMode === 'mapbox') _homeUpdateHeadingMapbox(pos.coords.heading);
+        _updateSpeedometer(pos.coords.speed);
       },
       () => {},
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
