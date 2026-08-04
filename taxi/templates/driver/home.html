@@ -1037,6 +1037,21 @@ document.addEventListener('visibilitychange', () => {
     el.innerHTML = '<span style="font-size:22px;line-height:1">🚖</span>';
     return el;
   }
+  // O'zining (haydovchining) belgisi — Yandex Navigator'dagi kabi yo'nalish
+  // ko'rsatkichi (chevron/o'q shakli). Xaritaning o'zi GPS 'heading'ga qarab
+  // aylangani uchun (_homeUpdateHeadingV3), bu belgi doim ekranda "yuqoriga"
+  // qarab turadi — o'zi aylanmaydi, faqat xarita aylanadi. Faqat v3 (aylanish
+  // qo'llab-quvvatlaydigan) yo'lda ishlatiladi.
+  function _navArrowEl() {
+    const el = document.createElement('div');
+    el.style.cssText = 'width:44px;height:44px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.5))';
+    el.innerHTML = `
+      <svg width="44" height="44" viewBox="0 0 44 44">
+        <circle cx="22" cy="22" r="19" fill="#FFD600" opacity=".16"/>
+        <path d="M22,6 L34,32 L22,25 L10,32 Z" fill="#FFD600" stroke="#1c1c1f" stroke-width="2.5" stroke-linejoin="round"/>
+      </svg>`;
+    return el;
+  }
   function _officeEl() {
     const el = document.createElement('div');
     el.style.cssText = 'position:relative;text-align:center';
@@ -1112,7 +1127,7 @@ document.addEventListener('visibilitychange', () => {
   function _homeUpdateMineV3(lat, lng) {
     const { YMapMarker } = ymaps3;
     if (!_homeMyMark) {
-      _homeMyMark = new YMapMarker({ coordinates: [lng, lat], zIndex: 200 }, _markerEl('#FFD600'));
+      _homeMyMark = new YMapMarker({ coordinates: [lng, lat], zIndex: 200 }, _navArrowEl());
       _homeMap.addChild(_homeMyMark);
     } else {
       _homeMyMark.update({ coordinates: [lng, lat] });
