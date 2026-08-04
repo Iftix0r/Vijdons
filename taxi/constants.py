@@ -31,6 +31,7 @@ DRIVER_SOUND_EVENTS = [
     ('driver_chat_message',    '💬 Yangi chat xabari'),
     ('driver_balance_changed', "💰 Balans to'ldirildi"),
     ('driver_order_creating',  "📞 Operator buyurtma yaratmoqda"),
+    ('driver_low_balance',     '⚠️ Balans kam (yangi buyurtma qabul qilib bo\'lmaydi)'),
 ]
 
 SOUND_EVENT_LABELS = dict(PANEL_SOUND_EVENTS + DRIVER_SOUND_EVENTS)

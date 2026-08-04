@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 # (soat, BotSettings dagi "oxirgi yuborilgan sana" maydoni, utils.py dagi funksiya nomi)
 # Har kuni shu soatning 00-daqiqasida tekshiriladi.
 _DAILY_SCHEDULE = (
+    (3,  'last_freeze_warning_date',          'warn_drivers_before_freeze'),
     (4,  'last_freeze_inactive_drivers_date', 'freeze_inactive_drivers'),
     (7,  'last_morning_greeting_date',        'tg_morning_greeting'),
     (10, 'last_inactive_drivers_report_date', 'tg_inactive_drivers_report'),

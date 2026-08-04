@@ -1135,6 +1135,47 @@ def freeze_inactive_drivers():
         )
 
 
+def warn_drivers_before_freeze():
+    """freeze_inactive_drivers() dan bir kun oldin ishga tushadi — hali
+    muzlamagan, lekin (FREEZE_INACTIVE_DAYS - 1) kundan beri onlayn
+    bo'lmagan haydovchilarga oldindan ogohlantirish yuboradi (push + Telegram).
+    Driver.freeze_warning_sent_at haydovchi qayta faollashguncha (driver_location_sync)
+    qayta ogohlantirilib yubormasligini ta'minlaydi."""
+    from datetime import timedelta
+    from django.db.models import Q
+    from django.utils import timezone
+    from taxi.models import Driver
+
+    freeze_cutoff = timezone.now() - timedelta(days=FREEZE_INACTIVE_DAYS)
+    warn_cutoff = timezone.now() - timedelta(days=FREEZE_INACTIVE_DAYS - 1)
+    to_warn = list(Driver.objects.filter(
+        is_active=True, approval_status=Driver.APPROVAL_APPROVED, is_frozen=False,
+        freeze_warning_sent_at__isnull=True,
+    ).filter(
+        Q(last_seen__lt=warn_cutoff, last_seen__gte=freeze_cutoff) |
+        Q(last_seen__isnull=True, registered_at__lt=warn_cutoff, registered_at__gte=freeze_cutoff)
+    ))
+    if not to_warn:
+        return
+
+    from taxi.driver_views import send_push_to_driver
+    for driver in to_warn:
+        driver.freeze_warning_sent_at = timezone.now()
+        driver.save(update_fields=['freeze_warning_sent_at'])
+        send_push_to_driver(
+            driver, '⏰ Hisobingiz muzlatilishi mumkin',
+            f"{FREEZE_INACTIVE_DAYS - 1} kundan beri onlaynsiz. Ertaga ham kirmasangiz, hisobingiz vaqtincha muzlatiladi.",
+        )
+
+    cfg = _cfg()
+    if cfg and not cfg.notify_freeze_warning:
+        return
+    lines = ["⏰ <b>Muzlashga 1 kun qolgan haydovchilar</b>", ""]
+    for d in to_warn:
+        lines.append(f"👤 <b>{d.full_name}</b> | <code>{d.phone_number}</code>")
+    send_telegram('\n'.join(lines))
+
+
 _SURGE_ALERT_COOLDOWN_MINUTES = 20
 _SURGE_ALERT_MIN_MULTIPLIER = 1.5
 

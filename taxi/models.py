@@ -49,6 +49,7 @@ class Driver(models.Model):
     destination_address   = models.CharField(max_length=255, blank=True, default='', verbose_name="Yo'nalish manzil")
     photo                 = models.ImageField(upload_to='driver_photos/', blank=True, null=True, verbose_name="Profil rasmi")
     last_seen             = models.DateTimeField(null=True, blank=True, verbose_name="So'nggi faollik")
+    freeze_warning_sent_at = models.DateTimeField(null=True, blank=True, verbose_name="Muzlash haqida oxirgi ogohlantirilgan vaqt")
     last_address          = models.CharField(max_length=500, blank=True, default='', verbose_name="So'nggi manzil")
     operator_typing_at    = models.DateTimeField(null=True, blank=True, verbose_name="Operator yozayotgan vaqt")
     last_group_read_at    = models.DateTimeField(default=timezone.now, blank=True, verbose_name="Guruh chatini oxirgi o'qigan vaqt")
@@ -264,6 +265,7 @@ class BotSettings(models.Model):
     notify_flyer_redeemed     = models.BooleanField(default=True, verbose_name='Flayer kuponi ishlatilganda xabar')
     notify_balance_changed_to_driver_group = models.BooleanField(default=True, verbose_name="Balans to'ldirilganda haydovchilar guruhiga ham yuborish")
     notify_low_balance_to_driver_group     = models.BooleanField(default=True, verbose_name='Balans kam qolganda haydovchilar guruhiga ham yuborish')
+    notify_freeze_warning = models.BooleanField(default=True, verbose_name="Muzlashga 1 kun qolganda ogohlantirish")
 
     # Har bir kunlik/haftalik/oylik xabar oxirgi marta yuborilgan sana — bir marta
     # yuborilib ketmasligi uchun (masalan bir nechta worker jarayoni bo'lsa)
@@ -285,6 +287,7 @@ class BotSettings(models.Model):
     last_driver_engagement_evening_date = models.DateField(null=True, blank=True)
     last_driver_fun_stats_date          = models.DateField(null=True, blank=True)
     last_freeze_inactive_drivers_date   = models.DateField(null=True, blank=True)
+    last_freeze_warning_date            = models.DateField(null=True, blank=True)
 
     updated_at = models.DateTimeField(auto_now=True)
 

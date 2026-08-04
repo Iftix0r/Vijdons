@@ -323,6 +323,7 @@ const MIN_ZOOM = 7;
 let ORDERS = {{ orders_json|safe }};
 let _known = new Set(ORDERS.map(o => o.id));
 let _lastOrderCreatingPing = undefined; // birinchi pollda baza sifatida o'rnatiladi, toast chiqarilmaydi
+let _lowBalanceWarned = false; // balans yetarli bo'lib qolguncha qayta-qayta toast chiqmasligi uchun
 
 {% if just_logged_in %}
 // Login sahifasidan endigina kirgan bo'lsa — "Xush kelibsiz" ovozini bir marta chalamiz
@@ -481,6 +482,18 @@ async function loadOrders() {
       showToast("📞 Qo'ng'iroq bo'layabdi 1351 ga", "⏳ Operator buyurtma yaratmoqda. Tez orada ilovaga tushadi, biroz kutib turishingizni so'raymiz.", 'info', 5000);
       Audio.orderCreating();
       Native.vibrate([60, 30, 60]);
+    }
+
+    // Balans komissiyadan kam bo'lib qolsa — bir marta ogohlantiramiz, to'ldirilgach qayta chiqishi mumkin
+    if(d.low_balance) {
+      if(!_lowBalanceWarned) {
+        _lowBalanceWarned = true;
+        showToast('⚠️ Balans kam', "Yangi buyurtma qabul qilish uchun balansingizni to'ldiring.", 'error', 6000);
+        Audio.lowBalance();
+        Native.vibrate([80, 40, 80]);
+      }
+    } else {
+      _lowBalanceWarned = false;
     }
 
     const serverIds = new Set(d.new_ids);
