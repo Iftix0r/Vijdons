@@ -1042,9 +1042,9 @@ document.addEventListener('visibilitychange', () => {
   }
   // O'zining (haydovchining) belgisi — Yandex Navigator'dagi kabi yo'nalish
   // ko'rsatkichi (chevron/o'q shakli). Xaritaning o'zi GPS 'heading'ga qarab
-  // aylangani uchun (_homeUpdateHeadingV3), bu belgi doim ekranda "yuqoriga"
-  // qarab turadi — o'zi aylanmaydi, faqat xarita aylanadi. Faqat v3 (aylanish
-  // qo'llab-quvvatlaydigan) yo'lda ishlatiladi.
+  // aylangani uchun (_homeUpdateHeadingMapbox), bu belgi doim ekranda
+  // "yuqoriga" qarab turadi — o'zi aylanmaydi, faqat xarita aylanadi. Faqat
+  // Mapbox (aylanish qo'llab-quvvatlaydigan) yo'lda ishlatiladi.
   function _navArrowEl() {
     const el = document.createElement('div');
     el.style.cssText = 'width:44px;height:44px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.5))';
