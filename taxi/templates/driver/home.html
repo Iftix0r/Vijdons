@@ -107,7 +107,7 @@
 <!-- Tezlik o'lchagich — Navigator'dagi kabi, chap-pastda. GPS'dan 'speed'
      kelmasa (m/s, brauzer/qurilma bermasa yoki harakatsiz bo'lsa) "—"
      ko'rsatiladi, aks holda km/soatga o'girib ko'rsatamiz. -->
-<div id="speedometer" style="position:fixed;z-index:15;left:16px;bottom:calc(env(safe-area-inset-bottom,16px) + 96px);width:64px;height:64px;border-radius:50%;background:rgba(20,20,22,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 14px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:center">
+<div id="speedometer" style="position:fixed;z-index:15;left:16px;top:50%;transform:translateY(-50%);width:64px;height:64px;border-radius:50%;background:rgba(20,20,22,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 14px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:center">
   <span id="speedometer-value" class="ios-title font-bold" style="color:#FFD600;line-height:1">—</span>
   <span class="ios-caption2" style="color:#8E8E93;line-height:1;margin-top:1px">km/soat</span>
 </div>
