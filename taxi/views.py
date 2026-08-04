@@ -99,6 +99,21 @@ def client_detail(request, pk):
 
 @panel_login_required
 @require_POST
+def order_address_transcribe(request):
+    """Buyurtma oynasidagi mikrofon tugmasi — yozilgan ovozni (o'zbekcha)
+    manzil matniga o'giradi (OpenAI Whisper, taxi.utils.transcribe_audio_uz)."""
+    audio = request.FILES.get('audio')
+    if not audio:
+        return JsonResponse({'ok': False, 'error': 'Audio topilmadi'}, status=400)
+    from taxi.utils import transcribe_audio_uz
+    text, error = transcribe_audio_uz(audio.read(), filename=audio.name or 'speech.webm')
+    if error:
+        return JsonResponse({'ok': False, 'error': error}, status=400)
+    return JsonResponse({'ok': True, 'text': text})
+
+
+@panel_login_required
+@require_POST
 def order_notify_creating(request):
     """Yangi buyurtma oynasi ochilganda chaqiriladi — haydovchilar guruhiga
     "buyurtma yaratilmoqda" ogohlantirishini yuboradi."""

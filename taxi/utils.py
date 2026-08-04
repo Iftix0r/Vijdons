@@ -1755,6 +1755,59 @@ def start_dispatch_timeout(order, driver, timeout_seconds):
     ).start()
 
 
+def transcribe_audio_uz(audio_bytes, filename='speech.webm', content_type='audio/webm'):
+    """Ovoz yozuvini (masalan buyurtma oynasidagi mikrofon tugmasi orqali
+    yozilgan manzil) OpenAI Whisper orqali o'zbekcha matnga o'giradi.
+    (matn_yoki_None, xato_matni_yoki_None) qaytaradi."""
+    import uuid
+    from taxi.models import AiSettings
+
+    cfg = AiSettings.get()
+    if not cfg.api_key:
+        return None, "OpenAI API kalit sozlanmagan (Sozlamalar > AI)"
+
+    boundary = uuid.uuid4().hex
+    parts = []
+    for name, value in (('model', 'whisper-1'), ('language', 'uz')):
+        parts.append(f'--{boundary}'.encode())
+        parts.append(f'Content-Disposition: form-data; name="{name}"'.encode())
+        parts.append(b'')
+        parts.append(value.encode())
+    parts.append(f'--{boundary}'.encode())
+    parts.append(f'Content-Disposition: form-data; name="file"; filename="{filename}"'.encode())
+    parts.append(f'Content-Type: {content_type}'.encode())
+    parts.append(b'')
+    parts.append(audio_bytes)
+    parts.append(f'--{boundary}--'.encode())
+    parts.append(b'')
+    body = b'\r\n'.join(parts)
+
+    req = urllib.request.Request(
+        'https://api.openai.com/v1/audio/transcriptions',
+        data=body,
+        headers={
+            'Authorization': f'Bearer {cfg.api_key}',
+            'Content-Type': f'multipart/form-data; boundary={boundary}',
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode())
+        text = (data.get('text') or '').strip()
+        if not text:
+            return None, "Ovozda matn topilmadi"
+        return text, None
+    except urllib.error.HTTPError as e:
+        try:
+            err = json.loads(e.read().decode()).get('error', {}).get('message', str(e))
+        except Exception:
+            err = str(e)
+        return None, err
+    except Exception as e:
+        return None, str(e)
+
+
 def generate_growth_insights(stats):
     """Joriy statistika asosida OpenAI'dan taksi biznesini rivojlantirish bo'yicha
     qadam-baqadam tavsiyalar, top haydovchi/mijoz uchun sovg'a taklifi va orqaga

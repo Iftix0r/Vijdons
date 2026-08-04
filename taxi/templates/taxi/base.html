@@ -452,8 +452,15 @@
                     <i class="fas fa-map-pin text-green-500 mr-1"></i>Mijoz manzili
                     <span id="om_from_address_hint" class="text-gray-400 font-normal normal-case">(xarita bosilganda avtomatik to'ladi)</span>
                 </label>
-                <input type="text" name="from_address" id="om_from_address" placeholder="Ko'cha, uy raqami..."
-                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                <div class="relative">
+                    <input type="text" name="from_address" id="om_from_address" placeholder="Ko'cha, uy raqami..."
+                           class="w-full pl-3 pr-10 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                    <button type="button" id="om_from_mic" onclick="_addrMicToggle('om_from_address', 'om_from_mic')"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition"
+                            title="Ovoz bilan kiritish">
+                        <i class="fas fa-microphone text-xs"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- Qayerga manzil (matn) -->
@@ -461,8 +468,15 @@
                 <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">
                     <i class="fas fa-map-marker-alt text-red-400 mr-1"></i>Qayerga <span class="text-gray-400 font-normal">(ixtiyoriy)</span>
                 </label>
-                <input type="text" name="to_address" id="om_to_address" placeholder="Haydovchi o'zi hal qiladi..."
-                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                <div class="relative">
+                    <input type="text" name="to_address" id="om_to_address" placeholder="Haydovchi o'zi hal qiladi..."
+                           class="w-full pl-3 pr-10 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                    <button type="button" id="om_to_mic" onclick="_addrMicToggle('om_to_address', 'om_to_mic')"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition"
+                            title="Ovoz bilan kiritish">
+                        <i class="fas fa-microphone text-xs"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- Komissiya + Mashina turi -->
@@ -1034,6 +1048,69 @@
                 headers: { 'X-CSRFToken': document.querySelector('#orderModal [name=csrfmiddlewaretoken]').value }
             }).catch(function(){});
         }
+    }
+
+    // ── Manzilni ovoz bilan kiritish (mikrofon tugmasi, Whisper orqali) ──
+    let _addrMicRecorder = null;
+    let _addrMicChunks   = [];
+    let _addrMicField    = null;
+
+    async function _addrMicToggle(fieldId, btnId) {
+        const btn = document.getElementById(btnId);
+        if (_addrMicRecorder && _addrMicField === fieldId) {
+            _addrMicRecorder.stop();
+            return;
+        }
+        if (_addrMicRecorder) return; // boshqa maydon hozir yozilmoqda
+
+        let stream;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch (err) {
+            showToast('Mikrofonga ruxsat kerak');
+            return;
+        }
+        _addrMicField  = fieldId;
+        _addrMicChunks = [];
+        _addrMicRecorder = new MediaRecorder(stream);
+        _addrMicRecorder.ondataavailable = e => { if (e.data && e.data.size) _addrMicChunks.push(e.data); };
+        _addrMicRecorder.onstop = () => {
+            stream.getTracks().forEach(t => t.stop());
+            const blob = new Blob(_addrMicChunks, { type: 'audio/webm' });
+            _addrMicRecorder = null;
+            _addrMicField = null;
+            if (blob.size > 800) {
+                _addrMicTranscribe(blob, fieldId, btn);
+            } else {
+                btn.innerHTML = '<i class="fas fa-microphone text-xs"></i>';
+                btn.classList.remove('text-red-500');
+            }
+        };
+        _addrMicRecorder.start();
+        btn.classList.add('text-red-500');
+        btn.innerHTML = '<i class="fas fa-stop text-xs"></i>';
+    }
+
+    function _addrMicTranscribe(blob, fieldId, btn) {
+        btn.classList.remove('text-red-500');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i>';
+        const fd = new FormData();
+        fd.append('audio', blob, 'speech.webm');
+        fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+        fetch('{% url "taxi:order_transcribe_address" %}', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(d => {
+                btn.innerHTML = '<i class="fas fa-microphone text-xs"></i>';
+                if (d.ok && d.text) {
+                    document.getElementById(fieldId).value = d.text;
+                } else {
+                    showToast(d.error || "Ovozni tanib bo'lmadi");
+                }
+            })
+            .catch(() => {
+                btn.innerHTML = '<i class="fas fa-microphone text-xs"></i>';
+                showToast('Tarmoq xatosi');
+            });
     }
 
     function _initOrderMap() {
