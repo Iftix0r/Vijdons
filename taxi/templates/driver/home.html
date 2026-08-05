@@ -1255,7 +1255,7 @@ document.addEventListener('visibilitychange', () => {
     _clusterPeersMapbox(_homePeerListRaw).forEach(g => {
       if (g.type === 'single') {
         const p = g.driver;
-        const el = _markerEl(p.is_online ? '#34C759' : '#ef4444');
+        const el = _markerEl('#34C759');
         el.style.cursor = 'pointer';
         el.onclick = () => _showPeerCard(p);
         _homePeerMapboxMarkers.push(
@@ -1328,9 +1328,8 @@ document.addEventListener('visibilitychange', () => {
   function _homeRefreshPeersV2(list) {
     if (!_homePeerClusterer) return;
     const placemarks = list.map(p => {
-      const color = p.is_online ? '#34C759' : '#ef4444';
       return new ymaps.Placemark([p.latitude, p.longitude], { hintContent: p.full_name, balloonContentBody: _peerCardHtml(p) }, {
-        iconLayout: ymaps.templateLayoutFactory.createClass(_markerEl(color).outerHTML),
+        iconLayout: ymaps.templateLayoutFactory.createClass(_markerEl('#34C759').outerHTML),
         iconShape: { type: 'Circle', coordinates: [20, 20], radius: 20 },
       });
     });
