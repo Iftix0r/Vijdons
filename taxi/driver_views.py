@@ -547,12 +547,15 @@ def driver_order_action(request, driver, pk, action):
     try:
         tmx_dist = request.POST.get('tmx_dist_km')
         tmx_price = request.POST.get('tmx_price')
-        if tmx_dist and float(tmx_dist) > 0:
+        # Tarmoq beqaror bo'lganda bu so'rov davriy /meter/ autosave'dan oldin
+        # yetib kelishi mumkin — shu sabab qiymatlar hech qachon orqaga
+        # qaytarilmasin (faqat bazadagidan katta/teng bo'lsa yoziladi)
+        if tmx_dist and float(tmx_dist) > 0 and float(tmx_dist) >= float(order.tmx_dist_km or 0):
             order.distance_km = round(float(tmx_dist), 2)
             order.tmx_dist_km = round(float(tmx_dist), 2)
             update_fields.append('distance_km')
             update_fields.append('tmx_dist_km')
-        if tmx_price and float(tmx_price) > 0:
+        if tmx_price and float(tmx_price) > 0 and float(tmx_price) >= float(order.price or 0):
             order.price = round(float(tmx_price), 2)
             update_fields.append('price')
     except Exception:
@@ -1108,14 +1111,23 @@ def driver_meter_update(request, driver, pk):
     except (ValueError, TypeError):
         return JsonResponse({'ok': False}, status=400)
 
-    update_fields = ['tmx_dist_km', 'tmx_paused', 'tmx_paused_ms', 'updated_at']
-    order.tmx_dist_km = round(dist_km, 2)
+    update_fields = ['tmx_paused', 'updated_at']
     order.tmx_paused = waiting
-    order.tmx_paused_ms = max(0, wait_ms)
-    if dist_km > 0:
-        order.distance_km = round(dist_km, 2)
-        update_fields.append('distance_km')
-    if price > 0:
+
+    # Internet uzilib-ulanib turganda avtosaqlash so'rovlari tartibsiz
+    # (eskisi keyinroq) yetib kelishi mumkin — shu sabab bu kumulyativ
+    # qiymatlar hech qachon orqaga qaytarilmasin (faqat oshsin), aks holda
+    # taximetr vaqtincha ko'p ko'rsatib, keyin kamayib qolganday tuyular edi.
+    if dist_km >= float(order.tmx_dist_km or 0):
+        order.tmx_dist_km = round(dist_km, 2)
+        update_fields.append('tmx_dist_km')
+        if dist_km > 0:
+            order.distance_km = round(dist_km, 2)
+            update_fields.append('distance_km')
+    if wait_ms >= (order.tmx_paused_ms or 0):
+        order.tmx_paused_ms = max(0, wait_ms)
+        update_fields.append('tmx_paused_ms')
+    if price > 0 and price >= float(order.price or 0):
         from decimal import Decimal
         order.price = Decimal(str(round(price)))
         update_fields.append('price')
