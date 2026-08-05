@@ -7,17 +7,22 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#0E1621">
+<meta id="vj-theme-color" name="theme-color" content="#0E1621">
 <title>{% block title %}Vijdon Driver{% endblock %}</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config={darkMode:'class'}</script>
 <script>
-// Haydovchi ilovasi doim tungi (dark) rejimda — yorug' rejim yo'q, tanlov
-// imkoniyati qasddan berilmagan (barqaror, ko'zni charchatmaydigan bitta
-// ko'rinish). Sahifa chizilishidan OLDIN ishga tushishi shart — aks holda
-// birinchi kadrda yorug' rejim ko'rinib, keyin qorong'iga "miltillab" o'tib
-// qolardi (FOUC).
-document.documentElement.classList.add('dark');
+// Diqqat: standart holat hamon tungi (dark) rejim — Profil sahifasida
+// "Kunduzgi rejim" tugmasi orqali yoqib-o'chirish mumkin, tanlov
+// localStorage'da saqlanadi. Bu skript sahifa chizilishidan OLDIN (head
+// ichida, sinxron) ishga tushishi shart — aks holda birinchi kadrda
+// noto'g'ri rejim ko'rinib, keyin to'g'risiga "miltillab" o'tib qolardi
+// (FOUC), chunki tanlov faqat keyinroq (body render bo'lgandan keyin)
+// o'qilsa kech qolardi.
+var _vjTheme = localStorage.getItem('vj_driver_theme');
+var _vjDark  = _vjTheme ? _vjTheme === 'dark' : true; // standart: tungi
+document.documentElement.classList.toggle('dark', _vjDark);
+if (!_vjDark) document.getElementById('vj-theme-color').setAttribute('content', '#F2F2F7');
 </script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 <!-- Diqqat (unumdorlik): Yandex/Mapbox xarita kutubxonalari ilgari shu

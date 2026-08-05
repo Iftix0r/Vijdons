@@ -141,6 +141,17 @@
   <div class="anim-up" style="animation-delay:160ms">
     <div class="ios-caption2 font-semibold mb-1.5 ml-1" style="color:var(--ios-label3)">SOZLAMALAR</div>
     <div class="ios-group">
+      <!-- Kunduzgi/tungi rejim -->
+      <div class="ios-row gap-3" onclick="toggleTheme()">
+        <div class="w-10 h-10 rounded-[12px] bg-[rgba(255,214,0,.12)] flex items-center justify-center flex-shrink-0">
+          <i class="fas fa-sun text-[#FFD600] text-sm"></i>
+        </div>
+        <div class="flex-1">
+          <div class="ios-subhead font-medium">Kunduzgi rejim</div>
+          <div class="ios-caption mt-0.5" style="color:var(--ios-label3)" id="theme-sub">O'chirilgan</div>
+        </div>
+        <div class="ios-toggle" id="theme-tog"></div>
+      </div>
       <!-- Parol o'zgartirish -->
       <div class="ios-row gap-3" onclick="showPasswordSheet()">
         <div class="w-10 h-10 rounded-[12px] bg-[rgba(255,149,0,.12)] flex items-center justify-center flex-shrink-0">
@@ -231,6 +242,25 @@
 {% endblock %}
 {% block extra_js %}
 <script>
+// ── Kunduzgi/tungi rejim ──────────────────────────────────────────────────
+function _applyThemeUI() {
+  const isDay = !document.documentElement.classList.contains('dark');
+  const tog = document.getElementById('theme-tog');
+  if (tog) tog.classList.toggle('on', isDay);
+  const sub = document.getElementById('theme-sub');
+  if (sub) sub.textContent = isDay ? 'Yoqilgan' : "O'chirilgan";
+}
+function toggleTheme() {
+  Native.vibrate();
+  const goDay = document.documentElement.classList.contains('dark'); // hozir tungi bo'lsa, kunduzgiga o'tamiz
+  document.documentElement.classList.toggle('dark', !goDay);
+  localStorage.setItem('vj_driver_theme', goDay ? 'light' : 'dark');
+  const meta = document.getElementById('vj-theme-color');
+  if (meta) meta.setAttribute('content', goDay ? '#F2F2F7' : '#0E1621');
+  _applyThemeUI();
+}
+_applyThemeUI();
+
 let _destActive = {{ driver.destination_mode|yesno:'true,false' }};
 
 async function toggleDestination() {
