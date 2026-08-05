@@ -1188,11 +1188,21 @@ document.addEventListener('visibilitychange', () => {
       _homeMode = 'mapbox';
       window._homeMap = _homeMap;
 
-      // Xarita zoom/harakat qilganda haydovchi klasterlarini piksel
-      // masofasiga qarab qayta hisoblaymiz (server'dan qayta so'ramasdan,
-      // oxirgi kelgan ro'yxat asosida) — shu bilan yaqinlashganda klaster
-      // avtomatik yoyiladi.
-      _homeMap.on('moveend', _homeRedrawPeerClustersMapbox);
+      // Diqqat (unumdorlik): FAQAT 'zoomend'ga ulaymiz, 'moveend'ga EMAS —
+      // haydash paytida GPS har yangilanishda (_homeUpdateMineMapbox) va
+      // yo'nalish har o'zgarishda (_homeUpdateHeadingMapbox) ham `easeTo`
+      // chaqiradi, ikkalasi ham 'moveend'ni tez-tez otadi. Agar shu yerga
+      // ulangan bo'lsa, xaritaning barcha haydovchi belgilari (DOM
+      // elementlar) haydash davomida deyarli uzluksiz o'chirilib-qayta
+      // yaratilardi — bu xaritani "qotib qolgan" qilib ko'rsatgan asosiy
+      // sabab edi. 'zoomend' esa faqat foydalanuvchi qo'lda zoom qilganda
+      // (pinch yoki +/- tugma) otiladi, pozitsiya/bearing animatsiyasidan
+      // ta'sirlanmaydi.
+      let _peerClusterZoomTimer = null;
+      _homeMap.on('zoomend', () => {
+        clearTimeout(_peerClusterZoomTimer);
+        _peerClusterZoomTimer = setTimeout(_homeRedrawPeerClustersMapbox, 150);
+      });
 
       // Token yaroqsiz/tarmoq xatosi bo'lsa — xarita hali "muvaffaqiyatli
       // yaratilgan" holatda qoladi (konstruktor o'zi xato tashlamaydi),
@@ -1297,11 +1307,13 @@ document.addEventListener('visibilitychange', () => {
 
   // Piksel masofasiga qarab oddiy "yaqin turgan nuqtalarni birlashtirish"
   // klasterlash — haydovchilar soni odatda kichik (bir necha o'nlab) bo'lgani
-  // uchun murakkab kutubxona (masalan supercluster) shart emas. Xarita
-  // zoom/harakat qilganda piksel masofalari o'zgaradi, shu sabab bu funksiya
-  // 'moveend'/'zoomend'da qayta chaqiriladi — natijada uzoqda (kichik zoom)
+  // uchun murakkab kutubxona (masalan supercluster) shart emas. Bu funksiya
+  // ~8s'da bir (yangi joylashuvlar kelganda) va foydalanuvchi qo'lda zoom
+  // qilganda ('zoomend') qayta chaqiriladi — natijada uzoqda (kichik zoom)
   // guruh birlashadi, yaqinlashganda esa avtomatik yoyilib, har biri o'z
-  // profili bilan alohida ko'rinadi.
+  // profili bilan alohida ko'rinadi. Diqqat: pozitsiya/bearing animatsiyasi
+  // ('moveend')ga QASDDAN ulanmagan — sabab yuqorida ('zoomend' ulanishi
+  // joyida) tushuntirilgan.
   function _clusterPeersMapbox(list) {
     if (!_homeMap || !list.length) return [];
     const RADIUS_PX = 55;
