@@ -1877,6 +1877,7 @@ def client_bot_webhook(request):
     chat_id = str(msg['chat']['id'])
     text    = (msg.get('text') or '').strip()
     loc     = msg.get('location')
+    contact = msg.get('contact')
 
     bot = BotSettings.get()
     token = bot.client_bot_token.strip()
@@ -1906,14 +1907,17 @@ def client_bot_webhook(request):
         _client_sessions[chat_id] = {'step': 'phone'}
         _send(chat_id,
             '📞 <b>Telefon raqamingizni yuboring</b>\n'
-            'Masalan: <code>+998901234567</code>',
-            {'keyboard': [[{'text': 'Yangi buyurtma 🚖'}]], 'resize_keyboard': True}
+            'Pastdagi tugmani bosing yoki qo\'lda yozing, masalan: <code>+998901234567</code>',
+            {'keyboard': [
+                [{'text': '📞 Raqamni yuborish', 'request_contact': True}],
+                [{'text': 'Yangi buyurtma 🚖'}],
+            ], 'resize_keyboard': True}
         )
 
     elif step == 'phone':
-        phone = text.replace(' ', '')
+        phone = (contact.get('phone_number', '') if contact else text).replace(' ', '')
         if len(phone) < 9:
-            _send(chat_id, '❌ Telefon raqam noto\'g\'ri. Qayta kiriting:')
+            _send(chat_id, '❌ Telefon raqam noto\'g\'ri. Qayta kiriting yoki tugmani bosing:')
         else:
             _client_sessions[chat_id] = {'step': 'from', 'phone': phone}
             _send(chat_id,
