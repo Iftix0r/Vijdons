@@ -78,9 +78,13 @@ def driver_login_required(fn):
 
 
 def _chat_unread(driver):
-    individual = ChatMessage.objects.filter(driver=driver, sender=ChatMessage.SENDER_OPERATOR, is_read=False).count()
-    group = GroupMessage.objects.exclude(driver=driver).filter(created_at__gt=driver.last_group_read_at).count()
-    return individual + group
+    # Diqqat: operator bilan shaxsiy chat endi haydovchi ilovasi "Chat"
+    # bo'limidan olib tashlangan (faqat guruh chat qoladi) — shu sababli
+    # bu yerda ham faqat guruh xabarlari hisoblanadi. Operator ChatMessage
+    # yozuvlari endi hech qachon ilovada "o'qilgan" deb belgilanmaydi,
+    # shuning uchun ularni bu hisobga qo'shish belgi (badge) sonini
+    # abadiy noto'g'ri/qotib qolgan holga keltirar edi.
+    return GroupMessage.objects.exclude(driver=driver).filter(created_at__gt=driver.last_group_read_at).count()
 
 
 def _pending_orders_count(driver):
@@ -781,14 +785,12 @@ def driver_history(request, driver):
 
 @driver_login_required
 def driver_chat(request, driver):
-    ChatMessage.objects.filter(driver=driver, sender=ChatMessage.SENDER_OPERATOR, is_read=False).update(is_read=True)
-    # Evaluate the queryset to a list so template's .last won't call .reverse() on a sliced queryset
-    messages = list(ChatMessage.objects.filter(driver=driver).order_by('created_at')[:100])
-    last_msg_id = messages[-1].id if messages else 0
+    # Diqqat: operator bilan shaxsiy chat "Chat" bo'limidan olib tashlangan
+    # — endi bu sahifa faqat guruh chatini ko'rsatadi. Guruh xabarlari
+    # "o'qilgan" deb belgilanishi (`last_group_read_at`) client tomonda
+    # `driver_group_chat_list` chaqirilganda avtomatik sodir bo'ladi.
     return render(request, 'driver/chat.html', {
         'driver':      driver,
-        'messages':    messages,
-        'last_msg_id': last_msg_id,
         'active_tab':  'chat',
         'chat_unread': 0,
         'pending_orders_count': _pending_orders_count(driver),
