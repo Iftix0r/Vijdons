@@ -33,13 +33,52 @@ self.addEventListener('notificationclick', function(e) {
 });
 
 self.addEventListener('install',  () => self.skipWaiting());
+
+// Diqqat: FAQAT o'zgarmaydigan statik kutubxonalar (Tailwind, FontAwesome,
+// Mapbox, Yandex Maps skriptlari) va ilovaning o'z /static/ fayllari
+// keshlanadi — hech qachon Django'dan kelgan sahifalar (HTML) yoki
+// /driver/ ostidagi JSON endpointlar emas. Sabab: avvalgi versiyalarda
+// (bir necha kun oldin) bu SW HTML sahifalarni ham keshlagan edi va bu
+// eski (yangilanmagan) buyurtma/taksometr ma'lumotlari ko'rsatilib qolish
+// xatosiga olib kelgan edi ("Disable caching for driver pages" commiti
+// shu muammoni tuzatgan). Endi shu xato qaytarilmasligi uchun quyidagi
+// ro'yxat qasddan TOR — faqat aniq statik manbalar.
+const STATIC_CACHE = 'vijdon-static-v1';
+const STATIC_HOSTS = ['cdn.tailwindcss.com', 'cdnjs.cloudflare.com', 'api.mapbox.com', 'api-maps.yandex.ru'];
+
 self.addEventListener('activate', e => e.waitUntil(
-  // Diqqat: avvalgi versiyalarda (bir necha kun oldin) bu SW HTML sahifalarni
-  // (Cache Storage'da 'vijdon-v1'/'vijdon-v3' nomi bilan) keshlagan edi. O'sha
-  // eski keshlar ba'zi qurilmalarda hali ham qolib ketgan bo'lishi mumkin —
-  // bu yerda ularni butunlay tozalaymiz, aks holda eski (server yangilagan
-  // shablonlardan OLDINGI) sahifalar tasodifan yana o'qilib qolishi mumkin edi.
   caches.keys()
-    .then(keys => Promise.all(keys.map(k => caches.delete(k))))
+    .then(keys => Promise.all(keys.filter(k => k !== STATIC_CACHE).map(k => caches.delete(k))))
     .then(() => clients.claim())
 ));
+
+self.addEventListener('fetch', event => {
+  const req = event.request;
+  if (req.method !== 'GET') return; // amallarga (POST) hech qachon tegilmaydi
+
+  const url = new URL(req.url);
+  const isStaticLib = STATIC_HOSTS.includes(url.hostname);
+  const isOwnStatic = url.origin === self.location.origin && url.pathname.startsWith('/static/');
+  if (!isStaticLib && !isOwnStatic) return; // driver sahifalari/API — doim to'g'ridan-to'g'ri tarmoqdan (jonli ma'lumot)
+
+  // Stale-while-revalidate: keshda bo'lsa darhol shuni qaytaramiz (tezkor —
+  // sahifadan sahifaga o'tishda qayta yuklanmaydi), fonda esa yangi nusxa
+  // olib keshni yangilaymiz — shu bilan kutubxona versiyasi o'zgarsa ham
+  // keyingi safar avtomatik yangilanadi.
+  event.respondWith(
+    caches.open(STATIC_CACHE).then(cache =>
+      cache.match(req).then(cached => {
+        const networkFetch = fetch(req).then(res => {
+          // Diqqat: CDN manbalari (Tailwind/FontAwesome/Mapbox/Yandex) uchun
+          // so'rov cross-origin 'no-cors' rejimida bo'lgani sabab javob
+          // "opaque" (status har doim 0, tarkibi o'qib bo'lmaydi) keladi —
+          // bu normal holat, shunday bo'lsa ham keshlash kerak, aks holda
+          // hech qachon keshlanmay qoladi.
+          if (res && (res.status === 200 || res.type === 'opaque')) cache.put(req, res.clone());
+          return res;
+        }).catch(() => cached);
+        return cached || networkFetch;
+      })
+    )
+  );
+});
