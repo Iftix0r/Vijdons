@@ -738,28 +738,6 @@ def driver_history(request, driver):
         completed=Count('id', filter=DQ(status='completed')),
     )
 
-    # Kunlik daromad grafiği uchun — davr bo'yicha kunma-kun yig'indi
-    # (faqat yakunlangan buyurtmalar). "Barchasi" tanlansa juda uzoq
-    # tarixni chizmaslik uchun oxirgi 30 kun bilan chegaralanadi.
-    from django.db.models.functions import TruncDate
-    chart_days = {'today': 1, 'week': 7, 'month': 30}.get(period, 30)
-    chart_since = now - datetime.timedelta(days=chart_days)
-    daily = (
-        Order.objects.filter(driver=driver, status='completed', created_at__gte=chart_since)
-        .annotate(day=TruncDate('created_at'))
-        .values('day')
-        .annotate(earned=Sum('price'), trips=Count('id'))
-        .order_by('day')
-    )
-    daily_by_day = {row['day']: row for row in daily}
-    chart_labels, chart_values = [], []
-    for i in range(chart_days - 1, -1, -1):
-        day = (now - datetime.timedelta(days=i)).date()
-        row = daily_by_day.get(day)
-        chart_labels.append(day.strftime('%d.%m'))
-        chart_values.append(int(row['earned'] or 0) if row else 0)
-    import json as _json
-
     _tariff = TariffSettings.get()
     return render(request, 'driver/history.html', {
         'driver':         driver,
@@ -773,9 +751,6 @@ def driver_history(request, driver):
         'period_choices': [('all','Barchasi'),('today','Bugun'),('week','7 kun'),('month','30 kun')],
         'tariff_base_price': int(_tariff.base_price),
         'tariff_per_km': int(_tariff.price_per_km),
-        'chart_has_data': any(chart_values),
-        'chart_labels':   _json.dumps(chart_labels),
-        'chart_values':   _json.dumps(chart_values),
     })
 
 
