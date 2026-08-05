@@ -613,8 +613,6 @@ def driver_order_action(request, driver, pk, action):
             driver.save(update_fields=['trips_count'])
         except Exception:
             pass
-        from .utils import pay_order_referral_bonus
-        pay_order_referral_bonus(order)
 
     tg_map = {
         'on_way': tg_order_on_way, 'arrived': tg_order_arrived,
@@ -634,8 +632,10 @@ def driver_order_action(request, driver, pk, action):
 # Ko'chada to'g'ridan-to'g'ri (dispetcherlik orqali emas) topilgan mijoz uchun.
 # `mustaqil taksometr`dan farqi — bu yerda buyurtma darhol 'completed' emas,
 # oddiy pending/accepted -> ... -> completed jarayonidan o'tadi (haydovchi
-# o'zi ushlab qolishi yoki boshqa haydovchilarga ochib qo'yishi mumkin), va
-# yakunlanganda ro'yxatga olgan haydovchiga ORDER_REFERRAL_BONUS to'lanadi.
+# o'zi ushlab qolishi yoki boshqa haydovchilarga ochib qo'yishi mumkin).
+# Diqqat: avval bu yerda yakunlanganda ro'yxatga olgan haydovchiga qo'shimcha
+# bonus to'lanardi — so'rov bo'yicha olib tashlandi, endi oddiy komissiya
+# qoidasi bilan bir xil ishlaydi.
 
 @driver_login_required
 def driver_order_create(request, driver):

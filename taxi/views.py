@@ -297,10 +297,6 @@ def order_update_status(request, pk):
             _refund_order_commission(order, old_driver, "operator tomonidan bekor qilindi")
             refunded = True
 
-        if new_status == 'completed' and old_status != 'completed':
-            from .utils import pay_order_referral_bonus
-            pay_order_referral_bonus(order)
-
         if new_status in ('accepted', 'arrived', 'completed', 'cancelled'):
             sms_order_status(order, new_status)
         # Haydovchiga FCM yuborish — buyurtma bekor qilinsa yoki yakunlansa
