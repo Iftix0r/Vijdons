@@ -49,16 +49,36 @@
   display: none !important;
 }
 
-/* ── Tungi rejim: ilova doim qora fonda (base.html'da <html> ga doimiy
-   'dark' klassi qo'shiladi), lekin Yandex xarita qatlami (klassik 2.1 API,
-   haqiqiy "night theme" imkoniyati yo'q) standart yorug' uslubda chiqadi —
-   shu nomuvofiqlikni CSS filter bilan bartaraf qilamiz. Faqat "yer" (yo'l/fon)
-   qatlamiga qo'llanadi — geo-objects (belgi, marshrut chizig'i) qatlamiga
-   TEGMAYDI, aks holda ular ham teskari rangda chiqib ko'rinmay qolardi. ── */
-#home-map [class*="ground-pane"],
-#sheet-map [class*="ground-pane"] {
+/* ── Tungi rejim (faqat <html> ga 'dark' klassi bor bo'lsa): Yandex xarita
+   qatlami (klassik 2.1 API, haqiqiy "night theme" imkoniyati yo'q) standart
+   yorug' uslubda chiqadi — shu nomuvofiqlikni CSS filter bilan bartaraf
+   qilamiz. Kunduzgi rejimda esa Yandex xaritasi allaqachon yorug', hech
+   qanday filtr kerak emas. Faqat "yer" (yo'l/fon) qatlamiga qo'llanadi —
+   geo-objects (belgi, marshrut chizig'i) qatlamiga TEGMAYDI, aks holda
+   ular ham teskari rangda chiqib ko'rinmay qolardi. ── */
+.dark #home-map [class*="ground-pane"],
+.dark #sheet-map [class*="ground-pane"] {
   filter: invert(92%) hue-rotate(180deg) brightness(95%) contrast(90%);
 }
+
+/* ── Xarita ustidagi suzuvchi tugmalar (zoom, kompas, markazlashtirish,
+   marshrut pastilkasi, spidometr) — kunduzgi/tungi rejimga moslashadi. ── */
+.map-glass {
+  background: rgba(255,255,255,.82);
+  color: #1c1c1f;
+}
+.dark .map-glass {
+  background: rgba(20,20,22,.75);
+  color: #fff;
+}
+.map-glass-sep { background: rgba(0,0,0,.10); }
+.dark .map-glass-sep { background: rgba(255,255,255,.12); }
+
+#home-map, #sheet-map { background: #E5E5EA; }
+.dark #home-map, .dark #sheet-map { background: #1c1c1f; }
+
+#home-map-hint span { color: rgba(0,0,0,.35); }
+.dark #home-map-hint span { color: rgba(255,255,255,.4); }
 
 /* ── Qidiruv: skeleton/shimmer — kelayotgan buyurtma qanday ko'rinishini
    "soya" shaklida oldindan ko'rsatib, ustidan yorug'lik o'tib turadi
@@ -112,16 +132,16 @@
      va tab-bar (pastda) buning USTIDA suzib turadi (ikkalasi ham shaffof/blur
      fon bilan yasalgan), xarita esa ularning OSTIDA ham davom etadi — chetlardan
      hech qanday bo'shliq/qirra qolmasin. -->
-<div id="home-map" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:0;background:#1c1c1f"></div>
+<div id="home-map" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:0"></div>
 <div id="home-map-hint" class="flex items-center justify-center" style="position:fixed;inset:0;z-index:0;pointer-events:none">
-  <span class="ios-caption2" style="color:rgba(255,255,255,.4)">GPS signal kutilmoqda…</span>
+  <span class="ios-caption2">GPS signal kutilmoqda…</span>
 </div>
 <!-- Yandex Navigator'dagi kabi +/- (yaqinlashtirish/uzoqlashtirish) tugmalari -->
-<div style="position:fixed;z-index:15;top:38%;transform:translateY(-50%);right:16px;width:48px;border-radius:16px;background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);overflow:hidden">
+<div class="map-glass" style="position:fixed;z-index:15;top:38%;transform:translateY(-50%);right:16px;width:48px;border-radius:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);overflow:hidden">
   <button onclick="_homeMapZoom(1)" class="flex items-center justify-center active:opacity-60 transition-opacity" style="width:48px;height:48px">
     <i class="fas fa-plus" style="color:#FFD600;font-size:16px"></i>
   </button>
-  <div style="height:1px;background:rgba(255,255,255,.12);margin:0 10px"></div>
+  <div class="map-glass-sep" style="height:1px;margin:0 10px"></div>
   <button onclick="_homeMapZoom(-1)" class="flex items-center justify-center active:opacity-60 transition-opacity" style="width:48px;height:48px">
     <i class="fas fa-minus" style="color:#FFD600;font-size:16px"></i>
   </button>
@@ -129,13 +149,13 @@
 <!-- Kompas — bosilganda xaritani shimolga (0°) qaytaradi, 3D burchak
      (tilt) saqlanib qoladi. Navigator'dagi kichik uchburchak belgi kabi. -->
 <button onclick="_homeMapResetNorth()"
-  class="flex items-center justify-center active:opacity-60 transition-opacity"
-  style="position:fixed;z-index:15;top:50%;transform:translateY(-50%);right:16px;width:40px;height:40px;border-radius:50%;background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
+  class="map-glass flex items-center justify-center active:opacity-60 transition-opacity"
+  style="position:fixed;z-index:15;top:50%;transform:translateY(-50%);right:16px;width:40px;height:40px;border-radius:50%;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
   <i class="fas fa-location-arrow" style="color:#FF3B30;font-size:16px"></i>
 </button>
 <button onclick="_homeMapRecenter()"
-  class="flex items-center justify-center active:opacity-60 transition-opacity"
-  style="position:fixed;z-index:15;top:62%;transform:translateY(-50%);right:16px;width:52px;height:52px;border-radius:50%;background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
+  class="map-glass flex items-center justify-center active:opacity-60 transition-opacity"
+  style="position:fixed;z-index:15;top:62%;transform:translateY(-50%);right:16px;width:52px;height:52px;border-radius:50%;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
   <i class="fas fa-location-crosshairs" style="color:#FFD600;font-size:20px"></i>
 </button>
 
@@ -143,8 +163,8 @@
      "yopish" tugmasi — xaritaning o'zida chizilgan yo'l chizig'ini olib
      tashlaydi -->
 <button id="peer-route-close" onclick="_clearPeerRoute()"
-  class="active:opacity-60 transition-opacity"
-  style="display:none;align-items:center;gap:8px;position:fixed;z-index:16;top:calc(env(safe-area-inset-top,20px) + 12px);left:50%;transform:translateX(-50%);padding:8px 14px;border-radius:20px;background:rgba(20,20,22,.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff;font-size:12px;font-weight:700;white-space:nowrap">
+  class="map-glass active:opacity-60 transition-opacity"
+  style="display:none;align-items:center;gap:8px;position:fixed;z-index:16;top:calc(env(safe-area-inset-top,20px) + 12px);left:50%;transform:translateX(-50%);padding:8px 14px;border-radius:20px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-size:12px;font-weight:700;white-space:nowrap">
   <i class="fas fa-route" style="color:#2f7dfa"></i>
   <span id="peer-route-info">Marshrut...</span>
   <i class="fas fa-xmark" style="margin-left:2px"></i>
@@ -153,7 +173,7 @@
 <!-- Tezlik o'lchagich — Navigator'dagi kabi, chap-pastda. GPS'dan 'speed'
      kelmasa (m/s, brauzer/qurilma bermasa yoki harakatsiz bo'lsa) "—"
      ko'rsatiladi, aks holda km/soatga o'girib ko'rsatamiz. -->
-<div id="speedometer" style="position:fixed;z-index:15;left:16px;top:50%;transform:translateY(-50%);width:64px;height:64px;border-radius:50%;background:rgba(20,20,22,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 14px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:center">
+<div id="speedometer" class="map-glass" style="position:fixed;z-index:15;left:16px;top:50%;transform:translateY(-50%);width:64px;height:64px;border-radius:50%;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 14px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:center">
   <span id="speedometer-value" class="ios-title font-bold" style="color:#FFD600;line-height:1">—</span>
   <span class="ios-caption2" style="color:#8E8E93;line-height:1;margin-top:1px">km/soat</span>
 </div>
@@ -276,7 +296,7 @@
      xarita ustida (#order-live) suzadi; faqat aloqa tugmalari va izoh kichik
      pastki panelda (#sheet) qoladi — u faqat shular mavjud bo'lsagina ochiladi. -->
 <div id="sheet-overlay" class="fixed inset-0 z-[200] hidden">
-  <div id="sheet-map" class="absolute inset-0" style="background:#1c1c1f" onclick="_onBackdropTap()"></div>
+  <div id="sheet-map" class="absolute inset-0" onclick="_onBackdropTap()"></div>
   <!-- Diqqat: bu hint butun ekranga (inset:0) markazlashtirilmaydi — aks holda
        yuqoridagi opaque #order-live karta orqasida ko'rinmay qolishi mumkin
        edi. Shuning uchun karta va pastki panel orasidagi bo'sh joyga
@@ -1298,16 +1318,19 @@ document.addEventListener('visibilitychange', () => {
     }
     try {
       mapboxgl.accessToken = MAPBOX_TOKEN;
-      // navigation-night-v1 — Mapbox'ning aynan turli-yo'nalishli navigatsiya
-      // ilovalari (Uber/Lyft uslubidagi) uchun maxsus tayyorlagan tungi
-      // uslubi: yo'llar tirbandlik (trafik) darajasiga qarab avtomatik
-      // rangga bo'yaladi (yashil/sariq/qizil), yo'l/POI ierarxiyasi haydash
-      // kontekstiga moslashtirilgan — dark-v11'dan ko'ra Navigator'ga ancha
-      // yaqinroq. Bino qatlami (composite/'building') bu uslubda ham bor,
-      // pastdagi 3D binolar kodi o'zgarishsiz ishlayveradi.
+      // navigation-night-v1 / navigation-day-v1 — Mapbox'ning aynan turli-
+      // yo'nalishli navigatsiya ilovalari (Uber/Lyft uslubidagi) uchun
+      // maxsus tayyorlagan uslublari: yo'llar tirbandlik (trafik)
+      // darajasiga qarab avtomatik rangga bo'yaladi (yashil/sariq/qizil),
+      // yo'l/POI ierarxiyasi haydash kontekstiga moslashtirilgan. Qaysi
+      // biri tanlanishi Profil sahifasidagi "Kunduzgi rejim" tumbler
+      // holatiga (<html>.dark klassi) qarab hal qilinadi — bu sahifa har
+      // safar TO'LIQ qayta yuklangani (SPA emas) uchun, tanlov shu yerda
+      // xarita yaratilishidan oldin allaqachon aniq bo'ladi.
+      const _vjDark = document.documentElement.classList.contains('dark');
       _homeMap = new mapboxgl.Map({
         container: 'home-map',
-        style: 'mapbox://styles/mapbox/navigation-night-v1',
+        style: _vjDark ? 'mapbox://styles/mapbox/navigation-night-v1' : 'mapbox://styles/mapbox/navigation-day-v1',
         center: [lng, lat],
         zoom: 15,
         pitch: NAV_PITCH,
@@ -1372,7 +1395,7 @@ document.addEventListener('visibilitychange', () => {
             type: 'fill-extrusion',
             minzoom: 14,
             paint: {
-              'fill-extrusion-color': '#2a2a35',
+              'fill-extrusion-color': _vjDark ? '#2a2a35' : '#d6d6db',
               'fill-extrusion-height': ['get', 'height'],
               'fill-extrusion-base': ['get', 'min_height'],
               'fill-extrusion-opacity': 0.85,
@@ -1389,8 +1412,8 @@ document.addEventListener('visibilitychange', () => {
               type: 'sky',
               paint: {
                 'sky-type': 'atmosphere',
-                'sky-atmosphere-sun-intensity': 4,
-                'sky-atmosphere-color': '#1c1c2e',
+                'sky-atmosphere-sun-intensity': _vjDark ? 4 : 10,
+                'sky-atmosphere-color': _vjDark ? '#1c1c2e' : '#bcdcff',
               },
             });
           }
