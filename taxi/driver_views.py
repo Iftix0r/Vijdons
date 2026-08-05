@@ -1075,18 +1075,20 @@ def driver_location_sync(request, driver):
 
 @driver_login_required
 def driver_nearby_locations(request, driver):
-    """Asosiy sahifadagi xarita uchun — hozir ish navbatidagi BOSHQA
-    haydovchilarning joylashuvi. Diqqat: bu haydovchilar bir-biriga ko'rinadi,
-    shuning uchun faqat xaritada belgi chizish uchun zarur maydonlar
-    qaytariladi — telefon raqami va balans kabi shaxsiy/moliyaviy
-    ma'lumotlar (panel uchun mo'ljallangan active_drivers_locations'dan
-    farqli o'laroq) bu yerda umuman berilmaydi."""
+    """Asosiy sahifadagi xarita uchun — BOSHQA haydovchilarning joylashuvi.
+    Panel'dagi Live Xarita bilan bir xil mantiq: nafaqat hozir ish
+    navbatidagilar, balki barcha tasdiqlangan haydovchilarning oxirgi ma'lum
+    joylashuvi qaytariladi (`is_online` bayrog'i bilan) — offline haydovchilar
+    xaritada qizil rangda, oxirgi manzilida ko'rinishi uchun. Diqqat: bu
+    haydovchilar bir-biriga ko'rinadi, shuning uchun faqat xaritada belgi
+    chizish uchun zarur maydonlar qaytariladi — telefon raqami va balans
+    kabi shaxsiy/moliyaviy ma'lumotlar (panel uchun mo'ljallangan
+    active_drivers_locations'dan farqli o'laroq) bu yerda umuman berilmaydi."""
     from django.utils import timezone
     online_cutoff = timezone.now() - timezone.timedelta(seconds=120)
     peers = Driver.objects.filter(
-        is_on_duty=True, is_active=True, approval_status=Driver.APPROVAL_APPROVED,
+        is_active=True, approval_status=Driver.APPROVAL_APPROVED,
         latitude__isnull=False, longitude__isnull=False,
-        last_seen__gte=online_cutoff,
     ).exclude(pk=driver.pk)
     data = [{
         'id':          d.id,
@@ -1100,6 +1102,7 @@ def driver_nearby_locations(request, driver):
         'trips_count': d.trips_count,
         'rating':      float(d.rating),
         'level':       d.level,
+        'is_online':   bool(d.last_seen and d.last_seen >= online_cutoff),
     } for d in peers]
     return JsonResponse({'drivers': data})
 

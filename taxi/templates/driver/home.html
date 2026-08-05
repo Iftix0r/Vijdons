@@ -996,7 +996,9 @@ document.addEventListener('visibilitychange', () => {
   const MAPBOX_UZ_BOUNDS = [[UZ_BOUNDS[0][1], UZ_BOUNDS[0][0]], [UZ_BOUNDS[1][1], UZ_BOUNDS[1][0]]];
 
   let _homeMap = null, _homeMyMark = null, _homeMode = null; // mode: 'mapbox' | 'v2'
-  const _homePeerMarks = {};
+  let _homePeerMapboxMarkers = [];   // Mapbox: qayta chizishda tozalanadigan belgilar ro'yxati
+  let _homePeerListRaw = [];         // Mapbox: klasterlashdan oldingi xom ro'yxat (zoom/move'da qayta hisoblash uchun)
+  let _homePeerClusterer = null;     // Yandex (v2): klaster
   let _lastLat = null, _lastLng = null;
 
   // Haydovchi rasmi/harfi o'rniga taksi emoji (🚖) ko'rsatiladi — bu haqiqiy
@@ -1009,6 +1011,16 @@ document.addEventListener('visibilitychange', () => {
     // ko'rinishi uchun, boshqa haydovchilar belgisi pastroqda turadi.
     el.style.cssText = `width:40px;height:40px;border-radius:50%;background:#fff;border:2.5px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:0 3px 6px rgba(0,0,0,.4);z-index:1;position:relative`;
     el.innerHTML = '<span style="font-size:22px;line-height:1">🚖</span>';
+    return el;
+  }
+  // Uzoqdagi bir nechta haydovchi bitta piksel doirasida to'planganda
+  // ko'rinadigan raqamli klaster belgisi — Live Xaritadagi (panel) ko'k
+  // klaster uslubiga mos.
+  function _clusterEl(count) {
+    const el = document.createElement('div');
+    const size = count < 10 ? 40 : count < 100 ? 48 : 56;
+    el.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:#2f7dfa;border:3px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,.4);color:#fff;font-weight:800;font-size:${count<100?15:13}px;cursor:pointer`;
+    el.textContent = count;
     return el;
   }
   // O'zining (haydovchining) belgisi — Yandex Navigator'dagi kabi yo'nalish
@@ -1092,6 +1104,12 @@ document.addEventListener('visibilitychange', () => {
       });
       _homeMode = 'mapbox';
       window._homeMap = _homeMap;
+
+      // Xarita zoom/harakat qilganda haydovchi klasterlarini piksel
+      // masofasiga qarab qayta hisoblaymiz (server'dan qayta so'ramasdan,
+      // oxirgi kelgan ro'yxat asosida) — shu bilan yaqinlashganda klaster
+      // avtomatik yoyiladi.
+      _homeMap.on('moveend', _homeRedrawPeerClustersMapbox);
 
       // Token yaroqsiz/tarmoq xatosi bo'lsa — xarita hali "muvaffaqiyatli
       // yaratilgan" holatda qoladi (konstruktor o'zi xato tashlamaydi),
@@ -1194,28 +1212,68 @@ document.addEventListener('visibilitychange', () => {
     _homeMap.easeTo({ bearing: heading, pitch: NAV_PITCH, duration: 700, essential: true });
   }
 
-  function _homeRefreshPeersMapbox(list) {
-    const seen = {};
-    list.forEach(p => {
-      seen[p.id] = true;
-      const coords = [p.longitude, p.latitude];
-      if (_homePeerMarks[p.id]) {
-        _homePeerMarks[p.id].marker.setLngLat(coords);
-        _homePeerMarks[p.id].data = p;
+  // Piksel masofasiga qarab oddiy "yaqin turgan nuqtalarni birlashtirish"
+  // klasterlash — haydovchilar soni odatda kichik (bir necha o'nlab) bo'lgani
+  // uchun murakkab kutubxona (masalan supercluster) shart emas. Xarita
+  // zoom/harakat qilganda piksel masofalari o'zgaradi, shu sabab bu funksiya
+  // 'moveend'/'zoomend'da qayta chaqiriladi — natijada uzoqda (kichik zoom)
+  // guruh birlashadi, yaqinlashganda esa avtomatik yoyilib, har biri o'z
+  // profili bilan alohida ko'rinadi.
+  function _clusterPeersMapbox(list) {
+    if (!_homeMap || !list.length) return [];
+    const RADIUS_PX = 55;
+    const pts = list.map(p => ({ driver: p, px: _homeMap.project([p.longitude, p.latitude]) }));
+    const used = new Array(pts.length).fill(false);
+    const groups = [];
+    for (let i = 0; i < pts.length; i++) {
+      if (used[i]) continue;
+      const group = [pts[i]];
+      used[i] = true;
+      for (let j = i + 1; j < pts.length; j++) {
+        if (used[j]) continue;
+        const dx = pts[i].px.x - pts[j].px.x, dy = pts[i].px.y - pts[j].px.y;
+        if (Math.sqrt(dx * dx + dy * dy) < RADIUS_PX) { group.push(pts[j]); used[j] = true; }
+      }
+      if (group.length === 1) {
+        groups.push({ type: 'single', driver: group[0].driver });
       } else {
-        const el = _markerEl('#34C759');
+        groups.push({
+          type: 'cluster',
+          count: group.length,
+          lng: group.reduce((s, g) => s + g.driver.longitude, 0) / group.length,
+          lat: group.reduce((s, g) => s + g.driver.latitude, 0) / group.length,
+        });
+      }
+    }
+    return groups;
+  }
+
+  function _homeRedrawPeerClustersMapbox() {
+    if (!_homeMap || _homeMode !== 'mapbox') return;
+    _homePeerMapboxMarkers.forEach(m => m.remove());
+    _homePeerMapboxMarkers = [];
+    _clusterPeersMapbox(_homePeerListRaw).forEach(g => {
+      if (g.type === 'single') {
+        const p = g.driver;
+        const el = _markerEl(p.is_online ? '#34C759' : '#ef4444');
         el.style.cursor = 'pointer';
-        el.onclick = () => _showPeerCard(_homePeerMarks[p.id].data);
-        const marker = new mapboxgl.Marker({ element: el }).setLngLat(coords).addTo(_homeMap);
-        _homePeerMarks[p.id] = { marker, data: p };
+        el.onclick = () => _showPeerCard(p);
+        _homePeerMapboxMarkers.push(
+          new mapboxgl.Marker({ element: el }).setLngLat([p.longitude, p.latitude]).addTo(_homeMap)
+        );
+      } else {
+        const el = _clusterEl(g.count);
+        el.onclick = () => _homeMap.easeTo({ center: [g.lng, g.lat], zoom: Math.min(_homeMap.getZoom() + 2.5, 16), duration: 500, essential: true });
+        _homePeerMapboxMarkers.push(
+          new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(_homeMap)
+        );
       }
     });
-    Object.keys(_homePeerMarks).forEach(id => {
-      if (!seen[id]) {
-        _homePeerMarks[id].marker.remove();
-        delete _homePeerMarks[id];
-      }
-    });
+  }
+
+  function _homeRefreshPeersMapbox(list) {
+    _homePeerListRaw = list;
+    _homeRedrawPeerClustersMapbox();
   }
 
   // ══════════════════ 2.1 — zaxira yo'l (tekis, tungi rejimsiz) ══════════════════
@@ -1226,6 +1284,16 @@ document.addEventListener('visibilitychange', () => {
       _homeMap = new ymaps.Map('home-map', { center: [lat, lng], zoom: 14, controls: [] }, { restrictMapArea: UZ_BOUNDS, minZoom: MIN_ZOOM });
       _homeMode = 'v2';
       window._homeMap = _homeMap;
+
+      // Uzoqdagi haydovchilar raqamli klaster sifatida, yaqinlashganda esa
+      // avtomatik yoyilib alohida profil bilan ko'rinsin — Live Xaritadagi
+      // (panel) bilan bir xil Yandex Clusterer.
+      _homePeerClusterer = new ymaps.Clusterer({
+        preset: 'islands#blueClusterIcons',
+        groupByCoordinates: false,
+        clusterDisableClickZoom: false,
+      });
+      _homeMap.geoObjects.add(_homePeerClusterer);
       // Diqqat: agar `#home-map` konteyner o'lchami xarita yaratilgan paytda
       // hali to'liq ekran o'lchamiga (layout/CSS) "o'rnashib ulgurmagan"
       // bo'lsa, Yandex xaritasi o'sha kichikroq o'lchamda "muzlab" qolib,
@@ -1258,28 +1326,16 @@ document.addEventListener('visibilitychange', () => {
   }
 
   function _homeRefreshPeersV2(list) {
-    const seen = {};
-    list.forEach(p => {
-      seen[p.id] = true;
-      const coords = [p.latitude, p.longitude];
-      if (_homePeerMarks[p.id]) {
-        _homePeerMarks[p.id].geometry.setCoordinates(coords);
-        _homePeerMarks[p.id].properties.set('balloonContentBody', _peerCardHtml(p));
-      } else {
-        const mark = new ymaps.Placemark(coords, { hintContent: p.full_name, balloonContentBody: _peerCardHtml(p) }, {
-          iconLayout: ymaps.templateLayoutFactory.createClass(_markerEl('#34C759').outerHTML),
-          iconShape: { type: 'Circle', coordinates: [20, 20], radius: 20 },
-        });
-        _homeMap.geoObjects.add(mark);
-        _homePeerMarks[p.id] = mark;
-      }
+    if (!_homePeerClusterer) return;
+    const placemarks = list.map(p => {
+      const color = p.is_online ? '#34C759' : '#ef4444';
+      return new ymaps.Placemark([p.latitude, p.longitude], { hintContent: p.full_name, balloonContentBody: _peerCardHtml(p) }, {
+        iconLayout: ymaps.templateLayoutFactory.createClass(_markerEl(color).outerHTML),
+        iconShape: { type: 'Circle', coordinates: [20, 20], radius: 20 },
+      });
     });
-    Object.keys(_homePeerMarks).forEach(id => {
-      if (!seen[id]) {
-        _homeMap.geoObjects.remove(_homePeerMarks[id]);
-        delete _homePeerMarks[id];
-      }
-    });
+    _homePeerClusterer.removeAll();
+    _homePeerClusterer.add(placemarks);
   }
 
   // ══════════════════ Umumiy — Mapbox/v2'dan mustaqil chaqiriladi ══════════════════
