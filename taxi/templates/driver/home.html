@@ -1219,8 +1219,25 @@ document.addEventListener('visibilitychange', () => {
   }
 
   // ══════════════════ Mapbox — asosiy yo'l (tungi rejim + 3D + aylanish) ══════════════════
-  function _initHomeMapMapbox(lat, lng, placeholder) {
+  function _initHomeMapMapbox(lat, lng, placeholder, _retriesLeft) {
+    // Kutish davomida (pastda) bir nechta `vijdon_location` hodisasi kelib,
+    // parallel bir necha marta chaqirilishi mumkin — xarita allaqachon
+    // yaratilgan bo'lsa, takror nusxa yaratib qo'ymaslik uchun.
+    if (_homeMap) return;
     if (typeof mapboxgl === 'undefined') {
+      // Diqqat: Mapbox skripti endi `defer` bilan yuklanadi (unumdorlik
+      // uchun — sahifa chizilishini bloklamasin deb), shuning uchun
+      // `vijdon_location` hodisasi (Flutter'dan) skript hali yuklanib
+      // ulgurmasdan kelib qolishi mumkin — bu haqiqiy xato emas, oddiy
+      // poyga holati (race condition). Shu sabab darhol Yandex'ga
+      // qaytmasdan, bir necha soniya kutib, qayta urinib ko'ramiz;
+      // faqat chindan ham yuklanmasa (masalan reklama blokeri yoki
+      // tarmoq muammosi) Yandex'ga o'tamiz.
+      if (_retriesLeft === undefined) _retriesLeft = 20; // ~20 x 150ms = 3s
+      if (_retriesLeft > 0) {
+        setTimeout(() => _initHomeMapMapbox(lat, lng, placeholder, _retriesLeft - 1), 150);
+        return;
+      }
       _mapDebugBadge('Mapbox skript yuklanmadi (window.mapboxgl yo\'q)');
       _initHomeMapV2(lat, lng, placeholder);
       return;
