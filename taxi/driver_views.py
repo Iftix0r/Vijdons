@@ -11,6 +11,7 @@ from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
+from django.utils.cache import add_never_cache_headers
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
@@ -59,10 +60,20 @@ def driver_login_required(fn):
         except Driver.DoesNotExist:
             return redirect('driver:login')
         if driver.is_frozen:
-            return render(request, 'driver/frozen.html', {'driver': driver, 'tariff': TariffSettings.get()})
-        if driver.approval_status != Driver.APPROVAL_APPROVED:
-            return render(request, 'driver/pending.html', {'driver': driver})
-        return fn(request, driver, *args, **kwargs)
+            response = render(request, 'driver/frozen.html', {'driver': driver, 'tariff': TariffSettings.get()})
+        elif driver.approval_status != Driver.APPROVAL_APPROVED:
+            response = render(request, 'driver/pending.html', {'driver': driver})
+        else:
+            response = fn(request, driver, *args, **kwargs)
+        # Bo'limlar orasida (Asosiy/Tarix/Chat/Profil) oddiy <a href> orqali
+        # o'tilgani uchun (SPA emas), brauzer/WebView ba'zan sahifani HTTP
+        # keshidan qaytarib berishi mumkin edi — bu holda Asosiy sahifadagi
+        # ORDERS o'sha eski (masalan hali on_way bo'lmagan) holatda "muzlab"
+        # qolib, taksometr qayta ishga tushmasdi (narx ko'rinardi, lekin
+        # yangilanmasdi). Har bir haydovchi sahifasi doim jonli bo'lishi
+        # shart bo'lgani uchun keshlashni butunlay o'chiramiz.
+        add_never_cache_headers(response)
+        return response
     return wrapper
 
 
