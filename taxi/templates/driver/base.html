@@ -1175,6 +1175,7 @@ let _tmxInterval  = null;
 let _tmxDistKm    = 0;
 let _tmxPrevLat   = null;
 let _tmxPrevLng   = null;
+let _tmxPrevTime  = null;
 let _tmxWatchId   = null;
 let _tmxPriceStr  = '0';
 let _tmxTimeStr   = '0:00';
@@ -1267,6 +1268,7 @@ function tmxStart(orderId, order) {
   _tmxOrderId = orderId;
   _tmxPrevLat = null;
   _tmxPrevLng = null;
+  _tmxPrevTime = null;
   _tmxSpeedKmh = 0;
 
   _tmxOrder     = order;
@@ -1329,12 +1331,26 @@ function _tmxOnLocation(e) {
 
   if (spd != null && spd >= 0) _tmxSpeedKmh = Math.round(spd * 3.6);
 
+  const now = Date.now();
+  // GPS manbalari ikkita: native bridge (~15s) va browser watchPosition
+  // (bir necha soniyada bir necha marta). Ikkalasi ham shu funksiyaga
+  // kelgani uchun, haydovchi harakatsiz turganda ham telefon GPS'i
+  // tabiiy ravishda 5-15m atrofida "sirg'anib" turadi — bu tez-tez
+  // kelgan nuqtalar bilan qo'shilib, to'xtab turgan mashinaga pul
+  // yozib qo'yardi. Shuning uchun: (1) nuqtalarni siyraklashtiramiz
+  // (kamida 4s oralig'i), (2) shovqin chegarasini kattalashtiramiz,
+  // (3) o'tgan vaqtga nisbatan tug'ilgan tezlik jismonan imkonsiz
+  // bo'lsa (GPS sakrashi), o'sha nuqtani hisobga olmaymiz.
+  if (_tmxPrevTime !== null && (now - _tmxPrevTime) < 4000) return;
+
   // Kutish rejimida masofa hisoblanmaydi — mijoz do'kon/uyga kirib qolganda
   // haydovchi harakatsiz turadi (yoki atrofda kichik yurishlar qiladi), bular
   // masofa sifatida hisobga olinmasligi kerak, faqat kutish narxi qo'shiladi.
   if (_tmxPrevLat !== null && !_tmxWaiting) {
     const d = _haversine(_tmxPrevLat, _tmxPrevLng, lat, lng);
-    if (d > 0.005 && d < 2.0) {
+    const dtHours = _tmxPrevTime !== null ? (now - _tmxPrevTime) / 3_600_000 : null;
+    const impliedKmh = dtHours ? d / dtHours : 0;
+    if (d > 0.015 && d < 2.0 && (!dtHours || impliedKmh < 140)) {
       _tmxDistKm += d;
       _tmxUpdatePrice();
       _syncSheetTmx();
@@ -1343,6 +1359,7 @@ function _tmxOnLocation(e) {
   }
   _tmxPrevLat = lat;
   _tmxPrevLng = lng;
+  _tmxPrevTime = now;
 }
 
 function _syncSheetTmx(order) {
