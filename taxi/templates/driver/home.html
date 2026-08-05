@@ -61,18 +61,9 @@
   filter: invert(92%) hue-rotate(180deg) brightness(95%) contrast(90%);
 }
 
-/* ── Xarita ustidagi suzuvchi tugmalar (zoom, kompas, markazlashtirish,
-   marshrut pastilkasi, spidometr) — kunduzgi/tungi rejimga moslashadi. ── */
-.map-glass {
-  background: rgba(255,255,255,.82);
-  color: #1c1c1f;
-}
-.dark .map-glass {
-  background: rgba(20,20,22,.75);
-  color: #fff;
-}
-.map-glass-sep { background: rgba(0,0,0,.10); }
-.dark .map-glass-sep { background: rgba(255,255,255,.12); }
+/* Xarita ustidagi suzuvchi tugmalar (zoom, kompas, markazlashtirish,
+   marshrut pastilkasi, spidometr) base.html'dagi umumiy `.ios-glass`
+   klassidan foydalanadi — kunduzgi/tungi rejimga moslashadi. */
 
 #home-map, #sheet-map { background: #E5E5EA; }
 .dark #home-map, .dark #sheet-map { background: #1c1c1f; }
@@ -137,11 +128,11 @@
   <span class="ios-caption2">GPS signal kutilmoqda…</span>
 </div>
 <!-- Yandex Navigator'dagi kabi +/- (yaqinlashtirish/uzoqlashtirish) tugmalari -->
-<div class="map-glass" style="position:fixed;z-index:15;top:38%;transform:translateY(-50%);right:16px;width:48px;border-radius:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);overflow:hidden">
+<div class="ios-glass" style="position:fixed;z-index:15;top:38%;transform:translateY(-50%);right:16px;width:48px;border-radius:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);overflow:hidden">
   <button onclick="_homeMapZoom(1)" class="flex items-center justify-center active:opacity-60 transition-opacity" style="width:48px;height:48px">
     <i class="fas fa-plus" style="color:#FFD600;font-size:16px"></i>
   </button>
-  <div class="map-glass-sep" style="height:1px;margin:0 10px"></div>
+  <div class="ios-glass-sep" style="height:1px;margin:0 10px"></div>
   <button onclick="_homeMapZoom(-1)" class="flex items-center justify-center active:opacity-60 transition-opacity" style="width:48px;height:48px">
     <i class="fas fa-minus" style="color:#FFD600;font-size:16px"></i>
   </button>
@@ -149,12 +140,12 @@
 <!-- Kompas — bosilganda xaritani shimolga (0°) qaytaradi, 3D burchak
      (tilt) saqlanib qoladi. Navigator'dagi kichik uchburchak belgi kabi. -->
 <button onclick="_homeMapResetNorth()"
-  class="map-glass flex items-center justify-center active:opacity-60 transition-opacity"
+  class="ios-glass flex items-center justify-center active:opacity-60 transition-opacity"
   style="position:fixed;z-index:15;top:50%;transform:translateY(-50%);right:16px;width:40px;height:40px;border-radius:50%;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
   <i class="fas fa-location-arrow" style="color:#FF3B30;font-size:16px"></i>
 </button>
 <button onclick="_homeMapRecenter()"
-  class="map-glass flex items-center justify-center active:opacity-60 transition-opacity"
+  class="ios-glass flex items-center justify-center active:opacity-60 transition-opacity"
   style="position:fixed;z-index:15;top:62%;transform:translateY(-50%);right:16px;width:52px;height:52px;border-radius:50%;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
   <i class="fas fa-location-crosshairs" style="color:#FFD600;font-size:20px"></i>
 </button>
@@ -163,7 +154,7 @@
      "yopish" tugmasi — xaritaning o'zida chizilgan yo'l chizig'ini olib
      tashlaydi -->
 <button id="peer-route-close" onclick="_clearPeerRoute()"
-  class="map-glass active:opacity-60 transition-opacity"
+  class="ios-glass active:opacity-60 transition-opacity"
   style="display:none;align-items:center;gap:8px;position:fixed;z-index:16;top:calc(env(safe-area-inset-top,20px) + 12px);left:50%;transform:translateX(-50%);padding:8px 14px;border-radius:20px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-size:12px;font-weight:700;white-space:nowrap">
   <i class="fas fa-route" style="color:#2f7dfa"></i>
   <span id="peer-route-info">Marshrut...</span>
@@ -173,7 +164,7 @@
 <!-- Tezlik o'lchagich — Navigator'dagi kabi, chap-pastda. GPS'dan 'speed'
      kelmasa (m/s, brauzer/qurilma bermasa yoki harakatsiz bo'lsa) "—"
      ko'rsatiladi, aks holda km/soatga o'girib ko'rsatamiz. -->
-<div id="speedometer" class="map-glass" style="position:fixed;z-index:15;left:16px;top:50%;transform:translateY(-50%);width:64px;height:64px;border-radius:50%;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 14px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:center">
+<div id="speedometer" class="ios-glass" style="position:fixed;z-index:15;left:16px;top:50%;transform:translateY(-50%);width:64px;height:64px;border-radius:50%;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 14px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:center">
   <span id="speedometer-value" class="ios-title font-bold" style="color:#FFD600;line-height:1">—</span>
   <span class="ios-caption2" style="color:#8E8E93;line-height:1;margin-top:1px">km/soat</span>
 </div>

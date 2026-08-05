@@ -191,6 +191,14 @@ body { background: var(--ios-bg); color: var(--ios-label); }
   flex-shrink: 0;
 }
 .dark .ios-toggle { background: #263542; }
+
+/* ── Shaffof "shisha" panel/tugma — xarita ustidagi suzuvchi boshqaruvlar,
+   pastki navigatsiya paneli, "efir" mikrofon tugmasi va h.k. uchun umumiy —
+   kunduzgi/tungi rejimga moslashadi. ── */
+.ios-glass { background: rgba(255,255,255,.82); color: #1c1c1f; }
+.dark .ios-glass { background: rgba(20,20,22,.75); color: #fff; }
+.ios-glass-sep { background: rgba(0,0,0,.10); }
+.dark .ios-glass-sep { background: rgba(255,255,255,.12); }
 .ios-toggle.on { background: var(--ios-green); }
 .ios-toggle::after {
   content: '';
@@ -376,8 +384,8 @@ body { background: var(--ios-bg); color: var(--ios-label); }
 <button id="voice-btn" type="button"
    onmousedown="_voiceStartTalk()" onmouseup="_voiceStopTalk()" onmouseleave="_voiceStopTalk()"
    ontouchstart="_voiceStartTalk(event)" ontouchend="_voiceStopTalk(event)"
-   class="flex items-center justify-center active:opacity-60 transition-opacity relative border-0 cursor-pointer"
-   style="position:fixed;z-index:150;top:71%;transform:translateY(-50%);right:16px;width:52px;height:52px;border-radius:50%;background:rgba(20,20,22,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);-webkit-tap-highlight-color:transparent;user-select:none">
+   class="ios-glass flex items-center justify-center active:opacity-60 transition-opacity relative border-0 cursor-pointer"
+   style="position:fixed;z-index:150;top:71%;transform:translateY(-50%);right:16px;width:52px;height:52px;border-radius:50%;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);-webkit-tap-highlight-color:transparent;user-select:none">
   <i id="voice-btn-icon" class="fas fa-microphone" style="color:#8E8E93;font-size:20px"></i>
   <span id="voice-participants-badge" class="ios-badge absolute -top-1 -right-1 hidden" style="font-size:10px;min-width:16px;height:16px"></span>
 </button>
@@ -387,7 +395,7 @@ body { background: var(--ios-bg); color: var(--ios-label); }
      buyurtma" markazda ko'tarilgan (raised) accent tugma sifatida ajralib
      turadi. -->
 <div class="fixed left-4 right-4 z-[150]" style="bottom:calc(env(safe-area-inset-bottom,16px) + 10px)">
-  <div class="flex items-center justify-around px-1 py-1" style="border-radius:9999px;background:rgba(20,20,22,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 8px 28px rgba(0,0,0,.4)">
+  <div class="ios-glass flex items-center justify-around px-1 py-1" style="border-radius:9999px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 8px 28px rgba(0,0,0,.4)">
 
     <a href="{% url 'driver:home' %}" onclick="Native.vibrate(); dismissAllSheets()"
        class="flex items-center justify-center px-3 py-2 min-h-[52px] min-w-[44px] transition-all active:opacity-60 relative">
@@ -1529,8 +1537,9 @@ function _tmxUpdateWaitUI() {
     // matn (<span>) juftligidan iborat, textContent buni butunlay o'chirib
     // yuborgan bo'lardi.
     btn.innerHTML = `<i class="fas ${_tmxWaiting?'fa-play':'fa-pause'}" style="font-size:12px"></i><span>${_tmxWaiting?"Davom etish":"Kutish (mijoz band)"}</span>`;
-    btn.style.background = _tmxWaiting ? 'rgba(255,149,0,.18)' : 'rgba(255,255,255,.08)';
-    btn.style.color = _tmxWaiting ? '#FF9500' : 'rgba(255,255,255,.75)';
+    const dark = document.documentElement.classList.contains('dark');
+    btn.style.background = _tmxWaiting ? 'rgba(255,149,0,.18)' : (dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.05)');
+    btn.style.color = _tmxWaiting ? '#FF9500' : (dark ? 'rgba(255,255,255,.75)' : 'rgba(0,0,0,.65)');
   }
   const w = document.getElementById('tmx-wait-info');
   if (w) {
@@ -1555,14 +1564,29 @@ function _tmxUpdateWaitUI() {
 //   cfg.showWait/cfg.waiting/cfg.waitInfoHTML — "Kutish" tugmasi
 //   cfg.totalPrice  — berilsa, "JAMI TO'LOV" banneri ko'rsatiladi
 function _tmxRenderWidget(cfg) {
+  // Diqqat: bu vidjet avval har doim qora (tungi) fonda chizilardi. Endi
+  // joriy rejimga (<html>.dark) qarab ikki xil rangda chiziladi — pastdagi
+  // barcha "oq" ranglar shu o'zgaruvchilardan olinadi.
+  const dark = document.documentElement.classList.contains('dark');
+  const cardBg    = dark ? 'linear-gradient(160deg,#1c1c1f,#0a0a0b)' : 'linear-gradient(160deg,#ffffff,#f2f2f7)';
+  const cardBrd   = dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)';
+  const metricBg  = dark ? 'linear-gradient(155deg,rgba(255,255,255,.07),rgba(255,255,255,.02))' : 'linear-gradient(155deg,rgba(0,0,0,.045),rgba(0,0,0,.015))';
+  const metricBrd = dark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.06)';
+  const valColor  = dark ? '#fff' : '#1c1c1f';
+  const dimColor  = dark ? 'rgba(255,255,255,.35)' : 'rgba(0,0,0,.4)';
+  const labelDim  = dark ? 'rgba(255,255,255,.4)'  : 'rgba(0,0,0,.45)';
+  const sepColor  = dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)';
+  const waitBg    = dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.05)';
+  const waitFg    = dark ? 'rgba(255,255,255,.75)' : 'rgba(0,0,0,.65)';
+
   const metric = (icon, color, val, id, unit, label) => `
-    <div style="flex:1;display:flex;align-items:center;gap:9px;background:linear-gradient(155deg,rgba(255,255,255,.07),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:9px 10px;min-width:0">
+    <div style="flex:1;display:flex;align-items:center;gap:9px;background:${metricBg};border:1px solid ${metricBrd};border-radius:13px;padding:9px 10px;min-width:0">
       <div style="width:28px;height:28px;border-radius:50%;background:${color}26;border:1px solid ${color}40;display:flex;align-items:center;justify-content:center;flex-shrink:0">
         <i class="fas ${icon}" style="color:${color};font-size:11px"></i>
       </div>
       <div style="min-width:0">
-        <div style="font-size:13px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap">${id?`<span id="${id}">${val}</span>`:val}${unit?` <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,.35)">${unit}</span>`:''}</div>
-        <div style="font-size:8.5px;font-weight:700;color:rgba(255,255,255,.35);letter-spacing:.3px">${label}</div>
+        <div style="font-size:13px;font-weight:800;color:${valColor};font-variant-numeric:tabular-nums;white-space:nowrap">${id?`<span id="${id}">${val}</span>`:val}${unit?` <span style="font-size:10px;font-weight:600;color:${dimColor}">${unit}</span>`:''}</div>
+        <div style="font-size:8.5px;font-weight:700;color:${dimColor};letter-spacing:.3px">${label}</div>
       </div>
     </div>`;
 
@@ -1573,13 +1597,13 @@ function _tmxRenderWidget(cfg) {
   ].join('');
 
   return `
-  <div style="background:linear-gradient(160deg,#1c1c1f,#0a0a0b);border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,.08);box-shadow:0 10px 28px rgba(0,0,0,.4)">
+  <div style="background:${cardBg};border-radius:18px;overflow:hidden;border:1px solid ${cardBrd};box-shadow:0 10px 28px rgba(0,0,0,.4)">
     <div style="padding:14px 16px 0;display:flex;align-items:center;justify-content:space-between">
       <div style="display:flex;align-items:center;gap:7px">
         <div style="width:20px;height:20px;border-radius:7px;background:rgba(175,82,222,.16);display:flex;align-items:center;justify-content:center;flex-shrink:0">
           <i class="fas fa-gauge-high" style="color:#AF52DE;font-size:10px"></i>
         </div>
-        <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.6px;text-transform:uppercase">Taximetr</span>
+        <span style="font-size:11px;font-weight:700;color:${labelDim};letter-spacing:.6px;text-transform:uppercase">Taximetr</span>
         <div style="width:6px;height:6px;border-radius:50%;background:#AF52DE;box-shadow:0 0 8px #AF52DE${cfg.live?';animation:pulse-dot 1.4s ease-in-out infinite':''}"></div>
       </div>
       <span style="font-size:11px;font-weight:700;color:${cfg.statusColor}">${cfg.statusText}</span>
@@ -1590,11 +1614,11 @@ function _tmxRenderWidget(cfg) {
         ${cfg.priceId?`<span id="${cfg.priceId}">${cfg.price}</span>`:cfg.price}<span style="font-size:15px;font-weight:700;margin-left:5px;color:rgba(255,214,0,.55)">so'm</span>
       </div>
     </div>
-    <div style="height:.5px;background:rgba(255,255,255,.08);margin:0 14px"></div>
+    <div style="height:.5px;background:${sepColor};margin:0 14px"></div>
     <div style="display:flex;gap:8px;padding:12px">${cols}</div>
     ${cfg.showWait?`
     <div style="margin:0 12px 12px">
-      <button id="tmx-wait-btn" onclick="tmxToggleWait()" style="display:flex;align-items:center;justify-content:center;gap:7px;width:100%;box-sizing:border-box;padding:12px;border-radius:12px;border:none;cursor:pointer;font-weight:700;font-size:14px;background:${cfg.waiting?'rgba(255,149,0,.18)':'rgba(255,255,255,.08)'};color:${cfg.waiting?'#FF9500':'rgba(255,255,255,.75)'}">
+      <button id="tmx-wait-btn" onclick="tmxToggleWait()" style="display:flex;align-items:center;justify-content:center;gap:7px;width:100%;box-sizing:border-box;padding:12px;border-radius:12px;border:none;cursor:pointer;font-weight:700;font-size:14px;background:${cfg.waiting?'rgba(255,149,0,.18)':waitBg};color:${cfg.waiting?'#FF9500':waitFg}">
         <i class="fas ${cfg.waiting?'fa-play':'fa-pause'}" style="font-size:12px"></i>
         <span>${cfg.waiting?"Davom etish":"Kutish (mijoz band)"}</span>
       </button>
