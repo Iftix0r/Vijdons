@@ -2082,11 +2082,23 @@ def topup_list(request):
         qs = qs.filter(status=status_filter)
 
     today = timezone.now().date()
+    yesterday = today - timedelta(days=1)
     month_start = today.replace(day=1)
     total_topped_up = BalanceLog.objects.filter(action=BalanceLog.ACTION_ADD).aggregate(s=Sum('amount'))['s'] or 0
     total_deducted  = BalanceLog.objects.filter(action=BalanceLog.ACTION_DEDUCT).aggregate(s=Sum('amount'))['s'] or 0
     month_topped_up = BalanceLog.objects.filter(action=BalanceLog.ACTION_ADD, created_at__date__gte=month_start).aggregate(s=Sum('amount'))['s'] or 0
     month_deducted  = BalanceLog.objects.filter(action=BalanceLog.ACTION_DEDUCT, created_at__date__gte=month_start).aggregate(s=Sum('amount'))['s'] or 0
+
+    # Diqqat: "haqiqiy kirim" — komissiya qaytarilishi (refund) hisobga
+    # kirmaydi, chunki u yangi pul emas, avval yechilgan komissiyaning
+    # o'ziga qaytishi. Haydovchilarga qancha YANGI pul (to'lov cheki,
+    # admin qo'shgan, bonus va h.k.) kirganini bilish uchun shu yozuvlar
+    # chetlab o'tiladi.
+    real_income_qs = BalanceLog.objects.filter(action=BalanceLog.ACTION_ADD).exclude(note__startswith='Komissiya qaytarildi')
+    today_income     = real_income_qs.filter(created_at__date=today).aggregate(s=Sum('amount'))['s'] or 0
+    today_income_count     = real_income_qs.filter(created_at__date=today).values('driver_id').distinct().count()
+    yesterday_income = real_income_qs.filter(created_at__date=yesterday).aggregate(s=Sum('amount'))['s'] or 0
+    yesterday_income_count = real_income_qs.filter(created_at__date=yesterday).values('driver_id').distinct().count()
 
     history_qs = BalanceLog.objects.select_related('driver').order_by('-created_at')
     history_action = request.GET.get('haction', '')
@@ -2124,6 +2136,10 @@ def topup_list(request):
         'total_deducted':  total_deducted,
         'month_topped_up': month_topped_up,
         'month_deducted':  month_deducted,
+        'today_income':            today_income,
+        'today_income_count':      today_income_count,
+        'yesterday_income':        yesterday_income,
+        'yesterday_income_count':  yesterday_income_count,
         'history':        history_page,
         'history_action': history_action,
         'history_q':      history_q,
