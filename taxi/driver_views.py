@@ -1279,6 +1279,7 @@ def driver_group_chat_list(request, driver):
             'driver_id': m.driver_id,
             'driver_name': m.display_name,
             'car_number': m.display_sub,
+            'photo_url': request.build_absolute_uri(m.driver.photo.url) if m.driver and m.driver.photo else None,
             'text': m.text,
             'audio_url': request.build_absolute_uri(m.audio.url) if m.audio else None,
             'created_at': m.created_at.isoformat(),
@@ -1302,6 +1303,7 @@ def driver_group_chat_send(request, driver):
         'ok': True, 'id': msg.id,
         'driver_id': driver.id, 'driver_name': driver.full_name,
         'car_number': driver.car_number,
+        'photo_url': request.build_absolute_uri(driver.photo.url) if driver.photo else None,
         'text': msg.text, 'audio_url': None,
         'created_at': msg.created_at.isoformat(),
     })
@@ -1318,6 +1320,7 @@ def driver_group_chat_send_audio(request, driver):
         'ok': True, 'id': msg.id,
         'driver_id': driver.id, 'driver_name': driver.full_name,
         'car_number': driver.car_number,
+        'photo_url': request.build_absolute_uri(driver.photo.url) if driver.photo else None,
         'text': '', 'audio_url': request.build_absolute_uri(msg.audio.url),
         'created_at': msg.created_at.isoformat(),
     })

@@ -149,19 +149,55 @@ async function sendGrMsg() {
   } catch(_) {}
 }
 
+// Telegram uslubidagi kun ajratuvchisi — "Bugun"/"Kecha"/sana. Xabarlar
+// doim xronologik tartibda qo'shilgani uchun, oxirgi ko'rsatilgan sanani
+// eslab qolish yetarli (har safar qayta tekshirmasdan).
+let _grLastDateLabel = null;
+function _grDateLabel(d) {
+  const now = new Date();
+  const startOfDay = x => new Date(x.getFullYear(), x.getMonth(), x.getDate());
+  const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86400000);
+  if (diffDays === 0) return 'Bugun';
+  if (diffDays === 1) return 'Kecha';
+  return d.toLocaleDateString('uz', {day:'numeric', month:'long', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined});
+}
+function _maybeInsertGrDateSep(dateObj) {
+  const label = _grDateLabel(dateObj);
+  if (label === _grLastDateLabel) return;
+  _grLastDateLabel = label;
+  const wrap = document.getElementById('gr-messages');
+  const sep = document.createElement('div');
+  sep.className = 'anim-fade';
+  sep.style.cssText = 'text-align:center;margin:10px 0';
+  sep.innerHTML = `<span style="display:inline-block;padding:4px 12px;border-radius:12px;background:var(--ios-fill);font-size:11px;font-weight:700;color:var(--ios-label3)">${label}</span>`;
+  wrap.appendChild(sep);
+}
+
+// Boshqa haydovchining xabari yonida ko'rinadigan doiraviy profil belgisi —
+// rasmi bo'lsa shu, bo'lmasa ismining bosh harfi.
+function _grAvatarEl(msg) {
+  if (msg.photo_url) {
+    return `<img src="${msg.photo_url}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;flex-shrink:0">`;
+  }
+  const letter = (msg.driver_name || 'H').charAt(0).toUpperCase();
+  return `<div style="width:30px;height:30px;border-radius:50%;background:#1c1c1f;color:#34C759;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">${letter}</div>`;
+}
+
 function appendGrMsg(msg, scroll=true) {
   const wrap  = document.getElementById('gr-messages');
   const empty = document.getElementById('gr-empty');
   if (empty) empty.remove();
   const isMe = msg.driver_id === MY_DRIVER_ID;
-  const time = new Date(msg.created_at).toLocaleTimeString('uz',{hour:'2-digit',minute:'2-digit'});
+  const msgDate = new Date(msg.created_at);
+  _maybeInsertGrDateSep(msgDate);
+  const time = msgDate.toLocaleTimeString('uz',{hour:'2-digit',minute:'2-digit'});
   const div  = document.createElement('div');
-  div.className = `flex ${isMe?'justify-end':'justify-start'} anim-fade`;
+  div.className = `flex items-end gap-2 ${isMe?'justify-end':'justify-start'} anim-fade`;
 
   const nameLine = isMe ? '' : `<div style="font-size:11px;font-weight:800;color:#34C759;margin-bottom:3px">${escHtml(msg.driver_name)} · ${escHtml(msg.car_number||'')}</div>`;
   let content = msg.audio_url ? audioBubble(msg.audio_url, isMe) : escHtml(msg.text);
 
-  div.innerHTML = `<div class="max-w-[78%] px-4 py-2.5 ios-subhead leading-snug
+  div.innerHTML = `${isMe?'':_grAvatarEl(msg)}<div class="max-w-[74%] px-4 py-2.5 ios-subhead leading-snug
     ${isMe?'rounded-[18px] rounded-br-[4px] text-black':'rounded-[18px] rounded-bl-[4px]'}"
     style="${isMe?'background:#FFD600':'background:var(--ios-card);color:var(--ios-label)'}">
     ${nameLine}${content}
