@@ -1176,6 +1176,7 @@ let _tmxDistKm    = 0;
 let _tmxPrevLat   = null;
 let _tmxPrevLng   = null;
 let _tmxPrevTime  = null;
+let _tmxPrevAcc   = null;
 let _tmxWatchId   = null;
 let _tmxPriceStr  = '0';
 let _tmxTimeStr   = '0:00';
@@ -1269,6 +1270,7 @@ function tmxStart(orderId, order) {
   _tmxPrevLat = null;
   _tmxPrevLng = null;
   _tmxPrevTime = null;
+  _tmxPrevAcc = null;
   _tmxSpeedKmh = 0;
 
   _tmxOrder     = order;
@@ -1316,18 +1318,31 @@ function tmxStart(orderId, order) {
   window.addEventListener('vijdon_location', _tmxOnLocation);
   if (navigator.geolocation) {
     _tmxWatchId = navigator.geolocation.watchPosition(
-      pos => _tmxOnLocation({ detail: { lat: pos.coords.latitude, lng: pos.coords.longitude, speed: pos.coords.speed } }),
+      pos => _tmxOnLocation({ detail: { lat: pos.coords.latitude, lng: pos.coords.longitude, speed: pos.coords.speed, accuracy: pos.coords.accuracy } }),
       () => {},
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 3000 }
     );
   }
 }
 
+// Wi-Fi/tarmoq asosida aniqlangan joylashuv (bino ichida, yoki telefon GPS
+// signalini topa olmaganda fused location provider tanlaydi) haqiqiy GPS'ga
+// qaraganda ancha noaniq — xatosi 50-150m gacha borishi mumkin. Shuning uchun
+// nuqtaning o'z xato radiusidan (accuracy) kichik bo'lgan "harakat" ishonchsiz
+// hisoblanadi va tashlab yuboriladi.
+const TMX_MAX_ACCURACY_M = 60; // bundan noaniqroq nuqta umuman e'tiborga olinmaydi
+
 function _tmxOnLocation(e) {
   const lat = e.detail?.lat;
   const lng = e.detail?.lng;
   const spd = e.detail?.speed;
+  const acc = e.detail?.accuracy;
   if (!lat || !lng || !_tmxActive) return;
+
+  // Juda noaniq nuqta (masalan Wi-Fi/tarmoq asosida, GPS signali yo'q joyda) —
+  // bunday nuqtani referens sifatida ham ishlatmaymiz, keyingi ishonchli
+  // nuqtani kutamiz, aks holda mashina turgan joyida ham "sakrab" ketaveradi.
+  if (acc != null && acc > TMX_MAX_ACCURACY_M) return;
 
   if (spd != null && spd >= 0) _tmxSpeedKmh = Math.round(spd * 3.6);
 
@@ -1341,7 +1356,7 @@ function _tmxOnLocation(e) {
   // (kamida 4s oralig'i), (2) shovqin chegarasini kattalashtiramiz,
   // (3) o'tgan vaqtga nisbatan tug'ilgan tezlik jismonan imkonsiz
   // bo'lsa (GPS sakrashi), o'sha nuqtani hisobga olmaymiz.
-  if (_tmxPrevTime !== null && (now - _tmxPrevTime) < 4000) return;
+  if (_tmxPrevTime !== null && (now - _tmxPrevTime) < 4000) { return; }
 
   // Kutish rejimida masofa hisoblanmaydi — mijoz do'kon/uyga kirib qolganda
   // haydovchi harakatsiz turadi (yoki atrofda kichik yurishlar qiladi), bular
@@ -1350,7 +1365,12 @@ function _tmxOnLocation(e) {
     const d = _haversine(_tmxPrevLat, _tmxPrevLng, lat, lng);
     const dtHours = _tmxPrevTime !== null ? (now - _tmxPrevTime) / 3_600_000 : null;
     const impliedKmh = dtHours ? d / dtHours : 0;
-    if (d > 0.015 && d < 2.0 && (!dtHours || impliedKmh < 140)) {
+    // Noise chegarasi: statik 15m, lekin nuqta(lar)ning o'z xato radiusi
+    // kattaroq bo'lsa, aynan o'sha radius ichidagi "siljish" ham shovqin
+    // deb hisoblanadi (masalan Wi-Fi asosidagi 40m xatoli nuqtalar orasidagi
+    // 35m farq harakat emas, faqat o'lchov noaniqligi).
+    const noiseFloorKm = Math.max(0.015, ((acc || 0) + (_tmxPrevAcc || 0)) / 1000 / 2);
+    if (d > noiseFloorKm && d < 2.0 && (!dtHours || impliedKmh < 140)) {
       _tmxDistKm += d;
       _tmxUpdatePrice();
       _syncSheetTmx();
@@ -1360,6 +1380,7 @@ function _tmxOnLocation(e) {
   _tmxPrevLat = lat;
   _tmxPrevLng = lng;
   _tmxPrevTime = now;
+  _tmxPrevAcc = (acc != null) ? acc : _tmxPrevAcc;
 }
 
 function _syncSheetTmx(order) {

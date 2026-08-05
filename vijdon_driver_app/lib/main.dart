@@ -319,7 +319,7 @@ class _DriverWebViewState extends State<DriverWebView>
             timeLimit: Duration(seconds: 8),
           ),
         );
-        _sendLocation(pos.latitude, pos.longitude);
+        _sendLocation(pos.latitude, pos.longitude, pos.accuracy);
       } catch (_) {}
     });
   }
@@ -332,14 +332,20 @@ class _DriverWebViewState extends State<DriverWebView>
           timeLimit: Duration(seconds: 8),
         ),
       );
-      _sendLocation(pos.latitude, pos.longitude);
+      _sendLocation(pos.latitude, pos.longitude, pos.accuracy);
     } catch (_) {}
   }
 
-  void _sendLocation(double lat, double lng) {
+  // accuracy — ushbu nuqtaning taxminiy xato radiusi (metrda). Wi-Fi/tarmoq
+  // asosida aniqlangan joylashuv (masalan, bino ichida yoki GPS signali zaif
+  // bo'lganda fused location provider'ning tanlovi) haqiqiy GPS'ga qaraganda
+  // ancha noaniq bo'lib, hatto mashina joyidan qo'zg'almasa ham 50-150m
+  // sakrab turishi mumkin — shu qiymatni JS tomonga uzatib, taximetr bunday
+  // ishonchsiz nuqtalarni masofa sifatida hisoblamasligi uchun ishlatamiz.
+  void _sendLocation(double lat, double lng, double accuracy) {
     _ctrl?.runJavaScript(
       "window.dispatchEvent(new CustomEvent('vijdon_location',"
-      "{detail:{lat:$lat,lng:$lng}}))",
+      "{detail:{lat:$lat,lng:$lng,accuracy:$accuracy}}))",
     );
   }
 
