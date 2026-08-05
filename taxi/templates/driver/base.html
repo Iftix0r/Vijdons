@@ -12,31 +12,23 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config={darkMode:'class'}</script>
 <script>
-// Diqqat: agar foydalanuvchi Profil sahifasida qo'lda tanlagan bo'lmasa
-// (localStorage'da saqlangan tanlov yo'q bo'lsa), rejim TELEFONNING
-// tizim sozlamasidan (prefers-color-scheme) olinadi — qurilma qorong'i
-// rejimda bo'lsa ilova ham qorong'i, aks holda yorug' bo'ladi. Qo'lda
-// tanlangan bo'lsa, o'sha tanlov tizim sozlamasidan ustun turadi. Bu
-// skript sahifa chizilishidan OLDIN (head ichida, sinxron) ishga
-// tushishi shart — aks holda birinchi kadrda noto'g'ri rejim ko'rinib,
-// keyin to'g'risiga "miltillab" o'tib qolardi (FOUC).
-var _vjTheme = localStorage.getItem('vj_driver_theme');
-var _vjDark  = _vjTheme ? _vjTheme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-document.documentElement.classList.toggle('dark', _vjDark);
-if (!_vjDark) document.getElementById('vj-theme-color').setAttribute('content', '#F2F2F7');
+// Diqqat: qo'lda tanlash imkoniyati YO'Q — rejim to'liq TELEFONNING tizim
+// sozlamasidan (prefers-color-scheme) olinadi: qurilma qorong'i rejimda
+// bo'lsa ilova ham qorong'i, aks holda yorug' bo'ladi. Bu skript sahifa
+// chizilishidan OLDIN (head ichida, sinxron) ishga tushishi shart — aks
+// holda birinchi kadrda noto'g'ri rejim ko'rinib, keyin to'g'risiga
+// "miltillab" o'tib qolardi (FOUC).
+var _vjDarkMQ = window.matchMedia('(prefers-color-scheme: dark)');
+document.documentElement.classList.toggle('dark', _vjDarkMQ.matches);
+if (!_vjDarkMQ.matches) document.getElementById('vj-theme-color').setAttribute('content', '#F2F2F7');
 
-// Qo'lda tanlov bo'lmasa, telefon tizim rejimini o'zgartirganda (masalan
-// kunbotarda avtomatik qorong'iga o'tsa) ilova ham JONLI moslashadi —
-// sahifani qayta ochish shart emas.
-if (!_vjTheme && window.matchMedia) {
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
-    if (localStorage.getItem('vj_driver_theme')) return; // shu orada qo'lda tanlangan bo'lsa, tegmaymiz
-    document.documentElement.classList.toggle('dark', e.matches);
-    var m = document.getElementById('vj-theme-color');
-    if (m) m.setAttribute('content', e.matches ? '#0E1621' : '#F2F2F7');
-    if (typeof _applyThemeUI === 'function') _applyThemeUI();
-  });
-}
+// Telefon tizim rejimini o'zgartirsa (masalan kunbotarda avtomatik
+// qorong'iga o'tsa), ilova ham sahifani qayta ochmasdan JONLI moslashadi.
+_vjDarkMQ.addEventListener('change', function(e) {
+  document.documentElement.classList.toggle('dark', e.matches);
+  var m = document.getElementById('vj-theme-color');
+  if (m) m.setAttribute('content', e.matches ? '#0E1621' : '#F2F2F7');
+});
 </script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 <!-- Diqqat (unumdorlik): Yandex/Mapbox xarita kutubxonalari ilgari shu
