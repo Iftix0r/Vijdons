@@ -789,10 +789,12 @@ def driver_chat(request, driver):
     # — endi bu sahifa faqat guruh chatini ko'rsatadi. Guruh xabarlari
     # "o'qilgan" deb belgilanishi (`last_group_read_at`) client tomonda
     # `driver_group_chat_list` chaqirilganda avtomatik sodir bo'ladi.
+    driver_count = Driver.objects.filter(approval_status=Driver.APPROVAL_APPROVED, is_active=True).count()
     return render(request, 'driver/chat.html', {
-        'driver':      driver,
-        'active_tab':  'chat',
-        'chat_unread': 0,
+        'driver':       driver,
+        'active_tab':   'chat',
+        'chat_unread':  0,
+        'driver_count': driver_count,
         'pending_orders_count': _pending_orders_count(driver),
         'active_orders_count': _active_orders_count(driver),
     })
