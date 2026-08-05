@@ -122,6 +122,15 @@
   <i class="fas fa-location-crosshairs" style="color:#FFD600;font-size:20px"></i>
 </button>
 
+<!-- Boshqa haydovchigacha bo'lgan marshrut chizilganda ko'rinadigan
+     "yopish" tugmasi — xaritaning o'zida chizilgan yo'l chizig'ini olib
+     tashlaydi -->
+<button id="peer-route-close" onclick="_clearPeerRoute()"
+  class="active:opacity-60 transition-opacity"
+  style="display:none;align-items:center;gap:8px;position:fixed;z-index:16;top:calc(env(safe-area-inset-top,20px) + 12px);left:50%;transform:translateX(-50%);padding:8px 14px;border-radius:20px;background:rgba(20,20,22,.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff;font-size:12px;font-weight:700">
+  <i class="fas fa-route" style="color:#2f7dfa"></i> Marshrutni yopish <i class="fas fa-xmark" style="margin-left:2px"></i>
+</button>
+
 <!-- Tezlik o'lchagich — Navigator'dagi kabi, chap-pastda. GPS'dan 'speed'
      kelmasa (m/s, brauzer/qurilma bermasa yoki harakatsiz bo'lsa) "—"
      ko'rsatiladi, aks holda km/soatga o'girib ko'rsatamiz. -->
@@ -1063,16 +1072,75 @@ document.addEventListener('visibilitychange', () => {
         <i class="fas fa-diamond-turn-right" style="margin-right:6px"></i>Marshrut tuzish
       </button>`;
   }
-  // Boshqa haydovchigacha marshrut — telefonning tashqi navigatsiya
-  // ilovasida (Google Maps) ochiladi, chunki asosiy xaritada bo'lak yo'l
-  // chizig'i chizish o'rniga haqiqiy ovozli navigatsiya beradigan tayyor
-  // ilovadan foydalanish ancha ishonchli. `event.stopPropagation()` —
-  // karta konteynerining o'zi bosilganda yopiladigan (`card.onclick`)
-  // xatti-harakatini shu tugma bosilganda ishga tushirmaslik uchun.
+  // Boshqa haydovchigacha marshrut — tashqi ilovaga chiqmasdan, aynan
+  // shu (asosiy) xaritaning o'zida chiziladi: Mapbox rejimida Directions
+  // API orqali haqiqiy yo'l geometriyasi olinadi, Yandex (v2) rejimida esa
+  // buyurtma marshruti uchun ishlatilgan xuddi shu `ymaps.multiRouter.MultiRoute`
+  // ishlatiladi.
+  let _peerRouteMapboxAdded = false;
+  let _peerRouteYandexObj = null;
+
+  function _clearPeerRoute() {
+    if (_homeMode === 'mapbox' && _homeMap && _peerRouteMapboxAdded) {
+      try {
+        if (_homeMap.getLayer('peer-route-line')) _homeMap.removeLayer('peer-route-line');
+        if (_homeMap.getSource('peer-route')) _homeMap.removeSource('peer-route');
+      } catch (_) {}
+      _peerRouteMapboxAdded = false;
+    }
+    if (_homeMode === 'v2' && _homeMap && _peerRouteYandexObj) {
+      try { _homeMap.geoObjects.remove(_peerRouteYandexObj); } catch (_) {}
+      _peerRouteYandexObj = null;
+    }
+    const btn = document.getElementById('peer-route-close');
+    if (btn) btn.style.display = 'none';
+  }
+  window._clearPeerRoute = _clearPeerRoute;
+
+  function _drawPeerRouteMapbox(originLat, originLng, destLat, destLng) {
+    fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${originLng},${originLat};${destLng},${destLat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`)
+      .then(r => r.json())
+      .then(d => {
+        const route = d.routes && d.routes[0];
+        if (!route || !_homeMap) return;
+        _clearPeerRoute();
+        _homeMap.addSource('peer-route', { type: 'geojson', data: { type: 'Feature', geometry: route.geometry, properties: {} } });
+        _homeMap.addLayer({
+          id: 'peer-route-line',
+          type: 'line',
+          source: 'peer-route',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': '#2f7dfa', 'line-width': 5, 'line-opacity': 0.85 },
+        });
+        _peerRouteMapboxAdded = true;
+        document.getElementById('peer-route-close').style.display = 'flex';
+        const bounds = new mapboxgl.LngLatBounds();
+        route.geometry.coordinates.forEach(c => bounds.extend(c));
+        _homeMap.fitBounds(bounds, { padding: 80, duration: 500 });
+      })
+      .catch(() => {});
+  }
+
+  function _drawPeerRouteYandex(originLat, originLng, destLat, destLng) {
+    if (!_homeMap) return;
+    _clearPeerRoute();
+    _peerRouteYandexObj = new ymaps.multiRouter.MultiRoute({
+      referencePoints: [[originLat, originLng], [destLat, destLng]],
+      params: { routingMode: 'auto' },
+    }, {
+      boundsAutoApply: true,
+      routeActiveStrokeWidth: 5,
+      routeActiveStrokeColor: '#2f7dfa',
+    });
+    _homeMap.geoObjects.add(_peerRouteYandexObj);
+    document.getElementById('peer-route-close').style.display = 'flex';
+  }
+
   window._openPeerRoute = function (ev, lat, lng) {
     if (ev) ev.stopPropagation();
-    const origin = (_lastLat && _lastLng) ? `&origin=${_lastLat},${_lastLng}` : '';
-    window.open(`https://www.google.com/maps/dir/?api=1${origin}&destination=${lat},${lng}&travelmode=driving`, '_blank');
+    if (_lastLat === null || _lastLng === null) return;
+    if (_homeMode === 'mapbox') _drawPeerRouteMapbox(_lastLat, _lastLng, lat, lng);
+    else if (_homeMode === 'v2') _drawPeerRouteYandex(_lastLat, _lastLng, lat, lng);
   };
   // v2.1'dagi balloon o'rniga — v3'da tayyor balon/popup komponenti yo'q,
   // shu sababli bosilganda pastdan suzib chiqadigan oddiy karta ishlatiladi.
