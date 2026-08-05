@@ -3029,6 +3029,65 @@ def bot_webhook_status(request):
         return JsonResponse({'ok': False, 'message': str(e)})
 
 
+@system_login_required
+def client_bot_set_webhook(request):
+    """Mijoz boti webhook URL ni Telegram ga o'rnatish — operator bot uchun
+    bo'lgan operator_bot_set_webhook bilan bir xil, faqat client_bot_token
+    va client-webhook manzilidan foydalanadi."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': 'POST talab qilinadi'})
+    from .models import BotSettings
+    bot = BotSettings.get()
+    token = bot.client_bot_token.strip()
+    if not token:
+        return JsonResponse({'ok': False, 'message': 'Mijoz bot token kiritilmagan'})
+    webhook_url = f"{request.scheme}://{request.get_host()}/panel/bot/client-webhook/"
+    import urllib.request, urllib.parse
+    try:
+        data = urllib.parse.urlencode({'url': webhook_url}).encode()
+        req = urllib.request.Request(
+            f'https://api.telegram.org/bot{token}/setWebhook',
+            data=data,
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            import json as _json
+            result = _json.loads(resp.read().decode())
+        if result.get('ok'):
+            return JsonResponse({'ok': True, 'message': f'Webhook o\'rnatildi: {webhook_url}'})
+        return JsonResponse({'ok': False, 'message': result.get('description', 'Xatolik')})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'message': str(e)})
+
+
+@system_login_required
+def client_bot_webhook_status(request):
+    """Mijoz boti uchun getWebhookInfo — bot_webhook_status'ning client_bot_token
+    versiyasi."""
+    from .models import BotSettings
+    bot = BotSettings.get()
+    token = bot.client_bot_token.strip()
+    if not token:
+        return JsonResponse({'ok': False, 'message': 'Mijoz bot token kiritilmagan'})
+    import urllib.request
+    try:
+        req = urllib.request.Request(f'https://api.telegram.org/bot{token}/getWebhookInfo')
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            import json as _json
+            result = _json.loads(resp.read().decode())
+        if not result.get('ok'):
+            return JsonResponse({'ok': False, 'message': result.get('description', 'Xatolik')})
+        info = result.get('result', {})
+        return JsonResponse({
+            'ok': True,
+            'url': info.get('url') or None,
+            'pending_update_count': info.get('pending_update_count', 0),
+            'last_error_message': info.get('last_error_message'),
+            'last_error_date': info.get('last_error_date'),
+        })
+    except Exception as e:
+        return JsonResponse({'ok': False, 'message': str(e)})
+
+
 @panel_login_required
 def driver_map(request):
     from taxi.models import MapsSettings
