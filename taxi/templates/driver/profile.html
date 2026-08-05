@@ -59,11 +59,6 @@
       <i class="fas fa-exclamation-circle text-xs"></i> Balansni to'ldiring
     </div>
     {% endif %}
-    <button onclick="showTopupSheet()"
-       class="w-full mt-3 text-center ios-subhead font-semibold text-black py-3 rounded-[14px] active:opacity-70 transition-opacity"
-       style="background:#FFD600">
-      <i class="fas fa-plus-circle mr-1.5"></i>Balansni to'ldirish
-    </button>
   </div>
 
   <!-- ── Stats ── -->
@@ -86,21 +81,6 @@
     </div>
   </div>
 
-  <!-- ── Takliflar (vizitka orqali keltirilgan mijozlar) ── -->
-  <div class="anim-up" style="animation-delay:100ms">
-    <div class="ios-caption2 font-semibold mb-1.5 ml-1" style="color:var(--ios-label3)">TAKLIFLAR</div>
-    <div class="ios-card rounded-[16px] p-4 flex items-center gap-3.5">
-      <div class="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0" style="background:rgba(255,149,0,.12)">
-        <i class="fas fa-id-card text-[#FF9500]"></i>
-      </div>
-      <div class="flex-1">
-        <div class="ios-subhead font-medium">Vizitka orqali kelgan mijozlar</div>
-        <div class="ios-caption mt-0.5" style="color:var(--ios-label3)">Shu hafta: {{ referral_count_week|default:0 }} ta</div>
-      </div>
-      <div class="ios-title font-bold text-[#FF9500]">{{ referral_count|default:0 }}</div>
-    </div>
-  </div>
-
   <!-- ── Car info ── -->
   <div class="anim-up" style="animation-delay:120ms">
     <div class="ios-caption2 font-semibold mb-1.5 ml-1" style="color:var(--ios-label3)">TRANSPORT VOSITASI</div>
@@ -113,26 +93,6 @@
           <div class="ios-subhead font-medium">{{ driver.car_model }}</div>
           <div class="ios-caption font-medium font-mono tracking-wider mt-0.5" style="color:var(--ios-label3)">{{ driver.car_number }}</div>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Destination Mode ── -->
-  <div class="anim-up" style="animation-delay:150ms">
-    <div class="ios-caption2 font-semibold mb-1.5 ml-1" style="color:var(--ios-label3)">ISH REJIMI</div>
-    <div class="ios-group">
-      <div class="ios-row gap-3" onclick="toggleDestination()">
-        <div class="w-10 h-10 rounded-[12px] flex items-center justify-center flex-shrink-0"
-             style="background:rgba(52,199,89,.12)">
-          <i class="fas fa-route text-[#34C759] text-sm"></i>
-        </div>
-        <div class="flex-1">
-          <div class="ios-subhead font-medium">Yo'nalish rejimi</div>
-          <div class="ios-caption mt-0.5" id="dest-sub" style="color:var(--ios-label3)">
-            {% if driver.destination_mode and driver.destination_address %}{{ driver.destination_address }}{% else %}O'chirilgan{% endif %}
-          </div>
-        </div>
-        <div class="ios-toggle {% if driver.destination_mode %}on{% endif %}" id="dest-tog"></div>
       </div>
     </div>
   </div>
@@ -152,14 +112,6 @@
         </div>
         <div class="ios-toggle" id="theme-tog"></div>
       </div>
-      <!-- Parol o'zgartirish -->
-      <div class="ios-row gap-3" onclick="showPasswordSheet()">
-        <div class="w-10 h-10 rounded-[12px] bg-[rgba(255,149,0,.12)] flex items-center justify-center flex-shrink-0">
-          <i class="fas fa-lock text-[#FF9500] text-sm"></i>
-        </div>
-        <div class="flex-1 ios-subhead font-medium">Parolni o'zgartirish</div>
-        <i class="fas fa-chevron-right ios-caption" style="color:var(--ios-label3)"></i>
-      </div>
       <!-- Shartnoma -->
       <a href="{% url 'driver:contract' %}" class="ios-row gap-3">
         <div class="w-10 h-10 rounded-[12px] bg-[rgba(0,122,255,.12)] flex items-center justify-center flex-shrink-0">
@@ -171,65 +123,8 @@
         {% endif %}
         <i class="fas fa-chevron-right ios-caption" style="color:var(--ios-label3)"></i>
       </a>
-      <!-- Version -->
-      <div class="ios-row gap-3">
-        <div class="w-10 h-10 rounded-[12px] bg-[rgba(255,214,0,.15)] flex items-center justify-center flex-shrink-0">
-          <span class="text-sm font-bold text-[#FFD600]">V</span>
-        </div>
-        <div class="flex-1 ios-subhead font-medium">Vijdon Driver</div>
-        <span class="ios-caption" style="color:var(--ios-label3)">v1.0</span>
-      </div>
     </div>
   </div>
-
-  <!-- ── Danger zone ajratuvchisi — SOS/Chiqish tugmalari oddiy sozlamalardan
-       vizual jihatdan ajralib tursin, tasodifan bosilib ketmasin ── -->
-  <div style="height:.5px;background:var(--ios-sep);margin:4px 8px"></div>
-
-  <!-- ── Parol sheet ── -->
-  <div id="pwd-overlay" class="fixed inset-0 z-[150] hidden" onclick="hidePwdSheet()">
-    <div class="absolute inset-0" style="background:rgba(0,0,0,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)"></div>
-  </div>
-  <div id="pwd-sheet" class="ios-sheet fixed bottom-0 left-0 right-0 z-[160]"
-       style="transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom,34px)">
-    <div class="ios-sheet-handle"></div>
-    <div class="px-4 pt-4 pb-4 space-y-3">
-      <div class="ios-title font-semibold mb-1">Parolni o'zgartirish</div>
-      <input id="pwd-old" type="password" placeholder="Eski parol" class="ios-input">
-      <input id="pwd-new" type="password" placeholder="Yangi parol (kamida 6 ta belgi)" class="ios-input">
-      <button onclick="changePassword()" class="ios-btn-primary">Saqlash</button>
-    </div>
-  </div>
-
-  <!-- ── Balans to'ldirish sheet ── -->
-  <div id="topup-overlay" class="fixed inset-0 z-[150] hidden" onclick="hideTopupSheet()">
-    <div class="absolute inset-0" style="background:rgba(0,0,0,.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)"></div>
-  </div>
-  <div id="topup-sheet" class="ios-sheet fixed bottom-0 left-0 right-0 z-[160]"
-       style="transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1);padding-bottom:env(safe-area-inset-bottom,34px)">
-    <div class="ios-sheet-handle"></div>
-    <div class="px-4 pt-4 pb-4 space-y-3">
-      <div class="ios-title font-semibold mb-1">Balansni to'ldirish</div>
-      <div class="ios-caption" style="color:var(--ios-label3)">To'lov chekini yuklang — admin tekshirib tasdiqlagach balansingizga qo'shiladi.</div>
-      <input id="topup-amount" type="number" inputmode="numeric" placeholder="Summa (so'm)" class="ios-input">
-      <label class="ios-group ios-row gap-3 cursor-pointer">
-        <div class="w-10 h-10 rounded-[12px] bg-[rgba(255,214,0,.15)] flex items-center justify-center flex-shrink-0">
-          <i class="fas fa-receipt text-[#FFD600] text-sm"></i>
-        </div>
-        <div class="flex-1 ios-subhead font-medium" id="topup-file-label">Chek rasmini tanlash</div>
-        <input id="topup-receipt" type="file" accept="image/*" class="hidden"
-               onchange="document.getElementById('topup-file-label').textContent = this.files[0]?.name || 'Chek rasmini tanlash'">
-      </label>
-      <button onclick="submitTopup()" class="ios-btn-primary">Yuborish</button>
-    </div>
-  </div>
-
-  <!-- ── SOS ── -->
-  <button onclick="sendSOS()"
-     class="block w-full text-center ios-subhead font-semibold text-white py-4 rounded-[16px] active:opacity-60 transition-opacity anim-up"
-     style="animation-delay:180ms;background:#FF3B30;box-shadow:0 4px 20px rgba(255,59,48,.4)">
-    <i class="fas fa-triangle-exclamation mr-2"></i>SOS — Yordam chaqirish
-  </button>
 
   <!-- ── Logout ── -->
   <a href="{% url 'driver:logout' %}" onclick="Native.vibrate()"
@@ -261,59 +156,6 @@ function toggleTheme() {
 }
 _applyThemeUI();
 
-let _destActive = {{ driver.destination_mode|yesno:'true,false' }};
-
-async function toggleDestination() {
-  Native.vibrate();
-  if (_destActive) {
-    // O'chirish
-    const r = await fetch('{% url "driver:destination" %}', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
-      body: JSON.stringify({clear: true})
-    });
-    const d = await r.json();
-    if (d.ok) {
-      _destActive = false;
-      document.getElementById('dest-tog').classList.remove('on');
-      document.getElementById('dest-sub').textContent = "O'chirilgan";
-      showToast("Yo'nalish rejimi o'chirildi", '', 'info', 2000);
-    }
-    return;
-  }
-  // Yoqish — GPS olish
-  showToast('GPS aniqlanmoqda...', '', 'info', 4000);
-  let lat, lng;
-  try {
-    const pos = await Native.getLocation();
-    lat = pos.lat; lng = pos.lng;
-  } catch(_) {
-    showToast('GPS topilmadi', "Joylashuvni yoqing", 'error'); return;
-  }
-  // Reverse geocode
-  let address = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-  try {
-    const rg = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=uz&zoom=14`);
-    const dg = await rg.json();
-    const a = dg.address || {};
-    const street = a.road || a.suburb || a.city_district || '';
-    const city = a.city || a.town || a.village || '';
-    if (street || city) address = [street, city].filter(Boolean).join(', ');
-  } catch(_) {}
-  const r = await fetch('{% url "driver:destination" %}', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
-    body: JSON.stringify({lat, lng, address})
-  });
-  const d = await r.json();
-  if (d.ok) {
-    _destActive = true;
-    document.getElementById('dest-tog').classList.add('on');
-    document.getElementById('dest-sub').textContent = address;
-    showToast("Yo'nalish rejimi yoqildi", address, 'success', 3000);
-  }
-}
-
 async function uploadPhoto(input) {
   const file = input.files[0]; if (!file) return;
   const loading = document.getElementById('photo-loading');
@@ -329,83 +171,5 @@ async function uploadPhoto(input) {
   } catch(_) { loading.classList.add('hidden'); showToast('Tarmoq xatosi','','error'); }
 }
 
-function showTopupSheet() {
-  Native.vibrate();
-  document.getElementById('topup-overlay').classList.remove('hidden');
-  requestAnimationFrame(()=>{ document.getElementById('topup-sheet').style.transform='translateY(0)'; });
-}
-function hideTopupSheet() {
-  document.getElementById('topup-sheet').style.transform='translateY(100%)';
-  setTimeout(()=>document.getElementById('topup-overlay').classList.add('hidden'),360);
-}
-async function submitTopup() {
-  const amount  = document.getElementById('topup-amount').value.trim();
-  const receipt = document.getElementById('topup-receipt').files[0];
-  if (!amount || Number(amount) <= 0) return showToast('Xatolik', "Summani to'g'ri kiriting", 'error');
-  if (!receipt) return showToast('Xatolik', 'Chek rasmini tanlang', 'error');
-  const fd = new FormData();
-  fd.append('amount', amount);
-  fd.append('receipt', receipt);
-  fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
-  try {
-    const r = await fetch('{% url "driver:balance_topup" %}', {method:'POST', body:fd});
-    const d = await r.json();
-    if (d.ok) { hideTopupSheet(); showToast("So'rov yuborildi", 'Admin tekshirgach balansingizga qo\'shiladi', 'success', 3000); }
-    else showToast('Xatolik', d.error||'', 'error');
-  } catch(_) { showToast('Tarmoq xatosi','','error'); }
-}
-
-function showPasswordSheet() {
-  Native.vibrate();
-  document.getElementById('pwd-overlay').classList.remove('hidden');
-  requestAnimationFrame(()=>{ document.getElementById('pwd-sheet').style.transform='translateY(0)'; });
-}
-function hidePwdSheet() {
-  document.getElementById('pwd-sheet').style.transform='translateY(100%)';
-  setTimeout(()=>document.getElementById('pwd-overlay').classList.add('hidden'),360);
-}
-async function changePassword() {
-  const old = document.getElementById('pwd-old').value.trim();
-  const nw  = document.getElementById('pwd-new').value.trim();
-  if (!old || !nw) return showToast('Xatolik', 'Barcha maydonlarni to\'ldiring', 'error');
-  const fd = new FormData();
-  fd.append('old_password', old); fd.append('new_password', nw);
-  fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
-  try {
-    const r = await fetch('{% url "driver:profile_password" %}', {method:'POST', body:fd});
-    const d = await r.json();
-    if (d.ok) { hidePwdSheet(); showToast('Parol o\'zgartirildi','','success'); }
-    else showToast('Xatolik', d.error||'', 'error');
-  } catch(_) { showToast('Tarmoq xatosi','','error'); }
-}
-
-async function sendSOS() {
-  Native.vibrate([100,50,100,50,200]);
-  if (!confirm('SOS signal yuborilsinmi? Operator va Telegram guruhiga xabar ketadi.')) return;
-  showToast('GPS aniqlanmoqda...', '', 'info', 5000);
-  let lat = null, lng = null;
-  try {
-    const pos = await new Promise((res, rej) => {
-      navigator.geolocation.getCurrentPosition(
-        p => res({lat: p.coords.latitude, lng: p.coords.longitude}),
-        rej,
-        {enableHighAccuracy: true, timeout: 8000, maximumAge: 0}
-      );
-    });
-    lat = pos.lat; lng = pos.lng;
-  } catch(_) {}
-  try {
-    const r = await fetch('{% url "driver:sos_send" %}', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
-      body: JSON.stringify({lat, lng, note: ''})
-    });
-    const d = await r.json();
-    if (d.ok) showToast('SOS yuborildi!', lat ? `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}` : 'Koordinatasiz yuborildi', 'error', 5000);
-    else showToast('Xatolik', 'Qayta urinib ko\'ring', 'error');
-  } catch(_) {
-    showToast('Tarmoq xatosi', 'Internet aloqasini tekshiring', 'error');
-  }
-}
 </script>
 {% endblock %}
