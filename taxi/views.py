@@ -1959,6 +1959,9 @@ def client_bot_webhook(request):
         from_lng     = session.get('from_lng')
 
         client, _ = Client.objects.get_or_create(phone_number=phone)
+        if client.telegram_chat_id != chat_id:
+            client.telegram_chat_id = chat_id
+            client.save(update_fields=['telegram_chat_id'])
         tariff    = TariffSettings.get()
         order = Order.objects.create(
             client=client,

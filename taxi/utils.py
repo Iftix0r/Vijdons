@@ -625,6 +625,24 @@ def tg_order_dispatched(order, driver):
     )
 
 
+def tg_client_message(chat_id, text):
+    """Mijoz botidan (client_bot_token) mijozga to'g'ridan-to'g'ri xabar yuboradi.
+    Mijoz mijoz botidan buyurtma bermagan bo'lsa (chat_id yo'q) yoki bot
+    sozlanmagan bo'lsa, jimgina hech narsa qilmaydi."""
+    if not chat_id:
+        return
+    from taxi.models import BotSettings
+    token = BotSettings.get().client_bot_token.strip()
+    if not token:
+        return
+    import urllib.request, urllib.parse
+    payload = urllib.parse.urlencode({'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'}).encode()
+    try:
+        urllib.request.urlopen(f'https://api.telegram.org/bot{token}/sendMessage', data=payload, timeout=5)
+    except Exception:
+        pass
+
+
 def tg_order_accepted(order, driver):
     cfg = _cfg()
     if not cfg or cfg.notify_accepted:
@@ -645,6 +663,18 @@ def tg_order_accepted(order, driver):
     _notify_driver_group(
         f"✅ <b>Buyurtma #{order.id} band qilindi</b>\n"
         f"🚗 Qabul qildi: <b>{driver.full_name}</b> | {driver.car_model} <code>{driver.car_number}</code>"
+    )
+
+    # Mijozga — agar mijoz bot orqali buyurtma bergan bo'lsa, haydovchi
+    # ma'lumotlarini shu yerdan ham yuboramiz
+    client = getattr(order, 'client', None)
+    tg_client_message(
+        getattr(client, 'telegram_chat_id', ''),
+        f"✅ <b>Buyurtmangiz qabul qilindi!</b>\n"
+        f"🚗 Haydovchi: <b>{driver.full_name}</b>\n"
+        f"📞 Tel: <code>{driver.phone_number}</code>\n"
+        f"🚘 Mashina: {driver.car_model} <code>{driver.car_number}</code>\n"
+        f"⏳ Haydovchi tez orada yetib keladi."
     )
 
 

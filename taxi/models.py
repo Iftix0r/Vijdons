@@ -82,6 +82,8 @@ class Client(models.Model):
     user         = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True, related_name='client_profile')
     full_name    = models.CharField(max_length=255, verbose_name="Mijoz ismi", null=True, blank=True)
     phone_number = models.CharField(max_length=20, unique=True, verbose_name="Telefon raqami")
+    telegram_chat_id = models.CharField(max_length=50, blank=True, default='', verbose_name="Telegram chat ID",
+                                        help_text="Mijoz botidan foydalansa avtomatik saqlanadi")
     is_blocked   = models.BooleanField(default=False, verbose_name="Bloklangan")
     rating       = models.DecimalField(max_digits=3, decimal_places=2, default=5.00,
                                        verbose_name="Reyting (1–5)")
