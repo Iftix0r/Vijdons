@@ -867,8 +867,29 @@ window.addEventListener('online', () => {
   document.getElementById('offline-bar').classList.add('hidden');
   showToast('Aloqa tiklandi', '', 'success', 2000);
   Audio.online();
+  _retryOfflineQueue();
 });
 if (!navigator.onLine) document.getElementById('offline-bar').classList.remove('hidden');
+
+// ── Oflayn navbat: GPS va taximetr ma'lumotlari ─────────────────────────────
+// Tarmoq vaqtincha uzilganda (tunnel, yomon signal) so'nggi joylashuv va
+// taximetr saqlash so'rovi localStorage'da qoladi — aloqa tiklanganda
+// ('online' hodisasi) yoki ilova qayta ochilganda avtomatik qayta yuboriladi.
+// Buyurtma qabul qilish kabi moliyaviy amallar bunga kirmaydi — faqat
+// joylashuv va taximetr masofa/narx ma'lumotlari (ikkalasi ham serverda
+// "faqat oshsin" qoidasi bilan himoyalangan, shuning uchun qayta yuborish
+// xavfsiz).
+const OFFLINE_LOC_KEY = 'vj_pending_location';
+const OFFLINE_TMX_KEY = 'vj_pending_tmx';
+
+function _retryOfflineQueue() {
+  try {
+    const loc = JSON.parse(localStorage.getItem(OFFLINE_LOC_KEY) || 'null');
+    if (loc) _sendLocation(loc.lat, loc.lng);
+  } catch (_) {}
+  _tmxRetryPending();
+}
+document.addEventListener('DOMContentLoaded', _retryOfflineQueue);
 
 // ── Balans o'zgarishi (admin qo'shsa/ayirsa) ────────────────────────────────
 let _lastBalanceLogId = {{ latest_balance_log_id|default:0 }};
@@ -887,13 +908,18 @@ function _pollBalance() {
 setInterval(_pollBalance, 15000);
 
 // ── GPS sync ──────────────────────────────────────────────────────────────────
-window.addEventListener('vijdon_location', e=>{
+function _sendLocation(lat, lng) {
   fetch('{% url "driver:location_sync" %}',{
     method:'POST',
     headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
-    body:JSON.stringify({lat:e.detail.lat,lng:e.detail.lng})
-  }).catch(()=>{});
-});
+    body:JSON.stringify({lat, lng})
+  }).then(r => {
+    if (r.ok) { try { localStorage.removeItem(OFFLINE_LOC_KEY); } catch (_) {} }
+  }).catch(() => {
+    try { localStorage.setItem(OFFLINE_LOC_KEY, JSON.stringify({lat, lng, ts: Date.now()})); } catch (_) {}
+  });
+}
+window.addEventListener('vijdon_location', e => _sendLocation(e.detail.lat, e.detail.lng));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getCookie(n) {
@@ -1208,6 +1234,10 @@ function _tmxFlushNow() {
   clearTimeout(_tmxSaveTimer);
   if (!_tmxOrderId) return;
   const body = `dist_km=${_tmxDistKm.toFixed(3)}&price=${parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,''))||0}&waiting=${_tmxWaiting?1:0}&wait_ms=${Math.round(_tmxTotalWaitMs())}&csrfmiddlewaretoken=${encodeURIComponent(getCookie('csrftoken')||'')}`;
+  // Yuborishdan oldin saqlab qo'yamiz — agar tarmoq uzilgan bo'lsa yoki ilova
+  // yopilib ketsa (sendBeacon natijasi bilinmaydi), keyingi 'online' hodisasi
+  // yoki sahifa qayta ochilganda shu qiymat qayta yuboriladi.
+  try { localStorage.setItem(OFFLINE_TMX_KEY, JSON.stringify({ orderId: _tmxOrderId, body, ts: Date.now() })); } catch (_) {}
   if (navigator.sendBeacon) {
     navigator.sendBeacon(
       `/driver/orders/${_tmxOrderId}/meter/`,
@@ -1219,8 +1249,23 @@ function _tmxFlushNow() {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': getCookie('csrftoken') },
       body,
       keepalive: true,
+    }).then(r => {
+      if (r.ok) { try { localStorage.removeItem(OFFLINE_TMX_KEY); } catch (_) {} }
     }).catch(() => {});
   }
+}
+
+function _tmxRetryPending() {
+  let pending;
+  try { pending = JSON.parse(localStorage.getItem(OFFLINE_TMX_KEY) || 'null'); } catch (_) { pending = null; }
+  if (!pending) return;
+  fetch(`/driver/orders/${pending.orderId}/meter/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': getCookie('csrftoken') },
+    body: pending.body,
+  }).then(r => {
+    if (r.ok) { try { localStorage.removeItem(OFFLINE_TMX_KEY); } catch (_) {} }
+  }).catch(() => {});
 }
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden' && _tmxActive) _tmxFlushNow();

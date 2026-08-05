@@ -39,6 +39,14 @@
     <div style="font-size:20px;font-weight:800;color:#007AFF;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="s-km">—</div>
   </div>
 </div>
+{% if chart_has_data %}
+<div class="px-4 pt-1 pb-1">
+  <div class="ios-card rounded-[14px] p-3">
+    <div class="flex items-center gap-1.5 mb-2"><i class="fas fa-chart-column" style="color:#FFD600;font-size:11px"></i><span class="ios-caption2 font-semibold" style="color:var(--ios-label3)">Kunlik daromad</span></div>
+    <canvas id="earnings-chart" height="90"></canvas>
+  </div>
+</div>
+{% endif %}
 {% endif %}
 
 <div class="px-4 py-3 space-y-2.5" id="list">
@@ -130,6 +138,35 @@
 <style>
 @keyframes pulse-dot { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.4; transform:scale(.7); } }
 </style>
+
+{% if chart_has_data %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+new Chart(document.getElementById('earnings-chart'), {
+  type: 'bar',
+  data: {
+    labels: {{ chart_labels|safe }},
+    datasets: [{
+      data: {{ chart_values|safe }},
+      backgroundColor: '#34C759',
+      borderRadius: 4,
+      maxBarThickness: 22,
+    }],
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false }, tooltip: {
+      callbacks: { label: (ctx) => ctx.parsed.y.toLocaleString() + " so'm" },
+    } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#8E8E93', font: { size: 10 } } },
+      y: { beginAtZero: true, ticks: { color: '#8E8E93', font: { size: 10 },
+        callback: (v) => v >= 1000 ? (v/1000) + 'k' : v } },
+    },
+  },
+});
+</script>
+{% endif %}
 
 <!-- Bottom Sheet -->
 <div id="sheet-overlay" class="fixed inset-0 z-[200] hidden">
