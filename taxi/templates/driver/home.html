@@ -1543,6 +1543,7 @@ document.addEventListener('visibilitychange', () => {
   function _homeRefreshPeersMapbox(list) {
     _homePeerListRaw = list;
     _homeRedrawPeerClustersMapbox();
+    _followPeerRoute(list);
   }
 
   // ══════════════════ 2.1 — zaxira yo'l (tekis, tungi rejimsiz) ══════════════════
