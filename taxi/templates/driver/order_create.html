@@ -20,10 +20,6 @@
     <label class="ios-footnote font-semibold" style="color:var(--ios-label3)">Mijoz telefon raqami *</label>
     <input id="oc-phone" type="tel" placeholder="+998 90 123 45 67" autocomplete="off"
            class="w-full mt-1.5 px-3.5 py-3 rounded-xl ios-subhead" style="background:var(--ios-fill);border:none;outline:none;color:var(--ios-label)">
-
-    <label class="ios-footnote font-semibold mt-4 block" style="color:var(--ios-label3)">Mijoz ismi (ixtiyoriy)</label>
-    <input id="oc-name" type="text" placeholder="Ism" autocomplete="off"
-           class="w-full mt-1.5 px-3.5 py-3 rounded-xl ios-subhead" style="background:var(--ios-fill);border:none;outline:none;color:var(--ios-label)">
   </div>
 
   <div class="ios-card2 rounded-2xl p-4 mb-4">
@@ -31,10 +27,6 @@
     <input id="oc-from" type="text" placeholder="Hozirgi joylashuvingiz manzili" autocomplete="off"
            class="w-full mt-1.5 px-3.5 py-3 rounded-xl ios-subhead" style="background:var(--ios-fill);border:none;outline:none;color:var(--ios-label)">
     <p class="ios-caption2 mt-1.5" style="color:var(--ios-label3)"><i class="fas fa-location-dot mr-1"></i>Joriy GPS koordinatangiz avtomatik biriktiriladi</p>
-
-    <label class="ios-footnote font-semibold mt-4 block" style="color:var(--ios-label3)">Qayerga (ixtiyoriy)</label>
-    <input id="oc-to" type="text" placeholder="Manzil" autocomplete="off"
-           class="w-full mt-1.5 px-3.5 py-3 rounded-xl ios-subhead" style="background:var(--ios-fill);border:none;outline:none;color:var(--ios-label)">
   </div>
 
   <div class="ios-card2 rounded-2xl p-4 mb-4">
@@ -69,9 +61,7 @@ function ocSetAssign(v) {
 
 async function ocSubmit() {
   const phone = document.getElementById('oc-phone').value.trim();
-  const name  = document.getElementById('oc-name').value.trim();
   const from  = document.getElementById('oc-from').value.trim();
-  const to    = document.getElementById('oc-to').value.trim();
 
   if (!phone || !from) {
     showToast('Xatolik', 'Mijoz raqami va manzilni kiriting', 'error', 3000);
@@ -86,9 +76,7 @@ async function ocSubmit() {
   try {
     const fd = new FormData();
     fd.append('phone_number', phone);
-    fd.append('customer_name', name);
     fd.append('from_address', from);
-    fd.append('to_address', to);
     fd.append('assign_to', ocAssign);
     fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
 
