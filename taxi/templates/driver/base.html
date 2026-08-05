@@ -1160,10 +1160,16 @@ function _voiceUpdateParticipantsUI(participants) {
   }
 }
 
-// Mikrofon tugmasi mavjud sahifada (Asosiy/Chat) ochilishi bilan avtomatik
-// "efir"ga ulanamiz (faqat kiruvchi xabarlarni qabul qilish uchun, mikrofonga
-// ruxsat so'ralmaydi — u faqat tugma bosilganda so'raladi).
-if (document.getElementById('voice-btn')) _voiceAutoConnect();
+// Diqqat: ilgari faqat mikrofon tugmasi bor sahifada (Asosiy/Chat)
+// ulanardi — natijada haydovchi Profil/Tarix/Buyurtma yaratish va h.k.
+// sahifalarida BUTUNLAY "efir"dan uzilib qolardi (kiruvchi ovozli
+// xabarlarni umuman eshitmasdi), operator paneli esa har doim (barcha
+// sahifalarda) ulangan bo'lgani uchun bir tomonlama ("faqat operatorga
+// eshitiladi, boshqa haydovchilarga eshitilmaydi") muammo keltirib
+// chiqargan edi. Endi operator kabi — HAR bir sahifada avtomatik
+// ulanamiz, mikrofonga ruxsat esa hamon faqat tugma bosilganda so'raladi
+// (bu yerda faqat KIRUVCHI xabarlarni qabul qilish uchun ulanamiz).
+_voiceAutoConnect();
 
 // Sahifadan chiqib ketilganda (boshqa tabga o'tilganda yoki ilova yopilganda)
 // efirdan ham avtomatik chiqamiz — SPA bo'lmagani uchun sahifa navigatsiyasida

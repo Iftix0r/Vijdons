@@ -546,23 +546,16 @@ def _notify_driver_group(text, reply_markup=None):
     send_telegram(text, chat_ids=ids, reply_markup=reply_markup or _driver_group_inline())
 
 
-ORDER_CREATING_MESSAGE = (
-    "📞 Qo'ng'iroq bo'layabdi 1351 ga\n"
-    "⏳ Operator buyurtma yaratmoqda. Tez orada ilovaga tushadi, "
-    "biroz kutib turishingizni so'raymiz."
-)
-
-
 def tg_order_creating():
-    """Operator buyurtma oynasini ochib, ma'lumot to'ldirayotganda haydovchilar
-    guruhiga (Telegram) va haydovchi ilovasiga (in-app toast) ogohlantiruvchi
-    xabar yuboradi — buyurtma hali yaratilmagan bo'lsa ham."""
+    """Operator buyurtma oynasini ochib, ma'lumot to'ldirayotganda haydovchi
+    ilovasiga (in-app toast) ogohlantiruvchi xabar yuboradi — buyurtma hali
+    yaratilmagan bo'lsa ham. Diqqat: Telegram haydovchilar guruhiga xabar
+    endi yuborilmaydi (so'rov bo'yicha olib tashlandi)."""
     from django.utils import timezone
     cfg = _cfg()
     if cfg:
         cfg.last_order_creating_at = timezone.now()
         cfg.save(update_fields=['last_order_creating_at'])
-    _notify_driver_group(ORDER_CREATING_MESSAGE)
 
 
 def tg_new_order(order):
@@ -729,14 +722,6 @@ def tg_order_completed(order, driver):
         f"📍 {order.from_address}" + (f" → {order.to_address}" if order.to_address else "") + "\n"
         f"💰 {order.price or '—'} UZS | 📏 {f'{order.distance_km:.1f} km' if order.distance_km else '—'}",
         reply_markup=markup,
-    )
-
-    # Haydovchilar guruhiga — kim yakunlagani, qancha yurgani va qancha pul topgani
-    _notify_driver_group(
-        f"🏁 <b>Buyurtma yakunlandi — #{order.id}</b>\n"
-        f"🚗 Haydovchi: <b>{driver.full_name}</b>\n"
-        f"📏 Masofa: {f'{order.distance_km:.1f} km' if order.distance_km else '—'}\n"
-        f"💰 Narx: <b>{order.price or '—'} UZS</b>"
     )
 
 
