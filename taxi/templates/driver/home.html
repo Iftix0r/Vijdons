@@ -1086,7 +1086,7 @@ document.addEventListener('visibilitychange', () => {
         <span><i class="fas fa-route" style="color:#8E8E93;margin-right:3px"></i>${p.trips_count} safar</span>
         <span><i class="fas fa-star" style="color:#FFD600;margin-right:3px"></i>${(p.rating || 0).toFixed(2)}</span>
       </div>
-      <button onclick="_openPeerRoute(event, ${p.latitude}, ${p.longitude})"
+      <button onclick="_openPeerRoute(event, ${p.id}, ${p.latitude}, ${p.longitude})"
               style="margin-top:10px;width:100%;padding:9px;background:#34C759;color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer">
         <i class="fas fa-diamond-turn-right" style="margin-right:6px"></i>Marshrut tuzish
       </button>`;
@@ -1101,12 +1101,98 @@ document.addEventListener('visibilitychange', () => {
 
   let _peerRouteDestMark = null; // maqsad nuqtasi belgisi (xaritaga bosilganda)
 
+  // Agar marshrut aynan bitta haydovchiga chizilgan bo'lsa (xaritaning
+  // ixtiyoriy nuqtasiga emas), uning id'si shu yerda saqlanadi — har safar
+  // haydovchilar ro'yxati yangilanganda (~8s) shu haydovchining YANGI
+  // koordinatasi bo'lsa, marshrut avtomatik qayta chiziladi. Aks holda
+  // haydovchi joyidan qimirlasa ham, marshrut eski (chizilgan paytdagi)
+  // joyga qarab qolib ketardi.
+  let _peerRouteTargetDriverId = null;
+  let _peerRouteLastDestLat = null;
+  let _peerRouteLastDestLng = null;
+
   function _setRouteInfo(distanceKm, durationMin) {
     const el = document.getElementById('peer-route-info');
     if (el) el.textContent = `${distanceKm.toFixed(1)} km · ${Math.round(durationMin)} daq`;
   }
 
   function _clearPeerRoute() {
+    _clearPeerRouteVisuals();
+    _peerRouteTargetDriverId = null;
+    _peerRouteLastDestLat = null;
+    _peerRouteLastDestLng = null;
+    const btn = document.getElementById('peer-route-close');
+    if (btn) btn.style.display = 'none';
+  }
+  window._clearPeerRoute = _clearPeerRoute;
+
+  // Maqsad nuqtasiga kichik qizil belgi qo'yamiz — haydovchining o'ziga
+  // (yashil taksi belgisi) aralashib ketmasligi uchun oddiy pin shakli.
+  function _destPinEl() {
+    const el = document.createElement('div');
+    el.style.cssText = 'width:26px;height:26px;border-radius:50% 50% 50% 0;background:#FF3B30;border:2px solid #fff;transform:rotate(-45deg);box-shadow:0 2px 6px rgba(0,0,0,.4)';
+    return el;
+  }
+
+  function _drawPeerRouteMapbox(originLat, originLng, destLat, destLng, fit) {
+    fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${originLng},${originLat};${destLng},${destLat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`)
+      .then(r => r.json())
+      .then(d => {
+        const route = d.routes && d.routes[0];
+        if (!route || !_homeMap) return;
+        _clearPeerRouteVisuals();
+        _homeMap.addSource('peer-route', { type: 'geojson', data: { type: 'Feature', geometry: route.geometry, properties: {} } });
+        _homeMap.addLayer({
+          id: 'peer-route-line',
+          type: 'line',
+          source: 'peer-route',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': '#2f7dfa', 'line-width': 5, 'line-opacity': 0.85 },
+        });
+        _peerRouteMapboxAdded = true;
+        _peerRouteDestMark = new mapboxgl.Marker({ element: _destPinEl() }).setLngLat([destLng, destLat]).addTo(_homeMap);
+        _setRouteInfo(route.distance / 1000, route.duration / 60);
+        document.getElementById('peer-route-close').style.display = 'flex';
+        // Diqqat: haydovchini "kuzatib" marshrut avtomatik yangilanganda
+        // (fit=false) kamerani majburan surib-zoomlab yubormaymiz — aks
+        // holda har ~8s'da xarita o'z-o'zidan sakrab turardi.
+        if (fit !== false) {
+          const bounds = new mapboxgl.LngLatBounds();
+          route.geometry.coordinates.forEach(c => bounds.extend(c));
+          _homeMap.fitBounds(bounds, { padding: 80, duration: 500 });
+        }
+      })
+      .catch(() => {});
+  }
+
+  function _drawPeerRouteYandex(originLat, originLng, destLat, destLng, fit) {
+    if (!_homeMap) return;
+    _clearPeerRouteVisuals();
+    _peerRouteYandexObj = new ymaps.multiRouter.MultiRoute({
+      referencePoints: [[originLat, originLng], [destLat, destLng]],
+      params: { routingMode: 'auto' },
+    }, {
+      boundsAutoApply: fit !== false,
+      routeActiveStrokeWidth: 5,
+      routeActiveStrokeColor: '#2f7dfa',
+    });
+    _peerRouteYandexObj.model.events.add('requestsuccess', () => {
+      const active = _peerRouteYandexObj.getActiveRoute();
+      if (active) {
+        _setRouteInfo(active.properties.get('distance').value / 1000, active.properties.get('duration').value / 60);
+      }
+    });
+    _homeMap.geoObjects.add(_peerRouteYandexObj);
+    _peerRouteDestMark = new ymaps.Placemark([destLat, destLng], {}, { preset: 'islands#redDotIcon' });
+    _homeMap.geoObjects.add(_peerRouteDestMark);
+    document.getElementById('peer-route-close').style.display = 'flex';
+  }
+
+  // `_clearPeerRoute()`ning faqat xarita ustidagi chiziq/belgini
+  // tozalaydigan qismi — "kuzatuv" (target driver) holatini SAQLAB qoladi.
+  // Foydalanuvchi "Marshrutni yopish" tugmasini bossa esa to'liq
+  // `_clearPeerRoute()` chaqiriladi (kuzatuvni ham to'xtatadi).
+  function _clearPeerRouteVisuals() {
     if (_homeMode === 'mapbox' && _homeMap && _peerRouteMapboxAdded) {
       try {
         if (_homeMap.getLayer('peer-route-line')) _homeMap.removeLayer('peer-route-line');
@@ -1125,82 +1211,50 @@ document.addEventListener('visibilitychange', () => {
       } catch (_) {}
       _peerRouteDestMark = null;
     }
-    const btn = document.getElementById('peer-route-close');
-    if (btn) btn.style.display = 'none';
-  }
-  window._clearPeerRoute = _clearPeerRoute;
-
-  // Maqsad nuqtasiga kichik qizil belgi qo'yamiz — haydovchining o'ziga
-  // (yashil taksi belgisi) aralashib ketmasligi uchun oddiy pin shakli.
-  function _destPinEl() {
-    const el = document.createElement('div');
-    el.style.cssText = 'width:26px;height:26px;border-radius:50% 50% 50% 0;background:#FF3B30;border:2px solid #fff;transform:rotate(-45deg);box-shadow:0 2px 6px rgba(0,0,0,.4)';
-    return el;
-  }
-
-  function _drawPeerRouteMapbox(originLat, originLng, destLat, destLng) {
-    fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${originLng},${originLat};${destLng},${destLat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`)
-      .then(r => r.json())
-      .then(d => {
-        const route = d.routes && d.routes[0];
-        if (!route || !_homeMap) return;
-        _clearPeerRoute();
-        _homeMap.addSource('peer-route', { type: 'geojson', data: { type: 'Feature', geometry: route.geometry, properties: {} } });
-        _homeMap.addLayer({
-          id: 'peer-route-line',
-          type: 'line',
-          source: 'peer-route',
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: { 'line-color': '#2f7dfa', 'line-width': 5, 'line-opacity': 0.85 },
-        });
-        _peerRouteMapboxAdded = true;
-        _peerRouteDestMark = new mapboxgl.Marker({ element: _destPinEl() }).setLngLat([destLng, destLat]).addTo(_homeMap);
-        _setRouteInfo(route.distance / 1000, route.duration / 60);
-        document.getElementById('peer-route-close').style.display = 'flex';
-        const bounds = new mapboxgl.LngLatBounds();
-        route.geometry.coordinates.forEach(c => bounds.extend(c));
-        _homeMap.fitBounds(bounds, { padding: 80, duration: 500 });
-      })
-      .catch(() => {});
-  }
-
-  function _drawPeerRouteYandex(originLat, originLng, destLat, destLng) {
-    if (!_homeMap) return;
-    _clearPeerRoute();
-    _peerRouteYandexObj = new ymaps.multiRouter.MultiRoute({
-      referencePoints: [[originLat, originLng], [destLat, destLng]],
-      params: { routingMode: 'auto' },
-    }, {
-      boundsAutoApply: true,
-      routeActiveStrokeWidth: 5,
-      routeActiveStrokeColor: '#2f7dfa',
-    });
-    _peerRouteYandexObj.model.events.add('requestsuccess', () => {
-      const active = _peerRouteYandexObj.getActiveRoute();
-      if (active) {
-        _setRouteInfo(active.properties.get('distance').value / 1000, active.properties.get('duration').value / 60);
-      }
-    });
-    _homeMap.geoObjects.add(_peerRouteYandexObj);
-    _peerRouteDestMark = new ymaps.Placemark([destLat, destLng], {}, { preset: 'islands#redDotIcon' });
-    _homeMap.geoObjects.add(_peerRouteDestMark);
-    document.getElementById('peer-route-close').style.display = 'flex';
   }
 
   // Umumiy kirish nuqtasi — haydovchi kartochkasidagi "Marshrut tuzish"
-  // tugmasi HAM, xaritaning ixtiyoriy nuqtasiga bosish HAM shu orqali ishlaydi.
-  function _setRouteDestination(lat, lng) {
+  // tugmasi HAM, xaritaning ixtiyoriy nuqtasiga bosish HAM shu orqali
+  // ishlaydi. `driverId` — agar marshrut aniq bir haydovchiga chizilsa,
+  // uning harakatini kuzatib borish uchun; ixtiyoriy nuqtaga bosilganda
+  // `null` beriladi (kuzatuv yo'q, nuqta statik). `fit=false` — kamerani
+  // qayta moslashtirmasdan, faqat chiziqni yangilaydi (kuzatuv yangilanishi
+  // uchun).
+  function _setRouteDestination(lat, lng, driverId, fit) {
     if (_lastLat === null || _lastLng === null) return;
-    const infoEl = document.getElementById('peer-route-info');
-    if (infoEl) infoEl.textContent = 'Marshrut...';
-    document.getElementById('peer-route-close').style.display = 'flex';
-    if (_homeMode === 'mapbox') _drawPeerRouteMapbox(_lastLat, _lastLng, lat, lng);
-    else if (_homeMode === 'v2') _drawPeerRouteYandex(_lastLat, _lastLng, lat, lng);
+    if (fit !== false) {
+      const infoEl = document.getElementById('peer-route-info');
+      if (infoEl) infoEl.textContent = 'Marshrut...';
+      document.getElementById('peer-route-close').style.display = 'flex';
+    }
+    if (_homeMode === 'mapbox') _drawPeerRouteMapbox(_lastLat, _lastLng, lat, lng, fit);
+    else if (_homeMode === 'v2') _drawPeerRouteYandex(_lastLat, _lastLng, lat, lng, fit);
+    _peerRouteTargetDriverId = driverId ?? null;
+    _peerRouteLastDestLat = lat;
+    _peerRouteLastDestLng = lng;
   }
 
-  window._openPeerRoute = function (ev, lat, lng) {
+  // Faol marshrut aniq bir haydovchiga bog'langan bo'lsa, haydovchilar
+  // ro'yxati yangilanganda (~8s'da bir) uning yangi koordinatasini tekshirib,
+  // o'zgargan bo'lsa marshrutni "jimgina" (kamerani surmasdan) qayta chizadi.
+  // Agar haydovchi endi ro'yxatda bo'lmasa (masalan offline bo'lib qolsa),
+  // marshrutni to'liq tozalaymiz — eskirgan/noto'g'ri marshrutni ko'rsatib
+  // turishdan ko'ra shu ma'qul.
+  function _followPeerRoute(list) {
+    if (_peerRouteTargetDriverId === null) return;
+    const found = list.find(p => p.id === _peerRouteTargetDriverId);
+    if (!found) {
+      _clearPeerRoute();
+      showToast('Marshrut yopildi', 'Haydovchi endi onlayn emas', 'info', 3000);
+      return;
+    }
+    if (found.latitude === _peerRouteLastDestLat && found.longitude === _peerRouteLastDestLng) return;
+    _setRouteDestination(found.latitude, found.longitude, _peerRouteTargetDriverId, false);
+  }
+
+  window._openPeerRoute = function (ev, driverId, lat, lng) {
     if (ev) ev.stopPropagation();
-    _setRouteDestination(lat, lng);
+    _setRouteDestination(lat, lng, driverId, true);
   };
   // v2.1'dagi balloon o'rniga — v3'da tayyor balon/popup komponenti yo'q,
   // shu sababli bosilganda pastdan suzib chiqadigan oddiy karta ishlatiladi.
@@ -1426,25 +1480,62 @@ document.addEventListener('visibilitychange', () => {
     return groups;
   }
 
+  // Diqqat (jonli harakat): haydovchi belgilari (bitta-bitta ko'ringan
+  // "single" holatlar) endi har qayta chizishda O'CHIRILIB-QAYTA
+  // YARATILMAYDI — aks holda har ~8s'da barcha belgilar bir lahzaga
+  // yo'qolib, boshqa joyda qaytadan paydo bo'lganday ko'rinardi ("random
+  // joyda paydo bo'lib turadi" degan shikoyat aynan shundan edi). Endi bir
+  // xil haydovchi (id bo'yicha) uchun mavjud belgi bo'lsa, shunchaki YANGI
+  // koordinataga ko'chiriladi (`setLngLat`) — DOM elementi saqlanib qoladi.
+  // Klasterlar (bir nechta haydovchi birlashgan holat) uchun barqaror
+  // "identity" yo'q (tarkibi har safar o'zgarishi mumkin), shu sabab ular
+  // hamon qayta yaratiladi — bu kamroq sezilarli, chunki ular aniq bitta
+  // haydovchini emas, guruhni bildiradi.
+  const _homePeerSingleMarks = {}; // driver.id -> mapboxgl.Marker
+
   function _homeRedrawPeerClustersMapbox() {
     if (!_homeMap || _homeMode !== 'mapbox') return;
+
+    // Eski klaster (guruh) belgilarini tozalaymiz — faqat ular, "single"
+    // belgilar emas (ular pastda alohida boshqariladi).
     _homePeerMapboxMarkers.forEach(m => m.remove());
     _homePeerMapboxMarkers = [];
-    _clusterPeersMapbox(_homePeerListRaw).forEach(g => {
+
+    const groups = _clusterPeersMapbox(_homePeerListRaw);
+    const seenSingleIds = {};
+
+    groups.forEach(g => {
       if (g.type === 'single') {
         const p = g.driver;
-        const el = _markerEl('#34C759');
-        el.style.cursor = 'pointer';
-        el.onclick = () => _showPeerCard(p);
-        _homePeerMapboxMarkers.push(
-          new mapboxgl.Marker({ element: el }).setLngLat([p.longitude, p.latitude]).addTo(_homeMap)
-        );
+        seenSingleIds[p.id] = true;
+        const existing = _homePeerSingleMarks[p.id];
+        if (existing) {
+          existing.setLngLat([p.longitude, p.latitude]);
+          existing._peerData = p;
+        } else {
+          const el = _markerEl('#34C759');
+          el.style.cursor = 'pointer';
+          el.onclick = () => _showPeerCard(el._marker._peerData);
+          const marker = new mapboxgl.Marker({ element: el }).setLngLat([p.longitude, p.latitude]).addTo(_homeMap);
+          marker._peerData = p;
+          el._marker = marker;
+          _homePeerSingleMarks[p.id] = marker;
+        }
       } else {
         const el = _clusterEl(g.count);
         el.onclick = () => _homeMap.easeTo({ center: [g.lng, g.lat], zoom: Math.min(_homeMap.getZoom() + 2.5, 16), duration: 500, essential: true });
         _homePeerMapboxMarkers.push(
           new mapboxgl.Marker({ element: el }).setLngLat([g.lng, g.lat]).addTo(_homeMap)
         );
+      }
+    });
+
+    // Endi klasterga "yutilgan" yoki umuman ro'yxatdan chiqqan haydovchilar
+    // uchun eski "single" belgini olib tashlaymiz.
+    Object.keys(_homePeerSingleMarks).forEach(id => {
+      if (!seenSingleIds[id]) {
+        _homePeerSingleMarks[id].remove();
+        delete _homePeerSingleMarks[id];
       }
     });
   }
