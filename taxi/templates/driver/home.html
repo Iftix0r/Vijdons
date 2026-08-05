@@ -127,8 +127,10 @@
      tashlaydi -->
 <button id="peer-route-close" onclick="_clearPeerRoute()"
   class="active:opacity-60 transition-opacity"
-  style="display:none;align-items:center;gap:8px;position:fixed;z-index:16;top:calc(env(safe-area-inset-top,20px) + 12px);left:50%;transform:translateX(-50%);padding:8px 14px;border-radius:20px;background:rgba(20,20,22,.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff;font-size:12px;font-weight:700">
-  <i class="fas fa-route" style="color:#2f7dfa"></i> Marshrutni yopish <i class="fas fa-xmark" style="margin-left:2px"></i>
+  style="display:none;align-items:center;gap:8px;position:fixed;z-index:16;top:calc(env(safe-area-inset-top,20px) + 12px);left:50%;transform:translateX(-50%);padding:8px 14px;border-radius:20px;background:rgba(20,20,22,.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff;font-size:12px;font-weight:700;white-space:nowrap">
+  <i class="fas fa-route" style="color:#2f7dfa"></i>
+  <span id="peer-route-info">Marshrut...</span>
+  <i class="fas fa-xmark" style="margin-left:2px"></i>
 </button>
 
 <!-- Tezlik o'lchagich — Navigator'dagi kabi, chap-pastda. GPS'dan 'speed'
@@ -1080,6 +1082,13 @@ document.addEventListener('visibilitychange', () => {
   let _peerRouteMapboxAdded = false;
   let _peerRouteYandexObj = null;
 
+  let _peerRouteDestMark = null; // maqsad nuqtasi belgisi (xaritaga bosilganda)
+
+  function _setRouteInfo(distanceKm, durationMin) {
+    const el = document.getElementById('peer-route-info');
+    if (el) el.textContent = `${distanceKm.toFixed(1)} km · ${Math.round(durationMin)} daq`;
+  }
+
   function _clearPeerRoute() {
     if (_homeMode === 'mapbox' && _homeMap && _peerRouteMapboxAdded) {
       try {
@@ -1092,10 +1101,25 @@ document.addEventListener('visibilitychange', () => {
       try { _homeMap.geoObjects.remove(_peerRouteYandexObj); } catch (_) {}
       _peerRouteYandexObj = null;
     }
+    if (_peerRouteDestMark) {
+      try {
+        if (_homeMode === 'mapbox') _peerRouteDestMark.remove();
+        else _homeMap.geoObjects.remove(_peerRouteDestMark);
+      } catch (_) {}
+      _peerRouteDestMark = null;
+    }
     const btn = document.getElementById('peer-route-close');
     if (btn) btn.style.display = 'none';
   }
   window._clearPeerRoute = _clearPeerRoute;
+
+  // Maqsad nuqtasiga kichik qizil belgi qo'yamiz — haydovchining o'ziga
+  // (yashil taksi belgisi) aralashib ketmasligi uchun oddiy pin shakli.
+  function _destPinEl() {
+    const el = document.createElement('div');
+    el.style.cssText = 'width:26px;height:26px;border-radius:50% 50% 50% 0;background:#FF3B30;border:2px solid #fff;transform:rotate(-45deg);box-shadow:0 2px 6px rgba(0,0,0,.4)';
+    return el;
+  }
 
   function _drawPeerRouteMapbox(originLat, originLng, destLat, destLng) {
     fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${originLng},${originLat};${destLng},${destLat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`)
@@ -1113,6 +1137,8 @@ document.addEventListener('visibilitychange', () => {
           paint: { 'line-color': '#2f7dfa', 'line-width': 5, 'line-opacity': 0.85 },
         });
         _peerRouteMapboxAdded = true;
+        _peerRouteDestMark = new mapboxgl.Marker({ element: _destPinEl() }).setLngLat([destLng, destLat]).addTo(_homeMap);
+        _setRouteInfo(route.distance / 1000, route.duration / 60);
         document.getElementById('peer-route-close').style.display = 'flex';
         const bounds = new mapboxgl.LngLatBounds();
         route.geometry.coordinates.forEach(c => bounds.extend(c));
@@ -1132,15 +1158,32 @@ document.addEventListener('visibilitychange', () => {
       routeActiveStrokeWidth: 5,
       routeActiveStrokeColor: '#2f7dfa',
     });
+    _peerRouteYandexObj.model.events.add('requestsuccess', () => {
+      const active = _peerRouteYandexObj.getActiveRoute();
+      if (active) {
+        _setRouteInfo(active.properties.get('distance').value / 1000, active.properties.get('duration').value / 60);
+      }
+    });
     _homeMap.geoObjects.add(_peerRouteYandexObj);
+    _peerRouteDestMark = new ymaps.Placemark([destLat, destLng], {}, { preset: 'islands#redDotIcon' });
+    _homeMap.geoObjects.add(_peerRouteDestMark);
     document.getElementById('peer-route-close').style.display = 'flex';
+  }
+
+  // Umumiy kirish nuqtasi — haydovchi kartochkasidagi "Marshrut tuzish"
+  // tugmasi HAM, xaritaning ixtiyoriy nuqtasiga bosish HAM shu orqali ishlaydi.
+  function _setRouteDestination(lat, lng) {
+    if (_lastLat === null || _lastLng === null) return;
+    const infoEl = document.getElementById('peer-route-info');
+    if (infoEl) infoEl.textContent = 'Marshrut...';
+    document.getElementById('peer-route-close').style.display = 'flex';
+    if (_homeMode === 'mapbox') _drawPeerRouteMapbox(_lastLat, _lastLng, lat, lng);
+    else if (_homeMode === 'v2') _drawPeerRouteYandex(_lastLat, _lastLng, lat, lng);
   }
 
   window._openPeerRoute = function (ev, lat, lng) {
     if (ev) ev.stopPropagation();
-    if (_lastLat === null || _lastLng === null) return;
-    if (_homeMode === 'mapbox') _drawPeerRouteMapbox(_lastLat, _lastLng, lat, lng);
-    else if (_homeMode === 'v2') _drawPeerRouteYandex(_lastLat, _lastLng, lat, lng);
+    _setRouteDestination(lat, lng);
   };
   // v2.1'dagi balloon o'rniga — v3'da tayyor balon/popup komponenti yo'q,
   // shu sababli bosilganda pastdan suzib chiqadigan oddiy karta ishlatiladi.
@@ -1203,6 +1246,12 @@ document.addEventListener('visibilitychange', () => {
         clearTimeout(_peerClusterZoomTimer);
         _peerClusterZoomTimer = setTimeout(_homeRedrawPeerClustersMapbox, 150);
       });
+
+      // Xaritaning ixtiyoriy nuqtasiga bosilsa — o'sha yergacha marshrut
+      // chiziladi (haydovchi belgisiga yoki boshqa haydovchi belgisiga
+      // bosilganda ular o'z DOM elementi sifatida bu hodisani ushlab
+      // qoladi, shuning uchun bu yerga kelib qolmaydi).
+      _homeMap.on('click', (e) => _setRouteDestination(e.lngLat.lat, e.lngLat.lng));
 
       // Token yaroqsiz/tarmoq xatosi bo'lsa — xarita hali "muvaffaqiyatli
       // yaratilgan" holatda qoladi (konstruktor o'zi xato tashlamaydi),
@@ -1389,6 +1438,12 @@ document.addEventListener('visibilitychange', () => {
         clusterDisableClickZoom: false,
       });
       _homeMap.geoObjects.add(_homePeerClusterer);
+
+      // Xaritaning ixtiyoriy nuqtasiga bosilsa — o'sha yergacha marshrut
+      _homeMap.events.add('click', (e) => {
+        const coords = e.get('coords');
+        _setRouteDestination(coords[0], coords[1]);
+      });
       // Diqqat: agar `#home-map` konteyner o'lchami xarita yaratilgan paytda
       // hali to'liq ekran o'lchamiga (layout/CSS) "o'rnashib ulgurmagan"
       // bo'lsa, Yandex xaritasi o'sha kichikroq o'lchamda "muzlab" qolib,
