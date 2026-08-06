@@ -483,17 +483,6 @@
                         <i class="fas fa-microphone text-xs"></i>
                     </button>
                 </div>
-                {% if top_pickup_areas %}
-                <div class="flex items-center gap-1.5 flex-wrap mt-2">
-                    <span class="text-[11px] text-gray-400 font-semibold mr-0.5"><i class="fas fa-fire text-orange-500"></i> Top hududlar:</span>
-                    {% for a in top_pickup_areas %}
-                    <button type="button" onclick="_pickTopArea('{{ a.from_address|escapejs }}', {{ a.lat|default_if_none:'null' }}, {{ a.lng|default_if_none:'null' }})"
-                            class="text-[11px] px-2.5 py-1 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800/40 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition font-medium">
-                        {{ a.from_address|truncatechars:28 }} <span class="opacity-60">({{ a.c }})</span>
-                    </button>
-                    {% endfor %}
-                </div>
-                {% endif %}
             </div>
 
             <!-- Qayerga manzil (matn) -->
@@ -1115,21 +1104,6 @@
                 method: 'POST',
                 headers: { 'X-CSRFToken': document.querySelector('#orderModal [name=csrfmiddlewaretoken]').value }
             }).catch(function(){});
-        }
-    }
-
-    // "Top hududlar" chipi bosilganda — manzil matnini to'ldiradi, koordinata
-    // mavjud bo'lsa (so'nggi 30 kunlik buyurtmalardan olingan) yashirin
-    // lat/lng maydonlarini ham to'ldiradi (avtomatik taqsimlash ishlashi
-    // uchun), xarita ochiq bo'lsa markerni ham ko'chiradi.
-    function _pickTopArea(address, lat, lng) {
-        document.getElementById('om_from_address').value = address;
-        if (lat === null || lng === null) return;
-        document.getElementById('om_from_lat').value = lat;
-        document.getElementById('om_from_lng').value = lng;
-        if (_omap) {
-            _setOrderFromPoint([lat, lng], address);
-            _omap.setCenter([lat, lng], Math.max(_omap.getZoom(), 14));
         }
     }
 
