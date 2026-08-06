@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='tariffsettings',
             name='fairness_max_radius_km',
-            field=models.FloatField(default=3.0, help_text="Shu radiusdan uzoqdagi haydovchilar avtomatik taqsimlashda umuman ko'rib chiqilmaydi — mijozni ortiqcha kutdirmaslik uchun (adolat mijoz tajribasidan ustun qo'yilmaydi). 0 = cheklovsiz", verbose_name='Adolat radiusi (km)'),
+            field=models.FloatField(default=3.0, help_text="Shu radiusdan uzoqdagi haydovchilar adolat hisobida (bugungi yuk/kutish bonusi) qatnashmaydi — mijozni ortiqcha kutdirmaslik uchun. Lekin radius ichida hech kim topilmasa, buyurtma baribir eng yaqin haydovchiga individual yuboriladi (umumiy tabloga tushmaydi). 0 = cheklovsiz", verbose_name='Adolat radiusi (km)'),
         ),
         migrations.AlterField(
             model_name='tariffsettings',

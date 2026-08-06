@@ -82,9 +82,14 @@ def find_fairest_driver(drivers, lat, lng, fairness_weight_km=0, max_radius_km=0
       vaqti 30 daqiqa deb olinadi (o'rtacha, na haddan ortiq ustunlik,
       na kamsitish).
     - max_radius_km berilgan bo'lsa (0 dan katta), shu radiusdan
-      uzoqdagi nomzodlar butunlay chiqarib tashlanadi — mijozni haddan
-      tashqari uzoq kutdirmaslik uchun (adolat mijoz tajribasidan ustun
-      qo'yilmaydi).
+      uzoqdagi nomzodlar Score hisobida (adolat/kutish bonusi bilan)
+      qatnashmaydi — mijozni haddan tashqari uzoq kutdirmaslik uchun
+      (adolat mijoz tajribasidan ustun qo'yilmaydi). Lekin agar radius
+      ichida HECH KIM topilmasa (masalan haydovchilar hammasi tarqoq
+      joylashgan bo'lsa), buyurtma umumiy tabloga (hammaga baravar)
+      tashlab yuborilmaydi — shu holatda eng yaqin haydovchiga (adolatni
+      hisobga olmay) baribir individual yuboriladi, aks holda mijoz
+      hech kim bilan bog'lanmay navbatsiz qolib ketardi.
     - fairness_weight_km=0 bo'lsa — avvalgidek faqat masofa hal qiladi."""
     from django.utils import timezone
 
@@ -94,12 +99,22 @@ def find_fairest_driver(drivers, lat, lng, fairness_weight_km=0, max_radius_km=0
     best_driver = None
     best_score = float('inf')
     best_dist = float('inf')
+    fallback_driver = None
+    fallback_dist = float('inf')
+
     for driver in drivers:
         if driver.latitude is None or driver.longitude is None:
             continue
         dist = haversine(lat, lng, driver.latitude, driver.longitude)
         if dist is None:
             continue
+
+        # Radius ichida hech kim topilmasa ishlatiladigan zaxira — doim eng
+        # yaqinini kuzatib boramiz.
+        if dist < fallback_dist:
+            fallback_dist = dist
+            fallback_driver = driver
+
         if max_radius_km and dist > max_radius_km:
             continue
 
@@ -116,7 +131,9 @@ def find_fairest_driver(drivers, lat, lng, fairness_weight_km=0, max_radius_km=0
             best_driver = driver
             best_dist = dist
 
-    return best_driver, best_dist
+    if best_driver is not None:
+        return best_driver, best_dist
+    return fallback_driver, fallback_dist
 
 
 def send_telegram(text, token=None, chat_ids=None, reply_markup=None):
