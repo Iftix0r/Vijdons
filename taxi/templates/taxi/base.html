@@ -1442,13 +1442,22 @@
                             }
                             if (d.from_address) {
                                 var fa = document.getElementById('om_from_address');
+                                // Diqqat: lat/lng FAQAT shu manzil matni bilan birga, va faqat
+                                // maydon hali bo'sh bo'lganda to'ldiriladi. Avval bu tekshiruvdan
+                                // tashqarida, har doim yozib turardi — operator xaritadan yoki
+                                // "Tezkor" manzildan aniq nuqta tanlab bo'lgandan keyin telefon
+                                // raqamini kiritsa, shu (kech kelgan) so'rov to'g'ri tanlangan
+                                // koordinatani mijozning ESKI buyurtmasidagi (butunlay boshqa
+                                // joydagi) koordinata bilan JIM almashtirib yuborardi — manzil
+                                // matni to'g'ri ko'rinib, lekin buyurtma noto'g'ri joyga (masalan
+                                // minglab km uzoqdagi eski manzilga) yuborilib ketardi.
                                 if (fa && !fa.value) {
                                     fa.value = d.from_address;
                                     _hint.textContent = '✓ Oldingi manzil yuklandi: ' + d.from_address;
                                     _hint.classList.remove('hidden');
+                                    if (d.from_lat) document.getElementById('om_from_lat').value = d.from_lat;
+                                    if (d.from_lng) document.getElementById('om_from_lng').value = d.from_lng;
                                 }
-                                if (d.from_lat) document.getElementById('om_from_lat').value = d.from_lat;
-                                if (d.from_lng) document.getElementById('om_from_lng').value = d.from_lng;
                             }
                         }).catch(function(){});
                 }, 600);
