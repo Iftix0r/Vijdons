@@ -155,7 +155,66 @@
                     }
                 }).catch(function () {});
             });
+            // Manzil tanlashda hozir qayerda ko'p haydovchi (online/offline
+            // hammasi) borligini ko'rib, o'shanga yaqin nuqta tanlash uchun —
+            // dispatch qilinadigan xarita emas (bosish faqat nuqta belgilaydi),
+            // shu sabab off-duty/offline haydovchilar ham ko'rsatiladi.
+            _loadSavedAddressMapDrivers();
         });
+    }
+
+    let _saDriverMarks = {};
+    let _saDriverPoll  = null;
+
+    function _saDriverIconLayout(d) {
+        var color = d.is_online ? '#22c55e' : '#9ca3af';
+        return ymaps.templateLayoutFactory.createClass(
+            '<div style="width:14px;height:14px;border-radius:50%;background:' + color + ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);"></div>'
+        );
+    }
+
+    function _loadSavedAddressMapDrivers() {
+        if (!_saMap) return;
+        fetch('/panel/drivers/api/locations/')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!_saMap) return; // modal shu orada yopilgan bo'lishi mumkin
+                var seen = {};
+                (data.drivers || []).forEach(function (d) {
+                    var id = String(d.id);
+                    seen[id] = true;
+                    var coords = [d.latitude, d.longitude];
+                    var hint = d.full_name + ' · ' + d.car_model + ' ' + d.car_number + ' · ' + (d.is_online ? 'Online' : 'Offline');
+                    if (_saDriverMarks[id]) {
+                        _saDriverMarks[id].geometry.setCoordinates(coords);
+                        _saDriverMarks[id].options.set('iconLayout', _saDriverIconLayout(d));
+                    } else {
+                        var pm = new ymaps.Placemark(coords, { hintContent: hint }, {
+                            iconLayout: _saDriverIconLayout(d),
+                            iconShape: { type: 'Circle', coordinates: [7, 7], radius: 8 }
+                        });
+                        _saMap.geoObjects.add(pm);
+                        _saDriverMarks[id] = pm;
+                    }
+                });
+                Object.keys(_saDriverMarks).forEach(function (id) {
+                    if (!seen[id]) {
+                        _saMap.geoObjects.remove(_saDriverMarks[id]);
+                        delete _saDriverMarks[id];
+                    }
+                });
+            })
+            .catch(function () {});
+    }
+
+    function _startSavedAddressMapDrivers() {
+        if (_saDriverPoll) clearInterval(_saDriverPoll);
+        _saDriverPoll = setInterval(_loadSavedAddressMapDrivers, 8000);
+    }
+
+    function _stopSavedAddressMapDrivers() {
+        if (_saDriverPoll) clearInterval(_saDriverPoll);
+        _saDriverPoll = null;
     }
 
     document.getElementById('sa_name').addEventListener('input', function () {
@@ -173,8 +232,18 @@
             document.getElementById('sa_submit').disabled = true;
             document.getElementById('sa_map_hint').innerHTML = '<i class="fas fa-hand-pointer"></i> Xaritada nuqtani bosing';
             _saPM = null;
-            setTimeout(_initSavedAddressMap, 150);
+            setTimeout(function () {
+                _initSavedAddressMap();
+                _loadSavedAddressMapDrivers();
+                _startSavedAddressMapDrivers();
+            }, 150);
         }
+    };
+
+    const _origCloseSA = closeModal;
+    closeModal = function (id) {
+        _origCloseSA(id);
+        if (id === 'newAddressModal') _stopSavedAddressMapDrivers();
     };
 </script>
 {% endblock %}
