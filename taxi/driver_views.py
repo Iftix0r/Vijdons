@@ -575,8 +575,12 @@ def driver_order_action(request, driver, pk, action):
             locked.dispatched_to = None
             locked.save(update_fields=['status', 'driver', 'dispatched_to', 'updated_at'])
             from .utils import _resolve_dispatch_attempt
-            from .models import DispatchAttempt
+            from .models import DispatchAttempt, AddressQueueEntry
+            from django.utils import timezone as _tz
             _resolve_dispatch_attempt(locked, driver.id, DispatchAttempt.RESULT_ACCEPTED)
+            # Buyurtma qabul qilingandan keyin haydovchi endi band —
+            # manzil navbatida (agar turgan bo'lsa) o'rnini bo'shatadi.
+            AddressQueueEntry.objects.filter(driver=driver, left_at__isnull=True).update(left_at=_tz.now())
         tg_order_accepted(locked, driver)
         tg_low_balance_alert(driver)
         sms_order_status(locked, 'accepted')
@@ -952,44 +956,32 @@ def driver_ping(request, driver):
     return JsonResponse({'ok': True})
 
 
-# Yaqin manzil belgisi 300m radiusda ko'rsatiladi — bu yerdagi navbat
-# hisobi ham xuddi shu radius bilan mos kelishi kerak (aks holda "navbatda
-# 1-o'rin" deb ko'rsatib, aslida shu manzilga yaqin boshqa haydovchi ham
-# bor-yo'qligini noto'g'ri hisoblagan bo'lardi).
-NEAR_ADDRESS_THRESHOLD_KM = 0.3
-
-
 @driver_login_required
 def driver_address_queue(request, driver):
     """Haydovchi biror saqlangan manzilga (SavedAddress) yaqinlashganda —
-    o'sha manzil atrofida (300m radius) hozir turgan boshqa navbatdagi
-    haydovchilar orasida masofasi bo'yicha nechinchi o'rinda ekanini
-    hisoblaydi. Asosiy sahifadagi "yaqin manzil" belgisida ko'rsatiladi."""
-    from .utils import haversine
+    o'sha manzil navbatida (AddressQueueEntry, "kim birinchi kelgan"
+    tartibida) nechinchi o'rinda turganini qaytaradi. Asosiy sahifadagi
+    "yaqin manzil" belgisida ko'rsatiladi. Navbat a'zoligining o'zi
+    driver_location_sync'da (update_address_queue_membership) yuritiladi —
+    bu yerda faqat joriy holat o'qiladi."""
+    from .models import AddressQueueEntry
     addr_id = request.GET.get('addr_id')
     try:
-        addr = SavedAddress.objects.get(pk=addr_id)
-    except (SavedAddress.DoesNotExist, ValueError, TypeError):
-        return JsonResponse({'ok': False}, status=404)
+        addr_id = int(addr_id)
+    except (TypeError, ValueError):
+        return JsonResponse({'ok': False}, status=400)
 
-    candidates = Driver.objects.filter(
-        is_active=True, is_on_duty=True, approval_status='approved',
-        latitude__isnull=False, longitude__isnull=False,
+    queue_ids = list(
+        AddressQueueEntry.objects.filter(
+            address_id=addr_id, left_at__isnull=True,
+            driver__is_active=True, driver__is_on_duty=True,
+            driver__approval_status='approved',
+        )
+        .order_by('joined_at')
+        .values_list('driver_id', flat=True)
     )
-    ranked = []
-    for d in candidates:
-        dist = haversine(addr.lat, addr.lng, d.latitude, d.longitude)
-        if dist is not None and dist <= NEAR_ADDRESS_THRESHOLD_KM:
-            ranked.append((dist, d.id))
-    ranked.sort(key=lambda t: t[0])
-
-    position = None
-    for i, (_, did) in enumerate(ranked, start=1):
-        if did == driver.id:
-            position = i
-            break
-
-    return JsonResponse({'ok': True, 'position': position, 'total': len(ranked)})
+    position = queue_ids.index(driver.id) + 1 if driver.id in queue_ids else None
+    return JsonResponse({'ok': True, 'position': position, 'total': len(queue_ids)})
 
 
 @driver_login_required
@@ -1238,6 +1230,7 @@ def driver_fcm_sync(request, driver):
 def driver_location_sync(request, driver):
     try:
         from django.utils import timezone
+        from .utils import update_address_queue_membership
         data = json.loads(request.body)
         lat = float(data.get('lat', 0))
         lng = float(data.get('lng', 0))
@@ -1249,6 +1242,10 @@ def driver_location_sync(request, driver):
             driver.freeze_warning_sent_at = None
             update_fields.append('freeze_warning_sent_at')
         driver.save(update_fields=update_fields)
+        # Manzil (Manzillar) navbatiga a'zolikni yangilash — dispatch_order()
+        # shu manzilga tushgan buyurtmalarni "kim birinchi kelgan" tartibida
+        # taqsimlashi uchun.
+        update_address_queue_membership(driver, lat, lng)
     except Exception:
         pass
     return JsonResponse({'ok': True})
@@ -1300,6 +1297,11 @@ def driver_duty_toggle(request, driver):
     # (order_status'dagi alohida tekshiruv shu ishni qiladi).
     driver.is_on_duty = not driver.is_on_duty
     driver.save(update_fields=['is_on_duty'])
+    if not driver.is_on_duty:
+        # Navbatdan chiqsa, manzil navbatida (bor bo'lsa) o'rnini ham bo'shatadi.
+        from django.utils import timezone
+        from .models import AddressQueueEntry
+        AddressQueueEntry.objects.filter(driver=driver, left_at__isnull=True).update(left_at=timezone.now())
     action = DriverActivityLog.ACTION_DUTY_ON if driver.is_on_duty else DriverActivityLog.ACTION_DUTY_OFF
     _log_activity(driver, action, 'Saytdan', request)
     tg_duty_changed(driver, driver.is_on_duty)

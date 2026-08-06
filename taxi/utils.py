@@ -1728,11 +1728,81 @@ def auto_reject_timeout(order_id, driver_id, timeout_seconds):
         pass
 
 
+ADDRESS_QUEUE_RADIUS_KM = 0.3       # manzil navbatiga "a'zo" hisoblanish radiusi
+ADDRESS_QUEUE_MAX_ATTEMPTS = 3       # navbatdan ketma-ket ko'pi bilan nechta haydovchiga taklif qilinadi
+
+
+def find_matching_saved_address(lat, lng):
+    """Berilgan koordinata biror SavedAddress (Manzillar) radiusida
+    bo'lsa — o'sha manzilni qaytaradi (eng yaqinini, bir nechtasi mos
+    kelsa), aks holda None. dispatch_order() shu orqali "oddiy taqsimlash"
+    bilan "manzil navbati"ni ajratadi."""
+    from taxi.models import SavedAddress
+    nearest_addr, nearest_dist = None, float('inf')
+    for a in SavedAddress.objects.all():
+        d = haversine(lat, lng, a.lat, a.lng)
+        if d is not None and d <= ADDRESS_QUEUE_RADIUS_KM and d < nearest_dist:
+            nearest_dist = d
+            nearest_addr = a
+    return nearest_addr
+
+
+def update_address_queue_membership(driver, lat, lng):
+    """Haydovchi GPS koordinatasi yangilanganda (driver_location_sync)
+    chaqiriladi — biror manzil (SavedAddress) radiusiga kirsa navbatga
+    "yoziladi" (AddressQueueEntry), undan chiqsa yoki boshqa manzilga
+    o'tsa eski yozuvi yopiladi. Kelgan vaqti (`joined_at`) saqlanib
+    boradi — shu orqali dispatch_order() "kim birinchi kelgan" tartibida
+    taklif qila oladi (taksi bekati navbati kabi)."""
+    from taxi.models import AddressQueueEntry
+    from django.utils import timezone
+
+    nearest_addr = find_matching_saved_address(lat, lng)
+    open_entry = AddressQueueEntry.objects.filter(driver=driver, left_at__isnull=True).first()
+
+    if open_entry and (not nearest_addr or open_entry.address_id != nearest_addr.id):
+        open_entry.left_at = timezone.now()
+        open_entry.save(update_fields=['left_at'])
+        open_entry = None
+
+    if nearest_addr and not open_entry:
+        AddressQueueEntry.objects.create(address=nearest_addr, driver=driver)
+
+
+def _next_address_queue_driver(address, rejected_ids):
+    """Manzil navbatida hozir turgan (hali chiqib ketmagan, hali navbatda
+    ish holatida) haydovchilardan eng oldin kelganini qaytaradi — rad
+    etganlar/urinilganlar hisobga olinmaydi."""
+    from taxi.models import AddressQueueEntry
+    entry = (
+        AddressQueueEntry.objects.filter(
+            address=address, left_at__isnull=True,
+            driver__is_active=True, driver__is_on_duty=True,
+            driver__approval_status='approved',
+        )
+        .exclude(driver_id__in=rejected_ids)
+        .select_related('driver')
+        .order_by('joined_at')
+        .first()
+    )
+    return entry.driver if entry else None
+
+
 def dispatch_order(order):
     """
-    Buyurtmani navbatma-navbat eng yaqin haydovchilarga yuborish.
-    TariffSettings dagi max_dispatch_attempts sonigacha urinadi.
-    Aks holda, buyurtmani umumiy tabloda qoldiradi (dispatched_to = None).
+    Buyurtmani navbatma-navbat eng yaqin/adolatli haydovchilarga yuborish.
+
+    Agar buyurtma manzili (from_lat/from_lng) operator panelda saqlangan
+    tezkor manzillardan (Manzillar) biriga yaqin bo'lsa — bu yerda oddiy
+    "eng yaqin/adolatli" hisob-kitob ISHLATILMAYDI, buning o'rniga soddaroq
+    "taksi bekati navbati" mantig'i ishlaydi: o'sha manzilga eng oldin kelib
+    turgan haydovchiga taklif qilinadi, rad etsa/javob bermasa navbatdagi
+    keyingisiga (ko'pi bilan ADDRESS_QUEUE_MAX_ATTEMPTS=3 tagacha), hech kim
+    olmasa umumiy tabloga (hammaga baravar) tushadi.
+
+    Aks holda (manzil navbatiga tegishli bo'lmasa) — TariffSettings dagi
+    Score (masofa + adolat vazni − kutish bonusi) bo'yicha eng mos
+    haydovchi tanlanadi, max_dispatch_attempts sonigacha urinadi.
     """
     from django.utils import timezone
     from taxi.models import TariffSettings, Driver
@@ -1745,48 +1815,62 @@ def dispatch_order(order):
         return None
 
     tariff = TariffSettings.get()
-    
-    # Rad etgan haydovchilar sonini tekshirish
     attempts_count = order.rejected_by.count()
-    if attempts_count >= tariff.max_dispatch_attempts:
-        # Urinishlar tugadi, umumiy tabloda qoladi
-        if order.dispatched_to is not None:
-            order.dispatched_to = None
-            order.save(update_fields=['dispatched_to'])
-        return None
-
     rejected_ids = list(order.rejected_by.values_list('id', flat=True))
 
-    candidates = list(
-        Driver.objects.filter(
-            is_active=True,
-            is_on_duty=True,
-            approval_status='approved',
-            latitude__isnull=False,
-            longitude__isnull=False,
-        ).exclude(id__in=rejected_ids)
-    )
+    address = find_matching_saved_address(order.from_lat, order.from_lng)
 
-    if not candidates:
-        if order.dispatched_to is not None:
-            order.dispatched_to = None
-            order.save(update_fields=['dispatched_to'])
-        return None
+    if address:
+        # ── Manzil navbati (sodda, "kim birinchi kelgan") ──
+        if attempts_count >= ADDRESS_QUEUE_MAX_ATTEMPTS:
+            if order.dispatched_to is not None:
+                order.dispatched_to = None
+                order.save(update_fields=['dispatched_to'])
+            return None
+        nearest = _next_address_queue_driver(address, rejected_ids)
+        if not nearest:
+            if order.dispatched_to is not None:
+                order.dispatched_to = None
+                order.save(update_fields=['dispatched_to'])
+            return None
+        dist = haversine(order.from_lat, order.from_lng, nearest.latitude, nearest.longitude)
+    else:
+        # ── Oddiy Score bo'yicha taqsimlash ──
+        if attempts_count >= tariff.max_dispatch_attempts:
+            if order.dispatched_to is not None:
+                order.dispatched_to = None
+                order.save(update_fields=['dispatched_to'])
+            return None
 
-    nearest, dist = find_fairest_driver(
-        candidates, order.from_lat, order.from_lng,
-        tariff.fairness_weight_km, tariff.fairness_max_radius_km,
-    )
-    if not nearest:
-        if order.dispatched_to is not None:
-            order.dispatched_to = None
-            order.save(update_fields=['dispatched_to'])
-        return None
+        candidates = list(
+            Driver.objects.filter(
+                is_active=True,
+                is_on_duty=True,
+                approval_status='approved',
+                latitude__isnull=False,
+                longitude__isnull=False,
+            ).exclude(id__in=rejected_ids)
+        )
+        if not candidates:
+            if order.dispatched_to is not None:
+                order.dispatched_to = None
+                order.save(update_fields=['dispatched_to'])
+            return None
+
+        nearest, dist = find_fairest_driver(
+            candidates, order.from_lat, order.from_lng,
+            tariff.fairness_weight_km, tariff.fairness_max_radius_km,
+        )
+        if not nearest:
+            if order.dispatched_to is not None:
+                order.dispatched_to = None
+                order.save(update_fields=['dispatched_to'])
+            return None
 
     order.dispatched_to = nearest
     order.dispatched_at = timezone.now()
     order.save(update_fields=['dispatched_to', 'dispatched_at'])
-    _log_dispatch_attempt(order, nearest, dist if dist != float('inf') else None)
+    _log_dispatch_attempt(order, nearest, dist if dist and dist != float('inf') else None)
 
     notify_driver_new_order(order, nearest)
     start_dispatch_timeout(order, nearest, tariff.dispatch_timeout)

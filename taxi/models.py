@@ -1170,3 +1170,28 @@ class SavedAddress(models.Model):
         verbose_name = 'Tezkor manzil'
         verbose_name_plural = 'Tezkor manzillar'
         ordering = ['-usage_count', 'name']
+
+
+class AddressQueueEntry(models.Model):
+    """Haydovchi biror SavedAddress (masalan bozor, aeroport) radiusiga
+    kirganda avtomatik yaratiladi, chiqib ketganda yopiladi (`left_at`) —
+    kim birinchi kelgan bo'lsa (eng erta `joined_at`), o'sha manzilga
+    tushgan buyurtma birinchi navbatda o'shanga taklif qilinadi (taksi
+    bekati navbati kabi), oddiy "eng yaqin/adolatli" hisob-kitobidan
+    mustaqil ravishda."""
+    address    = models.ForeignKey(SavedAddress, on_delete=models.CASCADE, related_name='queue_entries', verbose_name="Manzil")
+    driver     = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='address_queue_entries', verbose_name="Haydovchi")
+    joined_at  = models.DateTimeField(auto_now_add=True, verbose_name="Navbatga kirgan vaqt")
+    left_at    = models.DateTimeField(null=True, blank=True, verbose_name="Navbatdan chiqqan vaqt")
+
+    def __str__(self):
+        return f"{self.driver} @ {self.address} ({'faol' if self.left_at is None else 'chiqqan'})"
+
+    class Meta:
+        ordering = ['joined_at']
+        verbose_name = "Manzil navbati yozuvi"
+        verbose_name_plural = "Manzil navbati yozuvlari"
+        indexes = [
+            models.Index(fields=['address', 'left_at']),
+            models.Index(fields=['driver', 'left_at']),
+        ]
