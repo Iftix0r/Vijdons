@@ -1684,6 +1684,27 @@ def send_fcm(fcm_token, title, body, data=None):
         return False
 
 
+def _log_dispatch_attempt(order, driver, distance_km=None):
+    """Buyurtma bitta haydovchiga taklif qilinganda chaqiriladi — "Taqsimlash
+    tarixi" (order_detail.html) uchun urinishni ketma-ketlik va masofa bilan
+    yozib boradi."""
+    from taxi.models import DispatchAttempt
+    attempt_number = order.dispatch_attempts.count() + 1
+    return DispatchAttempt.objects.create(
+        order=order, driver=driver, distance_km=distance_km, attempt_number=attempt_number,
+    )
+
+
+def _resolve_dispatch_attempt(order, driver_id, result):
+    """Eng oxirgi "kutilmoqda" urinishni yakuniy natija bilan yopadi
+    (qabul qildi / rad etdi / javob bermadi / bekor qilindi)."""
+    from taxi.models import DispatchAttempt
+    from django.utils import timezone
+    DispatchAttempt.objects.filter(
+        order=order, driver_id=driver_id, result=DispatchAttempt.RESULT_PENDING,
+    ).update(result=result, resolved_at=timezone.now())
+
+
 def auto_reject_timeout(order_id, driver_id, timeout_seconds):
     """
     Haydovchi belgilangan vaqt ichida javob bermasa, buyurtmani avtomatik rad etadi
@@ -1692,13 +1713,14 @@ def auto_reject_timeout(order_id, driver_id, timeout_seconds):
     import time
     time.sleep(timeout_seconds)
 
-    from taxi.models import Order
+    from taxi.models import Order, DispatchAttempt
     try:
         order = Order.objects.get(pk=order_id)
         if order.status == 'pending' and order.dispatched_to_id == driver_id:
             order.rejected_by.add(driver_id)
             order.dispatched_to = None
             order.save(update_fields=['dispatched_to'])
+            _resolve_dispatch_attempt(order, driver_id, DispatchAttempt.RESULT_TIMEOUT)
 
             # Keyingi haydovchiga yuborish
             dispatch_order(order)
@@ -1751,7 +1773,7 @@ def dispatch_order(order):
             order.save(update_fields=['dispatched_to'])
         return None
 
-    nearest, _ = find_fairest_driver(
+    nearest, dist = find_fairest_driver(
         candidates, order.from_lat, order.from_lng,
         tariff.fairness_weight_km, tariff.fairness_max_radius_km,
     )
@@ -1764,6 +1786,7 @@ def dispatch_order(order):
     order.dispatched_to = nearest
     order.dispatched_at = timezone.now()
     order.save(update_fields=['dispatched_to', 'dispatched_at'])
+    _log_dispatch_attempt(order, nearest, dist if dist != float('inf') else None)
 
     notify_driver_new_order(order, nearest)
     start_dispatch_timeout(order, nearest, tariff.dispatch_timeout)

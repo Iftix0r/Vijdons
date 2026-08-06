@@ -144,8 +144,46 @@
             {% endif %}
         </div>
 
-        <!-- Rad etgan haydovchilar -->
-        {% if order.rejected_by.exists %}
+        <!-- Taqsimlash tarixi — kimga, necha km masofada, qaysi navbatda
+             taklif qilingani va natijasi (DispatchAttempt) -->
+        {% if order.dispatch_attempts.all %}
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+                <i class="fas fa-route text-blue-400 mr-1.5"></i>Taqsimlash tarixi
+            </h2>
+            <div class="space-y-2">
+                {% for a in order.dispatch_attempts.all %}
+                <div class="flex items-center justify-between gap-3 p-2.5 rounded-xl
+                    {% if a.result == 'accepted' %}bg-emerald-50 dark:bg-emerald-900/20
+                    {% elif a.result == 'rejected' %}bg-red-50 dark:bg-red-900/20
+                    {% elif a.result == 'timeout' %}bg-amber-50 dark:bg-amber-900/20
+                    {% elif a.result == 'cancelled' %}bg-gray-50 dark:bg-gray-800/40
+                    {% else %}bg-blue-50 dark:bg-blue-900/20{% endif %}">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="w-6 h-6 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-[11px] font-bold text-gray-500 dark:text-gray-400 flex-shrink-0">{{ a.attempt_number }}</span>
+                        <span class="text-sm font-semibold text-gray-800 dark:text-white truncate">{{ a.driver.full_name }}</span>
+                        {% if a.distance_km %}
+                        <span class="text-xs text-gray-400 flex-shrink-0">· {{ a.distance_km|floatformat:1 }} km</span>
+                        {% endif %}
+                    </div>
+                    <span class="text-[11px] font-bold flex-shrink-0
+                        {% if a.result == 'accepted' %}text-emerald-600 dark:text-emerald-400
+                        {% elif a.result == 'rejected' %}text-red-500 dark:text-red-400
+                        {% elif a.result == 'timeout' %}text-amber-600 dark:text-amber-400
+                        {% elif a.result == 'cancelled' %}text-gray-400
+                        {% else %}text-blue-500 dark:text-blue-400{% endif %}">
+                        {% if a.result == 'accepted' %}✅ Qabul qildi
+                        {% elif a.result == 'rejected' %}❌ Rad etdi
+                        {% elif a.result == 'timeout' %}⏱ Javob bermadi
+                        {% elif a.result == 'cancelled' %}➖ Bekor qilindi
+                        {% else %}⏳ Kutilmoqda{% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% elif order.rejected_by.exists %}
+        <!-- Eski buyurtmalar uchun zaxira (bu funksiya qo'shilishidan oldingi) -->
         <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
             <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
                 <i class="fas fa-ban text-red-400 mr-1.5"></i>Rad etgan haydovchilar

@@ -68,7 +68,7 @@ def _get_client_ip(request):
 def order_detail(request, pk):
     order = get_object_or_404(
         Order.objects.select_related('client', 'driver', 'dispatched_to')
-             .prefetch_related('rejected_by'),
+             .prefetch_related('rejected_by', 'dispatch_attempts__driver'),
         pk=pk
     )
     client_orders = Order.objects.filter(client=order.client).order_by('-created_at')[:10]
@@ -212,10 +212,12 @@ def order_create(request):
             # hech qachon tozalanmagani uchun).
             if driver is not None:
                 from django.utils import timezone
-                from .utils import notify_driver_new_order, start_dispatch_timeout
+                from .utils import notify_driver_new_order, start_dispatch_timeout, _log_dispatch_attempt
                 order.dispatched_to = driver
                 order.dispatched_at = timezone.now()
                 order.save(update_fields=['dispatched_to', 'dispatched_at'])
+                manual_dist = haversine(f_lat, f_lng, driver.latitude, driver.longitude) if has_coords else None
+                _log_dispatch_attempt(order, driver, manual_dist)
                 notify_driver_new_order(order, driver)
                 start_dispatch_timeout(order, driver, tariff.dispatch_timeout)
 
@@ -282,6 +284,7 @@ def order_update_status(request, pk):
         if new_status in dict(Order.STATUS_CHOICES):
             order.status = new_status
         reassigned_driver = None
+        prev_dispatched_id = order.dispatched_to_id
         if driver_id:
             order.driver = Driver.objects.filter(pk=driver_id).first()
             # Buyurtma hali "pending" bo'lib qolayotgan bo'lsa (masalan operator
@@ -299,7 +302,12 @@ def order_update_status(request, pk):
         # order_create'dagi bilan bir xil: qo'lda qayta yo'naltirilgan haydovchiga
         # ham push/Telegram xabar va javob bermasa avtomatik bo'shatuvchi taymer.
         if reassigned_driver:
-            from .utils import notify_driver_new_order, start_dispatch_timeout
+            from .utils import notify_driver_new_order, start_dispatch_timeout, _log_dispatch_attempt, _resolve_dispatch_attempt
+            from .models import DispatchAttempt
+            if prev_dispatched_id and prev_dispatched_id != reassigned_driver.id:
+                _resolve_dispatch_attempt(order, prev_dispatched_id, DispatchAttempt.RESULT_CANCELLED)
+            manual_dist = haversine(order.from_lat, order.from_lng, reassigned_driver.latitude, reassigned_driver.longitude) if order.from_lat and order.from_lng else None
+            _log_dispatch_attempt(order, reassigned_driver, manual_dist)
             notify_driver_new_order(order, reassigned_driver)
             start_dispatch_timeout(order, reassigned_driver, TariffSettings.get().dispatch_timeout)
 

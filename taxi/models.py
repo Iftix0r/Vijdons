@@ -165,6 +165,40 @@ class Order(models.Model):
         ]
 
 
+class DispatchAttempt(models.Model):
+    """Buyurtma taqsimlanayotganda qaysi haydovchiga, necha km masofada,
+    qanday navbat bilan taklif qilingani va natijasi — buyurtma
+    tafsilotlarida "Taqsimlash tarixi" sifatida ko'rsatish uchun."""
+    RESULT_PENDING   = 'pending'
+    RESULT_ACCEPTED  = 'accepted'
+    RESULT_REJECTED  = 'rejected'
+    RESULT_TIMEOUT   = 'timeout'
+    RESULT_CANCELLED = 'cancelled'
+    RESULT_CHOICES = (
+        (RESULT_PENDING,   'Kutilmoqda'),
+        (RESULT_ACCEPTED,  'Qabul qildi'),
+        (RESULT_REJECTED,  'Rad etdi'),
+        (RESULT_TIMEOUT,   "Javob bermadi"),
+        (RESULT_CANCELLED, 'Bekor qilindi'),
+    )
+
+    order          = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='dispatch_attempts', verbose_name="Buyurtma")
+    driver         = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='dispatch_attempts', verbose_name="Haydovchi")
+    distance_km    = models.FloatField(null=True, blank=True, verbose_name="Masofa (km)")
+    attempt_number = models.PositiveIntegerField(verbose_name="Urinish raqami")
+    result         = models.CharField(max_length=20, choices=RESULT_CHOICES, default=RESULT_PENDING, verbose_name="Natija")
+    created_at     = models.DateTimeField(auto_now_add=True, verbose_name="Taklif qilingan vaqt")
+    resolved_at    = models.DateTimeField(null=True, blank=True, verbose_name="Hal bo'lgan vaqt")
+
+    def __str__(self):
+        return f"#{self.order_id} → {self.driver} ({self.attempt_number}-urinish, {self.get_result_display()})"
+
+    class Meta:
+        ordering = ['attempt_number']
+        verbose_name = "Taqsimlash urinishi"
+        verbose_name_plural = "Taqsimlash urinishlari"
+
+
 class ChatMessage(models.Model):
     SENDER_DRIVER   = 'driver'
     SENDER_OPERATOR = 'operator'

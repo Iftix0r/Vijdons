@@ -464,8 +464,10 @@ def driver_order_action(request, driver, pk, action):
             if order.dispatched_to_id == driver.id:
                 order.dispatched_to = None
                 order.save(update_fields=['dispatched_to'])
+                from .utils import dispatch_order, _resolve_dispatch_attempt
+                from .models import DispatchAttempt
+                _resolve_dispatch_attempt(order, driver.id, DispatchAttempt.RESULT_REJECTED)
                 tg_order_rejected(order, driver)
-                from .utils import dispatch_order
                 dispatch_order(order)
         return JsonResponse({'ok': True})
 
@@ -564,6 +566,9 @@ def driver_order_action(request, driver, pk, action):
             locked.status = 'accepted'
             locked.dispatched_to = None
             locked.save(update_fields=['status', 'driver', 'dispatched_to', 'updated_at'])
+            from .utils import _resolve_dispatch_attempt
+            from .models import DispatchAttempt
+            _resolve_dispatch_attempt(locked, driver.id, DispatchAttempt.RESULT_ACCEPTED)
         tg_order_accepted(locked, driver)
         tg_low_balance_alert(driver)
         sms_order_status(locked, 'accepted')
