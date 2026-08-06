@@ -1126,27 +1126,38 @@ let _nearAddressDistText = '';
 let _nearAddressPosition = null;
 let _lastKnownLat = null;
 let _lastKnownLng = null;
+let _nearAddressAlternateTimer = null;
+let _nearAddressShowPosition = false;   // false=masofa, true=o'rin — har 2.5s almashadi
 
 function _formatDistanceM(m) {
   return m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(1) + ' km';
 }
 
-// Diqqat: masofa (GPS har yangilanganda, tez-tez) va navbat o'rni
-// (serverdan, har 15s'da) IKKI TURLI joydan kelib, IKKALASI ham shu bitta
-// matn qatoriga yoziladi — shu sabab ikkalasi ham BITTA umumiy funksiya
-// orqali chiziladi, aks holda biri ikkinchisini (masalan yangi GPS
-// tikagi eski o'rin ma'lumotini) ustidan o'chirib yuborardi.
+// Diqqat: konteyner juda tor (Reyting/Balans tugmalari orasida) bo'lgani
+// uchun masofa va o'rinni BIRGA yozib bo'lmaydi (kesilib qolardi) — shu
+// sabab ikkalasi almashib (har 2.5s) ko'rsatiladi, faqat BITTA umumiy
+// funksiya orqali chiziladi (GPS yangilanishi va serverdan kelgan o'rin
+// bir-birini ustidan yozib yubormasin uchun).
 function _renderNearAddressMeta() {
   const meta = document.getElementById('near-address-meta');
   if (!meta) return;
-  // Diqqat: o'rin ma'lum bo'lgach, masofa ENDI ko'rsatilmaydi (faqat
-  // "N-o'rin") — konteyner juda tor (Reyting/Balans orasida) bo'lgani
-  // uchun ikkalasini birga yozsa ham baribir kesilib ketardi. O'rin hali
-  // serverdan kelmagan bo'lsa (birinchi 1 soniyacha), o'sha oraliqda
-  // masofa ko'rinib turadi.
-  meta.textContent = _nearAddressPosition
+  meta.textContent = (_nearAddressPosition && _nearAddressShowPosition)
     ? `${_nearAddressPosition}-o'rin`
     : _nearAddressDistText;
+}
+
+function _startNearAddressAlternate() {
+  if (_nearAddressAlternateTimer) clearInterval(_nearAddressAlternateTimer);
+  _nearAddressShowPosition = false;
+  _nearAddressAlternateTimer = setInterval(() => {
+    _nearAddressShowPosition = !_nearAddressShowPosition;
+    _renderNearAddressMeta();
+  }, 2500);
+}
+
+function _stopNearAddressAlternate() {
+  if (_nearAddressAlternateTimer) { clearInterval(_nearAddressAlternateTimer); _nearAddressAlternateTimer = null; }
+  _nearAddressShowPosition = false;
 }
 
 function _fetchAddressQueue(addrId, lat, lng) {
@@ -1201,6 +1212,7 @@ function _checkNearSavedAddress(lat, lng) {
       _fetchAddressQueue(nearest.id, lat, lng);
       if (_nearAddressQueueTimer) clearInterval(_nearAddressQueueTimer);
       _nearAddressQueueTimer = setInterval(() => _fetchAddressQueue(nearest.id, _lastKnownLat, _lastKnownLng), 15000);
+      _startNearAddressAlternate();
     }
   } else {
     badge.style.display = 'none';
@@ -1208,6 +1220,7 @@ function _checkNearSavedAddress(lat, lng) {
       _nearAddressId = null;
       _nearAddressPosition = null;
       if (_nearAddressQueueTimer) { clearInterval(_nearAddressQueueTimer); _nearAddressQueueTimer = null; }
+      _stopNearAddressAlternate();
     }
   }
 }
