@@ -442,7 +442,7 @@
                 <div class="flex items-center gap-1.5 flex-wrap mb-2">
                     <span class="text-[11px] text-gray-400 font-semibold mr-0.5"><i class="fas fa-bolt text-yellow-500"></i> Tezkor:</span>
                     {% for addr in saved_addresses %}
-                    <button type="button" onclick="_pickSavedAddress({{ addr.lat }}, {{ addr.lng }}, '{{ addr.name|escapejs }}', {{ addr.pk }})"
+                    <button type="button" onclick="_pickSavedAddress({{ addr.lat }}, {{ addr.lng }}, '{{ addr.name|escapejs }}', {{ addr.pk }}, '{{ addr.address|escapejs }}')"
                             class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800/40 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition">
                         {{ addr.name }}
                     </button>
@@ -1075,27 +1075,36 @@
     // chip bossa, hech narsa bo'lmagan (jim) va buyurtma koordinatasiz —
     // demak avtomatik taqsimlash o'rniga umumiy tabloga (hammaga baravar)
     // tushib ketardi, garchi operator "tezkor manzil" tanlagan bo'lsa ham.
-    function _pickSavedAddress(lat, lng, name, addressId) {
+    //
+    // SavedAddress'da ikkita alohida maydon bor: qisqa "Nomi" (tugma
+    // yozuvi uchun, ko'pincha "7", "Bozor" kabi qisqa kod) va to'liq
+    // "Manzil matni" (haydovchiga ko'rinadigan haqiqiy ko'cha manzili).
+    // "Mijoz manzili"ga to'liq matn bo'lsa o'sha yoziladi, aks holda (bo'sh
+    // qoldirilgan bo'lsa) qisqa nomga qaytiladi — aks holda operator
+    // manzilni "7" deb nomlagan bo'lsa, mijoz manziliga aynan "7" kabi
+    // ma'nosiz raqam tushib qolardi.
+    function _pickSavedAddress(lat, lng, name, addressId, fullAddress) {
         var coords = [lat, lng];
+        var addressText = (fullAddress && fullAddress.trim()) ? fullAddress : name;
         if (_omap) {
             if (_omapStep === 1) {
-                _setOrderFromPoint(coords, name);
+                _setOrderFromPoint(coords, addressText);
             } else {
-                _setOrderToPoint(coords, name);
+                _setOrderToPoint(coords, addressText);
             }
             _omap.setCenter(coords, Math.max(_omap.getZoom(), 14));
         } else if (_omapStep === 1) {
             document.getElementById('om_from_lat').value = lat;
             document.getElementById('om_from_lng').value = lng;
-            document.getElementById('om_from_address').value = name;
-            document.getElementById('map_from_text').textContent = name.length > 30 ? name.slice(0,30)+'…' : name;
+            document.getElementById('om_from_address').value = addressText;
+            document.getElementById('map_from_text').textContent = addressText.length > 30 ? addressText.slice(0,30)+'…' : addressText;
             document.getElementById('map_from_badge').className = 'flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/40';
             _omapStep = 2;
         } else {
             document.getElementById('om_to_lat').value = lat;
             document.getElementById('om_to_lng').value = lng;
-            document.getElementById('om_to_address').value = name;
-            document.getElementById('map_to_text').textContent = name.length > 30 ? name.slice(0,30)+'…' : name;
+            document.getElementById('om_to_address').value = addressText;
+            document.getElementById('map_to_text').textContent = addressText.length > 30 ? addressText.slice(0,30)+'…' : addressText;
             document.getElementById('map_to_badge').className = 'flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-semibold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/40';
             _omapStep = 1;
         }
