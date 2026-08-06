@@ -1123,13 +1123,23 @@ const NEAR_ADDRESS_THRESHOLD_M = 300;
 let _nearAddressId = null;
 let _nearAddressQueueTimer = null;
 let _nearAddressDistText = '';
+let _lastKnownLat = null;
+let _lastKnownLng = null;
 
 function _formatDistanceM(m) {
   return m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(1) + ' km';
 }
 
-function _fetchAddressQueue(addrId) {
-  fetch('{% url "driver:address_queue" %}?addr_id=' + addrId, { cache: 'no-store' })
+function _fetchAddressQueue(addrId, lat, lng) {
+  // lat/lng ham yuboriladi — shu orqali server navbat a'zoligini
+  // (AddressQueueEntry) shu yerning o'zida yangilaydi, faqat
+  // driver_location_sync'ning 50m'lik harakat chegarasiga tayanib
+  // qolmaydi (aks holda haydovchi kelib to'xtab tursa-yu, oldingi GPS
+  // nuqtasi allaqachon yaqin bo'lsa, navbatga hech qachon "yozilmay"
+  // qolib, o'rin doim bo'sh ko'rinardi).
+  let url = '{% url "driver:address_queue" %}?addr_id=' + addrId;
+  if (lat && lng) url += '&lat=' + lat + '&lng=' + lng;
+  fetch(url, { cache: 'no-store' })
     .then(r => r.json())
     .then(d => {
       const meta = document.getElementById('near-address-meta');
@@ -1148,6 +1158,8 @@ function _checkNearSavedAddress(lat, lng) {
   const text  = document.getElementById('near-address-text');
   const meta  = document.getElementById('near-address-meta');
   if (!badge || !text || !meta || !SAVED_ADDRESSES.length) return;
+  _lastKnownLat = lat;
+  _lastKnownLng = lng;
   let nearest = null, nearestDist = Infinity;
   for (const a of SAVED_ADDRESSES) {
     const dlat = (lat - a.lat) * 111320;
@@ -1163,10 +1175,14 @@ function _checkNearSavedAddress(lat, lng) {
     if (_nearAddressId !== nearest.id) {
       // Yangi manzil radiusiga kirdi — navbatni darhol so'raymiz, keyin
       // shu manzil ichida turgan davrda har 15s'da yangilab boramiz.
+      // Diqqat: interval har safar _lastKnownLat/Lng'ni (eng so'nggi
+      // GPS'ni) o'qiydi, closure orqali "muzlab qolgan" eski koordinatani
+      // emas — aks holda uzoq turgan haydovchi uchun navbat yozuvi eskirib,
+      // hech qachon yangilanmay qolishi mumkin edi.
       _nearAddressId = nearest.id;
-      _fetchAddressQueue(nearest.id);
+      _fetchAddressQueue(nearest.id, lat, lng);
       if (_nearAddressQueueTimer) clearInterval(_nearAddressQueueTimer);
-      _nearAddressQueueTimer = setInterval(() => _fetchAddressQueue(nearest.id), 15000);
+      _nearAddressQueueTimer = setInterval(() => _fetchAddressQueue(nearest.id, _lastKnownLat, _lastKnownLng), 15000);
     }
   } else {
     badge.style.display = 'none';

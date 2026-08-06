@@ -685,22 +685,38 @@ def driver_order_action(request, driver, pk, action):
 @driver_login_required
 def driver_order_create(request, driver):
     if request.method != 'POST':
+        from .models import SavedAddress
         return render(request, 'driver/order_create.html', {
             'driver': driver,
             'active_tab': 'home',
             'chat_unread': _chat_unread(driver),
             'pending_orders_count': _pending_orders_count(driver),
             'active_orders_count': _active_orders_count(driver),
+            'saved_addresses': SavedAddress.objects.all(),
         })
 
-    from .models import Client
+    from .models import Client, SavedAddress
     from .utils import tg_new_order, dispatch_order
 
     phone_number  = request.POST.get('phone_number', '').strip()
     customer_name = request.POST.get('customer_name', '').strip()
-    from_address  = request.POST.get('from_address', '').strip()
     to_address    = request.POST.get('to_address', '').strip()
     assign_to     = request.POST.get('assign_to', 'self')  # 'self' | 'others'
+    saved_address_id = request.POST.get('saved_address_id')
+
+    # "Qayerdan" — operator panel > Manzillar'dan tanlangan bo'lsa o'sha
+    # manzilning aniq koordinatasi ishlatiladi (dispatch_order() shu orqali
+    # navbat — kim birinchi kelgan — tartibida yubora oladi). "Boshqa"
+    # tanlansa (qo'lda yozilgan, ro'yxatda yo'q joy) — haydovchining hozirgi
+    # GPS joylashuvi ishlatiladi va pastda umumiy tabloga tashlab yuboriladi
+    # (individual dispatch qilinmaydi).
+    saved_address = SavedAddress.objects.filter(pk=saved_address_id).first() if saved_address_id else None
+    if saved_address:
+        from_address = saved_address.address or saved_address.name
+        from_lat, from_lng = saved_address.lat, saved_address.lng
+    else:
+        from_address = request.POST.get('from_address', '').strip()
+        from_lat, from_lng = driver.latitude, driver.longitude
 
     if not phone_number or not from_address:
         return JsonResponse({'ok': False, 'error': "Mijoz raqami va manzil kiritilishi shart"}, status=400)
@@ -726,7 +742,7 @@ def driver_order_create(request, driver):
 
         order = Order.objects.create(
             client=client, driver=driver,
-            from_address=from_address, from_lat=driver.latitude, from_lng=driver.longitude,
+            from_address=from_address, from_lat=from_lat, from_lng=from_lng,
             to_address=to_address,
             payment_type=Order.PAYMENT_CASH, car_type=driver.car_type,
             commission=commission,
@@ -743,7 +759,7 @@ def driver_order_create(request, driver):
 
     order = Order.objects.create(
         client=client,
-        from_address=from_address, from_lat=driver.latitude, from_lng=driver.longitude,
+        from_address=from_address, from_lat=from_lat, from_lng=from_lng,
         to_address=to_address,
         payment_type=Order.PAYMENT_CASH, car_type=driver.car_type,
         commission=tariff.commission,
@@ -753,7 +769,10 @@ def driver_order_create(request, driver):
     _log_activity(driver, DriverActivityLog.ACTION_ORDER,
                    f"Ilova orqali buyurtma #{order.id} yaratdi — boshqa haydovchilarga ochiq", request)
     tg_new_order(order)
-    if driver.latitude and driver.longitude:
+    # Faqat ro'yxatdagi manzil tanlangan bo'lsa individual taqsimlanadi
+    # (dispatch_order() manzil navbatini avtomatik aniqlaydi). "Boshqa"
+    # tanlansa — umumiy tabloda qoladi (dispatched_to=None, standart holat).
+    if saved_address and from_lat and from_lng:
         dispatch_order(order)
     return JsonResponse({'ok': True, 'order_id': order.id})
 
@@ -960,16 +979,31 @@ def driver_ping(request, driver):
 def driver_address_queue(request, driver):
     """Haydovchi biror saqlangan manzilga (SavedAddress) yaqinlashganda —
     o'sha manzil navbatida (AddressQueueEntry, "kim birinchi kelgan"
-    tartibida) nechinchi o'rinda turganini qaytaradi. Asosiy sahifadagi
-    "yaqin manzil" belgisida ko'rsatiladi. Navbat a'zoligining o'zi
-    driver_location_sync'da (update_address_queue_membership) yuritiladi —
-    bu yerda faqat joriy holat o'qiladi."""
+    tartibida) nechinchi o'rinda turganini qaytaradi.
+
+    Diqqat: `lat`/`lng` berilgan bo'lsa, navbat a'zoligi shu yerning o'zida
+    ham yangilanadi (update_address_queue_membership) — faqat
+    driver_location_sync'ga (50m harakat cheklovi bilan) tayanib qolmaslik
+    uchun. Aks holda: haydovchi manzilga kelib to'xtab tursa-yu, oldingi
+    GPS nuqtasi allaqachon shu 50m ichida bo'lsa (masalan sahifa qayta
+    ochilganda), location_sync umuman yubormay, navbatga hech qachon
+    "yozilmay" qolib ketardi — masofa (client tomonida hisoblangan)
+    to'g'ri ko'rinsa ham, o'rin har doim bo'sh chiqardi."""
     from .models import AddressQueueEntry
+    from .utils import update_address_queue_membership
     addr_id = request.GET.get('addr_id')
     try:
         addr_id = int(addr_id)
     except (TypeError, ValueError):
         return JsonResponse({'ok': False}, status=400)
+
+    lat = request.GET.get('lat')
+    lng = request.GET.get('lng')
+    if lat and lng:
+        try:
+            update_address_queue_membership(driver, float(lat), float(lng))
+        except (TypeError, ValueError):
+            pass
 
     queue_ids = list(
         AddressQueueEntry.objects.filter(

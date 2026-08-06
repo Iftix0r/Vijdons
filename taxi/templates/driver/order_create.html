@@ -24,9 +24,25 @@
 
   <div class="ios-card2 rounded-2xl p-4 mb-4">
     <label class="ios-footnote font-semibold" style="color:var(--ios-label3)">Qayerdan *</label>
-    <input id="oc-from" type="text" placeholder="Hozirgi joylashuvingiz manzili" autocomplete="off"
-           class="w-full mt-1.5 px-3.5 py-3 rounded-xl ios-subhead" style="background:var(--ios-fill);border:none;outline:none;color:var(--ios-label)">
-    <p class="ios-caption2 mt-1.5" style="color:var(--ios-label3)"><i class="fas fa-location-dot mr-1"></i>Joriy GPS koordinatangiz avtomatik biriktiriladi</p>
+    <div class="flex flex-wrap gap-2 mt-2">
+      {% for addr in saved_addresses %}
+      <button type="button" onclick="ocPickAddress({{ addr.pk }}, '{{ addr.name|escapejs }}')"
+              id="oc-addr-{{ addr.pk }}" class="oc-addr-chip px-3 py-2 rounded-xl ios-subhead font-semibold transition-colors"
+              style="background:var(--ios-fill);color:var(--ios-label)">
+        <i class="fas fa-location-dot mr-1" style="font-size:11px;color:#FF3B30"></i>{{ addr.name }}
+      </button>
+      {% endfor %}
+      <button type="button" onclick="ocPickAddress(null, null)"
+              id="oc-addr-other" class="oc-addr-chip px-3 py-2 rounded-xl ios-subhead font-semibold transition-colors"
+              style="background:var(--ios-fill);color:var(--ios-label)">
+        <i class="fas fa-pen mr-1" style="font-size:11px"></i>Boshqa
+      </button>
+    </div>
+    <input id="oc-from" type="text" placeholder="Manzilni yozing..." autocomplete="off"
+           class="w-full mt-2.5 px-3.5 py-3 rounded-xl ios-subhead hidden" style="background:var(--ios-fill);border:none;outline:none;color:var(--ios-label)">
+    <p id="oc-from-hint" class="ios-caption2 mt-1.5" style="color:var(--ios-label3)">
+      <i class="fas fa-list mr-1"></i>Ro'yxatdan manzil tanlang yoki "Boshqa"ni bosib o'zingiz yozing
+    </p>
   </div>
 
   <div class="ios-card2 rounded-2xl p-4 mb-4">
@@ -50,6 +66,7 @@
 {% block extra_js %}
 <script>
 let ocAssign  = 'self';
+let ocAddrId  = undefined;  // tanlanmagan: undefined | saqlangan manzil: son | "Boshqa": null
 
 function ocSetAssign(v) {
   ocAssign = v;
@@ -59,12 +76,35 @@ function ocSetAssign(v) {
   document.getElementById('oc-assign-others').style.color      = v === 'others' ? '#000' : 'var(--ios-label)';
 }
 
+function ocPickAddress(id, name) {
+  ocAddrId = id;
+  document.querySelectorAll('.oc-addr-chip').forEach(function (el) {
+    el.style.background = 'var(--ios-fill)';
+    el.style.color = 'var(--ios-label)';
+  });
+  const activeEl = document.getElementById(id !== null ? 'oc-addr-' + id : 'oc-addr-other');
+  if (activeEl) { activeEl.style.background = '#FFD600'; activeEl.style.color = '#000'; }
+
+  const input = document.getElementById('oc-from');
+  const hint  = document.getElementById('oc-from-hint');
+  if (id === null) {
+    input.classList.remove('hidden');
+    input.value = '';
+    input.focus();
+    hint.innerHTML = '<i class="fas fa-users mr-1"></i>Bu buyurtma umumiy tabloga tushib, barcha haydovchilarga bir vaqtda ko\'rinadi';
+  } else {
+    input.classList.add('hidden');
+    input.value = name;
+    hint.innerHTML = '<i class="fas fa-list-ol mr-1"></i>Shu manzil navbatida turgan haydovchiga taklif qilinadi';
+  }
+}
+
 async function ocSubmit() {
   const phone = document.getElementById('oc-phone').value.trim();
-  const from  = document.getElementById('oc-from').value.trim();
+  const freeText = document.getElementById('oc-from').value.trim();
 
-  if (!phone || !from) {
-    showToast('Xatolik', 'Mijoz raqami va manzilni kiriting', 'error', 3000);
+  if (!phone || ocAddrId === undefined || (ocAddrId === null && !freeText)) {
+    showToast('Xatolik', 'Mijoz raqami va manzilni tanlang/kiriting', 'error', 3000);
     return;
   }
 
@@ -76,7 +116,11 @@ async function ocSubmit() {
   try {
     const fd = new FormData();
     fd.append('phone_number', phone);
-    fd.append('from_address', from);
+    if (ocAddrId !== null) {
+      fd.append('saved_address_id', ocAddrId);
+    } else {
+      fd.append('from_address', freeText);
+    }
     fd.append('assign_to', ocAssign);
     fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
 
