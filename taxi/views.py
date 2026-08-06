@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import user_passes_test
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher, VizitkaRewardLog, LegalDocument, SecurityIncident, VoiceParticipant, VoiceSignal, SavedAddress
-from .utils import haversine, find_nearest_driver, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, tg_order_deleted, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed, build_balance_receipt_pdf, build_flyer_business_card_pdf, voice_prune_stale, voice_participants_list, voice_target_kwargs, voice_signal_sender_info, voice_broadcast_audio
+from .utils import haversine, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, tg_order_deleted, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed, build_balance_receipt_pdf, build_flyer_business_card_pdf, voice_prune_stale, voice_participants_list, voice_target_kwargs, voice_signal_sender_info, voice_broadcast_audio
 import csv
 import json
 
@@ -2116,6 +2116,8 @@ def tariff_settings(request):
             tariff.commission   = Decimal(request.POST.get('commission', tariff.commission))
             tariff.auto_dispatch = request.POST.get('auto_dispatch') == 'on'
             tariff.max_dispatch_attempts = int(request.POST.get('max_dispatch_attempts', tariff.max_dispatch_attempts))
+            tariff.fairness_weight_km    = float(request.POST.get('fairness_weight_km', tariff.fairness_weight_km))
+            tariff.fairness_max_radius_km = float(request.POST.get('fairness_max_radius_km', tariff.fairness_max_radius_km))
             tariff.dispatch_timeout      = int(request.POST.get('dispatch_timeout', tariff.dispatch_timeout))
             tariff.operator_phone        = request.POST.get('operator_phone', tariff.operator_phone).strip() or tariff.operator_phone
             tariff.office_name = request.POST.get('office_name', tariff.office_name).strip() or tariff.office_name

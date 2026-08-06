@@ -65,18 +65,58 @@ def get_surge_multiplier():
     else:
         return 1.0, "Normal"
 
-def find_nearest_driver(drivers, lat, lng):
-    nearest_driver = None
-    min_dist = float('inf')
-    
+def find_fairest_driver(drivers, lat, lng, fairness_weight_km=0, max_radius_km=0):
+    """Nomzodlar orasidan eng mos haydovchini tanlaydi — sof masofa emas,
+    balki har bir nomzod uchun hisoblangan Score bo'yicha (eng kichik Score
+    g'olib):
+
+        Score = masofa (km)
+                + (bugun yakunlagan buyurtmalari soni * fairness_weight_km)
+                - (oxirgi yakunlagan buyurtmasidan beri kutgan daqiqasi * 0.1)
+
+    - Ko'p ishlagan haydovchining "samarali masofasi" oshadi (jarima),
+      uzoq kutib turgan haydovchiniki esa kamayadi (bonus) — shu orqali
+      band haydovchi hammasini olib ketmaydi, lekin uzoq kutgan haydovchi
+      ham tez-tez ustunlik oladi.
+    - Hech qachon yakunlagan buyurtmasi bo'lmagan haydovchi uchun kutish
+      vaqti 30 daqiqa deb olinadi (o'rtacha, na haddan ortiq ustunlik,
+      na kamsitish).
+    - max_radius_km berilgan bo'lsa (0 dan katta), shu radiusdan
+      uzoqdagi nomzodlar butunlay chiqarib tashlanadi — mijozni haddan
+      tashqari uzoq kutdirmaslik uchun (adolat mijoz tajribasidan ustun
+      qo'yilmaydi).
+    - fairness_weight_km=0 bo'lsa — avvalgidek faqat masofa hal qiladi."""
+    from django.utils import timezone
+
+    now = timezone.now()
+    today = now.date()
+
+    best_driver = None
+    best_score = float('inf')
+    best_dist = float('inf')
     for driver in drivers:
-        if driver.latitude is not None and driver.longitude is not None:
-            dist = haversine(lat, lng, driver.latitude, driver.longitude)
-            if dist is not None and dist < min_dist:
-                min_dist = dist
-                nearest_driver = driver
-                
-    return nearest_driver, min_dist
+        if driver.latitude is None or driver.longitude is None:
+            continue
+        dist = haversine(lat, lng, driver.latitude, driver.longitude)
+        if dist is None:
+            continue
+        if max_radius_km and dist > max_radius_km:
+            continue
+
+        if fairness_weight_km:
+            today_orders_count = driver.orders.filter(status='completed', created_at__date=today).count()
+            last_order = driver.orders.filter(status='completed').order_by('-updated_at').first()
+            idle_minutes = (now - last_order.updated_at).total_seconds() / 60 if last_order else 30
+            score = dist + today_orders_count * fairness_weight_km - idle_minutes * 0.1
+        else:
+            score = dist
+
+        if score < best_score:
+            best_score = score
+            best_driver = driver
+            best_dist = dist
+
+    return best_driver, best_dist
 
 
 def send_telegram(text, token=None, chat_ids=None, reply_markup=None):
@@ -1694,7 +1734,10 @@ def dispatch_order(order):
             order.save(update_fields=['dispatched_to'])
         return None
 
-    nearest, _ = find_nearest_driver(candidates, order.from_lat, order.from_lng)
+    nearest, _ = find_fairest_driver(
+        candidates, order.from_lat, order.from_lng,
+        tariff.fairness_weight_km, tariff.fairness_max_radius_km,
+    )
     if not nearest:
         if order.dispatched_to is not None:
             order.dispatched_to = None
