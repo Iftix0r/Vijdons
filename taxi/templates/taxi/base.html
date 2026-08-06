@@ -1239,6 +1239,46 @@
         }
     }
 
+    // ── Ro'yxat sahifalarida "pastga tushursa qolgani yuklansin" ──
+    // sentinelId — jadval oxiridagi "kuzatuvchi" qator (IntersectionObserver
+    // shu qatorni kuzatadi, ko'rinishga kirganda keyingi sahifani yuklaydi).
+    // Server joriy URL + `?page=N`ga AJAX so'rov (X-Requested-With bilan)
+    // kelganda butun sahifa o'rniga faqat qo'shimcha qatorlar HTML'ini
+    // ({html, has_next}) qaytaradi — shu qatorlar sentinel oldiga qo'shiladi,
+    // sentinel har doim ro'yxat oxirida qolaveradi.
+    function initInfiniteScroll(sentinelId, hasNext, nextPage) {
+        const sentinel = document.getElementById(sentinelId);
+        if (!sentinel) return;
+        let loading = false, page = nextPage, has_next = hasNext;
+        if (!has_next) { sentinel.remove(); return; }
+
+        function loadMore() {
+            if (loading || !has_next) return;
+            loading = true;
+            sentinel.classList.remove('hidden');
+            const params = new URLSearchParams(window.location.search);
+            params.set('page', page);
+            fetch(window.location.pathname + '?' + params.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(r => r.json())
+                .then(d => {
+                    sentinel.insertAdjacentHTML('beforebegin', d.html);
+                    has_next = d.has_next;
+                    page += 1;
+                    loading = false;
+                    if (!has_next) { observer.disconnect(); sentinel.remove(); }
+                    else sentinel.classList.add('hidden');
+                })
+                .catch(() => { loading = false; });
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) loadMore();
+        }, { rootMargin: '400px' });
+        observer.observe(sentinel);
+    }
+
     // ── active_drivers in order modal ──
     // populated from server via template — nothing extra needed
     // ── Chat unread badge ──

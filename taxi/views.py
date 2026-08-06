@@ -755,6 +755,9 @@ def orders_on_route_poll(request):
 
 @panel_login_required
 def order_list(request):
+    from django.core.paginator import Paginator
+    from django.template.loader import render_to_string
+
     qs = Order.objects.select_related('client', 'driver')
     q      = request.GET.get('q', '').strip()
     status = request.GET.get('status', '')
@@ -775,13 +778,24 @@ def order_list(request):
     else:
         qs = qs.order_by('-created_at')
 
+    drivers = Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED)
+    page_obj = Paginator(qs, 40).get_page(request.GET.get('page'))
+
+    # Pastga tushirilganda keyingi sahifa shu yerdan AJAX orqali yuklanadi
+    # (base.html'dagi initInfiniteScroll) — faqat qo'shimcha qatorlar
+    # HTML'i qaytariladi, butun sahifa emas.
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        html = render_to_string('taxi/_order_rows.html', {'orders': page_obj, 'drivers': drivers}, request=request)
+        return JsonResponse({'html': html, 'has_next': page_obj.has_next()})
+
     context = {
-        'orders':   qs,
-        'drivers':  Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED),
-        'q':        q,
-        'status':   status,
-        'sort':     sort,
-        'statuses': Order.STATUS_CHOICES,
+        'orders':      page_obj,
+        'total_count': page_obj.paginator.count,
+        'drivers':     drivers,
+        'q':           q,
+        'status':      status,
+        'sort':        sort,
+        'statuses':    Order.STATUS_CHOICES,
     }
     return render(request, 'taxi/order_list.html', context)
 
@@ -790,6 +804,8 @@ def order_list(request):
 def driver_list(request):
     from django.db.models import Case, When, Value, IntegerField
     from django.utils import timezone
+    from django.core.paginator import Paginator
+    from django.template.loader import render_to_string
 
     q    = request.GET.get('q', '').strip()
     tab  = request.GET.get('tab', 'approved')
@@ -819,17 +835,27 @@ def driver_list(request):
         qs = qs.filter(approval_status=Driver.APPROVAL_APPROVED)
 
     if sort == 'top_completed':
-        qs = qs.order_by('-is_online', '-completed_count')
+        qs = qs.order_by('-is_online', '-completed_count', '-id')
     elif sort == 'top_cancelled':
-        qs = qs.order_by('-is_online', '-cancelled_count')
+        qs = qs.order_by('-is_online', '-cancelled_count', '-id')
     elif sort == 'top_rating':
-        qs = qs.order_by('-is_online', '-rating')
+        qs = qs.order_by('-is_online', '-rating', '-id')
     elif sort == 'top_balance':
-        qs = qs.order_by('-is_online', '-balance')
+        qs = qs.order_by('-is_online', '-balance', '-id')
     elif sort == 'newest':
-        qs = qs.order_by('-is_online', '-registered_at')
+        qs = qs.order_by('-is_online', '-registered_at', '-id')
     else:
-        qs = qs.order_by('-is_online', '-last_seen')
+        qs = qs.order_by('-is_online', '-last_seen', '-id')
+
+    # Kutilmoqda (pending) yorliq katta kartochkalarda ko'rsatiladi va odatda
+    # kam sonli bo'ladi — faqat tasdiqlangan/rad etilgan jadval ro'yxati
+    # sahifalanadi (pastga tushirilganda AJAX orqali qolgani yuklanadi).
+    if tab != 'pending':
+        page_obj = Paginator(qs, 40).get_page(request.GET.get('page'))
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            html = render_to_string('taxi/_driver_rows.html', {'drivers': page_obj, 'tab': tab}, request=request)
+            return JsonResponse({'html': html, 'has_next': page_obj.has_next()})
+        qs = page_obj
 
     return render(request, 'taxi/driver_list.html', {
         'drivers':        qs,
@@ -887,6 +913,9 @@ def ping_dashboard(request):
 
 @panel_login_required
 def client_list(request):
+    from django.core.paginator import Paginator
+    from django.template.loader import render_to_string
+
     q      = request.GET.get('q', '').strip()
     filter_ = request.GET.get('filter', '').strip()
     sort    = request.GET.get('sort', '').strip()
@@ -899,7 +928,23 @@ def client_list(request):
         qs = qs.filter(is_blocked=False)
     if sort == 'top_orders':
         qs = qs.order_by('-orders_count')
-    return render(request, 'taxi/client_list.html', {'clients': qs, 'q': q, 'filter': filter_, 'sort': sort})
+    else:
+        qs = qs.order_by('-id')
+
+    page_obj = Paginator(qs, 40).get_page(request.GET.get('page'))
+
+    # Ro'yxatni pastga tushirganda keyingi sahifa shu yerdan AJAX orqali
+    # yuklanadi (base.html'dagi initInfiniteScroll) — butun sahifa emas,
+    # faqat qatorlar HTML'i qaytariladi.
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        html = render_to_string('taxi/_client_rows.html', {'clients': page_obj}, request=request)
+        return JsonResponse({'html': html, 'has_next': page_obj.has_next()})
+
+    return render(request, 'taxi/client_list.html', {
+        'clients': page_obj,
+        'total_count': page_obj.paginator.count,
+        'q': q, 'filter': filter_, 'sort': sort,
+    })
 
 
 # ── Tariff Settings ────────────────────────────────────────────────────────────

@@ -184,174 +184,21 @@
                     <th class="px-5 py-3.5 text-right">Amal</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-50 dark:divide-gray-800">
-                {% for driver in drivers %}
-                <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-800/50 transition-colors group">
-                    <!-- Name + avatar -->
-                    <td class="px-5 py-4">
-                        <div class="flex items-center gap-3">
-                            {% if driver.photo %}
-                            <img src="{{ driver.photo.url }}" alt="{{ driver.full_name }}"
-                                 class="w-9 h-9 rounded-xl object-cover flex-shrink-0">
-                            {% else %}
-                            <div class="w-9 h-9 rounded-xl {% if tab == 'rejected' %}bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400{% else %}bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400{% endif %} flex items-center justify-center font-bold text-sm flex-shrink-0">
-                                {{ driver.full_name|slice:":1"|upper }}
-                            </div>
-                            {% endif %}
-                            <div>
-                                <p class="font-semibold text-gray-900 dark:text-white text-sm leading-tight">{{ driver.full_name }}</p>
-                                {% if tab != 'rejected' %}
-                                {% if driver.last_seen %}
-                                    {% seconds_since driver.last_seen as secs %}
-                                    {% if secs < 120 %}
-                                    <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5 mt-0.5">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot inline-block"></span> Online
-                                    </span>
-                                    {% elif secs < 3600 %}
-                                    <span class="text-[10px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-0.5 mt-0.5">
-                                        <i class="fas fa-clock text-[9px]"></i> {{ secs|div:60 }} daq oldin
-                                    </span>
-                                    {% else %}
-                                    <span class="text-[10px] text-gray-400 flex items-center gap-0.5 mt-0.5">
-                                        <i class="fas fa-circle text-[9px]"></i> {{ driver.last_seen|date:"d.m H:i" }}
-                                    </span>
-                                    {% endif %}
-                                {% else %}
-                                    {% if driver.is_on_duty %}
-                                    <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5 mt-0.5">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot inline-block"></span> Navbatda
-                                    </span>
-                                    {% else %}
-                                    <span class="text-[10px] text-gray-400 flex items-center gap-0.5 mt-0.5">
-                                        <i class="fas fa-circle text-[9px]"></i> Offline
-                                    </span>
-                                    {% endif %}
-                                {% endif %}
-                                {% if driver.latitude and driver.longitude %}
-                                <a href="https://www.google.com/maps?q={{ driver.latitude|floatdot }},{{ driver.longitude|floatdot }}" target="_blank"
-                                   class="text-[10px] text-blue-500 hover:text-blue-700 flex items-center gap-0.5 mt-0.5">
-                                    <i class="fas fa-location-dot text-[9px]"></i>
-                                    {% if driver.last_address %}{{ driver.last_address|truncatechars:35 }}{% else %}{{ driver.latitude|floatformat:4 }}, {{ driver.longitude|floatformat:4 }}{% endif %}
-                                </a>
-                                {% endif %}
-                                {% endif %}
-                            </div>
-                        </div>
-                    </td>
-
-                    <!-- Phone -->
-                    <td class="px-5 py-4">
-                        <a href="tel:{{ driver.phone_number }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-mono transition-colors">
-                            {{ driver.phone_number }}
-                        </a>
-                    </td>
-
-                    <!-- Car -->
-                    <td class="px-5 py-4">
-                        <div class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ driver.car_model }}</div>
-                        <div class="text-xs font-mono text-gray-400 dark:text-gray-500 mt-0.5">{{ driver.car_number }}</div>
-                        <div class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{{ driver.get_car_type_display }}</div>
-                    </td>
-
-                    <!-- Orders stats -->
-                    <td class="px-5 py-4">
-                        <div class="flex items-center gap-1.5">
-                            <span class="inline-flex items-center gap-1 text-xs bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 px-2 py-1 rounded-full font-semibold" title="Bajargan">
-                                <i class="fas fa-check text-[9px]"></i>{{ driver.completed_count }}
-                            </span>
-                            <span class="inline-flex items-center gap-1 text-xs bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 px-2 py-1 rounded-full font-semibold" title="Bekor qilgan">
-                                <i class="fas fa-xmark text-[9px]"></i>{{ driver.cancelled_count }}
-                            </span>
-                        </div>
-                    </td>
-
-                    <!-- Balance -->
-                    <td class="px-5 py-4">
-                        <div class="text-sm font-bold {% if driver.balance < 0 %}text-red-500{% else %}text-emerald-500{% endif %}">
-                            {{ driver.balance }} UZS
-                        </div>
-                    </td>
-
-                    <!-- Date -->
-                    <td class="px-5 py-4 text-xs text-gray-400 whitespace-nowrap">
-                        {% if driver.registered_at %}{{ driver.registered_at|date:"d.m.Y H:i" }}{% else %}—{% endif %}
-                    </td>
-
-                    <!-- Actions -->
-                    <td class="px-5 py-4">
-                        <div class="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {% if tab == 'rejected' %}
-                            <!-- Re-approve button -->
-                            <form action="{% url 'taxi:driver_approve' driver.pk %}" method="POST" class="inline">
-                                {% csrf_token %}
-                                <input type="hidden" name="action" value="approve">
-                                <button type="submit" title="Qayta tasdiqlash"
-                                        class="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors">
-                                    <i class="fas fa-rotate-left text-xs"></i>
-                                </button>
-                            </form>
-                            {% endif %}
-
-                            <!-- Orders link -->
-                            <a href="{% url 'taxi:order_list' %}?q={{ driver.full_name }}" title="Buyurtmalari"
-                               class="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
-                                <i class="fas fa-route text-xs"></i>
-                            </a>
-
-                            <!-- Recharge button -->
-                            <button onclick="openRechargeModal({{ driver.pk }}, '{{ driver.full_name|escapejs }}')"
-                                    title="Hisobni to'ldirish"
-                                    class="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 hover:bg-emerald-100 hover:text-emerald-600 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-400 transition-colors">
-                                <i class="fas fa-wallet text-xs"></i>
-                            </button>
-
-                            <!-- Edit button -->
-                            <button onclick="openDriverEditModal({{ driver.pk }}, '{{ driver.full_name|escapejs }}', '{{ driver.phone_number|escapejs }}', '{{ driver.car_model|escapejs }}', '{{ driver.car_number|escapejs }}', '{{ driver.car_type|escapejs }}')"
-                                    title="Tahrirlash"
-                                    class="flex items-center justify-center w-8 h-8 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-500 hover:bg-yellow-100 hover:text-yellow-600 dark:hover:bg-yellow-900/30 dark:hover:text-yellow-400 transition-colors">
-                                <i class="fas fa-pen text-xs"></i>
-                            </button>
-
-                            <!-- Detail button -->
-                            <a href="{% url 'taxi:driver_detail' driver.pk %}"
-                                    title="Batafsil"
-                                    class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-yellow-100 hover:text-yellow-600 dark:hover:bg-yellow-900/30 dark:hover:text-yellow-400 transition-colors">
-                                <i class="fas fa-eye text-xs"></i>
-                            </a>
-
-                            {% if tab != 'rejected' %}
-                            <!-- Freeze / Unfreeze -->
-                            <form action="{% url 'taxi:driver_toggle_frozen' driver.pk %}" method="POST" class="inline">
-                                {% csrf_token %}
-                                {% if driver.is_frozen %}
-                                <button type="submit" title="Muzlashni bekor qilish"
-                                        class="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors">
-                                    <i class="fas fa-fire text-xs"></i>
-                                </button>
-                                {% else %}
-                                <button type="submit" title="Muzlatish"
-                                        class="flex items-center justify-center w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-900/20 text-sky-400 hover:bg-sky-100 hover:text-sky-600 dark:hover:bg-sky-900/40 dark:hover:text-sky-400 transition-colors">
-                                    <i class="fas fa-snowflake text-xs"></i>
-                                </button>
-                                {% endif %}
-                            </form>
-                            {% endif %}
-
-                            <!-- Delete -->
-                            <form id="del-driver-{{ driver.pk }}" action="{% url 'taxi:driver_delete' driver.pk %}" method="POST" class="inline">
-                                {% csrf_token %}
-                            </form>
-                            <button type="button" onclick="confirmDelete('del-driver-{{ driver.pk }}')" title="O'chirish"
-                                    class="flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/40 transition-colors">
-                                <i class="fas fa-trash-can text-xs"></i>
-                            </button>
-                        </div>
+            <tbody id="drivers-tbody" class="divide-y divide-gray-50 dark:divide-gray-800">
+                {% include "taxi/_driver_rows.html" %}
+                <tr id="drivers-sentinel" class="{% if not drivers.has_next %}hidden{% endif %}">
+                    <td colspan="7" class="text-center py-4 text-gray-400 text-xs">
+                        <i class="fas fa-spinner fa-spin"></i> Yuklanmoqda...
                     </td>
                 </tr>
-                {% endfor %}
             </tbody>
         </table>
     </div>
+    <script>
+    {% if drivers.has_next %}
+    initInfiniteScroll('drivers-sentinel', true, {{ drivers.next_page_number }});
+    {% endif %}
+    </script>
     {% else %}
     <div class="py-20 text-center">
         <div class="w-16 h-16 rounded-2xl {% if tab == 'rejected' %}bg-red-50 dark:bg-red-900/20 text-red-300{% else %}bg-blue-50 dark:bg-blue-900/20 text-blue-300{% endif %} flex items-center justify-center text-3xl mx-auto mb-4">
