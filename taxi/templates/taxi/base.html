@@ -1079,15 +1079,37 @@
 
     // Tezkor manzil chipi bosilganda — hozirgi navbat (1=qayerdan, 2=qayerga)
     // bo'yicha xuddi xaritaga bosilgandek ishlaydi, faqat geocode shart emas.
+    // Diqqat: xarita hali tayyor bo'lmasa ham (masalan modal endigina
+    // ochilgan, Yandex Maps skripti hali yuklanayotgan bo'lsa — bunga
+    // ~150ms+ ketadi) koordinata baribir to'ldirilishi SHART. Avval bu
+    // yerda `if (!_omap) return` bo'lgani uchun operator xaritasi ulgurmay
+    // chip bossa, hech narsa bo'lmagan (jim) va buyurtma koordinatasiz —
+    // demak avtomatik taqsimlash o'rniga umumiy tabloga (hammaga baravar)
+    // tushib ketardi, garchi operator "tezkor manzil" tanlagan bo'lsa ham.
     function _pickSavedAddress(lat, lng, name, addressId) {
-        if (!_omap) return;
         var coords = [lat, lng];
-        if (_omapStep === 1) {
-            _setOrderFromPoint(coords, name);
+        if (_omap) {
+            if (_omapStep === 1) {
+                _setOrderFromPoint(coords, name);
+            } else {
+                _setOrderToPoint(coords, name);
+            }
+            _omap.setCenter(coords, Math.max(_omap.getZoom(), 14));
+        } else if (_omapStep === 1) {
+            document.getElementById('om_from_lat').value = lat;
+            document.getElementById('om_from_lng').value = lng;
+            document.getElementById('om_from_address').value = name;
+            document.getElementById('map_from_text').textContent = name.length > 30 ? name.slice(0,30)+'…' : name;
+            document.getElementById('map_from_badge').className = 'flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/40';
+            _omapStep = 2;
         } else {
-            _setOrderToPoint(coords, name);
+            document.getElementById('om_to_lat').value = lat;
+            document.getElementById('om_to_lng').value = lng;
+            document.getElementById('om_to_address').value = name;
+            document.getElementById('map_to_text').textContent = name.length > 30 ? name.slice(0,30)+'…' : name;
+            document.getElementById('map_to_badge').className = 'flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-semibold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/40';
+            _omapStep = 1;
         }
-        _omap.setCenter(coords, Math.max(_omap.getZoom(), 14));
         if (addressId) {
             fetch('/panel/manzillar/' + addressId + '/use/', {
                 method: 'POST',
