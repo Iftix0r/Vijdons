@@ -1118,12 +1118,7 @@ document.addEventListener('visibilitychange', () => {
 // masofa tekshiriladi — 300m radius ichida bo'lsa nomi, masofasi va shu
 // manzil atrofida (xuddi shu radiusda) turgan boshqa navbatdagi
 // haydovchilar orasida nechinchi o'rinda ekani ko'rsatiladi.
-// `let` (const emas) — operator panelda manzil qo'shsa/o'chirsa/tahrirlasa,
-// haydovchi ilovani qayta ochmasdan ham bu ro'yxat davriy o'zi yangilanadi
-// (pastdagi _refreshSavedAddresses, har 3 daqiqada). Aks holda: manzil
-// o'chirilgan/o'zgargan bo'lsa ham, ilova ochilgan paytdagi ESKI ro'yxat
-// abadiy xotirada qolib, hech qachon yangilanmasdi.
-let SAVED_ADDRESSES = {{ saved_addresses_json|safe }};
+const SAVED_ADDRESSES = {{ saved_addresses_json|safe }};
 const NEAR_ADDRESS_THRESHOLD_M = 300;
 let _nearAddressId = null;
 let _nearAddressQueueTimer = null;
@@ -1137,22 +1132,6 @@ let _nearAddressShowPosition = false;   // false=masofa, true=o'rin — har 2.5s
 function _formatDistanceM(m) {
   return m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(1) + ' km';
 }
-
-// Manzillar ro'yxatini serverdan qayta so'rab, mahalliy nusxani yangilaydi
-// (driver:all_addresses — "Manzillar" ro'yxatida ham ishlatiladigan xuddi
-// shu endpoint, faqat bu yerda lat/lng/id kifoya). Har 3 daqiqada avtomatik
-// chaqiriladi — operator biror manzilni qo'shsa/o'chirsa/ko'chirsa,
-// haydovchi ilovani qayta ochmasdan ham tez orada shuni ko'radi.
-function _refreshSavedAddresses() {
-  fetch('{% url "driver:all_addresses" %}', { cache: 'no-store' })
-    .then(r => r.json())
-    .then(d => {
-      if (!d.ok) return;
-      SAVED_ADDRESSES = (d.addresses || []).map(a => ({ id: a.id, name: a.name, lat: a.lat, lng: a.lng }));
-    })
-    .catch(() => {});
-}
-setInterval(_refreshSavedAddresses, 60000);
 
 // Diqqat: konteyner juda tor (Reyting/Balans tugmalari orasida) bo'lgani
 // uchun masofa va o'rinni BIRGA yozib bo'lmaydi (kesilib qolardi) — shu
@@ -1282,35 +1261,32 @@ function _checkNearSavedAddress(lat, lng) {
       }).catch(() => {});
     }, 1500);
   }
-  // Diqqat: pastroqda (jonli xarita bo'limida) ILOVANING O'ZIGA TEGISHLI,
-  // shu sahifadagi ikkinchi (mustaqil) geolocation.watchPosition() bor —
-  // u har doim, kechikishsiz ishlaydi (xarita shu orqali to'g'ri yuradi).
-  // gotCoords()ni GLOBAL qilib chiqaramiz — shu orqali o'sha (ishonchli)
-  // manba HAM gotCoords()ni chaqirib, "yaqin manzil" belgisi va
-  // location_sync'ni oziqlantiradi — ikkita mustaqil, bir-biridan bexabar
-  // GPS manbasi bo'lib qolmasin (aks holda xarita to'g'ri ishlab, faqat
-  // manzil belgisi ishlamay qolishi mumkin edi — aynan shu bo'lgan edi).
-  window._vjGotCoords = gotCoords;
 
   // ── Flutter vijdon_location eventini tinglash ─────────────────────────────
   // Flutter (main.dart) _sendLocation() har 15s da:
   //   window.dispatchEvent(CustomEvent('vijdon_location', {detail:{lat,lng}}))
   // yuboradi. Geolocation ruxsati KERAK EMAS.
 
+  let _flutterSeen = false;
+
   window.addEventListener('vijdon_location', function(e) {
     if (e.detail?.lat && e.detail?.lng) {
+      _flutterSeen = true;
       gotCoords(e.detail.lat, e.detail.lng);
     }
   });
 
-  // Diqqat: avval bu yerda — Flutter eventi kelmasa — o'zining ALOHIDA
-  // (6s kechikuvchi, brauzerda esa bir martalik/ilgari watchPosition)
-  // GPS manbasi bo'lgan. Lekin pastroqdagi jonli xarita bo'limida
-  // ALLAQACHON kechikishsiz, doimiy ishlaydigan o'z watchPosition()i bor
-  // edi (shu orqali xarita to'g'ri yurar, faqat manzil belgisi ishlamas
-  // edi). Endi ikkita mustaqil GPS manbasi tutmasin deb, shu yerda
-  // alohidasi olib tashlandi — o'rniga yuqorida window._vjGotCoords
-  // orqali xaritaning ishonchli manbasiga ulanadi (_homeUpdateMine).
+  // 6 soniya kutamiz — agar Flutter event kelmasa, oddiy brauzerda ochilgan
+  // demak, browser geolocation ishlatamiz (alert EMAS, faqat toast)
+  setTimeout(() => {
+    if (_flutterSeen) return;
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      pos => gotCoords(pos.coords.latitude, pos.coords.longitude),
+      () => {},
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+    );
+  }, 6000);
 })();
 {% endif %}
 
@@ -1943,12 +1919,6 @@ function _checkNearSavedAddress(lat, lng) {
   }
 
   function _homeUpdateMine(lat, lng) {
-    // Bu funksiya (Flutter eventidan yoki pastdagi brauzer watchPosition'dan)
-    // har safar chaqirilganda — xarita ishonchli GPS manbasi bo'lgani uchun
-    // shu koordinatani "yaqin manzil" belgisi va location_sync'ni
-    // oziqlantiradigan gotCoords()ga ham uzatamiz (window._vjGotCoords,
-    // initNavLocation'da o'rnatiladi).
-    if (window._vjGotCoords) window._vjGotCoords(lat, lng);
     if (!_homeMap) { _homeEnsureMap(lat, lng); return; }
     _lastLat = lat; _lastLng = lng;
     if (_homeMode === 'mapbox') _homeUpdateMineMapbox(lat, lng); else _homeUpdateMineV2(lat, lng);
