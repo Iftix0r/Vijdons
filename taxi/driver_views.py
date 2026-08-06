@@ -921,9 +921,21 @@ def driver_chat_poll(request, driver):
 
 @driver_login_required
 def driver_ping(request, driver):
-    """Bo'sh javob, DB so'rovisiz — Asosiy sahifadagi tarmoq tezligi
-    (ping) ko'rsatkichi shu yerga davriy so'rov yuborib, round-trip
-    vaqtini o'lchaydi."""
+    """Asosiy sahifadagi tarmoq tezligi (ping) ko'rsatkichi shu yerga
+    davriy so'rov yuborib, round-trip vaqtini o'lchaydi. Javobning o'zi
+    hech qanday DB yozuvisiz — faqat oldingi o'lchovning natijasi (`ms`
+    query parametri, bir intervaldan keyin) operator panelidagi "Ping"
+    bo'limi uchun Driver'ga saqlanadi (aloqasi yomon haydovchilarni
+    topib, ularga yordam berish uchun)."""
+    ms = request.GET.get('ms')
+    if ms:
+        try:
+            ms_int = int(ms)
+        except (TypeError, ValueError):
+            ms_int = None
+        if ms_int is not None and 0 < ms_int < 60000:
+            from django.utils import timezone
+            Driver.objects.filter(pk=driver.pk).update(last_ping_ms=ms_int, last_ping_at=timezone.now())
     return JsonResponse({'ok': True})
 
 

@@ -842,6 +842,49 @@ def driver_list(request):
     })
 
 
+PING_STALE_MINUTES = 5   # shundan eski o'lchov — "noma'lum" deb hisoblanadi
+PING_WARN_MS = 250        # shundan yuqori — o'rtacha (sariq)
+PING_BAD_MS  = 700        # shundan yuqori — sekin (qizil)
+
+
+@panel_login_required
+def ping_dashboard(request):
+    """Hozir navbatda turgan haydovchilarning internet ulanish sifati
+    (ping) ro'yxati — aloqasi yomon/noma'lum haydovchilar yuqorida
+    chiqadi, shu orqali operator ularga qo'ng'iroq qilib yordam bera
+    oladi (masalan simkarta/tarmoq bo'yicha maslahat)."""
+    from django.utils import timezone
+    import datetime
+
+    stale_cutoff = timezone.now() - datetime.timedelta(minutes=PING_STALE_MINUTES)
+
+    rows = []
+    for d in Driver.objects.filter(is_active=True, is_on_duty=True):
+        fresh = bool(d.last_ping_at and d.last_ping_at >= stale_cutoff)
+        if not fresh:
+            status, sort_key = 'unknown', 1
+        elif d.last_ping_ms < PING_WARN_MS:
+            status, sort_key = 'good', 0
+        elif d.last_ping_ms < PING_BAD_MS:
+            status, sort_key = 'warn', 2
+        else:
+            status, sort_key = 'bad', 3
+        rows.append({
+            'driver': d,
+            'ping_ms': d.last_ping_ms if fresh else None,
+            'last_ping_at': d.last_ping_at,
+            'status': status,
+            'sort_key': sort_key,
+        })
+    # Yordam kerak bo'lganlar (bad/warn/unknown) tepada, yaxshi aloqalilar pastda
+    rows.sort(key=lambda r: (-r['sort_key'], -(r['ping_ms'] or 0)))
+
+    return render(request, 'taxi/ping_dashboard.html', {
+        'rows': rows,
+        'bad_count': sum(1 for r in rows if r['status'] == 'bad'),
+    })
+
+
 @panel_login_required
 def client_list(request):
     q      = request.GET.get('q', '').strip()

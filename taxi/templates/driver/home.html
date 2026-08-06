@@ -517,6 +517,11 @@ if(IS_ON_DUTY) {
 // to'sqinlik qiladi, shu sabab ko'rinib turishi foydali).
 let _netSpeedMs = null;
 let _netSpeedTimer = null;
+// Oldingi o'lchov natijasi — keyingi so'rovga `?ms=` orqali qo'shib
+// yuborilib, operator panelidagi "Ping" bo'limi uchun Driver'ga
+// saqlanadi (bitta so'rov ichida o'lchash HAM/HAM xabar qilish mumkin
+// emas — round-trip tugagunga qadar natija ma'lum bo'lmaydi).
+let _pendingReportMs = null;
 
 async function _measureNetSpeed() {
   const icon = document.getElementById('net-speed-icon');
@@ -524,19 +529,23 @@ async function _measureNetSpeed() {
   if (!icon) return;
   if (!navigator.onLine) {
     _netSpeedMs = null;
+    _pendingReportMs = null;
     icon.style.color = '#8E8E93';
     if (value) value.textContent = 'off';
     return;
   }
+  const qs = _pendingReportMs !== null ? ('?ms=' + _pendingReportMs) : '';
   const t0 = performance.now();
   try {
-    await fetch('{% url "driver:ping" %}', { cache: 'no-store' });
+    await fetch('{% url "driver:ping" %}' + qs, { cache: 'no-store' });
     _netSpeedMs = Math.round(performance.now() - t0);
+    _pendingReportMs = _netSpeedMs;
     const color = _netSpeedMs < 250 ? '#34C759' : (_netSpeedMs < 700 ? '#FF9500' : '#FF3B30');
     icon.style.color = color;
     if (value) { value.textContent = _netSpeedMs + 'ms'; value.style.color = color; }
   } catch (_) {
     _netSpeedMs = null;
+    _pendingReportMs = null;
     icon.style.color = '#FF3B30';
     if (value) { value.textContent = 'off'; value.style.color = '#FF3B30'; }
   }

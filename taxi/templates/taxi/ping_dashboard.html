@@ -1,0 +1,116 @@
+{% extends 'taxi/base.html' %}
+{% block title %}Ping — Vijdon Taxi{% endblock %}
+
+{% block content %}
+
+<!-- Page header -->
+<div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white">Ping</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            Hozir navbatda turgan haydovchilarning internet ulanish sifati — aloqasi yomon/noma'lumlar tepada, ularga yordam bering.
+        </p>
+    </div>
+    {% if bad_count > 0 %}
+    <span class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-bold">
+        <i class="fas fa-triangle-exclamation"></i> {{ bad_count }} ta haydovchida aloqa sekin
+    </span>
+    {% endif %}
+</div>
+
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+    {% if rows %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-[11px] uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
+                    <th class="px-5 py-3.5">Haydovchi</th>
+                    <th class="px-5 py-3.5">Telefon</th>
+                    <th class="px-5 py-3.5">Mashina</th>
+                    <th class="px-5 py-3.5">Ping</th>
+                    <th class="px-5 py-3.5">Oxirgi o'lchov</th>
+                    <th class="px-5 py-3.5 text-right">Amal</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50 dark:divide-gray-800">
+                {% for row in rows %}
+                <tr class="hover:bg-slate-50/80 dark:hover:bg-gray-800/50 transition-colors group">
+                    <!-- Name -->
+                    <td class="px-5 py-4">
+                        <div class="flex items-center gap-3">
+                            {% if row.driver.photo %}
+                            <img src="{{ row.driver.photo.url }}" alt="{{ row.driver.full_name }}" class="w-9 h-9 rounded-xl object-cover flex-shrink-0">
+                            {% else %}
+                            <div class="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                                {{ row.driver.full_name|slice:":1"|upper }}
+                            </div>
+                            {% endif %}
+                            <p class="font-semibold text-gray-900 dark:text-white text-sm leading-tight">{{ row.driver.full_name }}</p>
+                        </div>
+                    </td>
+
+                    <!-- Phone -->
+                    <td class="px-5 py-4">
+                        <a href="tel:{{ row.driver.phone_number }}" class="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-mono transition-colors">
+                            {{ row.driver.phone_number }}
+                        </a>
+                    </td>
+
+                    <!-- Car -->
+                    <td class="px-5 py-4">
+                        <div class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ row.driver.car_model }}</div>
+                        <div class="text-xs font-mono text-gray-400 dark:text-gray-500 mt-0.5">{{ row.driver.car_number }}</div>
+                    </td>
+
+                    <!-- Ping -->
+                    <td class="px-5 py-4">
+                        {% if row.status == 'good' %}
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
+                            <i class="fas fa-wifi text-[10px]"></i> {{ row.ping_ms }} ms
+                        </span>
+                        {% elif row.status == 'warn' %}
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400">
+                            <i class="fas fa-wifi text-[10px]"></i> {{ row.ping_ms }} ms
+                        </span>
+                        {% elif row.status == 'bad' %}
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400">
+                            <i class="fas fa-triangle-exclamation text-[10px]"></i> {{ row.ping_ms }} ms
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-400">
+                            <i class="fas fa-question text-[10px]"></i> Noma'lum
+                        </span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Last measured -->
+                    <td class="px-5 py-4 text-xs text-gray-400 dark:text-gray-500">
+                        {% if row.last_ping_at %}{{ row.last_ping_at|date:"d.m H:i" }}{% else %}&mdash;{% endif %}
+                    </td>
+
+                    <!-- Action -->
+                    <td class="px-5 py-4 text-right">
+                        {% if row.status == 'bad' or row.status == 'unknown' %}
+                        <a href="tel:{{ row.driver.phone_number }}"
+                           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors">
+                            <i class="fas fa-phone text-[10px]"></i> Yordam berish
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="py-20 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-300 dark:text-gray-600 text-3xl mx-auto mb-4">
+            <i class="fas fa-wifi"></i>
+        </div>
+        <p class="font-bold text-gray-700 dark:text-gray-300 text-lg">Hozir navbatda haydovchi yo'q</p>
+        <p class="text-sm text-gray-400 mt-1">Ish navbatidagi haydovchilar shu yerda ping ma'lumoti bilan ko'rinadi.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

@@ -41,6 +41,15 @@ def active_drivers(request):
     except Exception:
         pass
 
+    # Sidebardagi "Ping" belgisi — hozir navbatda turgan, aloqasi sekin
+    # haydovchilar soni (taxi/views.py'dagi ping_dashboard bilan bir xil
+    # chegaralar)
+    ping_stale_cutoff = timezone.now() - timedelta(minutes=5)
+    bad_ping_driver_count = Driver.objects.filter(
+        is_active=True, is_on_duty=True,
+        last_ping_at__gte=ping_stale_cutoff, last_ping_ms__gte=700,
+    ).count()
+
     return {
         # Yangi buyurtma oynasida haydovchini tanlashda "bugun nechta buyurtma
         # oldi" ko'rinib tursin — operator kam zakaz olganlarga ham teng
@@ -77,4 +86,5 @@ def active_drivers(request):
         'latest_event_id': PanelEvent.objects.aggregate(m=Max('id'))['m'] or 0,
         'driver_sounds_json': json.dumps(driver_sounds),
         'latest_balance_log_id': latest_balance_log_id,
+        'bad_ping_driver_count': bad_ping_driver_count,
     }

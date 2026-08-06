@@ -37,6 +37,7 @@ urlpatterns = [
     path('api/ai-insights/reward/', views.panel_ai_reward_given, name='panel_ai_reward_given'),
     path('drivers/map/', views.driver_map, name='driver_map'),
     path('drivers/api/locations/', views.active_drivers_locations, name='active_drivers_locations'),
+    path('drivers/ping/', views.ping_dashboard, name='ping_dashboard'),
 
     path('clients/', views.client_list, name='client_list'),
     path('clients/add/', views.client_create, name='client_create'),
