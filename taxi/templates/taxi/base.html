@@ -1188,7 +1188,13 @@
             zoom: 12,
             controls: ['zoomControl', 'searchControl', 'fullscreenControl']
         });
-        _omapStep = 1;
+        // Diqqat: _omapStep bu yerda QAYTA 1ga tushirilmaydi — u allaqachon
+        // openModal ochilganda 1ga o'rnatilgan. Xarita yuklanishi (ymaps.ready)
+        // biroz kech kelishi mumkin (~150ms+), shu oraliqda operator "Tezkor"
+        // manzil orqali "qayerdan" nuqtasini allaqachon belgilab, _omapStep'ni
+        // 2ga o'tkazgan bo'lishi mumkin edi — shu yerda qayta 1ga tushirilsa,
+        // xarita tayyor bo'lgach bosilgan keyingi klik "qayerga" o'rniga yana
+        // "qayerdan"ni ustidan yozib yuborardi.
 
         _omap.events.add('click', function(e) {
             var coords = e.get('coords');

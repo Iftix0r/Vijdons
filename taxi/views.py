@@ -178,8 +178,6 @@ def order_create(request):
             # Avtomatik taqsimlash — FAQAT haritadan koordinata belgilangan bo'lsa
             # Manzil qo'lda yozilsa (from_lat yo'q) → umumiy tabloga tushadi, hammaga ko'rinadi
             has_coords = bool(f_lat and f_lng)
-            if driver is None and tariff.auto_dispatch and has_coords:
-                pass  # dispatch_order() pastda sinxron chaqiriladi
 
             payment_type = request.POST.get('payment_type', 'cash')
             car_type     = request.POST.get('car_type', Driver.CAR_TYPE_LIGHT)
@@ -224,14 +222,19 @@ def order_create(request):
             # Telegram xabar
             tg_new_order(order)
 
-            # Dispatch — faqat koordinata belgilangan bo'lsa eng yaqin haydovchiga yuboriladi
-            # Koordinata yo'q (qo'lda yozilgan manzil) → umumiy tabloda qoladi, hammaga ko'rinadi
+            # Dispatch — faqat koordinata belgilangan VA "Avtomatik taqsimlash"
+            # yoqilgan bo'lsa eng yaqin/adolatli haydovchiga yuboriladi.
+            # Koordinata yo'q (qo'lda yozilgan manzil) yoki auto_dispatch
+            # o'chirilgan bo'lsa → umumiy tabloda qoladi, hammaga ko'rinadi
+            # (boshqa barcha dispatch chaqiruvlari — client_views.py,
+            # driver_views.py, bot buyruqlari — shu bayroqni tekshiradi,
+            # bu yerda ham xuddi shunday bo'lishi kerak).
             # Diqqat: SINXRON chaqiriladi (thread ichida emas) — aks holda order
             # yaratilgandan keyin dispatch_order `dispatched_to`ni belgilagunga
             # qadar bo'sh oraliqda buyurtma hammaga (umumiy tablo sifatida)
             # ko'rinib, eng yaqin bo'lmagan haydovchi ham birinchi bo'lib qabul
             # qilib olishi mumkin edi.
-            if has_coords and driver is None:
+            if has_coords and driver is None and tariff.auto_dispatch:
                 dispatch_order(order)
 
             from .utils import log_system_event
