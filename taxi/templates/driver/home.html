@@ -1282,40 +1282,35 @@ function _checkNearSavedAddress(lat, lng) {
       }).catch(() => {});
     }, 1500);
   }
+  // Diqqat: pastroqda (jonli xarita bo'limida) ILOVANING O'ZIGA TEGISHLI,
+  // shu sahifadagi ikkinchi (mustaqil) geolocation.watchPosition() bor —
+  // u har doim, kechikishsiz ishlaydi (xarita shu orqali to'g'ri yuradi).
+  // gotCoords()ni GLOBAL qilib chiqaramiz — shu orqali o'sha (ishonchli)
+  // manba HAM gotCoords()ni chaqirib, "yaqin manzil" belgisi va
+  // location_sync'ni oziqlantiradi — ikkita mustaqil, bir-biridan bexabar
+  // GPS manbasi bo'lib qolmasin (aks holda xarita to'g'ri ishlab, faqat
+  // manzil belgisi ishlamay qolishi mumkin edi — aynan shu bo'lgan edi).
+  window._vjGotCoords = gotCoords;
 
   // ── Flutter vijdon_location eventini tinglash ─────────────────────────────
   // Flutter (main.dart) _sendLocation() har 15s da:
   //   window.dispatchEvent(CustomEvent('vijdon_location', {detail:{lat,lng}}))
   // yuboradi. Geolocation ruxsati KERAK EMAS.
 
-  let _flutterSeen = false;
-
   window.addEventListener('vijdon_location', function(e) {
     if (e.detail?.lat && e.detail?.lng) {
-      _flutterSeen = true;
       gotCoords(e.detail.lat, e.detail.lng);
     }
   });
 
-  // 6 soniya kutamiz — agar Flutter event kelmasa, oddiy brauzerda ochilgan
-  // demak, browser geolocation ishlatamiz (alert EMAS, faqat toast).
-  // Diqqat: avval bu yerda getCurrentPosition() — BIR MARTALIK so'rov —
-  // ishlatilgan edi, ya'ni brauzerda joylashuv sahifa ochilgandan 6s keyin
-  // FAQAT BIR MARTA o'qilib, keyin umuman yangilanmasdi (Flutter'dagi kabi
-  // har 15s'da kelmasdi) — shu sabab haydovchi keyinroq boshqa manzilga
-  // borsa ham, "yaqin manzil" belgisi va joylashuv sinxroni buni bilmay
-  // qolardi. Endi watchPosition() bilan — brauzer joylashuvni o'zgargan
-  // sayin (odatda bir necha soniyada) davomiy kuzatib, gotCoords()ni
-  // qayta-qayta chaqiradi.
-  setTimeout(() => {
-    if (_flutterSeen) return;
-    if (!navigator.geolocation) return;
-    navigator.geolocation.watchPosition(
-      pos => gotCoords(pos.coords.latitude, pos.coords.longitude),
-      () => {},
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 }
-    );
-  }, 6000);
+  // Diqqat: avval bu yerda — Flutter eventi kelmasa — o'zining ALOHIDA
+  // (6s kechikuvchi, brauzerda esa bir martalik/ilgari watchPosition)
+  // GPS manbasi bo'lgan. Lekin pastroqdagi jonli xarita bo'limida
+  // ALLAQACHON kechikishsiz, doimiy ishlaydigan o'z watchPosition()i bor
+  // edi (shu orqali xarita to'g'ri yurar, faqat manzil belgisi ishlamas
+  // edi). Endi ikkita mustaqil GPS manbasi tutmasin deb, shu yerda
+  // alohidasi olib tashlandi — o'rniga yuqorida window._vjGotCoords
+  // orqali xaritaning ishonchli manbasiga ulanadi (_homeUpdateMine).
 })();
 {% endif %}
 
@@ -1948,6 +1943,12 @@ function _checkNearSavedAddress(lat, lng) {
   }
 
   function _homeUpdateMine(lat, lng) {
+    // Bu funksiya (Flutter eventidan yoki pastdagi brauzer watchPosition'dan)
+    // har safar chaqirilganda — xarita ishonchli GPS manbasi bo'lgani uchun
+    // shu koordinatani "yaqin manzil" belgisi va location_sync'ni
+    // oziqlantiradigan gotCoords()ga ham uzatamiz (window._vjGotCoords,
+    // initNavLocation'da o'rnatiladi).
+    if (window._vjGotCoords) window._vjGotCoords(lat, lng);
     if (!_homeMap) { _homeEnsureMap(lat, lng); return; }
     _lastLat = lat; _lastLng = lng;
     if (_homeMode === 'mapbox') _homeUpdateMineMapbox(lat, lng); else _homeUpdateMineV2(lat, lng);
