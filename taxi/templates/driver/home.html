@@ -1195,34 +1195,41 @@ function _checkNearSavedAddress(lat, lng) {
     const dist = Math.sqrt(dlat * dlat + dlng * dlng);
     if (dist < nearestDist) { nearestDist = dist; nearest = a; }
   }
-  if (nearest && nearestDist <= NEAR_ADDRESS_THRESHOLD_M) {
-    _nearAddressDistText = _formatDistanceM(nearestDist);
-    text.textContent = nearest.name;
-    _renderNearAddressMeta();
-    badge.style.display = 'flex';
-    if (_nearAddressId !== nearest.id) {
-      _nearAddressPosition = null; // yangi manzil — eski o'rin endi noto'g'ri
-      // Yangi manzil radiusiga kirdi — navbatni darhol so'raymiz, keyin
-      // shu manzil ichida turgan davrda har 15s'da yangilab boramiz.
-      // Diqqat: interval har safar _lastKnownLat/Lng'ni (eng so'nggi
-      // GPS'ni) o'qiydi, closure orqali "muzlab qolgan" eski koordinatani
-      // emas — aks holda uzoq turgan haydovchi uchun navbat yozuvi eskirib,
-      // hech qachon yangilanmay qolishi mumkin edi.
-      _nearAddressId = nearest.id;
+
+  if (!nearest) {
+    badge.style.display = 'none';
+    _nearAddressId = null;
+    _nearAddressPosition = null;
+    if (_nearAddressQueueTimer) { clearInterval(_nearAddressQueueTimer); _nearAddressQueueTimer = null; }
+    _stopNearAddressAlternate();
+    return;
+  }
+
+  // Diqqat: manzil endi MASOFASIDAN QAT'I NAZAR ko'rsatiladi (avval faqat
+  // 300m ichida bo'lsa chiqardi) — uzoqda bo'lsangiz ham eng yaqin
+  // manzilni va unga masofani ko'rasiz. Navbatga esa (AddressQueueEntry,
+  // "N-o'rin") faqat haqiqatan ham 300m ichida bo'lgandagina "yoziladi" —
+  // uzoqdagi manzil navbatida turgandek ko'rsatish noto'g'ri bo'lardi.
+  _nearAddressDistText = _formatDistanceM(nearestDist);
+  text.textContent = nearest.name;
+  badge.style.display = 'flex';
+
+  if (_nearAddressId !== nearest.id) {
+    _nearAddressId = nearest.id;
+    _nearAddressPosition = null;
+    if (_nearAddressQueueTimer) { clearInterval(_nearAddressQueueTimer); _nearAddressQueueTimer = null; }
+    _stopNearAddressAlternate();
+    if (nearestDist <= NEAR_ADDRESS_THRESHOLD_M) {
+      // Navbat radiusi ichida — navbatni darhol so'raymiz, keyin shu
+      // manzil ichida turgan davrda har 15s'da yangilab boramiz. Diqqat:
+      // interval har safar _lastKnownLat/Lng'ni (eng so'nggi GPS'ni)
+      // o'qiydi, closure orqali "muzlab qolgan" eski koordinatani emas.
       _fetchAddressQueue(nearest.id, lat, lng);
-      if (_nearAddressQueueTimer) clearInterval(_nearAddressQueueTimer);
       _nearAddressQueueTimer = setInterval(() => _fetchAddressQueue(nearest.id, _lastKnownLat, _lastKnownLng), 15000);
       _startNearAddressAlternate();
     }
-  } else {
-    badge.style.display = 'none';
-    if (_nearAddressId !== null) {
-      _nearAddressId = null;
-      _nearAddressPosition = null;
-      if (_nearAddressQueueTimer) { clearInterval(_nearAddressQueueTimer); _nearAddressQueueTimer = null; }
-      _stopNearAddressAlternate();
-    }
   }
+  _renderNearAddressMeta();
 }
 
 {% if driver.is_on_duty %}
