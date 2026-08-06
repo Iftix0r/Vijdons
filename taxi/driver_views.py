@@ -349,7 +349,7 @@ def driver_home(request, driver):
     # nomi ko'rsatiladi (masofa hisobi to'liq JS tomonida, GPS koordinatasi
     # kelganda).
     saved_addresses_json = json.dumps(
-        list(SavedAddress.objects.values('name', 'lat', 'lng')), ensure_ascii=False
+        list(SavedAddress.objects.values('id', 'name', 'lat', 'lng')), ensure_ascii=False
     )
     return render(request, 'driver/home.html', {
         'driver':      driver,
@@ -950,6 +950,46 @@ def driver_ping(request, driver):
             from django.utils import timezone
             Driver.objects.filter(pk=driver.pk).update(last_ping_ms=ms_int, last_ping_at=timezone.now())
     return JsonResponse({'ok': True})
+
+
+# Yaqin manzil belgisi 300m radiusda ko'rsatiladi — bu yerdagi navbat
+# hisobi ham xuddi shu radius bilan mos kelishi kerak (aks holda "navbatda
+# 1-o'rin" deb ko'rsatib, aslida shu manzilga yaqin boshqa haydovchi ham
+# bor-yo'qligini noto'g'ri hisoblagan bo'lardi).
+NEAR_ADDRESS_THRESHOLD_KM = 0.3
+
+
+@driver_login_required
+def driver_address_queue(request, driver):
+    """Haydovchi biror saqlangan manzilga (SavedAddress) yaqinlashganda —
+    o'sha manzil atrofida (300m radius) hozir turgan boshqa navbatdagi
+    haydovchilar orasida masofasi bo'yicha nechinchi o'rinda ekanini
+    hisoblaydi. Asosiy sahifadagi "yaqin manzil" belgisida ko'rsatiladi."""
+    from .utils import haversine
+    addr_id = request.GET.get('addr_id')
+    try:
+        addr = SavedAddress.objects.get(pk=addr_id)
+    except (SavedAddress.DoesNotExist, ValueError, TypeError):
+        return JsonResponse({'ok': False}, status=404)
+
+    candidates = Driver.objects.filter(
+        is_active=True, is_on_duty=True, approval_status='approved',
+        latitude__isnull=False, longitude__isnull=False,
+    )
+    ranked = []
+    for d in candidates:
+        dist = haversine(addr.lat, addr.lng, d.latitude, d.longitude)
+        if dist is not None and dist <= NEAR_ADDRESS_THRESHOLD_KM:
+            ranked.append((dist, d.id))
+    ranked.sort(key=lambda t: t[0])
+
+    position = None
+    for i, (_, did) in enumerate(ranked, start=1):
+        if did == driver.id:
+            position = i
+            break
+
+    return JsonResponse({'ok': True, 'position': position, 'total': len(ranked)})
 
 
 @driver_login_required

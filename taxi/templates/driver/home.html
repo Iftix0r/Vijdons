@@ -153,11 +153,15 @@
 <!-- Yaqin atrofdagi tezkor manzil ko'rsatkichi — reyting va balans
      tugmalari o'rtasida, tepada markazda. Operator panel > Manzillar'da
      belgilangan nuqtalardan biriga (300m radius) yaqinlashsa avtomatik
-     chiqadi, uzoqlashsa yashiriladi. -->
+     chiqadi (nomi + masofa + shu manzilda navbatdagi o'rni), uzoqlashsa
+     yashiriladi. -->
 <div id="near-address-badge" class="ios-glass items-center gap-2"
-     style="display:none;position:fixed;z-index:15;top:calc(env(safe-area-inset-top,20px) + 12px);left:50%;transform:translateX(-50%);padding:9px 12px;border-radius:20px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.25);max-width:150px">
+     style="display:none;position:fixed;z-index:15;top:calc(env(safe-area-inset-top,20px) + 12px);left:50%;transform:translateX(-50%);padding:8px 12px;border-radius:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.25);max-width:170px">
   <i class="fas fa-location-dot" style="color:#FF3B30;font-size:14px;flex-shrink-0"></i>
-  <span id="near-address-text" class="ios-subhead font-bold truncate" style="color:var(--ios-label)"></span>
+  <div style="min-width:0">
+    <div id="near-address-text" class="ios-subhead font-bold truncate" style="color:var(--ios-label);line-height:1.2"></div>
+    <div id="near-address-meta" class="ios-caption2 truncate" style="color:var(--ios-label3);line-height:1.2"></div>
+  </div>
 </div>
 
 
@@ -1018,14 +1022,39 @@ document.addEventListener('visibilitychange', () => {
 // ── Yaqin atrofdagi tezkor manzil (operator panel > Manzillar) ─────────────
 // Har bir GPS koordinatasi kelganda (serverga yuborish uchun 50m'lik
 // cheklovdan mustaqil ravishda) eng yaqin saqlangan manzilgacha bo'lgan
-// masofa tekshiriladi — 300m radius ichida bo'lsa nomi ko'rsatiladi.
+// masofa tekshiriladi — 300m radius ichida bo'lsa nomi, masofasi va shu
+// manzil atrofida (xuddi shu radiusda) turgan boshqa navbatdagi
+// haydovchilar orasida nechinchi o'rinda ekani ko'rsatiladi.
 const SAVED_ADDRESSES = {{ saved_addresses_json|safe }};
 const NEAR_ADDRESS_THRESHOLD_M = 300;
+let _nearAddressId = null;
+let _nearAddressQueueTimer = null;
+let _nearAddressDistText = '';
+
+function _formatDistanceM(m) {
+  return m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(1) + ' km';
+}
+
+function _fetchAddressQueue(addrId) {
+  fetch('{% url "driver:address_queue" %}?addr_id=' + addrId, { cache: 'no-store' })
+    .then(r => r.json())
+    .then(d => {
+      const meta = document.getElementById('near-address-meta');
+      // Shu orada haydovchi boshqa manzilga o'tib ketgan yoki undan
+      // chiqib ketgan bo'lishi mumkin — eski javob endi kerak emas.
+      if (!meta || _nearAddressId !== addrId) return;
+      meta.textContent = d.ok && d.position
+        ? `${_nearAddressDistText} · ${d.position}-o'rin`
+        : _nearAddressDistText;
+    })
+    .catch(() => {});
+}
 
 function _checkNearSavedAddress(lat, lng) {
   const badge = document.getElementById('near-address-badge');
   const text  = document.getElementById('near-address-text');
-  if (!badge || !text || !SAVED_ADDRESSES.length) return;
+  const meta  = document.getElementById('near-address-meta');
+  if (!badge || !text || !meta || !SAVED_ADDRESSES.length) return;
   let nearest = null, nearestDist = Infinity;
   for (const a of SAVED_ADDRESSES) {
     const dlat = (lat - a.lat) * 111320;
@@ -1034,10 +1063,24 @@ function _checkNearSavedAddress(lat, lng) {
     if (dist < nearestDist) { nearestDist = dist; nearest = a; }
   }
   if (nearest && nearestDist <= NEAR_ADDRESS_THRESHOLD_M) {
+    _nearAddressDistText = _formatDistanceM(nearestDist);
     text.textContent = nearest.name;
+    meta.textContent = _nearAddressDistText;
     badge.style.display = 'flex';
+    if (_nearAddressId !== nearest.id) {
+      // Yangi manzil radiusiga kirdi — navbatni darhol so'raymiz, keyin
+      // shu manzil ichida turgan davrda har 15s'da yangilab boramiz.
+      _nearAddressId = nearest.id;
+      _fetchAddressQueue(nearest.id);
+      if (_nearAddressQueueTimer) clearInterval(_nearAddressQueueTimer);
+      _nearAddressQueueTimer = setInterval(() => _fetchAddressQueue(nearest.id), 15000);
+    }
   } else {
     badge.style.display = 'none';
+    if (_nearAddressId !== null) {
+      _nearAddressId = null;
+      if (_nearAddressQueueTimer) { clearInterval(_nearAddressQueueTimer); _nearAddressQueueTimer = null; }
+    }
   }
 }
 
