@@ -138,6 +138,18 @@
   <span class="ios-subhead font-bold" style="color:var(--ios-label)">{{ driver_rank }}-o'rin</span>
 </a>
 
+<!-- Balans tugmasi — reyting tugmasi bilan bir qatorda, o'ng tomonda.
+     Bosilsa balans to'ldirish sahifasi ochiladi. Qiymat balans o'zgarganda
+     (masalan komissiya yechilganda) `_updateNavBalance()` orqali JS bilan
+     ham yangilanadi (pastdagi #home-balance-btn span). -->
+<a href="{% url 'driver:balance_topup' %}" onclick="Native.vibrate()"
+   class="ios-glass flex items-center gap-2 active:opacity-60 transition-opacity"
+   id="home-balance-btn"
+   style="position:fixed;z-index:15;top:calc(env(safe-area-inset-top,20px) + 12px);right:16px;padding:9px 14px 9px 12px;border-radius:20px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.25)">
+  <i class="fas fa-wallet" style="color:#34C759;font-size:15px"></i>
+  <span id="home-balance-value" class="ios-subhead font-bold" style="color:var(--ios-label)">{{ driver_balance_int }} so'm</span>
+</a>
+
 <!-- Yandex Navigator'dagi kabi +/- (yaqinlashtirish/uzoqlashtirish) tugmalari -->
 <div class="ios-glass" style="position:fixed;z-index:15;top:38%;transform:translateY(-50%);right:16px;width:48px;border-radius:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);overflow:hidden">
   <button onclick="_homeMapZoom(1)" class="flex items-center justify-center active:opacity-60 transition-opacity" style="width:48px;height:48px">
@@ -493,8 +505,8 @@ let _suppressModal = false;
 function _updateNavBalance(newBal) {
   if(newBal === undefined) return;
   DRIVER_BALANCE = Math.round(newBal);
-  const el = document.querySelector('.ios-footnote.font-bold');
-  if(el) el.textContent = DRIVER_BALANCE.toLocaleString();
+  const el = document.getElementById('home-balance-value');
+  if(el) el.textContent = DRIVER_BALANCE.toLocaleString() + " so'm";
 }
 
 async function loadOrders() {
