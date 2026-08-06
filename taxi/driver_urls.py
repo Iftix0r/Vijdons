@@ -19,6 +19,7 @@ urlpatterns = [
     path('balance/poll/', driver_views.driver_balance_poll, name='balance_poll'),
     path('profile/',   driver_views.driver_profile,       name='profile'),
     path('profile/photo/',    driver_views.driver_profile_photo,    name='profile_photo'),
+    path('profile/balance/',  driver_views.driver_balance_history,  name='balance_history'),
     path('profile/topup/',    driver_views.driver_balance_topup,    name='balance_topup'),
     path('profile/password/', driver_views.driver_profile_password, name='profile_password'),
     path('profile/contract/', driver_views.driver_contract,      name='contract'),

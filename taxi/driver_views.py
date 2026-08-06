@@ -987,6 +987,50 @@ def driver_profile_photo(request, driver):
 
 
 @driver_login_required
+def driver_balance_history(request, driver):
+    """Balans o'tkazmalari tarixi (kirim/chiqim) — Asosiy sahifadagi balans
+    tugmasi shu yerga olib keladi.
+
+    Diqqat: buyurtma qabul qilinganda yechiladigan komissiya `BalanceLog`ga
+    umuman yozilmaydi (driver_order_action'da to'g'ridan-to'g'ri
+    driver.balance'dan ayiriladi — CLAUDE.md'dagi ma'lum bo'shliq). Shu
+    sabab faqat BalanceLog ko'rsatilsa, haydovchi eng ko'p uchraydigan
+    xarajatini ("nega balansim kamaydi?") tarixda umuman ko'rmas edi —
+    shuning uchun komissiya hali qaytarilmagan (ya'ni bekor qilinmagan)
+    buyurtmalar alohida so'rovdan qo'shilib, vaqt bo'yicha birlashtiriladi."""
+    logs = driver.balance_logs.all()[:100]
+    entries = [{
+        'is_income':  log.action == BalanceLog.ACTION_ADD,
+        'amount':     log.amount,
+        'note':       log.note or ("Balans to'ldirildi" if log.action == BalanceLog.ACTION_ADD else 'Balansdan yechildi'),
+        'created_at': log.created_at,
+    } for log in logs]
+
+    commission_orders = Order.objects.filter(
+        driver=driver, status__in=Order.ACTIVE_STATUSES + ('completed',)
+    ).order_by('-updated_at')[:100]
+    entries += [{
+        'is_income':  False,
+        'amount':     o.commission,
+        'note':       f"Komissiya — buyurtma #{o.id}",
+        'created_at': o.updated_at,
+    } for o in commission_orders]
+
+    entries.sort(key=lambda e: e['created_at'], reverse=True)
+    entries = entries[:100]
+
+    return render(request, 'driver/balance_history.html', {
+        'driver': driver,
+        'active_tab': 'balance',
+        'chat_unread': _chat_unread(driver),
+        'pending_orders_count': _pending_orders_count(driver),
+        'active_orders_count': _active_orders_count(driver),
+        'entries': entries,
+        'driver_balance_int': int(driver.balance),
+    })
+
+
+@driver_login_required
 @require_POST
 def driver_balance_topup(request, driver):
     """Haydovchi to'lov chekini yuklab balans to'ldirishni so'raydi —

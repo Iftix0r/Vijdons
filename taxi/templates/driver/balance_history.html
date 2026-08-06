@@ -1,0 +1,31 @@
+{% extends "driver/base.html" %}
+{% block title %}Balans tarixi{% endblock %}
+{% block content %}
+
+<div class="ios-navbar sticky top-3 mx-4 z-20 px-4 pt-3 pb-3">
+  <div class="ios-large-title font-bold">O'tkazmalar tarixi</div>
+  <div class="ios-caption2" style="color:var(--ios-label3)">Joriy balans: <span class="font-bold" style="color:var(--ios-label)">{{ driver_balance_int }} so'm</span></div>
+</div>
+
+<div class="px-4 py-3 space-y-2">
+  {% for e in entries %}
+  <div class="ios-card rounded-[16px] p-3.5 flex items-center gap-3">
+    <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+         style="background:{% if e.is_income %}rgba(52,199,89,.15){% else %}rgba(255,59,48,.15){% endif %}">
+      <i class="fas {% if e.is_income %}fa-arrow-down{% else %}fa-arrow-up{% endif %}"
+         style="color:{% if e.is_income %}#34C759{% else %}#FF3B30{% endif %};font-size:14px"></i>
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="ios-subhead font-semibold truncate">{{ e.note }}</div>
+      <div class="ios-caption2" style="color:var(--ios-label3)">{{ e.created_at|date:"d.m.Y H:i" }}</div>
+    </div>
+    <div class="ios-title font-bold flex-shrink-0" style="color:{% if e.is_income %}#34C759{% else %}#FF3B30{% endif %}">
+      {% if e.is_income %}+{% else %}-{% endif %}{{ e.amount|floatformat:0 }}
+    </div>
+  </div>
+  {% empty %}
+  <div class="ios-caption text-center py-8" style="color:var(--ios-label3)">Hali o'tkazmalar yo'q</div>
+  {% endfor %}
+</div>
+
+{% endblock %}
