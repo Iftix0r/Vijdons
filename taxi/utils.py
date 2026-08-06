@@ -1728,10 +1728,10 @@ def auto_reject_timeout(order_id, driver_id, timeout_seconds):
         pass
 
 
-ADDRESS_QUEUE_RADIUS_KM = 0.3        # manzil navbatiga "QO'SHILISH" radiusi
-ADDRESS_QUEUE_LEAVE_RADIUS_KM = 0.6  # navbatdan "CHIQISH" radiusi — QO'SHILISH'dan ataylab kattaroq
+ADDRESS_QUEUE_RADIUS_KM = 1.0        # manzil navbatiga "QO'SHILISH" radiusi
+ADDRESS_QUEUE_LEAVE_RADIUS_KM = 2.0  # navbatdan "CHIQISH" radiusi — QO'SHILISH'dan ataylab kattaroq
                                       # (hysteresis): GPS bir oz tebransa yoki haydovchi bir zumga
-                                      # 300-600m oralig'ida chiqib qolsa ham, darhol navbatdan
+                                      # 1-2 km oralig'ida chiqib qolsa ham, darhol navbatdan
                                       # chiqarib yuborilmasin — faqat chindan ham uzoqlashganda
                                       # (yoki boshqa manzilga o'tganda) chiqariladi.
 ADDRESS_QUEUE_MAX_ATTEMPTS = 3       # navbatdan ketma-ket ko'pi bilan nechta haydovchiga taklif qilinadi

@@ -1119,7 +1119,11 @@ document.addEventListener('visibilitychange', () => {
 // manzil atrofida (xuddi shu radiusda) turgan boshqa navbatdagi
 // haydovchilar orasida nechinchi o'rinda ekani ko'rsatiladi.
 const SAVED_ADDRESSES = {{ saved_addresses_json|safe }};
-const NEAR_ADDRESS_THRESHOLD_M = 300;
+// Diqqat: backenddagi ADDRESS_QUEUE_RADIUS_KM (taxi/utils.py) bilan bir
+// xil bo'lishi kerak — aks holda bu yerda navbatga "qo'shilish" urinishi
+// serverning haqiqiy qo'shilish radiusidan oldinroq yoki keyinroq
+// boshlanib, ikkalasi mos kelmay qolardi.
+const NEAR_ADDRESS_THRESHOLD_M = 1000;
 let _nearAddressId = null;
 let _nearAddressQueueTimer = null;
 let _nearAddressDistText = '';
