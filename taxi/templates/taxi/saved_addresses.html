@@ -45,12 +45,19 @@
                         </span>
                     </td>
                     <td class="px-5 py-3.5 text-right">
-                        <form method="POST" action="{% url 'taxi:saved_address_delete' addr.pk %}" onsubmit="return confirm('«{{ addr.name }}» manzilini o\'chirishga ishonchingiz komilmi?')">
-                            {% csrf_token %}
-                            <button type="submit" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 hover:text-red-700 transition-colors" title="O'chirish">
-                                <i class="fas fa-trash text-xs"></i>
+                        <div class="flex items-center justify-end gap-1.5">
+                            <button type="button"
+                                    onclick="openEditAddressModal({{ addr.pk }}, '{{ addr.name|escapejs }}', '{{ addr.address|escapejs }}', {{ addr.lat }}, {{ addr.lng }})"
+                                    class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-500 hover:bg-yellow-100 hover:text-yellow-600 transition-colors" title="Tahrirlash">
+                                <i class="fas fa-pen text-xs"></i>
                             </button>
-                        </form>
+                            <form method="POST" action="{% url 'taxi:saved_address_delete' addr.pk %}" onsubmit="return confirm('«{{ addr.name }}» manzilini o\'chirishga ishonchingiz komilmi?')">
+                                {% csrf_token %}
+                                <button type="submit" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 hover:text-red-700 transition-colors" title="O'chirish">
+                                    <i class="fas fa-trash text-xs"></i>
+                                </button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}
@@ -73,7 +80,7 @@
 <div id="newAddressModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
     <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-lg shadow-2xl border border-gray-100 dark:border-gray-800 max-h-[95vh] flex flex-col">
         <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
-            <h2 class="text-lg font-bold text-gray-900 dark:text-white">
+            <h2 id="sa_modal_title" class="text-lg font-bold text-gray-900 dark:text-white">
                 <i class="fas fa-map-pin text-yellow-500 mr-2"></i>Yangi manzil
             </h2>
             <button onclick="closeModal('newAddressModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
@@ -81,7 +88,7 @@
             </button>
         </div>
         <div class="overflow-y-auto flex-1">
-        <form method="POST" action="{% url 'taxi:saved_address_create' %}" class="px-6 py-5 space-y-4">
+        <form id="sa_form" method="POST" action="{% url 'taxi:saved_address_create' %}" class="px-6 py-5 space-y-4">
             {% csrf_token %}
             <input type="hidden" name="lat" id="sa_lat">
             <input type="hidden" name="lng" id="sa_lng">
@@ -114,7 +121,7 @@
                 </button>
                 <button type="submit" id="sa_submit" disabled
                         class="flex-1 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold shadow-md shadow-green-200 dark:shadow-none transition">
-                    <i class="fas fa-floppy-disk mr-1.5"></i>Saqlash
+                    <i id="sa_submit_icon" class="fas fa-floppy-disk mr-1.5"></i><span id="sa_submit_text">Saqlash</span>
                 </button>
             </div>
         </form>
@@ -128,6 +135,20 @@
 <script>
     let _saMap = null;
     let _saPM  = null;
+    // Tahrirlash rejimida openEditAddressModal() shu yerga joriy nuqtani
+    // qo'yadi — xarita hali tayyor bo'lmasa ham (ymaps yuklanishi kech
+    // kelishi mumkin), tayyor bo'lgach _applyPendingEditMarker() shu
+    // qiymatni o'qib, markerni joyiga qo'yadi.
+    let _saPendingEdit = null;
+
+    function _applyPendingEditMarker() {
+        if (!_saPendingEdit || !_saMap) return;
+        var coords = [_saPendingEdit.lat, _saPendingEdit.lng];
+        if (_saPM) _saMap.geoObjects.remove(_saPM);
+        _saPM = new ymaps.Placemark(coords, {}, { preset: 'islands#yellowDotIcon' });
+        _saMap.geoObjects.add(_saPM);
+        _saMap.setCenter(coords, 15);
+    }
 
     function _initSavedAddressMap() {
         if (!window.ymaps || _saMap) return;
@@ -160,6 +181,7 @@
             // dispatch qilinadigan xarita emas (bosish faqat nuqta belgilaydi),
             // shu sabab off-duty/offline haydovchilar ham ko'rsatiladi.
             _loadSavedAddressMapDrivers();
+            _applyPendingEditMarker();
         });
     }
 
@@ -221,21 +243,50 @@
         document.getElementById('sa_submit').disabled = !(this.value.trim() && document.getElementById('sa_lat').value);
     });
 
+    // "Tahrirlash" tugmasi bosilganda chaqiriladi — mavjud manzil
+    // ma'lumotlarini formaga joylab, "Yangi manzil" bilan bir xil modalni
+    // tahrirlash rejimida ochadi (alohida modal yaratmasdan).
+    function openEditAddressModal(pk, name, address, lat, lng) {
+        _saPendingEdit = { pk: pk, name: name, address: address, lat: lat, lng: lng };
+        openModal('newAddressModal');
+    }
+
     const _origOpenSA = openModal;
     openModal = function (id) {
         _origOpenSA(id);
         if (id === 'newAddressModal') {
-            document.getElementById('sa_lat').value = '';
-            document.getElementById('sa_lng').value = '';
-            document.getElementById('sa_name').value = '';
-            document.getElementById('sa_address').value = '';
-            document.getElementById('sa_submit').disabled = true;
-            document.getElementById('sa_map_hint').innerHTML = '<i class="fas fa-hand-pointer"></i> Xaritada nuqtani bosing';
+            // openEditAddressModal() shu yerga qo'ygan bo'lsa — tahrirlash
+            // rejimi, aks holda oddiy "Yangi manzil" tugmasi bosilgan.
+            var editing = _saPendingEdit;
+
+            document.getElementById('sa_lat').value = editing ? editing.lat : '';
+            document.getElementById('sa_lng').value = editing ? editing.lng : '';
+            document.getElementById('sa_name').value = editing ? editing.name : '';
+            document.getElementById('sa_address').value = editing ? editing.address : '';
+            document.getElementById('sa_submit').disabled = !editing;
+            document.getElementById('sa_map_hint').innerHTML = editing
+                ? '<i class="fas fa-check text-green-500"></i> Joriy nuqta — o\'zgartirish uchun xaritani qayta bosing'
+                : '<i class="fas fa-hand-pointer"></i> Xaritada nuqtani bosing';
+            document.getElementById('sa_modal_title').innerHTML = editing
+                ? '<i class="fas fa-pen text-yellow-500 mr-2"></i>Manzilni tahrirlash'
+                : '<i class="fas fa-map-pin text-yellow-500 mr-2"></i>Yangi manzil';
+            document.getElementById('sa_form').action = editing
+                ? '/panel/manzillar/' + editing.pk + '/edit/'
+                : '{% url "taxi:saved_address_create" %}';
+            document.getElementById('sa_submit_text').textContent = editing ? 'Yangilash' : 'Saqlash';
+
             _saPM = null;
             setTimeout(function () {
                 _initSavedAddressMap();
                 _loadSavedAddressMapDrivers();
                 _startSavedAddressMapDrivers();
+                // Diqqat: _saPendingEdit bu yerda TOZALANMAYDI — xarita
+                // hali tayyor bo'lmasa, _initSavedAddressMap ichidagi
+                // ymaps.ready keyinroq (shu setTimeout'dan ham kech)
+                // ishga tushib, _applyPendingEditMarker()ni yana chaqiradi
+                // va o'sha vaqtda ham qiymat kerak bo'ladi. Tozalash
+                // closeModal'da amalga oshadi (pastda).
+                _applyPendingEditMarker();
             }, 150);
         }
     };
@@ -243,7 +294,12 @@
     const _origCloseSA = closeModal;
     closeModal = function (id) {
         _origCloseSA(id);
-        if (id === 'newAddressModal') _stopSavedAddressMapDrivers();
+        if (id === 'newAddressModal') {
+            _stopSavedAddressMapDrivers();
+            // Endi tozalaymiz — keyingi safar oddiy "Yangi manzil" tugmasi
+            // bosilsa, eski tahrirlash ma'lumoti qolib ketmasin.
+            _saPendingEdit = null;
+        }
     };
 </script>
 {% endblock %}

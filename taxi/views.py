@@ -3889,6 +3889,26 @@ def saved_address_create(request):
 
 
 @panel_login_required
+def saved_address_update(request, pk):
+    address = get_object_or_404(SavedAddress, pk=pk)
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        addr_text = request.POST.get('address', '').strip()
+        lat = request.POST.get('lat')
+        lng = request.POST.get('lng')
+        if name and lat and lng:
+            address.name = name
+            address.address = addr_text
+            address.lat = float(lat)
+            address.lng = float(lng)
+            address.save(update_fields=['name', 'address', 'lat', 'lng'])
+            messages.success(request, f"«{name}» manzili yangilandi.")
+        else:
+            messages.error(request, "Nomi va xaritadan nuqta tanlanishi shart.")
+    return redirect('taxi:saved_addresses_list')
+
+
+@panel_login_required
 def saved_address_delete(request, pk):
     address = get_object_or_404(SavedAddress, pk=pk)
     if request.method == 'POST':
