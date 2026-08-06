@@ -1,0 +1,55 @@
+{% extends "driver/base.html" %}
+{% block title %}Reyting{% endblock %}
+{% block content %}
+
+<div class="ios-navbar sticky top-3 mx-4 z-20 px-4 pt-3 pb-3">
+  <div class="ios-large-title font-bold">Reyting</div>
+  <div class="ios-caption2" style="color:var(--ios-label3)">{{ month_label }} oyi &middot; yakunlangan buyurtmalar bo'yicha</div>
+</div>
+
+<!-- O'z o'rni — katta, rag'batlantiruvchi karta -->
+<div class="px-4 pt-3">
+  <div class="ios-card rounded-[20px] p-5 text-center" style="background:linear-gradient(135deg,#FFD600,#FF9500);box-shadow:0 8px 24px rgba(255,149,0,.35)">
+    <div class="ios-caption2 font-bold" style="color:rgba(0,0,0,.55)">SIZNING O'RNINGIZ</div>
+    <div style="font-size:44px;font-weight:800;color:#111;line-height:1.1;margin-top:2px">
+      {% if my_row %}#{{ my_row.rank }}{% else %}&mdash;{% endif %}
+    </div>
+    {% if my_row %}
+    <div class="ios-subhead font-semibold" style="color:rgba(0,0,0,.65);margin-top:2px">{{ rows|length }} haydovchidan &middot; {{ my_row.completed }} ta buyurtma</div>
+    {% if my_row.rank == 1 %}
+    <div class="ios-caption font-bold mt-2" style="color:#111">🏆 Siz bu oyning yetakchisisiz! Shu ruhda davom eting 💪</div>
+    {% elif gap_to_next %}
+    <div class="ios-caption font-bold mt-2" style="color:#111">🔥 Yana {{ gap_to_next }} ta buyurtma bilan oldingi o'ringa chiqasiz!</div>
+    {% endif %}
+    {% else %}
+    <div class="ios-subhead font-semibold" style="color:rgba(0,0,0,.65);margin-top:2px">Bu oy hali buyurtma yakunlanmagan</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- To'liq ro'yxat -->
+<div class="px-4 py-3 space-y-2">
+  {% for row in rows %}
+  <div class="ios-card rounded-[16px] p-3.5 flex items-center gap-3 {% if row.is_me %}anim-up{% endif %}"
+       style="{% if row.is_me %}box-shadow:0 0 0 2px #FFD600{% endif %}">
+    <div class="flex items-center justify-center flex-shrink-0" style="width:32px">
+      {% if row.rank == 1 %}<span style="font-size:20px">🥇</span>
+      {% elif row.rank == 2 %}<span style="font-size:20px">🥈</span>
+      {% elif row.rank == 3 %}<span style="font-size:20px">🥉</span>
+      {% else %}<span class="ios-subhead font-bold" style="color:var(--ios-label3)">{{ row.rank }}</span>
+      {% endif %}
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="ios-subhead font-semibold truncate" style="{% if row.is_me %}color:#FFD600{% endif %}">
+        {{ row.full_name }}{% if row.is_me %} (Siz){% endif %}
+      </div>
+      <div class="ios-caption2" style="color:var(--ios-label3)">{{ row.earned|floatformat:0 }} so'm</div>
+    </div>
+    <div class="ios-title font-bold flex-shrink-0" style="color:var(--ios-label)">{{ row.completed }}</div>
+  </div>
+  {% empty %}
+  <div class="ios-caption text-center py-8" style="color:var(--ios-label3)">Haydovchilar topilmadi</div>
+  {% endfor %}
+</div>
+
+{% endblock %}

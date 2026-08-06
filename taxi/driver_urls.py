@@ -11,6 +11,7 @@ urlpatterns = [
 
     path('home/',      driver_views.driver_home,          name='home'),
     path('history/',   driver_views.driver_history,       name='history'),
+    path('rating/',    driver_views.driver_rating,        name='rating'),
     path('chat/',      driver_views.driver_chat,          name='chat'),
     path('chat/send/', driver_views.driver_chat_send,       name='chat_send'),
     path('chat/send-audio/', driver_views.driver_chat_send_audio, name='chat_send_audio'),

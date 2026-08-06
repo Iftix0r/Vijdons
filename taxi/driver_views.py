@@ -114,6 +114,31 @@ def _active_orders_count(driver):
     return Order.objects.filter(driver=driver, status__in=Order.ACTIVE_STATUSES).count()
 
 
+def _driver_month_rank(driver):
+    """Joriy oy boshidan bugungacha yakunlangan buyurtmalar soni bo'yicha
+    haydovchining reytingdagi o'rnini hisoblaydi (1 = eng ko'p ishlagan).
+    Asosiy sahifadagi suzib turuvchi reyting tugmasi uchun — to'liq ro'yxatni
+    emas, faqat o'z o'rnini bilish kifoya, shu sabab bitta hisoblovchi
+    so'rov (COUNT) bilan chegaralanadi (butun ro'yxatni yuklamaymiz)."""
+    from django.db.models import Count, Q as DQ
+    from django.utils import timezone
+    today = timezone.localdate()
+    month_start = today.replace(day=1)
+    own_completed = Order.objects.filter(
+        driver=driver, status='completed',
+        created_at__date__gte=month_start, created_at__date__lte=today,
+    ).count()
+    ahead = Driver.objects.filter(is_active=True).annotate(
+        completed=Count('orders', filter=DQ(
+            orders__status='completed',
+            orders__created_at__date__gte=month_start,
+            orders__created_at__date__lte=today,
+        )),
+    ).filter(completed__gt=own_completed).count()
+    total = Driver.objects.filter(is_active=True).count()
+    return ahead + 1, total, own_completed
+
+
 def driver_service_worker(request):
     """Service Worker faylini /driver/ ostidan xizmat qiladi (Web Push uchun).
     /static/driver/sw.js dan farqli — bu yerda skriptning o'zi allaqachon
@@ -318,6 +343,7 @@ def driver_home(request, driver):
         earned=Sum('price', filter=DQ(status='completed')),
         trips=Count('id', filter=DQ(status='completed')),
     )
+    driver_rank, drivers_total, _ = _driver_month_rank(driver)
     return render(request, 'driver/home.html', {
         'driver':      driver,
         'orders':      orders,
@@ -339,6 +365,8 @@ def driver_home(request, driver):
         'driver_balance_int': int(driver.balance),
         'today_earned': int(today_stats['earned'] or 0),
         'today_trips': today_stats['trips'] or 0,
+        'driver_rank': driver_rank,
+        'drivers_total': drivers_total,
         'VAPID_PUBLIC_KEY': getattr(__import__('django.conf', fromlist=['settings']).settings, 'VAPID_PUBLIC_KEY', ''),
     })
 
@@ -753,6 +781,73 @@ def driver_history(request, driver):
         'tariff_per_km': int(_tariff.price_per_km),
     })
 
+
+UZ_MONTHS = [
+    '', 'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
+    'Iyul', 'Avgust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr',
+]
+
+
+# ── Reyting ──────────────────────────────────────────────────────────────────
+
+@driver_login_required
+def driver_rating(request, driver):
+    """Joriy oy uchun yakunlangan buyurtmalar soni bo'yicha barcha faol
+    haydovchilarning reytingi — haydovchini rag'batlantirish uchun (o'z
+    o'rnini va oldinga chiqish uchun necha buyurtma kerakligini ko'radi)."""
+    from django.db.models import Count, Sum, Q as DQ
+    from django.utils import timezone
+
+    today = timezone.localdate()
+    month_start = today.replace(day=1)
+
+    leaderboard = list(
+        Driver.objects.filter(is_active=True)
+        .annotate(
+            completed=Count('orders', filter=DQ(
+                orders__status='completed',
+                orders__created_at__date__gte=month_start,
+                orders__created_at__date__lte=today,
+            )),
+            earned=Sum('orders__price', filter=DQ(
+                orders__status='completed',
+                orders__created_at__date__gte=month_start,
+                orders__created_at__date__lte=today,
+            )),
+        )
+        .order_by('-completed', '-earned', 'full_name')
+    )
+
+    rows = []
+    my_row = None
+    for i, d in enumerate(leaderboard, start=1):
+        row = {
+            'rank': i,
+            'full_name': d.full_name,
+            'completed': d.completed,
+            'earned': int(d.earned or 0),
+            'is_me': d.id == driver.id,
+        }
+        rows.append(row)
+        if row['is_me']:
+            my_row = row
+
+    gap_to_next = None
+    if my_row and my_row['rank'] > 1:
+        ahead_row = rows[my_row['rank'] - 2]
+        gap_to_next = max(1, ahead_row['completed'] - my_row['completed'] + 1)
+
+    return render(request, 'driver/rating.html', {
+        'driver': driver,
+        'active_tab': 'rating',
+        'chat_unread': _chat_unread(driver),
+        'pending_orders_count': _pending_orders_count(driver),
+        'active_orders_count': _active_orders_count(driver),
+        'rows': rows,
+        'my_row': my_row,
+        'gap_to_next': gap_to_next,
+        'month_label': UZ_MONTHS[today.month],
+    })
 
 
 
