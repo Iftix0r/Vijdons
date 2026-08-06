@@ -136,6 +136,7 @@ class Order(models.Model):
     commission   = models.DecimalField(max_digits=10, decimal_places=2, default=1000, verbose_name="Komissiya")
     payment_type  = models.CharField(max_length=10, choices=PAYMENT_CHOICES, default=PAYMENT_CASH, verbose_name="To'lov turi")
     car_type      = models.CharField(max_length=10, choices=Driver.CAR_TYPE_CHOICES, default=Driver.CAR_TYPE_LIGHT, verbose_name="Mashina turi")
+    is_delivery   = models.BooleanField(default=False, verbose_name="Yetkazib berish")
     note          = models.TextField(blank=True, default='', verbose_name="Izoh")
     status        = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="Holati")
     cancel_reason = models.CharField(max_length=255, blank=True, default='', verbose_name="Bekor qilish sababi")

@@ -159,12 +159,21 @@ def order_create(request):
             t_lat = float(to_lat) if to_lat else None
             t_lng = float(to_lng) if to_lng else None
 
+            is_delivery = request.POST.get('is_delivery') == 'on'
+
             distance_km = None
             price = None
             if f_lat and f_lng and t_lat and t_lng:
                 distance_km = haversine(f_lat, f_lng, t_lat, t_lng)
                 if distance_km:
                     price = tariff.calc_price(distance_km)
+
+            # Yetkazib berish (dastavka) — narx kamida 10 000 so'mdan boshlanadi,
+            # haydovchidan olinadigan komissiya esa qat'iy 3000 so'm bo'ladi
+            # (odatiy tarif komissiyasi o'rniga)
+            if is_delivery:
+                price = max(price or 0, 10000)
+                delivery_commission = 3000
 
             # Avtomatik taqsimlash — FAQAT haritadan koordinata belgilangan bo'lsa
             # Manzil qo'lda yozilsa (from_lat yo'q) → umumiy tabloga tushadi, hammaga ko'rinadi
@@ -184,10 +193,11 @@ def order_create(request):
                 to_lat=t_lat, to_lng=t_lng,
                 distance_km=distance_km,
                 price=price,
-                commission=tariff.commission,
+                commission=delivery_commission if is_delivery else tariff.commission,
                 driver=driver,
                 payment_type=payment_type,
                 car_type=car_type,
+                is_delivery=is_delivery,
                 note=note,
                 status='pending',
             )
