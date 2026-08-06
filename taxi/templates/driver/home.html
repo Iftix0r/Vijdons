@@ -1139,11 +1139,13 @@ function _formatDistanceM(m) {
 function _renderNearAddressMeta() {
   const meta = document.getElementById('near-address-meta');
   if (!meta) return;
-  // O'rin masofadan OLDIN yoziladi — konteyner tor bo'lganda matn "..."
-  // bilan qisqarsa ham, eng muhimi (nechinchi navbatda ekani) birinchi
-  // bo'lib, kesilmay ko'rinib qoladi.
+  // Diqqat: o'rin ma'lum bo'lgach, masofa ENDI ko'rsatilmaydi (faqat
+  // "N-o'rin") — konteyner juda tor (Reyting/Balans orasida) bo'lgani
+  // uchun ikkalasini birga yozsa ham baribir kesilib ketardi. O'rin hali
+  // serverdan kelmagan bo'lsa (birinchi 1 soniyacha), o'sha oraliqda
+  // masofa ko'rinib turadi.
   meta.textContent = _nearAddressPosition
-    ? `${_nearAddressPosition}-o'rin · ${_nearAddressDistText}`
+    ? `${_nearAddressPosition}-o'rin`
     : _nearAddressDistText;
 }
 
