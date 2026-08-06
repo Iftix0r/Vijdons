@@ -1118,7 +1118,12 @@ document.addEventListener('visibilitychange', () => {
 // masofa tekshiriladi — 300m radius ichida bo'lsa nomi, masofasi va shu
 // manzil atrofida (xuddi shu radiusda) turgan boshqa navbatdagi
 // haydovchilar orasida nechinchi o'rinda ekani ko'rsatiladi.
-const SAVED_ADDRESSES = {{ saved_addresses_json|safe }};
+// `let` (const emas) — operator panelda manzil qo'shsa/o'chirsa/tahrirlasa,
+// haydovchi ilovani qayta ochmasdan ham bu ro'yxat davriy o'zi yangilanadi
+// (pastdagi _refreshSavedAddresses, har 3 daqiqada). Aks holda: manzil
+// o'chirilgan/o'zgargan bo'lsa ham, ilova ochilgan paytdagi ESKI ro'yxat
+// abadiy xotirada qolib, hech qachon yangilanmasdi.
+let SAVED_ADDRESSES = {{ saved_addresses_json|safe }};
 const NEAR_ADDRESS_THRESHOLD_M = 300;
 let _nearAddressId = null;
 let _nearAddressQueueTimer = null;
@@ -1132,6 +1137,22 @@ let _nearAddressShowPosition = false;   // false=masofa, true=o'rin — har 2.5s
 function _formatDistanceM(m) {
   return m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(1) + ' km';
 }
+
+// Manzillar ro'yxatini serverdan qayta so'rab, mahalliy nusxani yangilaydi
+// (driver:all_addresses — "Manzillar" ro'yxatida ham ishlatiladigan xuddi
+// shu endpoint, faqat bu yerda lat/lng/id kifoya). Har 3 daqiqada avtomatik
+// chaqiriladi — operator biror manzilni qo'shsa/o'chirsa/ko'chirsa,
+// haydovchi ilovani qayta ochmasdan ham tez orada shuni ko'radi.
+function _refreshSavedAddresses() {
+  fetch('{% url "driver:all_addresses" %}', { cache: 'no-store' })
+    .then(r => r.json())
+    .then(d => {
+      if (!d.ok) return;
+      SAVED_ADDRESSES = (d.addresses || []).map(a => ({ id: a.id, name: a.name, lat: a.lat, lng: a.lng }));
+    })
+    .catch(() => {});
+}
+setInterval(_refreshSavedAddresses, 180000);
 
 // Diqqat: konteyner juda tor (Reyting/Balans tugmalari orasida) bo'lgani
 // uchun masofa va o'rinni BIRGA yozib bo'lmaydi (kesilib qolardi) — shu
