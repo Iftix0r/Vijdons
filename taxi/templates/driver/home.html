@@ -153,12 +153,12 @@
          navbatdagi o'rni), uzoqlashsa yashiriladi. Bosilsa — barcha
          manzillar ro'yxati (masofa + bugungi buyurtmalar soni bilan)
          pastdan suzib chiqadi. -->
-    <div id="near-address-badge" onclick="toggleAddressesDrawer()" class="ios-glass items-center gap-2 active:opacity-60 transition-opacity"
-         style="display:none;pointer-events:auto;cursor:pointer;min-width:0;flex-shrink:1;padding:8px 12px;border-radius:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.25)">
-        <i class="fas fa-location-dot" style="color:#FF3B30;font-size:14px;flex-shrink:0"></i>
+    <div id="near-address-badge" onclick="toggleAddressesDrawer()" class="ios-glass items-center gap-1.5 active:opacity-60 transition-opacity"
+         style="display:none;pointer-events:auto;cursor:pointer;min-width:76px;flex-shrink:1;padding:7px 10px;border-radius:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.25)">
+        <i class="fas fa-location-dot" style="color:#FF3B30;font-size:12px;flex-shrink:0"></i>
         <div style="min-width:0">
-            <div id="near-address-text" class="ios-subhead font-bold truncate" style="color:var(--ios-label);line-height:1.2"></div>
-            <div id="near-address-meta" class="ios-caption2 truncate" style="color:var(--ios-label3);line-height:1.2"></div>
+            <div id="near-address-text" class="ios-caption2 font-bold truncate" style="color:var(--ios-label);line-height:1.15"></div>
+            <div id="near-address-meta" class="ios-caption2 truncate" style="color:var(--ios-label3);line-height:1.15;font-size:10px"></div>
         </div>
     </div>
 
@@ -1146,8 +1146,12 @@ function _fetchAddressQueue(addrId, lat, lng) {
       // Shu orada haydovchi boshqa manzilga o'tib ketgan yoki undan
       // chiqib ketgan bo'lishi mumkin — eski javob endi kerak emas.
       if (!meta || _nearAddressId !== addrId) return;
+      // Diqqat: o'rin masofadan OLDIN yoziladi — konteyner tor bo'lganda
+      // (Reyting/Balans tugmalari orasida) matn "..." bilan qisqarsa ham,
+      // eng muhimi (nechinchi navbatda ekani) birinchi bo'lib, kesilmay
+      // ko'rinib qoladi.
       meta.textContent = d.ok && d.position
-        ? `${_nearAddressDistText} · ${d.position}-o'rin`
+        ? `${d.position}-o'rin · ${_nearAddressDistText}`
         : _nearAddressDistText;
     })
     .catch(() => {});
