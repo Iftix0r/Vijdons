@@ -1728,7 +1728,12 @@ def auto_reject_timeout(order_id, driver_id, timeout_seconds):
         pass
 
 
-ADDRESS_QUEUE_RADIUS_KM = 0.3       # manzil navbatiga "a'zo" hisoblanish radiusi
+ADDRESS_QUEUE_RADIUS_KM = 0.3        # manzil navbatiga "QO'SHILISH" radiusi
+ADDRESS_QUEUE_LEAVE_RADIUS_KM = 0.6  # navbatdan "CHIQISH" radiusi — QO'SHILISH'dan ataylab kattaroq
+                                      # (hysteresis): GPS bir oz tebransa yoki haydovchi bir zumga
+                                      # 300-600m oralig'ida chiqib qolsa ham, darhol navbatdan
+                                      # chiqarib yuborilmasin — faqat chindan ham uzoqlashganda
+                                      # (yoki boshqa manzilga o'tganda) chiqariladi.
 ADDRESS_QUEUE_MAX_ATTEMPTS = 3       # navbatdan ketma-ket ko'pi bilan nechta haydovchiga taklif qilinadi
 
 
@@ -1748,23 +1753,32 @@ def find_matching_saved_address(lat, lng):
 
 
 def update_address_queue_membership(driver, lat, lng):
-    """Haydovchi GPS koordinatasi yangilanganda (driver_location_sync)
-    chaqiriladi — biror manzil (SavedAddress) radiusiga kirsa navbatga
-    "yoziladi" (AddressQueueEntry), undan chiqsa yoki boshqa manzilga
-    o'tsa eski yozuvi yopiladi. Kelgan vaqti (`joined_at`) saqlanib
-    boradi — shu orqali dispatch_order() "kim birinchi kelgan" tartibida
-    taklif qila oladi (taksi bekati navbati kabi)."""
+    """Haydovchi GPS koordinatasi yangilanganda (driver_location_sync yoki
+    driver_address_queue) chaqiriladi — biror manzil (SavedAddress)
+    radiusiga kirsa navbatga "yoziladi" (AddressQueueEntry). Kelgan vaqti
+    (`joined_at`) saqlanib boradi — shu orqali dispatch_order() "kim
+    birinchi kelgan" tartibida taklif qila oladi (taksi bekati navbati
+    kabi).
+
+    Diqqat: allaqachon navbatda bo'lsa, uni chiqarish uchun QO'SHILISH
+    radiusidan (300m) KATTAROQ chegara (ADDRESS_QUEUE_LEAVE_RADIUS_KM,
+    600m) ishlatiladi — hysteresis. Aks holda GPS aniqligi tebranib
+    tursa yoki haydovchi bir zumga chetga chiqsa, navbatdagi o'rni
+    doim-doim yo'qolib-qayta paydo bo'lib turardi."""
     from taxi.models import AddressQueueEntry
     from django.utils import timezone
 
-    nearest_addr = find_matching_saved_address(lat, lng)
-    open_entry = AddressQueueEntry.objects.filter(driver=driver, left_at__isnull=True).first()
+    open_entry = AddressQueueEntry.objects.filter(driver=driver, left_at__isnull=True).select_related('address').first()
 
-    if open_entry and (not nearest_addr or open_entry.address_id != nearest_addr.id):
+    if open_entry:
+        dist_to_current = haversine(lat, lng, open_entry.address.lat, open_entry.address.lng)
+        if dist_to_current is not None and dist_to_current <= ADDRESS_QUEUE_LEAVE_RADIUS_KM:
+            return  # hali "yetarlicha yaqin" — navbatdagi o'rni saqlanib qoladi
         open_entry.left_at = timezone.now()
         open_entry.save(update_fields=['left_at'])
         open_entry = None
 
+    nearest_addr = find_matching_saved_address(lat, lng)
     if nearest_addr and not open_entry:
         AddressQueueEntry.objects.create(address=nearest_addr, driver=driver)
 
