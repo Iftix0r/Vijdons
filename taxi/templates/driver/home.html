@@ -150,6 +150,16 @@
   <span id="home-balance-value" class="ios-subhead font-bold" style="color:var(--ios-label)">{{ driver_balance_int }} so'm</span>
 </a>
 
+<!-- Internet tezligi (ping) ko'rsatkichi — reyting va balans tugmalari
+     o'rtasida, tepada markazda. Rangi ulanish sifatiga qarab o'zgaradi:
+     yashil (tez), sariq (o'rtacha), qizil (sekin/uzilgan). Bosilsa aniq
+     ms qiymati toast sifatida chiqadi. -->
+<div id="net-speed-badge" onclick="_showNetSpeedDetail()"
+     class="ios-glass flex items-center justify-center active:opacity-60 transition-opacity"
+     style="position:fixed;z-index:15;top:calc(env(safe-area-inset-top,20px) + 12px);left:50%;transform:translateX(-50%);width:40px;height:40px;border-radius:50%;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.25)">
+  <i id="net-speed-icon" class="fas fa-wifi" style="color:#8E8E93;font-size:15px;transition:color .3s"></i>
+</div>
+
 <!-- Yandex Navigator'dagi kabi +/- (yaqinlashtirish/uzoqlashtirish) tugmalari -->
 <div class="ios-glass" style="position:fixed;z-index:15;top:38%;transform:translateY(-50%);right:16px;width:48px;border-radius:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);overflow:hidden">
   <button onclick="_homeMapZoom(1)" class="flex items-center justify-center active:opacity-60 transition-opacity" style="width:48px;height:48px">
@@ -496,6 +506,54 @@ if(IS_ON_DUTY) {
     }
   });
 }
+
+// ── Internet tezligi (ping) ko'rsatkichi ────────────────────────────────────
+// Har 10 soniyada bo'sh endpointga so'rov yuborib, round-trip vaqtini
+// o'lchaydi — haqiqiy bandwidth emas, lekin haydovchi uchun "aloqa
+// qanchalik yaxshi" degan tezkor signal beradi (mobil internet sifati
+// ko'pincha shahar tashqarisida/tunnelda buyurtma qabul qilishga
+// to'sqinlik qiladi, shu sabab ko'rinib turishi foydali).
+let _netSpeedMs = null;
+let _netSpeedTimer = null;
+
+async function _measureNetSpeed() {
+  const icon = document.getElementById('net-speed-icon');
+  if (!icon) return;
+  if (!navigator.onLine) { _netSpeedMs = null; icon.style.color = '#8E8E93'; return; }
+  const t0 = performance.now();
+  try {
+    await fetch('{% url "driver:ping" %}', { cache: 'no-store' });
+    _netSpeedMs = Math.round(performance.now() - t0);
+    icon.style.color = _netSpeedMs < 250 ? '#34C759' : (_netSpeedMs < 700 ? '#FF9500' : '#FF3B30');
+  } catch (_) {
+    _netSpeedMs = null;
+    icon.style.color = '#FF3B30';
+  }
+}
+
+function _showNetSpeedDetail() {
+  Native.vibrate();
+  if (_netSpeedMs === null) {
+    showToast('Internet tezligi', "Aloqa yo'q yoki juda sekin", 'error', 2500);
+  } else {
+    const label = _netSpeedMs < 250 ? "Zo'r ⚡" : (_netSpeedMs < 700 ? "O'rtacha" : 'Sekin');
+    showToast('Internet tezligi', `${label} — ping: ${_netSpeedMs} ms`, _netSpeedMs < 700 ? 'success' : 'error', 2500);
+  }
+}
+
+function _startNetSpeedPolling() {
+  if (_netSpeedTimer) clearInterval(_netSpeedTimer);
+  _measureNetSpeed();
+  _netSpeedTimer = setInterval(_measureNetSpeed, 10000);
+}
+_startNetSpeedPolling();
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    if (_netSpeedTimer) clearInterval(_netSpeedTimer);
+  } else {
+    _startNetSpeedPolling();
+  }
+});
 
 // Flutter native polling dan chaqiriladi
 function onNewOrder() { loadOrders(); }

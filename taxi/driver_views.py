@@ -920,6 +920,14 @@ def driver_chat_poll(request, driver):
 
 
 @driver_login_required
+def driver_ping(request, driver):
+    """Bo'sh javob, DB so'rovisiz — Asosiy sahifadagi tarmoq tezligi
+    (ping) ko'rsatkichi shu yerga davriy so'rov yuborib, round-trip
+    vaqtini o'lchaydi."""
+    return JsonResponse({'ok': True})
+
+
+@driver_login_required
 def driver_balance_poll(request, driver):
     """Haydovchi ilovasida balans to'ldirilganda ovoz chiqarish uchun polling endpoint."""
     last_id = int(request.GET.get('last_id', 0))
