@@ -152,12 +152,14 @@
 
 <!-- Internet tezligi (ping) ko'rsatkichi — reyting va balans tugmalari
      o'rtasida, tepada markazda. Rangi ulanish sifatiga qarab o'zgaradi:
-     yashil (tez), sariq (o'rtacha), qizil (sekin/uzilgan). Bosilsa aniq
-     ms qiymati toast sifatida chiqadi. -->
+     yashil (tez), sariq (o'rtacha), qizil (sekin/uzilgan). Ikonka ostida
+     doim aniq ms qiymati ko'rinib turadi, bosilsa esa to'liq izoh toast
+     sifatida chiqadi. -->
 <div id="net-speed-badge" onclick="_showNetSpeedDetail()"
-     class="ios-glass flex items-center justify-center active:opacity-60 transition-opacity"
-     style="position:fixed;z-index:15;top:calc(env(safe-area-inset-top,20px) + 12px);left:50%;transform:translateX(-50%);width:40px;height:40px;border-radius:50%;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.25)">
-  <i id="net-speed-icon" class="fas fa-wifi" style="color:#8E8E93;font-size:15px;transition:color .3s"></i>
+     class="ios-glass flex flex-col items-center justify-center active:opacity-60 transition-opacity"
+     style="position:fixed;z-index:15;top:calc(env(safe-area-inset-top,20px) + 12px);left:50%;transform:translateX(-50%);width:46px;height:46px;border-radius:50%;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.25)">
+  <i id="net-speed-icon" class="fas fa-wifi" style="color:#8E8E93;font-size:13px;transition:color .3s;line-height:1"></i>
+  <span id="net-speed-value" style="font-size:9px;font-weight:700;color:var(--ios-label2);line-height:1;margin-top:2px">—</span>
 </div>
 
 <!-- Yandex Navigator'dagi kabi +/- (yaqinlashtirish/uzoqlashtirish) tugmalari -->
@@ -518,16 +520,25 @@ let _netSpeedTimer = null;
 
 async function _measureNetSpeed() {
   const icon = document.getElementById('net-speed-icon');
+  const value = document.getElementById('net-speed-value');
   if (!icon) return;
-  if (!navigator.onLine) { _netSpeedMs = null; icon.style.color = '#8E8E93'; return; }
+  if (!navigator.onLine) {
+    _netSpeedMs = null;
+    icon.style.color = '#8E8E93';
+    if (value) value.textContent = 'off';
+    return;
+  }
   const t0 = performance.now();
   try {
     await fetch('{% url "driver:ping" %}', { cache: 'no-store' });
     _netSpeedMs = Math.round(performance.now() - t0);
-    icon.style.color = _netSpeedMs < 250 ? '#34C759' : (_netSpeedMs < 700 ? '#FF9500' : '#FF3B30');
+    const color = _netSpeedMs < 250 ? '#34C759' : (_netSpeedMs < 700 ? '#FF9500' : '#FF3B30');
+    icon.style.color = color;
+    if (value) { value.textContent = _netSpeedMs + 'ms'; value.style.color = color; }
   } catch (_) {
     _netSpeedMs = null;
     icon.style.color = '#FF3B30';
+    if (value) { value.textContent = 'off'; value.style.color = '#FF3B30'; }
   }
 }
 
