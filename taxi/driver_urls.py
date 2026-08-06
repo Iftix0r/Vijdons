@@ -19,6 +19,7 @@ urlpatterns = [
     path('balance/poll/', driver_views.driver_balance_poll, name='balance_poll'),
     path('ping/',       driver_views.driver_ping,           name='ping'),
     path('address-queue/', driver_views.driver_address_queue, name='address_queue'),
+    path('addresses/', driver_views.driver_all_addresses, name='all_addresses'),
     path('profile/',   driver_views.driver_profile,       name='profile'),
     path('profile/photo/',    driver_views.driver_profile_photo,    name='profile_photo'),
     path('profile/balance/',  driver_views.driver_balance_history,  name='balance_history'),

@@ -985,6 +985,35 @@ def driver_address_queue(request, driver):
 
 
 @driver_login_required
+def driver_all_addresses(request, driver):
+    """Barcha saqlangan manzillar (SavedAddress) ro'yxati, har biriga bugun
+    tushgan buyurtmalar soni bilan — "yaqin manzil" belgisi bosilganda
+    ochiladigan to'liq ro'yxat uchun. Masofa hisobi bu yerda YO'Q — u
+    haydovchining joriy GPS'iga bog'liq, shuning uchun frontendda
+    (JS, SAVED_ADDRESSES) hisoblanadi."""
+    from .models import SavedAddress
+    from .utils import find_matching_saved_address
+    from django.utils import timezone
+
+    today = timezone.localdate()
+    today_orders = Order.objects.filter(
+        created_at__date=today, from_lat__isnull=False, from_lng__isnull=False,
+    ).exclude(status='cancelled').values_list('from_lat', 'from_lng')
+
+    counts = {}
+    for lat, lng in today_orders:
+        addr = find_matching_saved_address(lat, lng)
+        if addr:
+            counts[addr.id] = counts.get(addr.id, 0) + 1
+
+    data = [
+        {'id': a.id, 'name': a.name, 'lat': a.lat, 'lng': a.lng, 'today_orders': counts.get(a.id, 0)}
+        for a in SavedAddress.objects.all()
+    ]
+    return JsonResponse({'ok': True, 'addresses': data})
+
+
+@driver_login_required
 def driver_balance_poll(request, driver):
     """Haydovchi ilovasida balans to'ldirilganda ovoz chiqarish uchun polling endpoint."""
     last_id = int(request.GET.get('last_id', 0))
