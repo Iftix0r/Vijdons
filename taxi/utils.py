@@ -548,14 +548,20 @@ def _notify_driver_group(text, reply_markup=None):
 
 def tg_order_creating():
     """Operator buyurtma oynasini ochib, ma'lumot to'ldirayotganda haydovchi
-    ilovasiga (in-app toast) ogohlantiruvchi xabar yuboradi — buyurtma hali
-    yaratilmagan bo'lsa ham. Diqqat: Telegram haydovchilar guruhiga xabar
-    endi yuborilmaydi (so'rov bo'yicha olib tashlandi)."""
+    ilovasiga (in-app toast) VA Telegram haydovchilar guruhiga ogohlantiruvchi
+    xabar yuboradi — buyurtma hali yaratilmagan bo'lsa ham, haydovchilar
+    oldindan tayyor turishsin deb."""
     from django.utils import timezone
+    from taxi.models import TariffSettings
     cfg = _cfg()
     if cfg:
         cfg.last_order_creating_at = timezone.now()
         cfg.save(update_fields=['last_order_creating_at'])
+    operator_phone = TariffSettings.get().operator_phone
+    _notify_driver_group(
+        f"📞 Qo'ng'iroq bo'layabdi {operator_phone} ga.\n"
+        f"⏳ Tez orada ilovaga buyurtma tushadi, tayyor turing."
+    )
 
 
 def tg_new_order(order):
