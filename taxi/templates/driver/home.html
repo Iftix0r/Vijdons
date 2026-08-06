@@ -150,6 +150,16 @@
   <span id="home-balance-value" class="ios-subhead font-bold" style="color:var(--ios-label)">{{ driver_balance_int }} so'm</span>
 </a>
 
+<!-- Yaqin atrofdagi tezkor manzil ko'rsatkichi — reyting va balans
+     tugmalari o'rtasida, tepada markazda. Operator panel > Manzillar'da
+     belgilangan nuqtalardan biriga (300m radius) yaqinlashsa avtomatik
+     chiqadi, uzoqlashsa yashiriladi. -->
+<div id="near-address-badge" class="ios-glass items-center gap-2"
+     style="display:none;position:fixed;z-index:15;top:calc(env(safe-area-inset-top,20px) + 12px);left:50%;transform:translateX(-50%);padding:9px 12px;border-radius:20px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.25);max-width:150px">
+  <i class="fas fa-location-dot" style="color:#FF3B30;font-size:14px;flex-shrink-0"></i>
+  <span id="near-address-text" class="ios-subhead font-bold truncate" style="color:var(--ios-label)"></span>
+</div>
+
 
 <!-- Yandex Navigator'dagi kabi +/- (yaqinlashtirish/uzoqlashtirish) tugmalari -->
 <div class="ios-glass" style="position:fixed;z-index:15;top:38%;transform:translateY(-50%);right:16px;width:48px;border-radius:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);overflow:hidden">
@@ -1005,6 +1015,32 @@ document.addEventListener('visibilitychange', () => {
 // haydovchining eski (boshqa hududdagi) koordinatasi yangisiga "yopishib qolardi".
 // Manzil endi navbar'da matn sifatida ko'rsatilmaydi — buning o'rniga jonli
 // xarita (home-map) bor.
+// ── Yaqin atrofdagi tezkor manzil (operator panel > Manzillar) ─────────────
+// Har bir GPS koordinatasi kelganda (serverga yuborish uchun 50m'lik
+// cheklovdan mustaqil ravishda) eng yaqin saqlangan manzilgacha bo'lgan
+// masofa tekshiriladi — 300m radius ichida bo'lsa nomi ko'rsatiladi.
+const SAVED_ADDRESSES = {{ saved_addresses_json|safe }};
+const NEAR_ADDRESS_THRESHOLD_M = 300;
+
+function _checkNearSavedAddress(lat, lng) {
+  const badge = document.getElementById('near-address-badge');
+  const text  = document.getElementById('near-address-text');
+  if (!badge || !text || !SAVED_ADDRESSES.length) return;
+  let nearest = null, nearestDist = Infinity;
+  for (const a of SAVED_ADDRESSES) {
+    const dlat = (lat - a.lat) * 111320;
+    const dlng = (lng - a.lng) * 111320 * Math.cos(lat * Math.PI / 180);
+    const dist = Math.sqrt(dlat * dlat + dlng * dlng);
+    if (dist < nearestDist) { nearestDist = dist; nearest = a; }
+  }
+  if (nearest && nearestDist <= NEAR_ADDRESS_THRESHOLD_M) {
+    text.textContent = nearest.name;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
 {% if driver.is_on_duty %}
 (function initNavLocation() {
   const SS_LAT  = `vijdon_lat_${DRIVER_ID}`;
@@ -1016,6 +1052,7 @@ document.addEventListener('visibilitychange', () => {
 
   // ── Koordinat keldi ───────────────────────────────────────────────────────
   function gotCoords(lat, lng) {
+    _checkNearSavedAddress(lat, lng);
     // 50m dan kam ko'chsa serverga qayta yubormaymiz
     if (_lastGeoLat !== null) {
       const dlat = (lat - _lastGeoLat) * 111320;

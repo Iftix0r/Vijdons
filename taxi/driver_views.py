@@ -15,7 +15,7 @@ from django.utils.cache import add_never_cache_headers
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .models import Driver, Order, ChatMessage, GroupMessage, TariffSettings, DriverActivityLog, BalanceLog, BalanceTopupRequest, PanelSound, VoiceParticipant, VoiceSignal, ContractSettings, DriverContractSignature
+from .models import Driver, Order, ChatMessage, GroupMessage, TariffSettings, DriverActivityLog, BalanceLog, BalanceTopupRequest, PanelSound, VoiceParticipant, VoiceSignal, ContractSettings, DriverContractSignature, SavedAddress
 from .utils import tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected, tg_driver_login, tg_duty_changed, tg_low_balance_alert, tg_topup_request, sms_order_status
 
 
@@ -344,10 +344,18 @@ def driver_home(request, driver):
         trips=Count('id', filter=DQ(status='completed')),
     )
     driver_rank, drivers_total, _ = _driver_month_rank(driver)
+    # Operator panel > Manzillar'da belgilangan tezkor manzillar — haydovchi
+    # shulardan biriga yaqinlashsa, reyting va balans tugmalari o'rtasida
+    # nomi ko'rsatiladi (masofa hisobi to'liq JS tomonida, GPS koordinatasi
+    # kelganda).
+    saved_addresses_json = json.dumps(
+        list(SavedAddress.objects.values('name', 'lat', 'lng')), ensure_ascii=False
+    )
     return render(request, 'driver/home.html', {
         'driver':      driver,
         'orders':      orders,
         'orders_json': json.dumps(orders_data, ensure_ascii=False),
+        'saved_addresses_json': saved_addresses_json,
         'active_tab':  'home',
         # Login sahifasida "Kirish"ni bosgandan keyingi ilk sahifa yuklanishida
         # bir marta "Xush kelibsiz" ovozini chalish uchun — sahifani yangilasa
