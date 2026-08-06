@@ -150,17 +150,6 @@
   <span id="home-balance-value" class="ios-subhead font-bold" style="color:var(--ios-label)">{{ driver_balance_int }} so'm</span>
 </a>
 
-<!-- Internet tezligi (ping) ko'rsatkichi — reyting va balans tugmalari
-     o'rtasida, tepada markazda. Rangi ulanish sifatiga qarab o'zgaradi:
-     yashil (tez), sariq (o'rtacha), qizil (sekin/uzilgan). Ikonka ostida
-     doim aniq ms qiymati ko'rinib turadi, bosilsa esa to'liq izoh toast
-     sifatida chiqadi. -->
-<div id="net-speed-badge" onclick="_showNetSpeedDetail()"
-     class="ios-glass flex flex-col items-center justify-center active:opacity-60 transition-opacity"
-     style="position:fixed;z-index:15;top:calc(env(safe-area-inset-top,20px) + 12px);left:50%;transform:translateX(-50%);width:46px;height:46px;border-radius:50%;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.25)">
-  <i id="net-speed-icon" class="fas fa-wifi" style="color:#8E8E93;font-size:13px;transition:color .3s;line-height:1"></i>
-  <span id="net-speed-value" style="font-size:9px;font-weight:700;color:var(--ios-label2);line-height:1;margin-top:2px">—</span>
-</div>
 
 <!-- Yandex Navigator'dagi kabi +/- (yaqinlashtirish/uzoqlashtirish) tugmalari -->
 <div class="ios-glass" style="position:fixed;z-index:15;top:38%;transform:translateY(-50%);right:16px;width:48px;border-radius:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);overflow:hidden">
@@ -509,55 +498,27 @@ if(IS_ON_DUTY) {
   });
 }
 
-// ── Internet tezligi (ping) ko'rsatkichi ────────────────────────────────────
+// ── Internet tezligi (ping) — fonda o'lchanadi, haydovchiga ko'rsatilmaydi ──
 // Har 10 soniyada bo'sh endpointga so'rov yuborib, round-trip vaqtini
-// o'lchaydi — haqiqiy bandwidth emas, lekin haydovchi uchun "aloqa
-// qanchalik yaxshi" degan tezkor signal beradi (mobil internet sifati
-// ko'pincha shahar tashqarisida/tunnelda buyurtma qabul qilishga
-// to'sqinlik qiladi, shu sabab ko'rinib turishi foydali).
-let _netSpeedMs = null;
+// o'lchaydi va operator panelidagi "Ping" bo'limi uchun serverga
+// yuboradi (haydovchining o'ziga hech qanday belgi/raqam chiqmaydi —
+// faqat operator ko'radi, aloqasi yomonlarga yordam berish uchun).
 let _netSpeedTimer = null;
 // Oldingi o'lchov natijasi — keyingi so'rovga `?ms=` orqali qo'shib
-// yuborilib, operator panelidagi "Ping" bo'limi uchun Driver'ga
-// saqlanadi (bitta so'rov ichida o'lchash HAM/HAM xabar qilish mumkin
-// emas — round-trip tugagunga qadar natija ma'lum bo'lmaydi).
+// yuborilib, Driver'ga saqlanadi (bitta so'rov ichida o'lchash HAM/HAM
+// xabar qilish mumkin emas — round-trip tugagunga qadar natija ma'lum
+// bo'lmaydi).
 let _pendingReportMs = null;
 
 async function _measureNetSpeed() {
-  const icon = document.getElementById('net-speed-icon');
-  const value = document.getElementById('net-speed-value');
-  if (!icon) return;
-  if (!navigator.onLine) {
-    _netSpeedMs = null;
-    _pendingReportMs = null;
-    icon.style.color = '#8E8E93';
-    if (value) value.textContent = 'off';
-    return;
-  }
+  if (!navigator.onLine) { _pendingReportMs = null; return; }
   const qs = _pendingReportMs !== null ? ('?ms=' + _pendingReportMs) : '';
   const t0 = performance.now();
   try {
     await fetch('{% url "driver:ping" %}' + qs, { cache: 'no-store' });
-    _netSpeedMs = Math.round(performance.now() - t0);
-    _pendingReportMs = _netSpeedMs;
-    const color = _netSpeedMs < 250 ? '#34C759' : (_netSpeedMs < 700 ? '#FF9500' : '#FF3B30');
-    icon.style.color = color;
-    if (value) { value.textContent = _netSpeedMs + 'ms'; value.style.color = color; }
+    _pendingReportMs = Math.round(performance.now() - t0);
   } catch (_) {
-    _netSpeedMs = null;
     _pendingReportMs = null;
-    icon.style.color = '#FF3B30';
-    if (value) { value.textContent = 'off'; value.style.color = '#FF3B30'; }
-  }
-}
-
-function _showNetSpeedDetail() {
-  Native.vibrate();
-  if (_netSpeedMs === null) {
-    showToast('Internet tezligi', "Aloqa yo'q yoki juda sekin", 'error', 2500);
-  } else {
-    const label = _netSpeedMs < 250 ? "Zo'r ⚡" : (_netSpeedMs < 700 ? "O'rtacha" : 'Sekin');
-    showToast('Internet tezligi', `${label} — ping: ${_netSpeedMs} ms`, _netSpeedMs < 700 ? 'success' : 'error', 2500);
   }
 }
 
