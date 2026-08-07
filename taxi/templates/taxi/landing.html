@@ -1,0 +1,223 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="google-site-verification" content="QG7J01-vseDJj0R--i4mJaEFnR-hyl_3aDRO1z9nBS0" />
+<meta name="theme-color" content="#0B0B0F">
+<meta name="description" content="Vijdon Taxi — shahringizdagi eng tez va ishonchli taksi xizmati. Mijozlar uchun qulay buyurtma, haydovchilar uchun barqaror daromad.">
+<title>Vijdon Taxi — Tez, ishonchli, vijdonan</title>
+<link rel="icon" href="{% static 'taxi/img/logo.png' %}">
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{font-family:'Inter',-apple-system,'Helvetica Neue',sans-serif;}
+  body{background:#0B0B0F;color:#fff;overflow-x:hidden;}
+  .glow{position:absolute;border-radius:50%;filter:blur(120px);pointer-events:none;}
+  .card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(10px);}
+  .card:hover{border-color:rgba(255,214,0,.35);}
+  .btn-primary{background:#FFD600;color:#0B0B0F;box-shadow:0 8px 30px rgba(255,214,0,.25);}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(255,214,0,.4);}
+  .btn-ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);}
+  .btn-ghost:hover{background:rgba(255,255,255,.1);}
+  .fu{animation:fadeUp .7s cubic-bezier(.25,.46,.45,.94) both;}
+  @keyframes fadeUp{from{transform:translateY(28px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .float{animation:floaty 6s ease-in-out infinite;}
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+  ::selection{background:#FFD600;color:#0B0B0F;}
+  .num{font-variant-numeric:tabular-nums;}
+</style>
+</head>
+<body class="min-h-screen">
+
+  <div class="glow float" style="width:520px;height:520px;background:#FFD600;opacity:.14;top:-180px;left:-160px;"></div>
+  <div class="glow" style="width:460px;height:460px;background:#8B5CF6;opacity:.12;top:280px;right:-160px;"></div>
+  <div class="glow" style="width:400px;height:400px;background:#FFD600;opacity:.08;bottom:-160px;left:30%;"></div>
+
+  <!-- NAV -->
+  <header class="relative z-10">
+    <div class="max-w-6xl mx-auto px-5 sm:px-8 py-6 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <img src="{% static 'taxi/img/logo.png' %}" alt="Vijdon Taxi" class="w-10 h-10 rounded-xl object-cover" style="box-shadow:0 4px 20px rgba(255,214,0,.3)">
+        <span class="text-lg font-extrabold tracking-tight">Vijdon <span style="color:#FFD600">Taxi</span></span>
+      </div>
+      <nav class="hidden sm:flex items-center gap-2">
+        <a href="{% url 'client:login' %}" class="px-4 py-2 rounded-full text-sm font-semibold btn-ghost transition">Mijoz kirish</a>
+        <a href="{% url 'driver:login' %}" class="px-4 py-2 rounded-full text-sm font-semibold btn-primary transition">Haydovchi kirish</a>
+      </nav>
+      <a href="{% url 'driver:login' %}" class="sm:hidden px-3.5 py-2 rounded-full text-xs font-bold btn-primary">Kirish</a>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="relative z-10 max-w-6xl mx-auto px-5 sm:px-8 pt-10 pb-20 text-center">
+    <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold card mb-7 fu">
+      <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+      Har kuni, har soatda xizmatdamiz
+    </div>
+    <h1 class="fu text-4xl sm:text-6xl font-black leading-[1.08] tracking-tight" style="animation-delay:.05s">
+      Manzilingizga <span style="color:#FFD600">vijdonan</span><br class="hidden sm:block"> yetkazamiz
+    </h1>
+    <p class="fu text-gray-400 text-base sm:text-lg mt-6 max-w-xl mx-auto" style="animation-delay:.1s">
+      Vijdon Taxi — tez chaqiriladigan, aniq narxli va ishonchli taksi xizmati. Mijoz bo'lib buyurtma bering yoki haydovchi bo'lib barqaror daromad qiling.
+    </p>
+    <div class="fu flex flex-col sm:flex-row items-center justify-center gap-3 mt-9" style="animation-delay:.15s">
+      <a href="{% url 'client:register' %}" class="w-full sm:w-auto px-7 py-3.5 rounded-2xl font-bold text-base btn-primary transition flex items-center justify-center gap-2">
+        <i class="fas fa-car-side"></i> Mijoz sifatida boshlash
+      </a>
+      <a href="{% url 'driver:register' %}" class="w-full sm:w-auto px-7 py-3.5 rounded-2xl font-bold text-base btn-ghost transition flex items-center justify-center gap-2">
+        <i class="fas fa-id-card"></i> Haydovchi bo'lib ishlash
+      </a>
+    </div>
+
+    <div class="fu grid grid-cols-3 gap-4 max-w-lg mx-auto mt-16" style="animation-delay:.2s">
+      <div>
+        <div class="text-2xl sm:text-3xl font-black num" style="color:#FFD600">24/7</div>
+        <div class="text-xs text-gray-500 mt-1">Doimiy xizmat</div>
+      </div>
+      <div>
+        <div class="text-2xl sm:text-3xl font-black num" style="color:#FFD600">{{ base_price }}</div>
+        <div class="text-xs text-gray-500 mt-1">so'm — boshlang'ich narx</div>
+      </div>
+      <div>
+        <div class="text-2xl sm:text-3xl font-black num" style="color:#FFD600">~1&#8209;3</div>
+        <div class="text-xs text-gray-500 mt-1">daqiqada haydovchi topiladi</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MIJOZLAR -->
+  <section class="relative z-10 max-w-6xl mx-auto px-5 sm:px-8 py-16">
+    <div class="grid lg:grid-cols-2 gap-10 items-center">
+      <div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold mb-5" style="background:rgba(255,214,0,.12);color:#FFD600">
+          <i class="fas fa-user"></i> MIJOZLAR UCHUN
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-extrabold leading-tight mb-5">Bir necha bosishda<br>taksi buyurtma qiling</h2>
+        <p class="text-gray-400 mb-8">Manzilingizni tanlang, narxni oldindan ko'ring va eng yaqin haydovchi sizga yo'l oladi. To'lov naqd yoki karta orqali — o'zingiz tanlaysiz.</p>
+        <ul class="space-y-4 mb-9">
+          <li class="flex items-start gap-3">
+            <span class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(255,214,0,.12);color:#FFD600"><i class="fas fa-bolt text-sm"></i></span>
+            <div><div class="font-semibold">Tezkor chaqiruv</div><div class="text-sm text-gray-500">Eng yaqin bo'sh haydovchi avtomatik biriktiriladi</div></div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(255,214,0,.12);color:#FFD600"><i class="fas fa-tag text-sm"></i></span>
+            <div><div class="font-semibold">Shaffof narx</div><div class="text-sm text-gray-500">{{ base_price }} so'm boshlang'ich + {{ price_per_km }} so'm/km, yashirin to'lovlarsiz</div></div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(255,214,0,.12);color:#FFD600"><i class="fas fa-location-dot text-sm"></i></span>
+            <div><div class="font-semibold">Jonli kuzatuv</div><div class="text-sm text-gray-500">Haydovchi qayerda ekanini xaritada real vaqtda ko'rasiz</div></div>
+          </li>
+        </ul>
+        <a href="{% url 'client:register' %}" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold btn-primary transition">
+          Ro'yxatdan o'tish <i class="fas fa-arrow-right text-sm"></i>
+        </a>
+      </div>
+      <div class="card rounded-3xl p-6 sm:p-8 float">
+        <div class="flex items-center justify-between mb-6">
+          <span class="text-sm font-semibold text-gray-400">Buyurtma holati</span>
+          <span class="text-xs px-2.5 py-1 rounded-full font-bold" style="background:rgba(74,222,128,.15);color:#4ADE80">Haydovchi topildi</span>
+        </div>
+        <div class="flex items-center gap-4 mb-6">
+          <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl" style="background:rgba(255,214,0,.12)">🚕</div>
+          <div>
+            <div class="font-bold">Aziz Karimov</div>
+            <div class="text-xs text-gray-500">Chevrolet Cobalt · 01 A 777 AA</div>
+          </div>
+          <div class="ml-auto text-right">
+            <div class="text-xs text-gray-500">Yetib kelishi</div>
+            <div class="font-bold num" style="color:#FFD600">3 daqiqa</div>
+          </div>
+        </div>
+        <div class="space-y-3 text-sm">
+          <div class="flex items-center gap-3">
+            <span class="w-2.5 h-2.5 rounded-full bg-green-400"></span>
+            <span class="text-gray-300">Amir Temur ko'chasi, 12</span>
+          </div>
+          <div class="border-l border-dashed border-gray-700 ml-[4px] h-4"></div>
+          <div class="flex items-center gap-3">
+            <span class="w-2.5 h-2.5 rounded-full" style="background:#FFD600"></span>
+            <span class="text-gray-300">Yunusobod TC</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HAYDOVCHILAR -->
+  <section class="relative z-10 max-w-6xl mx-auto px-5 sm:px-8 py-16">
+    <div class="grid lg:grid-cols-2 gap-10 items-center">
+      <div class="card rounded-3xl p-6 sm:p-8 order-2 lg:order-1 float" style="animation-delay:.3s">
+        <div class="text-sm font-semibold text-gray-400 mb-5">Bugungi daromad</div>
+        <div class="text-3xl sm:text-4xl font-black num mb-6" style="color:#FFD600">284 000 <span class="text-lg text-gray-500 font-bold">so'm</span></div>
+        <div class="grid grid-cols-3 gap-3 text-center mb-6">
+          <div class="rounded-xl py-3" style="background:rgba(255,255,255,.05)">
+            <div class="font-bold num">18</div><div class="text-[11px] text-gray-500 mt-0.5">buyurtma</div>
+          </div>
+          <div class="rounded-xl py-3" style="background:rgba(255,255,255,.05)">
+            <div class="font-bold num">142 km</div><div class="text-[11px] text-gray-500 mt-0.5">masofa</div>
+          </div>
+          <div class="rounded-xl py-3" style="background:rgba(255,255,255,.05)">
+            <div class="font-bold num">4.9</div><div class="text-[11px] text-gray-500 mt-0.5">reyting</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 text-xs text-gray-500"><i class="fas fa-circle-check" style="color:#4ADE80"></i> Balans avtomatik hisoblanadi, har oy hisobot Telegramda</div>
+      </div>
+      <div class="order-1 lg:order-2">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold mb-5" style="background:rgba(139,92,246,.15);color:#A78BFA">
+          <i class="fas fa-steering-wheel"></i> HAYDOVCHILAR UCHUN
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-extrabold leading-tight mb-5">Mashinangiz bilan<br>barqaror daromad qiling</h2>
+        <p class="text-gray-400 mb-8">Ro'yxatdan o'ting, hujjatlaringizni yuklang va tasdiqlangach — darhol buyurtmalar oqimiga qo'shiling. Navbat adolatli taqsimlanadi.</p>
+        <ul class="space-y-4 mb-9">
+          <li class="flex items-start gap-3">
+            <span class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(139,92,246,.15);color:#A78BFA"><i class="fas fa-scale-balanced text-sm"></i></span>
+            <div><div class="font-semibold">Adolatli taqsimot</div><div class="text-sm text-gray-500">Eng yaqin va navbatdagi haydovchiga avtomatik beriladi</div></div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(139,92,246,.15);color:#A78BFA"><i class="fas fa-wallet text-sm"></i></span>
+            <div><div class="font-semibold">Aniq balans</div><div class="text-sm text-gray-500">Har bir buyurtma va komissiya ilovada ko'rinib turadi</div></div>
+          </li>
+          <li class="flex items-start gap-3">
+            <span class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(139,92,246,.15);color:#A78BFA"><i class="fas fa-headset text-sm"></i></span>
+            <div><div class="font-semibold">Doimiy operator qo'llabi</div><div class="text-sm text-gray-500">Savol tug'ilsa {{ operator_phone }} raqamiga qo'ng'iroq qiling</div></div>
+          </li>
+        </ul>
+        <a href="{% url 'driver:register' %}" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition" style="background:#A78BFA;color:#0B0B0F">
+          Haydovchi bo'lish <i class="fas fa-arrow-right text-sm"></i>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="relative z-10 max-w-5xl mx-auto px-5 sm:px-8 py-16">
+    <div class="card rounded-3xl px-6 sm:px-14 py-14 text-center relative overflow-hidden">
+      <div class="glow" style="width:300px;height:300px;background:#FFD600;opacity:.15;top:-100px;right:-60px;"></div>
+      <h3 class="text-2xl sm:text-3xl font-extrabold mb-3 relative">Hoziroq Vijdon Taxi oilasiga qo'shiling</h3>
+      <p class="text-gray-400 mb-8 relative">Mijoz sifatida buyurtma bering yoki haydovchi sifatida ishlashni boshlang — ikkalasi ham bepul va bir necha daqiqa.</p>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-3 relative">
+        <a href="{% url 'client:login' %}" class="w-full sm:w-auto px-7 py-3.5 rounded-2xl font-bold btn-primary transition flex items-center justify-center gap-2"><i class="fas fa-car-side"></i> Mijoz kirish</a>
+        <a href="{% url 'driver:login' %}" class="w-full sm:w-auto px-7 py-3.5 rounded-2xl font-bold btn-ghost transition flex items-center justify-center gap-2"><i class="fas fa-id-card"></i> Haydovchi kirish</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="relative z-10 border-t border-white/10">
+    <div class="max-w-6xl mx-auto px-5 sm:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-500">
+      <div class="flex items-center gap-2">
+        <img src="{% static 'taxi/img/logo.png' %}" alt="Vijdon Taxi" class="w-6 h-6 rounded-md object-cover">
+        <span>&copy; {% now "Y" %} Vijdon Taxi</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <i class="fas fa-phone text-xs"></i>
+        <a href="tel:{{ operator_phone }}" class="hover:text-white transition">{{ operator_phone }}</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

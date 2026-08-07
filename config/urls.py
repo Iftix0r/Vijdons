@@ -17,7 +17,6 @@ Including another URLconf
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import path, include
-from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
 from taxi import views as taxi_views
@@ -55,5 +54,5 @@ urlpatterns = [
     path('system/', include('taxi.system_urls')),
     path('driver/', include('taxi.driver_urls')),
     path('client/', include('taxi.client_urls')),
-    path('', RedirectView.as_view(url='/panel/', permanent=False)),
+    path('', taxi_views.landing_page, name='landing'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

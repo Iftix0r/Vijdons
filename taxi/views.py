@@ -4363,6 +4363,23 @@ def flyer_page(request):
     })
 
 
+def landing_page(request):
+    """Bosh sahifa (vijdontaxi.uz) — OMMAVIY (login talab qilmaydigan) landing
+    sahifa. Mijoz yoki haydovchi sifatida tizimga kirish/ro'yxatdan o'tish
+    havolalarini beradi. Boshqaruv paneli endi shu yerdan avtomatik ochilmaydi —
+    operatorlar to'g'ridan-to'g'ri /panel/ manzilidan kirishadi."""
+    tariff = TariffSettings.get()
+
+    def _uzs(value):
+        return f'{int(value):,}'.replace(',', ' ')
+
+    return render(request, 'taxi/landing.html', {
+        'base_price': _uzs(tariff.base_price),
+        'price_per_km': _uzs(tariff.price_per_km),
+        'operator_phone': tariff.operator_phone,
+    })
+
+
 def flyer_verify(request, code):
     """Flayerdagi QR kod skanerlanganda ochiladigan OMMAVIY (login talab
     qilmaydigan) sahifa — mijoz telefon kamerasi bilan darhol flayer asl
