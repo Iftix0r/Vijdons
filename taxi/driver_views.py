@@ -978,8 +978,9 @@ def driver_address_queue(request, driver):
     "yozilmay" qolib ketardi — masofa (client tomonida hisoblangan)
     to'g'ri ko'rinsa ham, o'rin har doim bo'sh chiqardi."""
     from .models import AddressQueueEntry
-    from .utils import update_address_queue_membership
+    from .utils import update_address_queue_membership, ADDRESS_QUEUE_STALE_MINUTES
     from django.utils import timezone
+    import datetime
     addr_id = request.GET.get('addr_id')
     try:
         addr_id = int(addr_id)
@@ -990,7 +991,14 @@ def driver_address_queue(request, driver):
     lng = request.GET.get('lng')
     if lat and lng:
         try:
-            update_address_queue_membership(driver, float(lat), float(lng))
+            # driver.last_seen yangilanishidan OLDIN "stale bo'lib
+            # qolganmidi" tekshiriladi — 10+ daqiqa jim turib qaytgan
+            # haydovchi eski (uzoq muddat oldingi) joined_at bilan
+            # navbatga "sakrab" qaytmasligi uchun (pastda
+            # update_address_queue_membership'ga uzatiladi).
+            stale_cutoff = timezone.now() - datetime.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
+            was_stale = not driver.last_seen or driver.last_seen < stale_cutoff
+            update_address_queue_membership(driver, float(lat), float(lng), was_stale=was_stale)
             # Diqqat: driver_location_sync harakat 50m dan oshgandagina
             # chaqiriladi (client tomonida), lekin navbatda TURGAN
             # haydovchi aynan qimirlamayapti — shu sabab last_seen shu
@@ -1316,10 +1324,17 @@ def driver_fcm_sync(request, driver):
 def driver_location_sync(request, driver):
     try:
         from django.utils import timezone
-        from .utils import update_address_queue_membership
+        import datetime
+        from .utils import update_address_queue_membership, ADDRESS_QUEUE_STALE_MINUTES
         data = json.loads(request.body)
         lat = float(data.get('lat', 0))
         lng = float(data.get('lng', 0))
+        # driver.last_seen ni yangilashdan OLDIN — ilova qancha vaqt jim
+        # turgani (stale bo'lib qolganmi) shu yerda aniqlanadi, aks holda
+        # pastda .last_seen darhol "hozir"ga yangilanib, "avvalgi holat"
+        # bilinmay qoladi (update_address_queue_membership'ga kerak).
+        stale_cutoff = timezone.now() - datetime.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
+        was_stale = not driver.last_seen or driver.last_seen < stale_cutoff
         driver.latitude  = lat
         driver.longitude = lng
         driver.last_seen = timezone.now()
@@ -1331,7 +1346,7 @@ def driver_location_sync(request, driver):
         # Manzil (Manzillar) navbatiga a'zolikni yangilash — dispatch_order()
         # shu manzilga tushgan buyurtmalarni "kim birinchi kelgan" tartibida
         # taqsimlashi uchun.
-        update_address_queue_membership(driver, lat, lng)
+        update_address_queue_membership(driver, lat, lng, was_stale=was_stale)
     except Exception:
         pass
     return JsonResponse({'ok': True})

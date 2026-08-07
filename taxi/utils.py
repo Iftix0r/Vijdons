@@ -1747,7 +1747,7 @@ def find_matching_saved_address(lat, lng):
     return nearest_addr
 
 
-def update_address_queue_membership(driver, lat, lng):
+def update_address_queue_membership(driver, lat, lng, was_stale=False):
     """Haydovchi GPS koordinatasi yangilanganda (driver_location_sync yoki
     driver_address_queue) chaqiriladi — biror manzil (SavedAddress)
     radiusiga kirsa navbatga "yoziladi" (AddressQueueEntry). Kelgan vaqti
@@ -1759,7 +1759,18 @@ def update_address_queue_membership(driver, lat, lng):
     radiusidan (300m) KATTAROQ chegara (ADDRESS_QUEUE_LEAVE_RADIUS_KM,
     600m) ishlatiladi — hysteresis. Aks holda GPS aniqligi tebranib
     tursa yoki haydovchi bir zumga chetga chiqsa, navbatdagi o'rni
-    doim-doim yo'qolib-qayta paydo bo'lib turardi."""
+    doim-doim yo'qolib-qayta paydo bo'lib turardi.
+
+    `was_stale=True` bo'lsa (chaqiruvchi, bu yangilanishdan OLDINGI
+    driver.last_seen ADDRESS_QUEUE_STALE_MINUTES dan eski ekanini
+    aniqlagan bo'lsa) — hysteresis e'tiborga olinmaydi, eski yozuv
+    yopilib, yangi joined_at bilan navbat OXIRIGA qo'yiladi. Aks holda:
+    haydovchi ilovani 10+ daqiqa yopib qo'yib, o'sha manzildan jilmagan
+    holda qaytsa, eski (uzoq vaqt oldingi) joined_at hysteresis tufayli
+    saqlanib qolardi — u butun shu vaqt "stale" filtri orqali navbatda
+    KO'RINMASA HAM, qaytib faollashgach birdaniga eski (yaxshi) o'rniga
+    "sakrab" tushib, doim faol turgan boshqa haydovchilarni ORQAGA surib
+    yuborardi."""
     from taxi.models import AddressQueueEntry
     from django.utils import timezone
 
@@ -1767,7 +1778,7 @@ def update_address_queue_membership(driver, lat, lng):
 
     if open_entry:
         dist_to_current = haversine(lat, lng, open_entry.address.lat, open_entry.address.lng)
-        if dist_to_current is not None and dist_to_current <= ADDRESS_QUEUE_LEAVE_RADIUS_KM:
+        if not was_stale and dist_to_current is not None and dist_to_current <= ADDRESS_QUEUE_LEAVE_RADIUS_KM:
             return  # hali "yetarlicha yaqin" — navbatdagi o'rni saqlanib qoladi
         open_entry.left_at = timezone.now()
         open_entry.save(update_fields=['left_at'])
