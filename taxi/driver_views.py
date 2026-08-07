@@ -993,11 +993,18 @@ def driver_address_queue(request, driver):
         except (TypeError, ValueError):
             pass
 
+    # ADDRESS_QUEUE_STALE_MINUTES ichida faol bo'lmagan (uzoq vaqt
+    # oflayn/ilovani yopib qo'ygan) haydovchilar — garchi masofa jihatidan
+    # hali navbat radiusida bo'lsa ham — "hozir turgan" deb hisoblanmaydi.
+    from django.utils import timezone
+    from .utils import ADDRESS_QUEUE_STALE_MINUTES
+    stale_cutoff = timezone.now() - timezone.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
     queue_ids = list(
         AddressQueueEntry.objects.filter(
             address_id=addr_id, left_at__isnull=True,
             driver__is_active=True, driver__is_on_duty=True,
             driver__approval_status='approved',
+            driver__last_seen__gte=stale_cutoff,
         )
         .order_by('joined_at')
         .values_list('driver_id', flat=True)
@@ -1015,9 +1022,10 @@ def driver_all_addresses(request, driver):
     haydovchining joriy GPS'iga bog'liq, shuning uchun frontendda
     (JS, SAVED_ADDRESSES) hisoblanadi."""
     from .models import SavedAddress
-    from .utils import find_matching_saved_address
+    from .utils import find_matching_saved_address, ADDRESS_QUEUE_STALE_MINUTES
     from django.utils import timezone
     from django.db.models import Count, Q as DQ
+    import datetime
 
     today = timezone.localdate()
     today_orders = Order.objects.filter(
@@ -1030,6 +1038,7 @@ def driver_all_addresses(request, driver):
         if addr:
             counts[addr.id] = counts.get(addr.id, 0) + 1
 
+    stale_cutoff = timezone.now() - datetime.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
     addresses = SavedAddress.objects.annotate(
         queue_count=Count(
             'queue_entries',
@@ -1038,6 +1047,7 @@ def driver_all_addresses(request, driver):
                 queue_entries__driver__is_active=True,
                 queue_entries__driver__is_on_duty=True,
                 queue_entries__driver__approval_status='approved',
+                queue_entries__driver__last_seen__gte=stale_cutoff,
             ),
         )
     )

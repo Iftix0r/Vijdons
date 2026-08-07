@@ -1725,6 +1725,11 @@ ADDRESS_QUEUE_LEAVE_RADIUS_KM = 2.0  # navbatdan "CHIQISH" radiusi — QO'SHILIS
                                       # chiqarib yuborilmasin — faqat chindan ham uzoqlashganda
                                       # (yoki boshqa manzilga o'tganda) chiqariladi.
 ADDRESS_QUEUE_MAX_ATTEMPTS = 3       # navbatdan ketma-ket ko'pi bilan nechta haydovchiga taklif qilinadi
+ADDRESS_QUEUE_STALE_MINUTES = 20     # shuncha daqiqa faollik (Driver.last_seen) bo'lmasa, navbatda
+                                      # "hozir turgan" deb hisoblanmaydi — faqat masofa (hysteresis)
+                                      # tekshirilsa, uzoq vaqt oflayn/ilovani yopib qo'ygan haydovchi
+                                      # (garchi joyidan jilmagan bo'lsa ham) abadiy eski o'rnini
+                                      # saqlab qolaverar edi.
 
 
 def find_matching_saved_address(lat, lng):
@@ -1800,15 +1805,21 @@ def _requeue_driver_to_back(driver_id, order):
 
 
 def _next_address_queue_driver(address, rejected_ids):
-    """Manzil navbatida hozir turgan (hali chiqib ketmagan, hali navbatda
-    ish holatida) haydovchilardan eng oldin kelganini qaytaradi — rad
+    """Manzil navbatida hozir turgan (hali chiqib ketmagan, so'nggi
+    ADDRESS_QUEUE_STALE_MINUTES ichida faol bo'lgan, hali navbatda ish
+    holatida) haydovchilardan eng oldin kelganini qaytaradi — rad
     etganlar/urinilganlar hisobga olinmaydi."""
     from taxi.models import AddressQueueEntry
+    from django.utils import timezone
+    import datetime
+
+    stale_cutoff = timezone.now() - datetime.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
     entry = (
         AddressQueueEntry.objects.filter(
             address=address, left_at__isnull=True,
             driver__is_active=True, driver__is_on_duty=True,
             driver__approval_status='approved',
+            driver__last_seen__gte=stale_cutoff,
         )
         .exclude(driver_id__in=rejected_ids)
         .select_related('driver')

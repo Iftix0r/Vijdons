@@ -3864,6 +3864,10 @@ def security_document_delete(request, pk):
 
 @panel_login_required
 def saved_addresses_list(request):
+    from django.utils import timezone
+    import datetime
+    from .utils import ADDRESS_QUEUE_STALE_MINUTES
+    stale_cutoff = timezone.now() - datetime.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
     addresses = SavedAddress.objects.annotate(
         queue_count=Count(
             'queue_entries',
@@ -3872,6 +3876,7 @@ def saved_addresses_list(request):
                 queue_entries__driver__is_active=True,
                 queue_entries__driver__is_on_duty=True,
                 queue_entries__driver__approval_status='approved',
+                queue_entries__driver__last_seen__gte=stale_cutoff,
             ),
         )
     )
