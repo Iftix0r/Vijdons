@@ -1710,6 +1710,7 @@ def auto_reject_timeout(order_id, driver_id, timeout_seconds):
             order.dispatched_to = None
             order.save(update_fields=['dispatched_to'])
             _resolve_dispatch_attempt(order, driver_id, DispatchAttempt.RESULT_TIMEOUT)
+            _requeue_driver_to_back(driver_id, order)
 
             # Keyingi haydovchiga yuborish
             dispatch_order(order)
@@ -1770,6 +1771,32 @@ def update_address_queue_membership(driver, lat, lng):
     nearest_addr = find_matching_saved_address(lat, lng)
     if nearest_addr and not open_entry:
         AddressQueueEntry.objects.create(address=nearest_addr, driver=driver)
+
+
+def _requeue_driver_to_back(driver_id, order):
+    """Haydovchi biror buyurtmani (manzil navbati orqali taklif qilingan
+    bo'lsa) rad etsa yoki javob bermasa — o'sha manzil navbatida ORQAGA
+    (oxiriga) suriladi: joriy AddressQueueEntry yopiladi va yangisi
+    (yangi joined_at bilan) ochiladi. Aks holda haydovchi doim 1-o'rinda
+    qolib, boshqalarga hech qachon navbat yetmasdi — bu funksiya yo'q
+    edi, endi rad etish/javobsizlik "navbat oxiriga o'tish" bilan bir
+    xil ma'noni bildiradi."""
+    from taxi.models import AddressQueueEntry
+    from django.utils import timezone
+
+    if not order.from_lat or not order.from_lng:
+        return
+    address = find_matching_saved_address(order.from_lat, order.from_lng)
+    if not address:
+        return
+    entry = AddressQueueEntry.objects.filter(
+        driver_id=driver_id, address=address, left_at__isnull=True,
+    ).first()
+    if not entry:
+        return
+    entry.left_at = timezone.now()
+    entry.save(update_fields=['left_at'])
+    AddressQueueEntry.objects.create(address=address, driver_id=driver_id)
 
 
 def _next_address_queue_driver(address, rejected_ids):

@@ -459,9 +459,10 @@ def driver_order_action(request, driver, pk, action):
             if order.dispatched_to_id == driver.id:
                 order.dispatched_to = None
                 order.save(update_fields=['dispatched_to'])
-                from .utils import dispatch_order, _resolve_dispatch_attempt
+                from .utils import dispatch_order, _resolve_dispatch_attempt, _requeue_driver_to_back
                 from .models import DispatchAttempt
                 _resolve_dispatch_attempt(order, driver.id, DispatchAttempt.RESULT_REJECTED)
+                _requeue_driver_to_back(driver.id, order)
                 tg_order_rejected(order, driver)
                 dispatch_order(order)
         return JsonResponse({'ok': True})
