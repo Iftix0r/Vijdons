@@ -1,4 +1,5 @@
 {% extends 'taxi/base.html' %}
+{% load l10n %}
 {% block title %}Buyurtma #{{ order.id }} — Vijdon Taxi{% endblock %}
 
 {% block content %}
@@ -321,7 +322,7 @@
         <form id="cancel-reassign-{{ order.pk }}" action="{% url 'taxi:order_cancel_reassign' order.pk %}" method="POST">
             {% csrf_token %}
         </form>
-        <button type="button" onclick="if(confirm('Bekor qilinsinmi? {{ order.driver.full_name }} ga {{ order.commission }} so\'m qaytariladi va buyurtma boshqa haydovchilarga ochiladi.')) document.getElementById('cancel-reassign-{{ order.pk }}').submit()"
+        <button type="button" onclick="if(confirm('Bekor qilinsinmi? {{ order.driver.full_name }} ga {{ order.commission|unlocalize }} so\'m qaytariladi va buyurtma boshqa haydovchilarga ochiladi.')) document.getElementById('cancel-reassign-{{ order.pk }}').submit()"
                 class="w-full py-2.5 rounded-xl bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 text-sm font-bold hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors border border-orange-100 dark:border-orange-800/30">
             <i class="fas fa-rotate-left mr-2"></i>Haydovchidan bekor qilish (pulini qaytarish)
         </button>
@@ -345,20 +346,20 @@
 <script>
 ymaps.ready(function() {
     var map = new ymaps.Map('detail_map', {
-        center: [{{ order.from_lat }}, {{ order.from_lng }}],
+        center: [{{ order.from_lat|unlocalize }}, {{ order.from_lng|unlocalize }}],
         zoom: 13,
         controls: ['zoomControl']
     });
 
     map.geoObjects.add(new ymaps.Placemark(
-        [{{ order.from_lat }}, {{ order.from_lng }}],
+        [{{ order.from_lat|unlocalize }}, {{ order.from_lng|unlocalize }}],
         { balloonContent: '{{ order.from_address|escapejs }}' },
         { preset: 'islands#greenDotIcon' }
     ));
 
     {% if order.to_lat and order.to_lng %}
     map.geoObjects.add(new ymaps.Placemark(
-        [{{ order.to_lat }}, {{ order.to_lng }}],
+        [{{ order.to_lat|unlocalize }}, {{ order.to_lng|unlocalize }}],
         { balloonContent: '{{ order.to_address|escapejs }}' },
         { preset: 'islands#redDotIcon' }
     ));

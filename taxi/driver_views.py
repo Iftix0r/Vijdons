@@ -453,18 +453,33 @@ def driver_order_action(request, driver, pk, action):
     order = get_object_or_404(Order, pk=pk)
 
     if action == 'reject':
-        if order.status == 'pending':
-            order.rejected_by.add(driver)
-            _log_activity(driver, DriverActivityLog.ACTION_ORDER, f"Buyurtma #{order.id} rad etildi", request)
-            if order.dispatched_to_id == driver.id:
-                order.dispatched_to = None
-                order.save(update_fields=['dispatched_to'])
-                from .utils import dispatch_order, _resolve_dispatch_attempt, _requeue_driver_to_back
-                from .models import DispatchAttempt
-                _resolve_dispatch_attempt(order, driver.id, DispatchAttempt.RESULT_REJECTED)
-                _requeue_driver_to_back(driver.id, order)
-                tg_order_rejected(order, driver)
-                dispatch_order(order)
+        # auto_reject_timeout (utils.py) xuddi shu buyurtmani/haydovchini
+        # bir vaqtda qulflab turishi mumkin (masalan, timeout aynan shu
+        # daqiqada ishga tushib, allaqachon boshqa haydovchiga (D2) qayta
+        # yuborgan bo'lsa) — qulfsiz o'qish/yozish shu holatda eski
+        # ('dispatched_to == biz') ma'lumotga asoslanib, D2'ga endigina
+        # tayinlangan buyurtmani orqaga tortib olib, ikkinchi marta
+        # qayta-dispatch qilib yuborardi. Shu sabab bu yerda ham
+        # select_for_update bilan qulflanadi va DB'dan QAYTA o'qiladi.
+        from django.db import transaction
+        should_redispatch = False
+        with transaction.atomic():
+            locked = Order.objects.select_for_update().get(pk=pk)
+            if locked.status == 'pending':
+                locked.rejected_by.add(driver)
+                _log_activity(driver, DriverActivityLog.ACTION_ORDER, f"Buyurtma #{locked.id} rad etildi", request)
+                should_redispatch = locked.dispatched_to_id == driver.id
+                if should_redispatch:
+                    locked.dispatched_to = None
+                    locked.save(update_fields=['dispatched_to'])
+                    from .utils import _resolve_dispatch_attempt, _requeue_driver_to_back
+                    from .models import DispatchAttempt
+                    _resolve_dispatch_attempt(locked, driver.id, DispatchAttempt.RESULT_REJECTED)
+                    _requeue_driver_to_back(driver.id, locked)
+        if should_redispatch:
+            from .utils import dispatch_order
+            tg_order_rejected(order, driver)
+            dispatch_order(locked)
         return JsonResponse({'ok': True})
 
     # Haydovchi qabul qilingan buyurtmani sababini ko'rsatib o'zi bekor qila
@@ -1010,17 +1025,18 @@ def driver_address_queue(request, driver):
         except (TypeError, ValueError):
             pass
 
-    # ADDRESS_QUEUE_STALE_MINUTES ichida faol bo'lmagan (uzoq vaqt
-    # oflayn/ilovani yopib qo'ygan) haydovchilar — garchi masofa jihatidan
-    # hali navbat radiusida bo'lsa ham — "hozir turgan" deb hisoblanmaydi.
-    from .utils import ADDRESS_QUEUE_STALE_MINUTES
-    stale_cutoff = timezone.now() - timezone.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
+    # Diqqat: bu yerda staleness filtri QASDAN ishlatilmaydi — dispatch_order()
+    # (_next_address_queue_driver, utils.py) navbatda hech kim "faol" (last_seen
+    # yangi) topilmasa ham, baribir navbatning old tomonidagi haydovchiga
+    # taklif qiladi (butunlay tashlab, umumiy tabloga chiqarib yubormaydi).
+    # Agar bu yerda staleness bo'yicha chiqarib tashlansa, dispatch aslida
+    # kimgadir yuborgan holatda ham ilova "Navbat bo'sh"/pozitsiya yo'q deb
+    # ko'rsatib, dispatch bilan UI bir-biriga zid ma'lumot berardi.
     queue_ids = list(
         AddressQueueEntry.objects.filter(
             address_id=addr_id, left_at__isnull=True,
             driver__is_active=True, driver__is_on_duty=True,
             driver__approval_status='approved',
-            driver__last_seen__gte=stale_cutoff,
         )
         .order_by('joined_at')
         .values_list('driver_id', flat=True)
@@ -1038,10 +1054,9 @@ def driver_all_addresses(request, driver):
     haydovchining joriy GPS'iga bog'liq, shuning uchun frontendda
     (JS, SAVED_ADDRESSES) hisoblanadi."""
     from .models import SavedAddress
-    from .utils import find_matching_saved_address, ADDRESS_QUEUE_STALE_MINUTES
+    from .utils import find_matching_saved_address
     from django.utils import timezone
     from django.db.models import Count, Q as DQ
-    import datetime
 
     today = timezone.localdate()
     today_orders = Order.objects.filter(
@@ -1054,7 +1069,9 @@ def driver_all_addresses(request, driver):
         if addr:
             counts[addr.id] = counts.get(addr.id, 0) + 1
 
-    stale_cutoff = timezone.now() - datetime.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
+    # Staleness filtri bu yerda ham qasdan ishlatilmaydi — driver_address_queue
+    # dagi izohga qarang: dispatch stale haydovchilarga ham baribir taklif
+    # qiladi, shu sabab UI ham ularni navbatdan hisobga olishi kerak.
     addresses = SavedAddress.objects.annotate(
         queue_count=Count(
             'queue_entries',
@@ -1063,7 +1080,6 @@ def driver_all_addresses(request, driver):
                 queue_entries__driver__is_active=True,
                 queue_entries__driver__is_on_duty=True,
                 queue_entries__driver__approval_status='approved',
-                queue_entries__driver__last_seen__gte=stale_cutoff,
             ),
         )
     )
@@ -1082,21 +1098,19 @@ def driver_all_addresses(request, driver):
 def driver_address_queue_drivers(request, driver, pk):
     """Bosh sahifadagi manzil kartochkasi ochilganda (strelka) — shu manzil
     navbatidagi haydovchilarni tartib bilan qaytaradi. Admin paneldagi
-    saved_address_queue_drivers bilan bir xil filtrlash mantig'i (stale/
-    offline/off-duty chiqarib tashlanadi)."""
+    saved_address_queue_drivers bilan bir xil filtrlash mantig'i
+    (offline/off-duty chiqarib tashlanadi — staleness EMAS, chunki
+    dispatch stale haydovchilarga ham baribir taklif qiladi; qarang
+    driver_address_queue'dagi izoh)."""
     from django.utils import timezone
-    import datetime
-    from .utils import ADDRESS_QUEUE_STALE_MINUTES
     from .models import AddressQueueEntry, SavedAddress
 
     address = get_object_or_404(SavedAddress, pk=pk)
-    stale_cutoff = timezone.now() - datetime.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
     entries = (
         AddressQueueEntry.objects.filter(
             address=address, left_at__isnull=True,
             driver__is_active=True, driver__is_on_duty=True,
             driver__approval_status='approved',
-            driver__last_seen__gte=stale_cutoff,
         )
         .select_related('driver')
         .order_by('joined_at')

@@ -3864,10 +3864,14 @@ def security_document_delete(request, pk):
 
 @panel_login_required
 def saved_addresses_list(request):
-    from django.utils import timezone
-    import datetime
-    from .utils import ADDRESS_QUEUE_STALE_MINUTES
-    stale_cutoff = timezone.now() - datetime.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
+    # Diqqat: staleness (Driver.last_seen) bo'yicha bu yerda QASDAN
+    # filtrlanmaydi — dispatch_order() (_next_address_queue_driver,
+    # utils.py) navbatda "faol" (yangi last_seen) hech kim topilmasa ham,
+    # baribir navbat old tomonidagi haydovchiga taklif qiladi (butunlay
+    # tashlab, umumiy tabloga chiqarib yubormaydi). Agar bu yerda
+    # staleness bo'yicha chiqarib tashlansa, panel "Navbat bo'sh" deb
+    # ko'rsatgan holatda ham dispatch aslida kimgadir yuborib qo'yishi
+    # mumkin edi — UI dispatch bilan zid ma'lumot berardi.
     addresses = SavedAddress.objects.annotate(
         queue_count=Count(
             'queue_entries',
@@ -3876,7 +3880,6 @@ def saved_addresses_list(request):
                 queue_entries__driver__is_active=True,
                 queue_entries__driver__is_on_duty=True,
                 queue_entries__driver__approval_status='approved',
-                queue_entries__driver__last_seen__gte=stale_cutoff,
             ),
         )
     )
@@ -3936,21 +3939,17 @@ def saved_address_delete(request, pk):
 def saved_address_queue_drivers(request, pk):
     """Manzillar ro'yxatida qator ochilganda (strelka) shu manzil navbatidagi
     haydovchilarni tartib bilan qaytaradi — saved_addresses_list'dagi
-    queue_count bilan bir xil filtrlash mantig'i (stale/offline/off-duty
-    chiqarib tashlanadi)."""
+    queue_count bilan bir xil filtrlash mantig'i (offline/off-duty
+    chiqarib tashlanadi — staleness EMAS, o'sha yerdagi izohga qarang)."""
     from django.utils import timezone
-    import datetime
-    from .utils import ADDRESS_QUEUE_STALE_MINUTES
     from .models import AddressQueueEntry
 
     address = get_object_or_404(SavedAddress, pk=pk)
-    stale_cutoff = timezone.now() - datetime.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
     entries = (
         AddressQueueEntry.objects.filter(
             address=address, left_at__isnull=True,
             driver__is_active=True, driver__is_on_duty=True,
             driver__approval_status='approved',
-            driver__last_seen__gte=stale_cutoff,
         )
         .select_related('driver')
         .order_by('joined_at')

@@ -1,4 +1,5 @@
 {% extends "driver/base.html" %}
+{% load l10n %}
 {% block title %}Tarix{% endblock %}
 {% block content %}
 
@@ -53,9 +54,9 @@
     </div>
   <div class="order-item ios-card rounded-[16px] anim-up cursor-pointer active:opacity-70 transition-opacity"
        data-status="{{ order.status }}"
-       data-price="{% if order.price %}{{ order.price }}{% else %}0{% endif %}"
-       data-km="{% if order.distance_km %}{{ order.distance_km }}{% else %}0{% endif %}"
-       data-tmx-km="{% if order.tmx_dist_km %}{{ order.tmx_dist_km }}{% else %}0{% endif %}"
+       data-price="{% if order.price %}{{ order.price|unlocalize }}{% else %}0{% endif %}"
+       data-km="{% if order.distance_km %}{{ order.distance_km|unlocalize }}{% else %}0{% endif %}"
+       data-tmx-km="{% if order.tmx_dist_km %}{{ order.tmx_dist_km|unlocalize }}{% else %}0{% endif %}"
        data-tmx-start="{% if order.tmx_start_time %}{{ order.tmx_start_time|date:'c' }}{% endif %}"
        data-id="{{ order.id }}"
        data-from="{{ order.from_address|escapejs }}"
@@ -66,7 +67,7 @@
        data-car-type="{{ order.get_car_type_display }}"
        data-note="{{ order.note|default:''|escapejs }}"
        data-date="{{ order.created_at|date:'d.m.Y H:i' }}"
-       data-commission="{% if order.commission %}{{ order.commission }}{% else %}0{% endif %}"
+       data-commission="{% if order.commission %}{{ order.commission|unlocalize }}{% else %}0{% endif %}"
        data-duration="{% if order.status == 'completed' %}{{ order.updated_at|date:'H:i' }}{% endif %}"
        onclick="openDetail(this)"
        style="animation-delay:{{ forloop.counter0 }}0ms;box-shadow:0 1px 3px rgba(0,0,0,.07)">

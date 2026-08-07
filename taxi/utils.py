@@ -1793,23 +1793,49 @@ def update_address_queue_membership(driver, lat, lng, was_stale=False):
     saqlanib qolardi — u butun shu vaqt "stale" filtri orqali navbatda
     KO'RINMASA HAM, qaytib faollashgach birdaniga eski (yaxshi) o'rniga
     "sakrab" tushib, doim faol turgan boshqa haydovchilarni ORQAGA surib
-    yuborardi."""
-    from taxi.models import AddressQueueEntry
+    yuborardi.
+
+    Diqqat: hysteresis faqat "joriy navbatdagi manzildan hali uzoqlashib
+    ketmadimmi" deb tekshiradi — agar ikkita saqlangan manzil bir-biridan
+    ADDRESS_QUEUE_LEAVE_RADIUS_KM dan yaqin bo'lsa (masalan ikkita bozor
+    bir-biriga yaqin joylashgan), haydovchi A navbatidan haydab B manziliga
+    borib to'xtasa ham, B hali A dan 2km ichida bo'lgani uchun eski A
+    yozuvi hech qachon yopilmay, haydovchi ABADIY A navbatida "yopishib"
+    qolar, B navbatida esa umuman ko'rinmas edi. Shu sabab avval joriy
+    GPS nuqtasiga ENG YAQIN manzil aniqlanadi — agar u joriy navbatdagi
+    manzildan BOSHQA bo'lsa, bu haqiqiy manzil almashinuvi deb hisoblanadi
+    va hysteresis e'tiborga olinmaydi.
+
+    Qulf: driver.last_seen (GPS sync) va driver_address_queue (10s poll)
+    bir xil haydovchi uchun deyarli bir vaqtda kelib qolishi mumkin —
+    qulfsiz bo'lsa, ikkalasi ham bir xil "ochiq yozuv yo'q/uzoqlashgan"
+    holatni o'qib, ikkalasi ham yangi AddressQueueEntry yaratib, bitta
+    haydovchi uchun IKKITA ochiq yozuv qolib ketardi (navbat soni/tartibi
+    buzilardi). Shu sabab Driver qatori select_for_update bilan
+    qulflanadi — shu haydovchi uchun chaqiruvlar ketma-ket bajariladi."""
+    from taxi.models import AddressQueueEntry, Driver
+    from django.db import transaction
     from django.utils import timezone
 
-    open_entry = AddressQueueEntry.objects.filter(driver=driver, left_at__isnull=True).select_related('address').first()
+    with transaction.atomic():
+        Driver.objects.select_for_update().get(pk=driver.pk)
 
-    if open_entry:
-        dist_to_current = haversine(lat, lng, open_entry.address.lat, open_entry.address.lng)
-        if not was_stale and dist_to_current is not None and dist_to_current <= ADDRESS_QUEUE_LEAVE_RADIUS_KM:
-            return  # hali "yetarlicha yaqin" — navbatdagi o'rni saqlanib qoladi
-        open_entry.left_at = timezone.now()
-        open_entry.save(update_fields=['left_at'])
-        open_entry = None
+        open_entry = AddressQueueEntry.objects.filter(driver=driver, left_at__isnull=True).select_related('address').first()
+        nearest_addr = find_matching_saved_address(lat, lng)
 
-    nearest_addr = find_matching_saved_address(lat, lng)
-    if nearest_addr and not open_entry:
-        AddressQueueEntry.objects.create(address=nearest_addr, driver=driver)
+        if open_entry:
+            switched_address = nearest_addr is not None and nearest_addr.pk != open_entry.address_id
+            dist_to_current = haversine(lat, lng, open_entry.address.lat, open_entry.address.lng)
+            if (
+                not was_stale and not switched_address
+                and dist_to_current is not None and dist_to_current <= ADDRESS_QUEUE_LEAVE_RADIUS_KM
+            ):
+                return  # hali "yetarlicha yaqin" — navbatdagi o'rni saqlanib qoladi
+            open_entry.left_at = timezone.now()
+            open_entry.save(update_fields=['left_at'])
+
+        if nearest_addr:
+            AddressQueueEntry.objects.create(address=nearest_addr, driver=driver)
 
 
 def _requeue_driver_to_back(driver_id, order):
@@ -1819,8 +1845,14 @@ def _requeue_driver_to_back(driver_id, order):
     (yangi joined_at bilan) ochiladi. Aks holda haydovchi doim 1-o'rinda
     qolib, boshqalarga hech qachon navbat yetmasdi — bu funksiya yo'q
     edi, endi rad etish/javobsizlik "navbat oxiriga o'tish" bilan bir
-    xil ma'noni bildiradi."""
-    from taxi.models import AddressQueueEntry
+    xil ma'noni bildiradi.
+
+    update_address_queue_membership bilan bir xil sababga ko'ra (GPS
+    sync so'rovi bilan bir vaqtga to'g'ri kelib, ikkita ochiq yozuv
+    yaratib qo'ymasligi uchun) Driver qatori select_for_update bilan
+    qulflanadi."""
+    from taxi.models import AddressQueueEntry, Driver
+    from django.db import transaction
     from django.utils import timezone
 
     if not order.from_lat or not order.from_lng:
@@ -1828,14 +1860,16 @@ def _requeue_driver_to_back(driver_id, order):
     address = find_matching_saved_address(order.from_lat, order.from_lng)
     if not address:
         return
-    entry = AddressQueueEntry.objects.filter(
-        driver_id=driver_id, address=address, left_at__isnull=True,
-    ).first()
-    if not entry:
-        return
-    entry.left_at = timezone.now()
-    entry.save(update_fields=['left_at'])
-    AddressQueueEntry.objects.create(address=address, driver_id=driver_id)
+    with transaction.atomic():
+        Driver.objects.select_for_update().get(pk=driver_id)
+        entry = AddressQueueEntry.objects.filter(
+            driver_id=driver_id, address=address, left_at__isnull=True,
+        ).first()
+        if not entry:
+            return
+        entry.left_at = timezone.now()
+        entry.save(update_fields=['left_at'])
+        AddressQueueEntry.objects.create(address=address, driver_id=driver_id)
 
 
 def _next_address_queue_driver(address, rejected_ids):
