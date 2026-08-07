@@ -1021,13 +1021,15 @@ def driver_address_queue(request, driver):
 @driver_login_required
 def driver_all_addresses(request, driver):
     """Barcha saqlangan manzillar (SavedAddress) ro'yxati, har biriga bugun
-    tushgan buyurtmalar soni bilan — "yaqin manzil" belgisi bosilganda
+    tushgan buyurtmalar soni VA hozir shu manzil navbatida turgan
+    haydovchilar soni bilan — "yaqin manzil" belgisi bosilganda
     ochiladigan to'liq ro'yxat uchun. Masofa hisobi bu yerda YO'Q — u
     haydovchining joriy GPS'iga bog'liq, shuning uchun frontendda
     (JS, SAVED_ADDRESSES) hisoblanadi."""
     from .models import SavedAddress
     from .utils import find_matching_saved_address
     from django.utils import timezone
+    from django.db.models import Count, Q as DQ
 
     today = timezone.localdate()
     today_orders = Order.objects.filter(
@@ -1040,9 +1042,24 @@ def driver_all_addresses(request, driver):
         if addr:
             counts[addr.id] = counts.get(addr.id, 0) + 1
 
+    addresses = SavedAddress.objects.annotate(
+        queue_count=Count(
+            'queue_entries',
+            filter=DQ(
+                queue_entries__left_at__isnull=True,
+                queue_entries__driver__is_active=True,
+                queue_entries__driver__is_on_duty=True,
+                queue_entries__driver__approval_status='approved',
+            ),
+        )
+    )
     data = [
-        {'id': a.id, 'name': a.name, 'lat': a.lat, 'lng': a.lng, 'today_orders': counts.get(a.id, 0)}
-        for a in SavedAddress.objects.all()
+        {
+            'id': a.id, 'name': a.name, 'lat': a.lat, 'lng': a.lng,
+            'today_orders': counts.get(a.id, 0),
+            'queue_count': a.queue_count,
+        }
+        for a in addresses
     ]
     return JsonResponse({'ok': True, 'addresses': data})
 

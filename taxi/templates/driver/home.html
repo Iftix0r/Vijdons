@@ -887,6 +887,7 @@ function _loadAddressesDrawer(){
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">
             ${a.dist !== null ? `<span class="ios-caption2" style="color:var(--ios-label3)">${_formatDistanceM(a.dist)}</span>` : ''}
+            <span class="ios-caption2 font-bold px-2 py-1 rounded-full" style="background:${a.queue_count > 0 ? 'rgba(52,199,89,.15)' : 'var(--ios-fill)'};color:${a.queue_count > 0 ? '#34C759' : 'var(--ios-label2)'}"><i class="fas fa-car-side" style="font-size:9px"></i> ${a.queue_count}</span>
             <span class="ios-caption2 font-bold px-2 py-1 rounded-full" style="background:var(--ios-fill);color:var(--ios-label2)">${a.today_orders} ta bugun</span>
           </div>
         </div>
