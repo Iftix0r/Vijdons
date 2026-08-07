@@ -1698,22 +1698,45 @@ def auto_reject_timeout(order_id, driver_id, timeout_seconds):
     """
     Haydovchi belgilangan vaqt ichida javob bermasa, buyurtmani avtomatik rad etadi
     va keyingi haydovchiga o'tkazadi.
-    """
+
+    Diqqat (poyga sharoiti/race condition): agar aynan shu daqiqada haydovchi
+    "Qabul qildim" so'rovini yuborgan bo'lsa-yu, u hali serverga
+    yetib/qayta ishlanib ulgurmagan bo'lsa — avvalgi versiyada bu funksiya
+    oddiy `.get()` bilan (hech qanday qulfsiz) o'qib, ESKI ('pending')
+    holatga asoslanib buyurtmani darhol boshqa haydovchiga o'tkazib
+    yuborardi. Keyin haydovchining "Qabul qildim" so'rovi (select_for_update
+    bilan) yetib kelganda, DB'da haydovchining o'zi allaqachon qabul qilgan
+    bo'lsa ham, `dispatched_to` boshqasiga o'zgargani sabab "Bu buyurtma
+    sizga yuborilmagan" xatosini olardi — go'yo tugma "qotib qolgandek"
+    ko'rinardi, aslida esa qabul qilish muvaffaqiyatli bo'lgan, faqat shu
+    fon jarayoni uni "bekor qilib" ulgurgan edi. Endi shu yerda ham
+    select_for_update ishlatiladi — agar "Qabul qildim" tranzaksiyasi
+    aynan shu daqiqada davom etayotgan bo'lsa, bu funksiya uning
+    tugashini KUTADI, keyin ENDI HAM DB'dan qayta o'qiydi — shu orqali
+    haqiqatan qabul qilingan buyurtmani hech qachon qayta ochib
+    yubormaydi."""
     import time
     time.sleep(timeout_seconds)
 
+    from django.db import transaction
     from taxi.models import Order, DispatchAttempt
     try:
-        order = Order.objects.get(pk=order_id)
-        if order.status == 'pending' and order.dispatched_to_id == driver_id:
-            order.rejected_by.add(driver_id)
-            order.dispatched_to = None
-            order.save(update_fields=['dispatched_to'])
-            _resolve_dispatch_attempt(order, driver_id, DispatchAttempt.RESULT_TIMEOUT)
-            _requeue_driver_to_back(driver_id, order)
+        with transaction.atomic():
+            order = Order.objects.select_for_update().get(pk=order_id)
+            if order.status == 'pending' and order.dispatched_to_id == driver_id:
+                order.rejected_by.add(driver_id)
+                order.dispatched_to = None
+                order.save(update_fields=['dispatched_to'])
+                _resolve_dispatch_attempt(order, driver_id, DispatchAttempt.RESULT_TIMEOUT)
+                _requeue_driver_to_back(driver_id, order)
+            else:
+                return
 
-            # Keyingi haydovchiga yuborish
-            dispatch_order(order)
+        # Keyingi haydovchiga yuborish — tranzaksiya (va shu bilan qulf)
+        # yopilgandan KEYIN, aks holda dispatch_order() ichidagi yangi
+        # DispatchAttempt/notify chaqiruvlari qulf ushlab turilgan holda
+        # bajarilib, boshqa so'rovlarni keraksiz kutishga majburlardi.
+        dispatch_order(order)
     except Exception:
         pass
 
