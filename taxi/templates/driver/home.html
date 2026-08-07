@@ -819,6 +819,46 @@ function closePendingDrawer(){
 // yangilanib turadi.
 let _homeAddrListTimer = null;
 
+function _renderHomeAddressesList(rows){
+  const list = document.getElementById('home-addresses-list');
+  if (!list) return;
+
+  if (!rows.length) {
+    list.innerHTML = `
+      <div class="ios-card2 rounded-2xl p-8 text-center mt-3">
+        <i class="fas fa-map-pin" style="font-size:28px;color:var(--ios-label3)"></i>
+        <p class="ios-subhead font-semibold mt-3" style="color:var(--ios-label2)">Hali manzillar saqlanmagan</p>
+        <p class="ios-caption2 mt-1" style="color:var(--ios-label3)">Operator panel &gt; Manzillar bo'limidan qo'shiladi</p>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = rows.map((a, i) => {
+    const isNearest = i === 0 && a.dist !== null && a.dist <= 1000;
+    return `
+    <div class="ios-card2 rounded-2xl p-4 ${isNearest ? 'anim-up' : ''}" style="${isNearest ? 'box-shadow:0 0 0 2px #FFD600' : ''}">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0" style="background:${isNearest ? '#FFD600' : 'var(--ios-fill)'}">
+            <i class="fas fa-location-dot" style="color:${isNearest ? '#111' : '#FF3B30'};font-size:16px"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="ios-subhead font-bold truncate">${a.name}</div>
+            <div class="ios-caption2" style="color:var(--ios-label3)">${a.dist !== null ? _formatDistanceM(a.dist) : 'Masofa noma’lum'}${isNearest ? ' · eng yaqin' : ''}</div>
+          </div>
+        </div>
+        <div class="flex flex-col items-end gap-1 flex-shrink-0">
+          ${a.myPosition ? `<span class="ios-caption2 font-bold px-2.5 py-1 rounded-full" style="background:#FFD600;color:#111">Siz: ${a.myPosition}-o'rin</span>` : ''}
+          <span class="ios-caption2 font-bold px-2.5 py-1 rounded-full flex items-center gap-1" style="background:${a.queue_count > 0 ? 'rgba(52,199,89,.15)' : 'var(--ios-fill)'};color:${a.queue_count > 0 ? '#34C759' : 'var(--ios-label3)'}">
+            <i class="fas fa-car-side" style="font-size:9px"></i>${a.queue_count} navbatda
+          </span>
+          <span class="ios-caption2" style="color:var(--ios-label3)">${a.today_orders} ta bugun</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function _loadHomeAddressesList(){
   const list = document.getElementById('home-addresses-list');
   if (!list) return;
@@ -834,43 +874,26 @@ function _loadHomeAddressesList(){
           const dlng = (window._driverLng - a.lng) * 111320 * Math.cos(window._driverLat * Math.PI / 180);
           dist = Math.sqrt(dlat * dlat + dlng * dlng);
         }
-        return { ...a, dist };
+        return { ...a, dist, myPosition: null };
       });
       rows.sort((a, b) => (a.dist ?? Infinity) - (b.dist ?? Infinity));
 
-      if (!rows.length) {
-        list.innerHTML = `
-          <div class="ios-card2 rounded-2xl p-8 text-center mt-3">
-            <i class="fas fa-map-pin" style="font-size:28px;color:var(--ios-label3)"></i>
-            <p class="ios-subhead font-semibold mt-3" style="color:var(--ios-label2)">Hali manzillar saqlanmagan</p>
-            <p class="ios-caption2 mt-1" style="color:var(--ios-label3)">Operator panel &gt; Manzillar bo'limidan qo'shiladi</p>
-          </div>`;
-        return;
+      // Eng yaqin manzil uchun o'zimizning navbatdagi o'rnimizni ham
+      // so'raymiz (driver:address_queue — bir xil endpoint, avvalgi
+      // "yaqin manzil" belgisida ishlatilgan). Faqat eng yaqinigi uchun —
+      // odatda haydovchi bir vaqtda faqat bitta manzil navbatida bo'ladi.
+      const nearest = rows[0];
+      if (haveGeo && nearest) {
+        fetch('{% url "driver:address_queue" %}?addr_id=' + nearest.id + '&lat=' + window._driverLat + '&lng=' + window._driverLng, { cache: 'no-store' })
+          .then(r => r.json())
+          .then(q => {
+            nearest.myPosition = (q.ok && q.position) ? q.position : null;
+            _renderHomeAddressesList(rows);
+          })
+          .catch(() => { _renderHomeAddressesList(rows); });
+      } else {
+        _renderHomeAddressesList(rows);
       }
-
-      list.innerHTML = rows.map((a, i) => {
-        const isNearest = i === 0 && a.dist !== null && a.dist <= 1000;
-        return `
-        <div class="ios-card2 rounded-2xl p-4 ${isNearest ? 'anim-up' : ''}" style="${isNearest ? 'box-shadow:0 0 0 2px #FFD600' : ''}">
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-3 min-w-0">
-              <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0" style="background:${isNearest ? '#FFD600' : 'var(--ios-fill)'}">
-                <i class="fas fa-location-dot" style="color:${isNearest ? '#111' : '#FF3B30'};font-size:16px"></i>
-              </div>
-              <div class="min-w-0">
-                <div class="ios-subhead font-bold truncate">${a.name}</div>
-                <div class="ios-caption2" style="color:var(--ios-label3)">${a.dist !== null ? _formatDistanceM(a.dist) : 'Masofa noma’lum'}${isNearest ? ' · eng yaqin' : ''}</div>
-              </div>
-            </div>
-            <div class="flex flex-col items-end gap-1 flex-shrink-0">
-              <span class="ios-caption2 font-bold px-2.5 py-1 rounded-full flex items-center gap-1" style="background:${a.queue_count > 0 ? 'rgba(52,199,89,.15)' : 'var(--ios-fill)'};color:${a.queue_count > 0 ? '#34C759' : 'var(--ios-label3)'}">
-                <i class="fas fa-car-side" style="font-size:9px"></i>${a.queue_count} navbatda
-              </span>
-              <span class="ios-caption2" style="color:var(--ios-label3)">${a.today_orders} ta bugun</span>
-            </div>
-          </div>
-        </div>`;
-      }).join('');
     })
     .catch(() => {});
 }
