@@ -8,7 +8,7 @@ def active_drivers(request):
     from django.conf import settings
     from django.db.models import Max, Count, Q
     from django.utils import timezone
-    from .models import MapsSettings, TariffSettings, PanelEvent, PanelSound, BalanceLog, BalanceTopupRequest, SecurityIncident
+    from .models import MapsSettings, TariffSettings, PanelEvent, PanelSound, BalanceLog, BalanceTopupRequest, SecurityIncident, EmployeeTask
     from .constants import DRIVER_SOUND_EVENTS
     maps = MapsSettings.get()
     tariff = TariffSettings.get()
@@ -58,6 +58,9 @@ def active_drivers(request):
         ).count(),
         'open_security_incident_count': SecurityIncident.objects.exclude(
             status=SecurityIncident.STATUS_RESOLVED
+        ).count(),
+        'open_employee_task_count': EmployeeTask.objects.exclude(
+            status=EmployeeTask.STATUS_DONE
         ).count(),
         'VAPID_PUBLIC_KEY': getattr(settings, 'VAPID_PUBLIC_KEY', ''),
         'YANDEX_MAPKIT_KEY': maps.yandex_mapkit_key or '',

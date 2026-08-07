@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from django.utils.html import format_html
-from .models import Driver, Client, Order, DriverActivityLog, GroupMessage
+from .models import Driver, Client, Order, DriverActivityLog, GroupMessage, Employee, EmployeeTask, EmployeeShift, EmployeeAttendance
 
 
 class DashboardAdmin(admin.AdminSite):
@@ -104,4 +104,32 @@ class GroupMessageAdmin(admin.ModelAdmin):
     def has_audio(self, obj):
         return format_html('<span style="color:#34C759">🎤 Ha</span>') if obj.audio else '—'
     has_audio.short_description = 'Audio'
+
+
+@admin.register(Employee)
+class EmployeeAdmin(admin.ModelAdmin):
+    list_display  = ('full_name', 'position', 'phone', 'hire_date', 'is_active')
+    search_fields = ('full_name', 'position', 'phone')
+    list_filter   = ('is_active', 'position')
+    list_editable = ('is_active',)
+
+
+@admin.register(EmployeeTask)
+class EmployeeTaskAdmin(admin.ModelAdmin):
+    list_display  = ('title', 'employee', 'status', 'due_date', 'created_at')
+    list_filter   = ('status',)
+    search_fields = ('title', 'employee__full_name')
+
+
+@admin.register(EmployeeShift)
+class EmployeeShiftAdmin(admin.ModelAdmin):
+    list_display  = ('employee', 'weekday', 'start_time', 'end_time')
+    list_filter   = ('weekday',)
+
+
+@admin.register(EmployeeAttendance)
+class EmployeeAttendanceAdmin(admin.ModelAdmin):
+    list_display  = ('employee', 'date', 'check_in', 'check_out', 'status')
+    list_filter   = ('status', 'date')
+    search_fields = ('employee__full_name',)
 

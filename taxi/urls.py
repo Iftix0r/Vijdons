@@ -59,6 +59,21 @@ urlpatterns = [
     path('security/documents/upload/', views.security_document_upload, name='security_document_upload'),
     path('security/documents/<int:pk>/delete/', views.security_document_delete, name='security_document_delete'),
 
+    # ── Hodimlar ──
+    path('hodimlar/', views.employee_list, name='employee_list'),
+    path('hodimlar/add/', views.employee_create, name='employee_create'),
+    path('hodimlar/<int:pk>/', views.employee_detail, name='employee_detail'),
+    path('hodimlar/<int:pk>/edit/', views.employee_edit, name='employee_edit'),
+    path('hodimlar/<int:pk>/delete/', views.employee_delete, name='employee_delete'),
+    path('hodimlar/<int:pk>/toggle/', views.employee_toggle_active, name='employee_toggle_active'),
+    path('hodimlar/<int:pk>/tasks/add/', views.employee_task_create, name='employee_task_create'),
+    path('hodimlar/tasks/<int:task_id>/status/', views.employee_task_set_status, name='employee_task_set_status'),
+    path('hodimlar/tasks/<int:task_id>/delete/', views.employee_task_delete, name='employee_task_delete'),
+    path('hodimlar/<int:pk>/shift/save/', views.employee_shift_save, name='employee_shift_save'),
+    path('hodimlar/<int:pk>/attendance/checkin/', views.employee_attendance_checkin, name='employee_attendance_checkin'),
+    path('hodimlar/<int:pk>/attendance/checkout/', views.employee_attendance_checkout, name='employee_attendance_checkout'),
+    path('hodimlar/<int:pk>/attendance/manual/', views.employee_attendance_manual, name='employee_attendance_manual'),
+
     path('manzillar/', views.saved_addresses_list, name='saved_addresses_list'),
     path('manzillar/add/', views.saved_address_create, name='saved_address_create'),
     path('manzillar/<int:pk>/edit/', views.saved_address_update, name='saved_address_update'),

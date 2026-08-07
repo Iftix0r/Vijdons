@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import user_passes_test
 from django.views.decorators.http import require_POST
 from django.contrib import messages
-from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher, VizitkaRewardLog, LegalDocument, SecurityIncident, VoiceParticipant, VoiceSignal, SavedAddress
+from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher, VizitkaRewardLog, LegalDocument, SecurityIncident, VoiceParticipant, VoiceSignal, SavedAddress, Employee, EmployeeTask, EmployeeShift, EmployeeAttendance
 from .utils import haversine, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, tg_order_deleted, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed, build_balance_receipt_pdf, build_flyer_business_card_pdf, voice_prune_stale, voice_participants_list, voice_target_kwargs, voice_signal_sender_info, voice_broadcast_audio
 import csv
 import json
@@ -3858,6 +3858,234 @@ def security_document_delete(request, pk):
         document.delete()
         messages.success(request, "Hujjat o'chirildi.")
     return redirect('taxi:security_dashboard')
+
+
+# ── Hodimlar (kompaniya xodimlari: profil, vazifalar, smena, davomat) ──────────
+
+@panel_login_required
+def employee_list(request):
+    from django.utils import timezone
+    today = timezone.now().date()
+
+    employees = Employee.objects.all()
+    q = request.GET.get('q', '').strip()
+    if q:
+        employees = employees.filter(Q(full_name__icontains=q) | Q(position__icontains=q) | Q(phone__icontains=q))
+    status_filter = request.GET.get('status', '')
+    if status_filter == 'active':
+        employees = employees.filter(is_active=True)
+    elif status_filter == 'inactive':
+        employees = employees.filter(is_active=False)
+
+    today_attendance = {a.employee_id: a for a in EmployeeAttendance.objects.filter(date=today)}
+    open_task_counts = {
+        row['employee']: row['c'] for row in
+        EmployeeTask.objects.exclude(status=EmployeeTask.STATUS_DONE).values('employee').annotate(c=Count('id'))
+    }
+
+    employees = list(employees)
+    for e in employees:
+        e.today_attendance = today_attendance.get(e.pk)
+        e.open_task_count = open_task_counts.get(e.pk, 0)
+
+    return render(request, 'taxi/employees.html', {
+        'employees': employees,
+        'q': q,
+        'status_filter': status_filter,
+        'total_count': Employee.objects.count(),
+        'active_count': Employee.objects.filter(is_active=True).count(),
+        'today': today,
+    })
+
+
+@panel_login_required
+def employee_create(request):
+    from django.utils import timezone
+    if request.method == 'POST':
+        full_name = request.POST.get('full_name', '').strip()
+        position  = request.POST.get('position', '').strip()
+        if full_name and position:
+            Employee.objects.create(
+                full_name=full_name,
+                position=position,
+                phone=request.POST.get('phone', '').strip(),
+                hire_date=request.POST.get('hire_date') or timezone.localdate(),
+                photo=request.FILES.get('photo'),
+                notes=request.POST.get('notes', '').strip(),
+            )
+            messages.success(request, "Hodim qo'shildi.")
+        else:
+            messages.error(request, "F.I.Sh. va lavozimni kiriting.")
+    return redirect(request.META.get('HTTP_REFERER') or 'taxi:employee_list')
+
+
+@panel_login_required
+def employee_edit(request, pk):
+    employee = get_object_or_404(Employee, pk=pk)
+    if request.method == 'POST':
+        employee.full_name = request.POST.get('full_name', employee.full_name).strip()
+        employee.position  = request.POST.get('position', employee.position).strip()
+        employee.phone     = request.POST.get('phone', employee.phone).strip()
+        hire_date = request.POST.get('hire_date')
+        if hire_date:
+            employee.hire_date = hire_date
+        employee.notes = request.POST.get('notes', employee.notes).strip()
+        if request.FILES.get('photo'):
+            employee.photo = request.FILES.get('photo')
+        employee.save()
+        messages.success(request, "Hodim ma'lumotlari yangilandi.")
+    return redirect(request.META.get('HTTP_REFERER') or reverse('taxi:employee_detail', args=[pk]))
+
+
+@panel_login_required
+def employee_delete(request, pk):
+    employee = get_object_or_404(Employee, pk=pk)
+    if request.method == 'POST':
+        employee.delete()
+        messages.success(request, "Hodim o'chirildi.")
+    return redirect('taxi:employee_list')
+
+
+@panel_login_required
+def employee_toggle_active(request, pk):
+    employee = get_object_or_404(Employee, pk=pk)
+    if request.method == 'POST':
+        employee.is_active = not employee.is_active
+        employee.save(update_fields=['is_active'])
+    return redirect(request.META.get('HTTP_REFERER') or 'taxi:employee_list')
+
+
+@panel_login_required
+def employee_detail(request, pk):
+    from datetime import timedelta
+    from django.utils import timezone
+    employee = get_object_or_404(Employee, pk=pk)
+    today = timezone.now().date()
+
+    tasks = employee.tasks.all()
+    shifts = {s.weekday: s for s in employee.shifts.all()}
+    shift_rows = [
+        {'weekday': wd, 'label': label, 'shift': shifts.get(wd)}
+        for wd, label in EmployeeShift.WEEKDAY_CHOICES
+    ]
+
+    return render(request, 'taxi/employee_detail.html', {
+        'employee': employee,
+        'todo_tasks': tasks.filter(status=EmployeeTask.STATUS_TODO),
+        'progress_tasks': tasks.filter(status=EmployeeTask.STATUS_PROGRESS),
+        'done_tasks': tasks.filter(status=EmployeeTask.STATUS_DONE),
+        'shift_rows': shift_rows,
+        'attendance_records': employee.attendance_records.filter(date__gte=today - timedelta(days=30)),
+        'today_attendance': employee.attendance_records.filter(date=today).first(),
+        'today': today,
+    })
+
+
+@panel_login_required
+def employee_task_create(request, pk):
+    employee = get_object_or_404(Employee, pk=pk)
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        if title:
+            EmployeeTask.objects.create(
+                employee=employee,
+                title=title,
+                description=request.POST.get('description', '').strip(),
+                due_date=request.POST.get('due_date') or None,
+                assigned_by=request.user,
+            )
+            messages.success(request, "Vazifa qo'shildi.")
+    return redirect('taxi:employee_detail', pk=pk)
+
+
+@panel_login_required
+def employee_task_set_status(request, task_id):
+    from django.utils import timezone
+    task = get_object_or_404(EmployeeTask, pk=task_id)
+    if request.method == 'POST':
+        status = request.POST.get('status')
+        if status in dict(EmployeeTask.STATUS_CHOICES):
+            task.status = status
+            task.completed_at = timezone.now() if status == EmployeeTask.STATUS_DONE else None
+            task.save(update_fields=['status', 'completed_at'])
+    return redirect(request.META.get('HTTP_REFERER') or reverse('taxi:employee_detail', args=[task.employee_id]))
+
+
+@panel_login_required
+def employee_task_delete(request, task_id):
+    task = get_object_or_404(EmployeeTask, pk=task_id)
+    employee_pk = task.employee_id
+    if request.method == 'POST':
+        task.delete()
+        messages.success(request, "Vazifa o'chirildi.")
+    return redirect('taxi:employee_detail', pk=employee_pk)
+
+
+@panel_login_required
+def employee_shift_save(request, pk):
+    employee = get_object_or_404(Employee, pk=pk)
+    if request.method == 'POST':
+        for weekday, _label in EmployeeShift.WEEKDAY_CHOICES:
+            start = request.POST.get(f'start_{weekday}', '').strip()
+            end   = request.POST.get(f'end_{weekday}', '').strip()
+            if start and end:
+                EmployeeShift.objects.update_or_create(
+                    employee=employee, weekday=weekday,
+                    defaults={'start_time': start, 'end_time': end},
+                )
+            else:
+                EmployeeShift.objects.filter(employee=employee, weekday=weekday).delete()
+        messages.success(request, "Smena jadvali saqlandi.")
+    return redirect('taxi:employee_detail', pk=pk)
+
+
+@panel_login_required
+def employee_attendance_checkin(request, pk):
+    from django.utils import timezone
+    employee = get_object_or_404(Employee, pk=pk)
+    if request.method == 'POST':
+        record, _ = EmployeeAttendance.objects.get_or_create(employee=employee, date=timezone.now().date())
+        record.check_in = timezone.now()
+        record.status = EmployeeAttendance.STATUS_PRESENT
+        record.save(update_fields=['check_in', 'status'])
+        messages.success(request, f"{employee.full_name} — kelishi belgilandi.")
+    return redirect(request.META.get('HTTP_REFERER') or reverse('taxi:employee_detail', args=[pk]))
+
+
+@panel_login_required
+def employee_attendance_checkout(request, pk):
+    from django.utils import timezone
+    employee = get_object_or_404(Employee, pk=pk)
+    if request.method == 'POST':
+        record, _ = EmployeeAttendance.objects.get_or_create(employee=employee, date=timezone.now().date())
+        record.check_out = timezone.now()
+        record.save(update_fields=['check_out'])
+        messages.success(request, f"{employee.full_name} — ketishi belgilandi.")
+    return redirect(request.META.get('HTTP_REFERER') or reverse('taxi:employee_detail', args=[pk]))
+
+
+@panel_login_required
+def employee_attendance_manual(request, pk):
+    from datetime import datetime as _dt
+    from django.utils import timezone
+    employee = get_object_or_404(Employee, pk=pk)
+    if request.method == 'POST':
+        date = request.POST.get('date')
+        if date:
+            def _combine(time_str):
+                if not time_str:
+                    return None
+                naive = _dt.strptime(f"{date} {time_str}", "%Y-%m-%d %H:%M")
+                return timezone.make_aware(naive) if timezone.is_naive(naive) else naive
+
+            record, _ = EmployeeAttendance.objects.get_or_create(employee=employee, date=date)
+            record.check_in  = _combine(request.POST.get('check_in', ''))
+            record.check_out = _combine(request.POST.get('check_out', ''))
+            record.status    = request.POST.get('status', record.status)
+            record.note      = request.POST.get('note', '').strip()
+            record.save()
+            messages.success(request, "Davomat yozuvi saqlandi.")
+    return redirect('taxi:employee_detail', pk=pk)
 
 
 # ── Tezkor manzillar (xaritadan tanlab saqlanadigan, nomli manzillar) ───────────

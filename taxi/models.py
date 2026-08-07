@@ -1195,3 +1195,111 @@ class AddressQueueEntry(models.Model):
             models.Index(fields=['address', 'left_at']),
             models.Index(fields=['driver', 'left_at']),
         ]
+
+
+class Employee(models.Model):
+    """Kompaniyaning ichki hodimi (dispetcher, buxgalter, texnik xizmat va
+    h.k.) — Driver/Client'dan farqli, taksi xizmatining o'zida ishlaydi.
+    Operator panelidagi 'Hodimlar' bo'limida boshqariladi: profil, unga
+    biriktirilgan vazifalar (EmployeeTask), smena jadvali (EmployeeShift)
+    va davomat (EmployeeAttendance) shu modelga bog'lanadi."""
+    full_name  = models.CharField(max_length=255, verbose_name="F.I.Sh.")
+    position   = models.CharField(max_length=100, verbose_name='Lavozimi', help_text="Masalan: Dispetcher, Buxgalter, Texnik xizmat")
+    phone      = models.CharField(max_length=20, blank=True, default='', verbose_name='Telefon raqami')
+    photo      = models.ImageField(upload_to='employees/', blank=True, null=True, verbose_name='Rasm')
+    hire_date  = models.DateField(default=timezone.localdate, verbose_name='Ishga qabul qilingan sana')
+    is_active  = models.BooleanField(default=True, verbose_name='Faol')
+    notes      = models.TextField(blank=True, default='', verbose_name='Izoh')
+    user       = models.OneToOneField(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='employee_profile', verbose_name='Tizim akkaunti (ixtiyoriy)')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.full_name} ({self.position})"
+
+    class Meta:
+        verbose_name = 'Hodim'
+        verbose_name_plural = 'Hodimlar'
+        ordering = ['full_name']
+
+
+class EmployeeTask(models.Model):
+    """Muayyan hodimga biriktirilgan aniq topshiriq — Tizim panelidagi
+    umumiy Task (kanban, hech kimga bog'lanmagan) dan farqli, doim bitta
+    Employee'ga tegishli."""
+    STATUS_TODO     = 'todo'
+    STATUS_PROGRESS = 'in_progress'
+    STATUS_DONE     = 'done'
+    STATUS_CHOICES = (
+        (STATUS_TODO,     'Bajarilishi kerak'),
+        (STATUS_PROGRESS, 'Jarayonda'),
+        (STATUS_DONE,     'Bajarildi'),
+    )
+
+    employee     = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='tasks', verbose_name='Hodim')
+    title        = models.CharField(max_length=255, verbose_name='Vazifa')
+    description  = models.TextField(blank=True, default='', verbose_name='Tavsif')
+    status       = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_TODO, verbose_name='Holati')
+    due_date     = models.DateField(null=True, blank=True, verbose_name='Muddati')
+    assigned_by  = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, verbose_name='Kim topshirdi')
+    created_at   = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.title} — {self.employee.full_name}"
+
+    class Meta:
+        verbose_name = 'Hodim vazifasi'
+        verbose_name_plural = 'Hodim vazifalari'
+        ordering = ['status', '-created_at']
+
+
+class EmployeeShift(models.Model):
+    """Hodimning haftalik smena jadvali — har hafta kuni uchun bitta yozuv;
+    biror kun uchun yozuv bo'lmasa, o'sha kun dam olish hisoblanadi."""
+    WEEKDAY_CHOICES = (
+        (0, 'Dushanba'), (1, 'Seshanba'), (2, 'Chorshanba'), (3, 'Payshanba'),
+        (4, 'Juma'), (5, 'Shanba'), (6, 'Yakshanba'),
+    )
+
+    employee   = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='shifts', verbose_name='Hodim')
+    weekday    = models.PositiveSmallIntegerField(choices=WEEKDAY_CHOICES, verbose_name='Hafta kuni')
+    start_time = models.TimeField(verbose_name='Boshlanish vaqti')
+    end_time   = models.TimeField(verbose_name='Tugash vaqti')
+
+    def __str__(self):
+        return f"{self.employee.full_name} — {self.get_weekday_display()} {self.start_time}-{self.end_time}"
+
+    class Meta:
+        verbose_name = 'Smena'
+        verbose_name_plural = 'Smena jadvali'
+        unique_together = ('employee', 'weekday')
+        ordering = ['weekday']
+
+
+class EmployeeAttendance(models.Model):
+    """Hodimning kunlik davomati — kelgan/ketgan vaqti operator tomonidan
+    tugma orqali (bugungi kun) yoki qo'lda (istalgan sana uchun) belgilanadi."""
+    STATUS_PRESENT = 'present'
+    STATUS_LATE    = 'late'
+    STATUS_ABSENT  = 'absent'
+    STATUS_CHOICES = (
+        (STATUS_PRESENT, 'Keldi'),
+        (STATUS_LATE,    'Kech qoldi'),
+        (STATUS_ABSENT,  'Kelmadi'),
+    )
+
+    employee  = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='attendance_records', verbose_name='Hodim')
+    date      = models.DateField(verbose_name='Sana')
+    check_in  = models.DateTimeField(null=True, blank=True, verbose_name='Kelgan vaqti')
+    check_out = models.DateTimeField(null=True, blank=True, verbose_name='Ketgan vaqti')
+    status    = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PRESENT, verbose_name='Holati')
+    note      = models.CharField(max_length=255, blank=True, default='', verbose_name='Izoh')
+
+    def __str__(self):
+        return f"{self.employee.full_name} — {self.date}"
+
+    class Meta:
+        verbose_name = 'Davomat yozuvi'
+        verbose_name_plural = 'Davomat'
+        unique_together = ('employee', 'date')
+        ordering = ['-date']

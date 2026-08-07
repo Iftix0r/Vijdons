@@ -1,0 +1,359 @@
+{% extends 'taxi/base.html' %}
+{% block title %}{{ employee.full_name }} — Hodimlar — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-center gap-4 mb-5">
+    <div class="flex items-center gap-3">
+        <a href="{% url 'taxi:employee_list' %}" class="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-amber-600 transition-colors">
+            <i class="fas fa-arrow-left text-sm"></i>
+        </a>
+        {% if employee.photo %}
+        <img src="{{ employee.photo.url }}" class="w-12 h-12 rounded-full object-cover">
+        {% else %}
+        <span class="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 flex items-center justify-center text-base font-bold">{{ employee.full_name|slice:":1" }}</span>
+        {% endif %}
+        <div>
+            <h1 class="text-xl font-extrabold text-gray-900 dark:text-white">{{ employee.full_name }}</h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{ employee.position }}{% if employee.phone %} · {{ employee.phone }}{% endif %}</p>
+        </div>
+        {% if employee.is_active %}
+        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600">Faol</span>
+        {% else %}
+        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-500">Nofaol</span>
+        {% endif %}
+    </div>
+    <button onclick="openModal('editEmployeeModal')"
+            class="flex items-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold rounded-xl transition-colors">
+        <i class="fas fa-pen"></i> Profilni tahrirlash
+    </button>
+</div>
+
+<!-- Bugungi davomat -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm px-5 py-4 mb-5 flex flex-wrap items-center justify-between gap-4">
+    <div>
+        <p class="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1">Bugungi davomat ({{ today|date:"d.m.Y" }})</p>
+        {% if today_attendance.check_in %}
+        <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">
+            <i class="fas fa-right-to-bracket text-emerald-500 mr-1"></i>Keldi: {{ today_attendance.check_in|date:"H:i" }}
+            {% if today_attendance.check_out %}
+            &nbsp;&nbsp;<i class="fas fa-right-from-bracket text-red-400 mr-1"></i>Ketdi: {{ today_attendance.check_out|date:"H:i" }}
+            {% endif %}
+        </p>
+        {% else %}
+        <p class="text-sm text-gray-400">Hali belgilanmagan</p>
+        {% endif %}
+    </div>
+    <div class="flex gap-2">
+        <form method="POST" action="{% url 'taxi:employee_attendance_checkin' employee.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold transition-colors">
+                <i class="fas fa-right-to-bracket mr-1"></i> Keldi
+            </button>
+        </form>
+        <form method="POST" action="{% url 'taxi:employee_attendance_checkout' employee.pk %}">
+            {% csrf_token %}
+            <button type="submit" {% if not today_attendance.check_in %}disabled{% endif %}
+                    class="px-4 py-2 rounded-xl bg-red-400 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors">
+                <i class="fas fa-right-from-bracket mr-1"></i> Ketdi
+            </button>
+        </form>
+        <button onclick="openModal('manualAttendanceModal')" class="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold transition-colors">
+            <i class="fas fa-calendar-pen mr-1"></i> Qo'lda kiritish
+        </button>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+    <!-- Vazifalar (kanban) -->
+    <div class="lg:col-span-2 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-base font-bold text-gray-900 dark:text-white"><i class="fas fa-list-check text-amber-500 mr-1.5"></i>Vazifalar</h2>
+            <button onclick="openModal('newTaskModal')" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold transition-colors">
+                <i class="fas fa-plus mr-1"></i> Vazifa qo'shish
+            </button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <!-- Bajarilishi kerak -->
+            <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3">
+                <p class="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Bajarilishi kerak ({{ todo_tasks|length }})</p>
+                <div class="space-y-2">
+                    {% for t in todo_tasks %}
+                    <div class="bg-white dark:bg-gray-900 rounded-lg p-2.5 border border-gray-100 dark:border-gray-800 shadow-sm">
+                        <p class="text-sm font-semibold text-gray-800 dark:text-white">{{ t.title }}</p>
+                        {% if t.description %}<p class="text-xs text-gray-400 mt-0.5">{{ t.description }}</p>{% endif %}
+                        {% if t.due_date %}<p class="text-[11px] text-amber-500 mt-1"><i class="fas fa-clock"></i> {{ t.due_date|date:"d.m.Y" }}</p>{% endif %}
+                        <div class="flex gap-1 mt-2">
+                            <form method="POST" action="{% url 'taxi:employee_task_set_status' t.pk %}">
+                                {% csrf_token %}<input type="hidden" name="status" value="in_progress">
+                                <button type="submit" class="text-[11px] px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-600 font-semibold hover:bg-blue-200 transition-colors">Boshlash</button>
+                            </form>
+                            <form method="POST" action="{% url 'taxi:employee_task_delete' t.pk %}" onsubmit="return confirm('O\'chirilsinmi?');">
+                                {% csrf_token %}
+                                <button type="submit" class="text-[11px] px-2 py-1 rounded bg-red-50 dark:bg-red-900/20 text-red-500 font-semibold hover:bg-red-100 transition-colors"><i class="fas fa-trash"></i></button>
+                            </form>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-xs text-gray-400 text-center py-3">Yo'q</p>
+                    {% endfor %}
+                </div>
+            </div>
+            <!-- Jarayonda -->
+            <div class="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-3">
+                <p class="text-xs font-bold uppercase tracking-wide text-blue-400 mb-2">Jarayonda ({{ progress_tasks|length }})</p>
+                <div class="space-y-2">
+                    {% for t in progress_tasks %}
+                    <div class="bg-white dark:bg-gray-900 rounded-lg p-2.5 border border-gray-100 dark:border-gray-800 shadow-sm">
+                        <p class="text-sm font-semibold text-gray-800 dark:text-white">{{ t.title }}</p>
+                        {% if t.description %}<p class="text-xs text-gray-400 mt-0.5">{{ t.description }}</p>{% endif %}
+                        {% if t.due_date %}<p class="text-[11px] text-amber-500 mt-1"><i class="fas fa-clock"></i> {{ t.due_date|date:"d.m.Y" }}</p>{% endif %}
+                        <div class="flex gap-1 mt-2">
+                            <form method="POST" action="{% url 'taxi:employee_task_set_status' t.pk %}">
+                                {% csrf_token %}<input type="hidden" name="status" value="done">
+                                <button type="submit" class="text-[11px] px-2 py-1 rounded bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 font-semibold hover:bg-emerald-200 transition-colors">Tugatish</button>
+                            </form>
+                            <form method="POST" action="{% url 'taxi:employee_task_delete' t.pk %}" onsubmit="return confirm('O\'chirilsinmi?');">
+                                {% csrf_token %}
+                                <button type="submit" class="text-[11px] px-2 py-1 rounded bg-red-50 dark:bg-red-900/20 text-red-500 font-semibold hover:bg-red-100 transition-colors"><i class="fas fa-trash"></i></button>
+                            </form>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-xs text-gray-400 text-center py-3">Yo'q</p>
+                    {% endfor %}
+                </div>
+            </div>
+            <!-- Bajarildi -->
+            <div class="bg-emerald-50 dark:bg-emerald-900/10 rounded-xl p-3">
+                <p class="text-xs font-bold uppercase tracking-wide text-emerald-500 mb-2">Bajarildi ({{ done_tasks|length }})</p>
+                <div class="space-y-2">
+                    {% for t in done_tasks %}
+                    <div class="bg-white dark:bg-gray-900 rounded-lg p-2.5 border border-gray-100 dark:border-gray-800 shadow-sm opacity-80">
+                        <p class="text-sm font-semibold text-gray-500 dark:text-gray-400 line-through">{{ t.title }}</p>
+                        <div class="flex gap-1 mt-2">
+                            <form method="POST" action="{% url 'taxi:employee_task_delete' t.pk %}" onsubmit="return confirm('O\'chirilsinmi?');">
+                                {% csrf_token %}
+                                <button type="submit" class="text-[11px] px-2 py-1 rounded bg-red-50 dark:bg-red-900/20 text-red-500 font-semibold hover:bg-red-100 transition-colors"><i class="fas fa-trash"></i></button>
+                            </form>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-xs text-gray-400 text-center py-3">Yo'q</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smena jadvali -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+        <h2 class="text-base font-bold text-gray-900 dark:text-white mb-4"><i class="fas fa-calendar-week text-amber-500 mr-1.5"></i>Smena jadvali</h2>
+        <form method="POST" action="{% url 'taxi:employee_shift_save' employee.pk %}" class="space-y-2.5">
+            {% csrf_token %}
+            {% for row in shift_rows %}
+            <div class="flex items-center gap-2">
+                <span class="w-20 text-xs font-semibold text-gray-500 dark:text-gray-400">{{ row.label }}</span>
+                <input type="time" name="start_{{ row.weekday }}" value="{{ row.shift.start_time|time:'H:i'|default:'' }}"
+                       class="flex-1 px-2 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white">
+                <span class="text-gray-300 text-xs">—</span>
+                <input type="time" name="end_{{ row.weekday }}" value="{{ row.shift.end_time|time:'H:i'|default:'' }}"
+                       class="flex-1 px-2 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white">
+            </div>
+            {% endfor %}
+            <p class="text-[11px] text-gray-400 pt-1">Bo'sh qoldirilgan kun — dam olish kuni hisoblanadi</p>
+            <button type="submit" class="w-full mt-2 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold shadow-md shadow-amber-200 dark:shadow-none transition">
+                Jadvalni saqlash
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Davomat tarixi -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+        <h2 class="text-base font-bold text-gray-900 dark:text-white"><i class="fas fa-clock-rotate-left text-amber-500 mr-1.5"></i>Davomat tarixi (so'nggi 30 kun)</h2>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                    <th class="px-5 py-3">Sana</th>
+                    <th class="px-5 py-3">Keldi</th>
+                    <th class="px-5 py-3">Ketdi</th>
+                    <th class="px-5 py-3">Holati</th>
+                    <th class="px-5 py-3">Izoh</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
+                {% for a in attendance_records %}
+                <tr>
+                    <td class="px-5 py-2.5">{{ a.date|date:"d.m.Y" }}</td>
+                    <td class="px-5 py-2.5">{{ a.check_in|date:"H:i"|default:"—" }}</td>
+                    <td class="px-5 py-2.5">{{ a.check_out|date:"H:i"|default:"—" }}</td>
+                    <td class="px-5 py-2.5">
+                        {% if a.status == 'present' %}<span class="text-emerald-600 font-semibold text-xs">Keldi</span>
+                        {% elif a.status == 'late' %}<span class="text-amber-500 font-semibold text-xs">Kech qoldi</span>
+                        {% else %}<span class="text-red-500 font-semibold text-xs">Kelmadi</span>{% endif %}
+                    </td>
+                    <td class="px-5 py-2.5 text-gray-400 text-xs">{{ a.note|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center py-8 text-gray-400 text-xs">Davomat yozuvlari yo'q</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ══ Profilni tahrirlash modali ══ -->
+<div id="editEmployeeModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-base font-bold text-gray-900 dark:text-white"><i class="fas fa-pen text-amber-500 mr-2"></i>Profilni tahrirlash</h2>
+            <button onclick="closeModal('editEmployeeModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form method="POST" action="{% url 'taxi:employee_edit' employee.pk %}" enctype="multipart/form-data" class="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">F.I.Sh.</label>
+                <input type="text" name="full_name" value="{{ employee.full_name }}" required
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Lavozimi</label>
+                <input type="text" name="position" value="{{ employee.position }}" required
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Telefon</label>
+                    <input type="text" name="phone" value="{{ employee.phone }}"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Ishga kirgan sana</label>
+                    <input type="date" name="hire_date" value="{{ employee.hire_date|date:'Y-m-d' }}"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Rasm (ixtiyoriy)</label>
+                <input type="file" name="photo" accept="image/*"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Izoh</label>
+                <textarea name="notes" rows="2"
+                          class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">{{ employee.notes }}</textarea>
+            </div>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('editEmployeeModal')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold shadow-md shadow-amber-200 dark:shadow-none transition">
+                    Saqlash
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ══ Yangi vazifa modali ══ -->
+<div id="newTaskModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-base font-bold text-gray-900 dark:text-white"><i class="fas fa-list-check text-amber-500 mr-2"></i>Vazifa qo'shish</h2>
+            <button onclick="closeModal('newTaskModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form method="POST" action="{% url 'taxi:employee_task_create' employee.pk %}" class="px-6 py-5 space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Vazifa</label>
+                <input type="text" name="title" required placeholder="Masalan: Haftalik hisobot tayyorlash"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Tavsif (ixtiyoriy)</label>
+                <textarea name="description" rows="3"
+                          class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition"></textarea>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Muddati (ixtiyoriy)</label>
+                <input type="date" name="due_date"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+            </div>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('newTaskModal')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold shadow-md shadow-amber-200 dark:shadow-none transition">
+                    Qo'shish
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ══ Qo'lda davomat kiritish modali ══ -->
+<div id="manualAttendanceModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-base font-bold text-gray-900 dark:text-white"><i class="fas fa-calendar-pen text-amber-500 mr-2"></i>Davomatni qo'lda kiritish</h2>
+            <button onclick="closeModal('manualAttendanceModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form method="POST" action="{% url 'taxi:employee_attendance_manual' employee.pk %}" class="px-6 py-5 space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Sana</label>
+                <input type="date" name="date" required value="{{ today|date:'Y-m-d' }}"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Kelgan vaqti</label>
+                    <input type="time" name="check_in"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Ketgan vaqti</label>
+                    <input type="time" name="check_out"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Holati</label>
+                <select name="status" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+                    <option value="present">Keldi</option>
+                    <option value="late">Kech qoldi</option>
+                    <option value="absent">Kelmadi</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Izoh (ixtiyoriy)</label>
+                <input type="text" name="note" placeholder="Masalan: kasallik varaqasi"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+            </div>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('manualAttendanceModal')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold shadow-md shadow-amber-200 dark:shadow-none transition">
+                    Saqlash
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
