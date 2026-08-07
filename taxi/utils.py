@@ -1839,27 +1839,39 @@ def _requeue_driver_to_back(driver_id, order):
 
 
 def _next_address_queue_driver(address, rejected_ids):
-    """Manzil navbatida hozir turgan (hali chiqib ketmagan, so'nggi
-    ADDRESS_QUEUE_STALE_MINUTES ichida faol bo'lgan, hali navbatda ish
-    holatida) haydovchilardan eng oldin kelganini qaytaradi — rad
-    etganlar/urinilganlar hisobga olinmaydi."""
+    """Manzil navbatida hozir turgan (hali chiqib ketmagan, ish holatida)
+    haydovchilardan eng oldin kelganini qaytaradi — rad etganlar/urinilganlar
+    hisobga olinmaydi.
+
+    Avval so'nggi ADDRESS_QUEUE_STALE_MINUTES ichida faol (Driver.last_seen)
+    bo'lganlar orasidan tanlanadi. Agar ULAR HECH BIRI topilmasa (masalan,
+    navbatdagi hamma haydovchi ilova fonga o'tib/ekran qulflanib qolgani
+    sababli last_seen bir necha soniyaga kechikkan bo'lsa — bu haqiqiy
+    "ketib qolgan" emas, shunchaki vaqtinchalik), navbat butunlay
+    tashlab yuborilmaydi: staleness filtri e'tiborga olinmasdan, baribir
+    navbatdagi eng birinchisiga taklif qilinadi. Aks holda dispatch_order()
+    bu manzilni "navbat bo'sh" deb hisoblab, buyurtmani manzil bilan
+    hech qanday aloqasi yo'q butun faol haydovchilar to'dasiga ochib
+    yuborardi — navbatda turganlar chetda qolib."""
     from taxi.models import AddressQueueEntry
     from django.utils import timezone
     import datetime
 
-    stale_cutoff = timezone.now() - datetime.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
-    entry = (
+    base_qs = (
         AddressQueueEntry.objects.filter(
             address=address, left_at__isnull=True,
             driver__is_active=True, driver__is_on_duty=True,
             driver__approval_status='approved',
-            driver__last_seen__gte=stale_cutoff,
         )
         .exclude(driver_id__in=rejected_ids)
         .select_related('driver')
         .order_by('joined_at')
-        .first()
     )
+
+    stale_cutoff = timezone.now() - datetime.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
+    entry = base_qs.filter(driver__last_seen__gte=stale_cutoff).first()
+    if not entry:
+        entry = base_qs.first()
     return entry.driver if entry else None
 
 
