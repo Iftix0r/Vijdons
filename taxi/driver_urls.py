@@ -20,6 +20,7 @@ urlpatterns = [
     path('ping/',       driver_views.driver_ping,           name='ping'),
     path('address-queue/', driver_views.driver_address_queue, name='address_queue'),
     path('addresses/', driver_views.driver_all_addresses, name='all_addresses'),
+    path('addresses/<int:pk>/haydovchilar/', driver_views.driver_address_queue_drivers, name='address_queue_drivers'),
     path('profile/',   driver_views.driver_profile,       name='profile'),
     path('profile/photo/',    driver_views.driver_profile_photo,    name='profile_photo'),
     path('profile/balance/',  driver_views.driver_balance_history,  name='balance_history'),

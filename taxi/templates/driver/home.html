@@ -807,6 +807,10 @@ function closePendingDrawer(){
 // ishlaydi — sahifa ochilganda, GPS yangilanganda va har 20s'da o'zi
 // yangilanib turadi.
 let _homeAddrListTimer = null;
+// Qaysi manzil kartochkasi ochilgan (strelka bosilgan) — ro'yxat har 10s'da
+// qayta chizilgani uchun (_renderHomeAddressesList), ochiq holatni shu
+// obyektda saqlab, qayta chizilgandan keyin ham ochiq qoldiramiz.
+let _openAddrQueues = {};
 
 function _renderHomeAddressesList(rows){
   const list = document.getElementById('home-addresses-list');
@@ -824,6 +828,7 @@ function _renderHomeAddressesList(rows){
 
   list.innerHTML = rows.map((a, i) => {
     const isNearest = i === 0 && a.dist !== null && a.dist <= 1000;
+    const isOpen = !!_openAddrQueues[a.id];
     return `
     <div class="ios-card2 rounded-2xl p-4 ${isNearest ? 'anim-up' : ''}" style="${isNearest ? 'box-shadow:0 0 0 2px #FFD600' : ''}">
       <div class="flex items-center justify-between gap-3">
@@ -836,16 +841,67 @@ function _renderHomeAddressesList(rows){
             <div class="ios-caption2" style="color:var(--ios-label3)">${a.dist !== null ? _formatDistanceM(a.dist) : 'Masofa noma’lum'}${isNearest ? ' · eng yaqin' : ''}</div>
           </div>
         </div>
-        <div class="flex flex-col items-end gap-1 flex-shrink-0">
-          ${a.myPosition ? `<span class="ios-caption2 font-bold px-2.5 py-1 rounded-full" style="background:#FFD600;color:#111">Siz: ${a.myPosition}-o'rin</span>` : ''}
-          <span class="ios-caption2 font-bold px-2.5 py-1 rounded-full flex items-center gap-1" style="background:${a.queue_count > 0 ? 'rgba(52,199,89,.15)' : 'var(--ios-fill)'};color:${a.queue_count > 0 ? '#34C759' : 'var(--ios-label3)'}">
-            <i class="fas fa-car-side" style="font-size:9px"></i>${a.queue_count} navbatda
-          </span>
-          <span class="ios-caption2" style="color:var(--ios-label3)">${a.today_orders} ta bugun</span>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <div class="flex flex-col items-end gap-1">
+            ${a.myPosition ? `<span class="ios-caption2 font-bold px-2.5 py-1 rounded-full" style="background:#FFD600;color:#111">Siz: ${a.myPosition}-o'rin</span>` : ''}
+            <span class="ios-caption2 font-bold px-2.5 py-1 rounded-full flex items-center gap-1" style="background:${a.queue_count > 0 ? 'rgba(52,199,89,.15)' : 'var(--ios-fill)'};color:${a.queue_count > 0 ? '#34C759' : 'var(--ios-label3)'}">
+              <i class="fas fa-car-side" style="font-size:9px"></i>${a.queue_count} navbatda
+            </span>
+            <span class="ios-caption2" style="color:var(--ios-label3)">${a.today_orders} ta bugun</span>
+          </div>
+          ${a.queue_count > 0 ? `
+          <button type="button" onclick="toggleHomeAddressQueue(${a.id})" class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style="background:var(--ios-fill)">
+            <i class="fas fa-chevron-down" style="font-size:11px;color:var(--ios-label3);transition:transform .2s;${isOpen ? 'transform:rotate(180deg)' : ''}"></i>
+          </button>` : ''}
         </div>
       </div>
+      ${a.queue_count > 0 ? `
+      <div id="home-addr-queue-${a.id}" class="${isOpen ? '' : 'hidden'} mt-3 pt-3 flex flex-col gap-2" style="border-top:1px solid var(--ios-fill)">
+        <div class="ios-caption2" style="color:var(--ios-label3)"><i class="fas fa-circle-notch fa-spin"></i> Yuklanmoqda...</div>
+      </div>` : ''}
     </div>`;
   }).join('');
+
+  rows.forEach(a => { if (_openAddrQueues[a.id]) _loadHomeAddressQueueDrivers(a.id); });
+}
+
+function toggleHomeAddressQueue(id){
+  const box = document.getElementById('home-addr-queue-' + id);
+  if (!box) return;
+  const willOpen = box.classList.contains('hidden');
+  _openAddrQueues[id] = willOpen;
+  if (willOpen) {
+    box.classList.remove('hidden');
+    _loadHomeAddressQueueDrivers(id);
+  } else {
+    box.classList.add('hidden');
+  }
+}
+
+function _loadHomeAddressQueueDrivers(id){
+  const box = document.getElementById('home-addr-queue-' + id);
+  if (!box) return;
+  fetch('/driver/addresses/' + id + '/haydovchilar/', { cache: 'no-store' })
+    .then(r => r.json())
+    .then(d => {
+      if (!_openAddrQueues[id]) return; // shu orada yopilgan bo'lishi mumkin
+      if (!d.ok || !d.drivers || !d.drivers.length) {
+        box.innerHTML = '<div class="ios-caption2" style="color:var(--ios-label3)">Navbat bo\'sh.</div>';
+        return;
+      }
+      box.innerHTML = d.drivers.map(drv => `
+        <div class="flex items-center gap-2.5 rounded-xl p-2.5" style="background:${drv.is_me ? 'rgba(255,214,0,.12)' : 'var(--ios-fill)'}">
+          <span class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ios-caption2 font-extrabold" style="background:${drv.is_me ? '#FFD600' : 'var(--ios-bg)'};color:${drv.is_me ? '#111' : 'var(--ios-label2)'}">${drv.position}</span>
+          <div class="min-w-0 flex-1">
+            <div class="ios-caption2 font-semibold truncate">${drv.full_name}${drv.is_me ? ' (Siz)' : ''}</div>
+            <div class="ios-caption2 truncate" style="color:var(--ios-label3)">${drv.car_model} · ${drv.car_number}</div>
+          </div>
+          <div class="ios-caption2 flex-shrink-0" style="color:var(--ios-label3)"><i class="far fa-clock mr-1"></i>${drv.joined_at}</div>
+        </div>`).join('');
+    })
+    .catch(() => {
+      if (_openAddrQueues[id]) box.innerHTML = '<div class="ios-caption2" style="color:#FF3B30">Yuklab bo\'lmadi.</div>';
+    });
 }
 
 function _loadHomeAddressesList(){

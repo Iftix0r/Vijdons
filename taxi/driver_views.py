@@ -1079,6 +1079,43 @@ def driver_all_addresses(request, driver):
 
 
 @driver_login_required
+def driver_address_queue_drivers(request, driver, pk):
+    """Bosh sahifadagi manzil kartochkasi ochilganda (strelka) — shu manzil
+    navbatidagi haydovchilarni tartib bilan qaytaradi. Admin paneldagi
+    saved_address_queue_drivers bilan bir xil filtrlash mantig'i (stale/
+    offline/off-duty chiqarib tashlanadi)."""
+    from django.utils import timezone
+    import datetime
+    from .utils import ADDRESS_QUEUE_STALE_MINUTES
+    from .models import AddressQueueEntry, SavedAddress
+
+    address = get_object_or_404(SavedAddress, pk=pk)
+    stale_cutoff = timezone.now() - datetime.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
+    entries = (
+        AddressQueueEntry.objects.filter(
+            address=address, left_at__isnull=True,
+            driver__is_active=True, driver__is_on_duty=True,
+            driver__approval_status='approved',
+            driver__last_seen__gte=stale_cutoff,
+        )
+        .select_related('driver')
+        .order_by('joined_at')
+    )
+    drivers = [
+        {
+            'position': i + 1,
+            'full_name': e.driver.full_name,
+            'car_model': e.driver.car_model,
+            'car_number': e.driver.car_number,
+            'joined_at': timezone.localtime(e.joined_at).strftime('%H:%M'),
+            'is_me': e.driver_id == driver.id,
+        }
+        for i, e in enumerate(entries)
+    ]
+    return JsonResponse({'ok': True, 'drivers': drivers})
+
+
+@driver_login_required
 def driver_balance_poll(request, driver):
     """Haydovchi ilovasida balans to'ldirilganda ovoz chiqarish uchun polling endpoint."""
     last_id = int(request.GET.get('last_id', 0))
