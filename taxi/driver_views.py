@@ -344,18 +344,10 @@ def driver_home(request, driver):
         trips=Count('id', filter=DQ(status='completed')),
     )
     driver_rank, drivers_total, _ = _driver_month_rank(driver)
-    # Operator panel > Manzillar'da belgilangan tezkor manzillar — haydovchi
-    # shulardan biriga yaqinlashsa, reyting va balans tugmalari o'rtasida
-    # nomi ko'rsatiladi (masofa hisobi to'liq JS tomonida, GPS koordinatasi
-    # kelganda).
-    saved_addresses_json = json.dumps(
-        list(SavedAddress.objects.values('id', 'name', 'lat', 'lng')), ensure_ascii=False
-    )
     return render(request, 'driver/home.html', {
         'driver':      driver,
         'orders':      orders,
         'orders_json': json.dumps(orders_data, ensure_ascii=False),
-        'saved_addresses_json': saved_addresses_json,
         'active_tab':  'home',
         # Login sahifasida "Kirish"ni bosgandan keyingi ilk sahifa yuklanishida
         # bir marta "Xush kelibsiz" ovozini chalish uchun — sahifani yangilasa

@@ -143,14 +143,8 @@
     <div class="ios-caption2 text-center py-6" style="color:var(--ios-label3)">Yuklanmoqda...</div>
   </div>
 </div>
-<!-- Tepadagi 3ta tugma (Reyting / Yaqin manzil / Balans) — mustaqil
-     position:fixed o'rniga BITTA flex qator ichida, shu sabab tor
-     ekranlarda hech qachon bir-birining ustiga chiqib qolmaydi: Reyting
-     va Balans doim to'liq ko'rinadi (flex-shrink:0), o'rtadagi manzil
-     belgisi esa joy yetmasa qisqarib (truncate) ketaveradi. Tashqi
-     konteyner pointer-events:none — orasidagi bo'sh joylardan xaritaga
-     bosish/surish davom etadi, faqat tugmalarning o'zi (pointer-events:auto)
-     klikni ushlaydi. -->
+<!-- Tepadagi 2ta tugma (Reyting / Balans) — manzil belgisi olib tashlandi,
+     chunki manzillar endi asosiy fonda (yuqorida) doim ko'rinib turibdi. -->
 <div style="position:fixed;z-index:15;top:calc(env(safe-area-inset-top,20px) + 12px);left:16px;right:16px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;pointer-events:none">
     <!-- Reyting tugmasi — shu oy davomida yakunlangan buyurtmalar soni
          bo'yicha haydovchining o'rnini darhol ko'rsatadi, bosilsa to'liq
@@ -163,21 +157,6 @@
         <span class="ios-subhead font-bold" style="color:var(--ios-label);white-space:nowrap">{{ driver_rank }}-o'rin</span>
     </a>
 
-    <!-- Yaqin atrofdagi tezkor manzil ko'rsatkichi — operator panel >
-         Manzillar'da belgilangan nuqtalardan biriga (300m radius)
-         yaqinlashsa avtomatik chiqadi (nomi + masofa + shu manzilda
-         navbatdagi o'rni), uzoqlashsa yashiriladi. Bosilsa — barcha
-         manzillar ro'yxati (masofa + bugungi buyurtmalar soni bilan)
-         pastdan suzib chiqadi. -->
-    <div id="near-address-badge" onclick="toggleAddressesDrawer()" class="ios-glass items-center gap-1.5 active:opacity-60 transition-opacity"
-         style="display:none;pointer-events:auto;cursor:pointer;min-width:76px;flex-shrink:1;padding:7px 10px;border-radius:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.25)">
-        <i class="fas fa-location-dot" style="color:#FF3B30;font-size:12px;flex-shrink:0"></i>
-        <div style="min-width:0">
-            <div id="near-address-text" class="ios-caption2 font-bold truncate" style="color:var(--ios-label);line-height:1.15"></div>
-            <div id="near-address-meta" class="ios-caption2 truncate" style="color:var(--ios-label3);line-height:1.15;font-size:10px"></div>
-        </div>
-    </div>
-
     <!-- Balans tugmasi — bosilsa o'tkazmalar tarixi (kirim/chiqim) sahifasi
          ochiladi. Qiymat balans o'zgarganda (masalan komissiya yechilganda)
          `_updateNavBalance()` orqali JS bilan ham yangilanadi (pastdagi
@@ -189,23 +168,6 @@
         <i class="fas fa-wallet" style="color:#34C759;font-size:15px"></i>
         <span id="home-balance-value" class="ios-subhead font-bold" style="color:var(--ios-label);white-space:nowrap">{{ driver_balance_int }} so'm</span>
     </a>
-</div>
-
-<!-- Barcha manzillar ro'yxati — yaqin manzil belgisi bosilganda pastdan
-     suzib chiqadi (pending-drawer bilan bir xil uslub). Har biri uchun
-     hozirgi masofa (JS'da hisoblanadi) va bugun shu manzildan tushgan
-     buyurtmalar soni (serverdan) ko'rsatiladi. -->
-<div id="addresses-drawer" class="ios-sheet fixed left-4 right-4 overflow-y-auto"
-     style="z-index:190;bottom:calc(env(safe-area-inset-bottom,16px) + 96px);border-radius:20px;transform:translateY(calc(100% + 200px));transition:transform .32s cubic-bezier(.32,.72,0,1);max-height:65vh">
-    <div class="px-4 py-3.5 space-y-3">
-        <div class="flex items-center justify-between">
-            <div class="ios-title font-semibold">Manzillar</div>
-            <button type="button" onclick="closeAddressesDrawer()" class="w-8 h-8 rounded-full flex items-center justify-center" style="background:var(--ios-fill)">
-                <i class="fas fa-xmark" style="color:var(--ios-label3)"></i>
-            </button>
-        </div>
-        <div id="addresses-drawer-body" class="space-y-2"></div>
-    </div>
 </div>
 
 
@@ -851,72 +813,6 @@ function closePendingDrawer(){
   if (el) el.style.transform = 'translateY(calc(100% + 200px))';
 }
 
-// "Yaqin manzil" belgisi bosilganda — barcha saqlangan manzillar ro'yxati
-// (masofa + bugungi buyurtmalar soni bilan) pastdan suzib chiqadi.
-let _addressesDrawerOpen = false;
-
-function toggleAddressesDrawer(){
-  try { Native.vibrate(); } catch(_) {}
-  _addressesDrawerOpen = !_addressesDrawerOpen;
-  if (_addressesDrawerOpen) {
-    try { closeSheet(); } catch(_) {}
-    try { closePendingDrawer(); } catch(_) {}
-    try { closeMyOrdersDrawer(); } catch(_) {}
-    _loadAddressesDrawer();
-  }
-  const el = document.getElementById('addresses-drawer');
-  if (el) el.style.transform = _addressesDrawerOpen ? 'translateY(0)' : 'translateY(calc(100% + 200px))';
-}
-function closeAddressesDrawer(){
-  _addressesDrawerOpen = false;
-  const el = document.getElementById('addresses-drawer');
-  if (el) el.style.transform = 'translateY(calc(100% + 200px))';
-}
-
-function _loadAddressesDrawer(){
-  const body = document.getElementById('addresses-drawer-body');
-  if (!body) return;
-  body.innerHTML = '<div class="ios-caption2 text-center py-4" style="color:var(--ios-label3)">Yuklanmoqda...</div>';
-  fetch('{% url "driver:all_addresses" %}', { cache: 'no-store' })
-    .then(r => r.json())
-    .then(d => {
-      if (!d.ok || !_addressesDrawerOpen) return;
-      const haveGeo = window._driverLat && window._driverLng;
-      const rows = (d.addresses || []).map(a => {
-        let dist = null;
-        if (haveGeo) {
-          const dlat = (window._driverLat - a.lat) * 111320;
-          const dlng = (window._driverLng - a.lng) * 111320 * Math.cos(window._driverLat * Math.PI / 180);
-          dist = Math.sqrt(dlat * dlat + dlng * dlng);
-        }
-        return { ...a, dist };
-      });
-      // Eng yaqinidan boshlab — GPS hali kelmagan bo'lsa (dist=null) oxiriga
-      rows.sort((a, b) => (a.dist ?? Infinity) - (b.dist ?? Infinity));
-
-      if (!rows.length) {
-        body.innerHTML = '<div class="ios-caption2 text-center py-4" style="color:var(--ios-label3)">Hali manzillar saqlanmagan</div>';
-        return;
-      }
-      body.innerHTML = rows.map(a => `
-        <div class="ios-card2 rounded-[14px] px-3.5 py-3 flex items-center justify-between gap-3">
-          <div class="flex items-center gap-2.5 min-w-0">
-            <i class="fas fa-location-dot flex-shrink-0" style="color:#FF3B30;font-size:13px"></i>
-            <span class="ios-subhead font-semibold truncate">${a.name}</span>
-          </div>
-          <div class="flex items-center gap-2 flex-shrink-0">
-            ${a.dist !== null ? `<span class="ios-caption2" style="color:var(--ios-label3)">${_formatDistanceM(a.dist)}</span>` : ''}
-            <span class="ios-caption2 font-bold px-2 py-1 rounded-full" style="background:${a.queue_count > 0 ? 'rgba(52,199,89,.15)' : 'var(--ios-fill)'};color:${a.queue_count > 0 ? '#34C759' : 'var(--ios-label2)'}"><i class="fas fa-car-side" style="font-size:9px"></i> ${a.queue_count}</span>
-            <span class="ios-caption2 font-bold px-2 py-1 rounded-full" style="background:var(--ios-fill);color:var(--ios-label2)">${a.today_orders} ta bugun</span>
-          </div>
-        </div>
-      `).join('');
-    })
-    .catch(() => {
-      if (_addressesDrawerOpen) body.innerHTML = '<div class="ios-caption2 text-center py-4" style="color:var(--ios-label3)">Yuklab bo\'lmadi</div>';
-    });
-}
-
 // ── Xarita o'rniga: asosiy sahifadagi doimiy "Manzillar" ro'yxati ──────────
 // Xarita vaqtincha o'chirilgani sabab, shu ro'yxat asosiy fon bo'lib
 // ishlaydi — sahifa ochilganda, GPS yangilanganda va har 20s'da o'zi
@@ -1201,128 +1097,10 @@ document.addEventListener('visibilitychange', () => {
 // haydovchining eski (boshqa hududdagi) koordinatasi yangisiga "yopishib qolardi".
 // Manzil endi navbar'da matn sifatida ko'rsatilmaydi — buning o'rniga jonli
 // xarita (home-map) bor.
-// ── Yaqin atrofdagi tezkor manzil (operator panel > Manzillar) ─────────────
-// Har bir GPS koordinatasi kelganda (serverga yuborish uchun 50m'lik
-// cheklovdan mustaqil ravishda) eng yaqin saqlangan manzilgacha bo'lgan
-// masofa tekshiriladi — 300m radius ichida bo'lsa nomi, masofasi va shu
-// manzil atrofida (xuddi shu radiusda) turgan boshqa navbatdagi
-// haydovchilar orasida nechinchi o'rinda ekani ko'rsatiladi.
-const SAVED_ADDRESSES = {{ saved_addresses_json|safe }};
-// Diqqat: backenddagi ADDRESS_QUEUE_RADIUS_KM (taxi/utils.py) bilan bir
-// xil bo'lishi kerak — aks holda bu yerda navbatga "qo'shilish" urinishi
-// serverning haqiqiy qo'shilish radiusidan oldinroq yoki keyinroq
-// boshlanib, ikkalasi mos kelmay qolardi.
-const NEAR_ADDRESS_THRESHOLD_M = 1000;
-let _nearAddressId = null;
-let _nearAddressQueueTimer = null;
-let _nearAddressDistText = '';
-let _nearAddressPosition = null;
-let _lastKnownLat = null;
-let _lastKnownLng = null;
-let _nearAddressAlternateTimer = null;
-let _nearAddressShowPosition = false;   // false=masofa, true=o'rin — har 2.5s almashadi
-
+// Masofani "120 m" / "1.4 km" kabi formatlaydi — asosiy sahifadagi
+// "Manzillar" ro'yxati (_loadHomeAddressesList) shu funksiyani ishlatadi.
 function _formatDistanceM(m) {
   return m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(1) + ' km';
-}
-
-// Diqqat: konteyner juda tor (Reyting/Balans tugmalari orasida) bo'lgani
-// uchun masofa va o'rinni BIRGA yozib bo'lmaydi (kesilib qolardi) — shu
-// sabab ikkalasi almashib (har 2.5s) ko'rsatiladi, faqat BITTA umumiy
-// funksiya orqali chiziladi (GPS yangilanishi va serverdan kelgan o'rin
-// bir-birini ustidan yozib yubormasin uchun).
-function _renderNearAddressMeta() {
-  const meta = document.getElementById('near-address-meta');
-  if (!meta) return;
-  meta.textContent = (_nearAddressPosition && _nearAddressShowPosition)
-    ? `${_nearAddressPosition}-o'rin`
-    : _nearAddressDistText;
-}
-
-function _startNearAddressAlternate() {
-  if (_nearAddressAlternateTimer) clearInterval(_nearAddressAlternateTimer);
-  _nearAddressShowPosition = false;
-  _nearAddressAlternateTimer = setInterval(() => {
-    _nearAddressShowPosition = !_nearAddressShowPosition;
-    _renderNearAddressMeta();
-  }, 2500);
-}
-
-function _stopNearAddressAlternate() {
-  if (_nearAddressAlternateTimer) { clearInterval(_nearAddressAlternateTimer); _nearAddressAlternateTimer = null; }
-  _nearAddressShowPosition = false;
-}
-
-function _fetchAddressQueue(addrId, lat, lng) {
-  // lat/lng ham yuboriladi — shu orqali server navbat a'zoligini
-  // (AddressQueueEntry) shu yerning o'zida yangilaydi, faqat
-  // driver_location_sync'ning 50m'lik harakat chegarasiga tayanib
-  // qolmaydi (aks holda haydovchi kelib to'xtab tursa-yu, oldingi GPS
-  // nuqtasi allaqachon yaqin bo'lsa, navbatga hech qachon "yozilmay"
-  // qolib, o'rin doim bo'sh ko'rinardi).
-  let url = '{% url "driver:address_queue" %}?addr_id=' + addrId;
-  if (lat && lng) url += '&lat=' + lat + '&lng=' + lng;
-  fetch(url, { cache: 'no-store' })
-    .then(r => r.json())
-    .then(d => {
-      // Shu orada haydovchi boshqa manzilga o'tib ketgan yoki undan
-      // chiqib ketgan bo'lishi mumkin — eski javob endi kerak emas.
-      if (_nearAddressId !== addrId) return;
-      _nearAddressPosition = (d.ok && d.position) ? d.position : null;
-      _renderNearAddressMeta();
-    })
-    .catch(() => {});
-}
-
-function _checkNearSavedAddress(lat, lng) {
-  const badge = document.getElementById('near-address-badge');
-  const text  = document.getElementById('near-address-text');
-  const meta  = document.getElementById('near-address-meta');
-  if (!badge || !text || !meta || !SAVED_ADDRESSES.length) return;
-  _lastKnownLat = lat;
-  _lastKnownLng = lng;
-  let nearest = null, nearestDist = Infinity;
-  for (const a of SAVED_ADDRESSES) {
-    const dlat = (lat - a.lat) * 111320;
-    const dlng = (lng - a.lng) * 111320 * Math.cos(lat * Math.PI / 180);
-    const dist = Math.sqrt(dlat * dlat + dlng * dlng);
-    if (dist < nearestDist) { nearestDist = dist; nearest = a; }
-  }
-
-  if (!nearest) {
-    badge.style.display = 'none';
-    _nearAddressId = null;
-    _nearAddressPosition = null;
-    if (_nearAddressQueueTimer) { clearInterval(_nearAddressQueueTimer); _nearAddressQueueTimer = null; }
-    _stopNearAddressAlternate();
-    return;
-  }
-
-  // Diqqat: manzil endi MASOFASIDAN QAT'I NAZAR ko'rsatiladi (avval faqat
-  // 300m ichida bo'lsa chiqardi) — uzoqda bo'lsangiz ham eng yaqin
-  // manzilni va unga masofani ko'rasiz. Navbatga esa (AddressQueueEntry,
-  // "N-o'rin") faqat haqiqatan ham 300m ichida bo'lgandagina "yoziladi" —
-  // uzoqdagi manzil navbatida turgandek ko'rsatish noto'g'ri bo'lardi.
-  _nearAddressDistText = _formatDistanceM(nearestDist);
-  text.textContent = nearest.name;
-  badge.style.display = 'flex';
-
-  if (_nearAddressId !== nearest.id) {
-    _nearAddressId = nearest.id;
-    _nearAddressPosition = null;
-    if (_nearAddressQueueTimer) { clearInterval(_nearAddressQueueTimer); _nearAddressQueueTimer = null; }
-    _stopNearAddressAlternate();
-    if (nearestDist <= NEAR_ADDRESS_THRESHOLD_M) {
-      // Navbat radiusi ichida — navbatni darhol so'raymiz, keyin shu
-      // manzil ichida turgan davrda har 15s'da yangilab boramiz. Diqqat:
-      // interval har safar _lastKnownLat/Lng'ni (eng so'nggi GPS'ni)
-      // o'qiydi, closure orqali "muzlab qolgan" eski koordinatani emas.
-      _fetchAddressQueue(nearest.id, lat, lng);
-      _nearAddressQueueTimer = setInterval(() => _fetchAddressQueue(nearest.id, _lastKnownLat, _lastKnownLng), 15000);
-      _startNearAddressAlternate();
-    }
-  }
-  _renderNearAddressMeta();
 }
 
 {% if driver.is_on_duty %}
@@ -1336,7 +1114,6 @@ function _checkNearSavedAddress(lat, lng) {
 
   // ── Koordinat keldi ───────────────────────────────────────────────────────
   function gotCoords(lat, lng) {
-    _checkNearSavedAddress(lat, lng);
     // 50m dan kam ko'chsa serverga qayta yubormaymiz
     if (_lastGeoLat !== null) {
       const dlat = (lat - _lastGeoLat) * 111320;
