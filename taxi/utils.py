@@ -1851,7 +1851,7 @@ def update_address_queue_membership(driver, lat, lng, was_stale=False):
     haydovchi uchun IKKITA ochiq yozuv qolib ketardi (navbat soni/tartibi
     buzilardi). Shu sabab Driver qatori select_for_update bilan
     qulflanadi — shu haydovchi uchun chaqiruvlar ketma-ket bajariladi."""
-    from taxi.models import AddressQueueEntry, Driver
+    from taxi.models import AddressQueueEntry, Driver, Order
     from django.db import transaction
     from django.utils import timezone
 
@@ -1859,6 +1859,19 @@ def update_address_queue_membership(driver, lat, lng, was_stale=False):
         Driver.objects.select_for_update().get(pk=driver.pk)
 
         open_entry = AddressQueueEntry.objects.filter(driver=driver, left_at__isnull=True).select_related('address').first()
+
+        # Zakazi bor (hali yakunlanmagan) haydovchi manzil navbatiga umuman
+        # kirmasin — u band, shu manzilda yangi buyurtmani qabul qila olmaydi.
+        # (Buyurtma QABUL QILINGANDA ochiq yozuv driver_order_action'da
+        # allaqachon yopiladi — bu yerdagi tekshiruv esa haydovchi hali band
+        # holatda, masalan yo'lda saqlangan manzil radiusidan o'tib ketganda,
+        # navbatga QAYTA yozilib qolishining oldini oladi.)
+        if Order.objects.filter(driver=driver, status__in=Order.ACTIVE_STATUSES).exists():
+            if open_entry:
+                open_entry.left_at = timezone.now()
+                open_entry.save(update_fields=['left_at'])
+            return
+
         nearest_addr = find_matching_saved_address(lat, lng)
 
         if open_entry:
