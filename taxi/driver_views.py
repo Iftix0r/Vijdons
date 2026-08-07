@@ -979,6 +979,7 @@ def driver_address_queue(request, driver):
     to'g'ri ko'rinsa ham, o'rin har doim bo'sh chiqardi."""
     from .models import AddressQueueEntry
     from .utils import update_address_queue_membership
+    from django.utils import timezone
     addr_id = request.GET.get('addr_id')
     try:
         addr_id = int(addr_id)
@@ -990,13 +991,20 @@ def driver_address_queue(request, driver):
     if lat and lng:
         try:
             update_address_queue_membership(driver, float(lat), float(lng))
+            # Diqqat: driver_location_sync harakat 50m dan oshgandagina
+            # chaqiriladi (client tomonida), lekin navbatda TURGAN
+            # haydovchi aynan qimirlamayapti — shu sabab last_seen shu
+            # yerda ham yangilanmasa, ADDRESS_QUEUE_STALE_MINUTES (1 daqiqa)
+            # ichida "stale" deb hisoblanib, harakatsiz turgan haydovchi
+            # navbatdan ko'rinmay qolib ketardi (sahifa har 10s'da shu
+            # endpointni chaqirib turgan bo'lsa ham).
+            Driver.objects.filter(pk=driver.pk).update(last_seen=timezone.now())
         except (TypeError, ValueError):
             pass
 
     # ADDRESS_QUEUE_STALE_MINUTES ichida faol bo'lmagan (uzoq vaqt
     # oflayn/ilovani yopib qo'ygan) haydovchilar — garchi masofa jihatidan
     # hali navbat radiusida bo'lsa ham — "hozir turgan" deb hisoblanmaydi.
-    from django.utils import timezone
     from .utils import ADDRESS_QUEUE_STALE_MINUTES
     stale_cutoff = timezone.now() - timezone.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
     queue_ids = list(
