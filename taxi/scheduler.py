@@ -69,6 +69,11 @@ def _run_tick():
     # ta'minlaydi).
     utils.tg_surge_alert_check()
 
+    # Signali uzoq vaqt kelmagan (ilova yopilgan/tarmoq uzilgan) haydovchilarni
+    # avtomatik ish navbatidan chiqarish — har tickda, soatidan qat'i nazar
+    # (AUTO_OFFLINE_MINUTES = 10 daqiqalik chegara bilan ichkarida cheklanadi).
+    utils.auto_offline_stale_drivers()
+
     now = timezone.localtime()
     if now.minute != 0:
         return

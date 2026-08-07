@@ -1179,6 +1179,44 @@ def freeze_inactive_drivers():
         )
 
 
+AUTO_OFFLINE_MINUTES = 10  # last_seen shuncha daqiqa yangilanmasa, avtomatik ish navbatidan chiqariladi
+
+
+def auto_offline_stale_drivers():
+    """Ilova background'da yopilib/tarmoq uzilib, last_seen yangilanishi
+    to'xtagan haydovchilarni avtomatik ish navbatidan chiqaradi. Aks holda
+    is_on_duty=True holicha abadiy osilib qolib, "onlayn" hisoblanadigan
+    barcha ro'yxatlarda (jumladan manzil navbati) haqiqatda ancha vaqtdan
+    beri ilovaga kirmagan haydovchi ham ko'rinib turaverar edi — chunki
+    driver_address_queue kabi ba'zi endpointlar navbatda TURGAN haydovchi
+    stale bo'lib qolmasligi uchun last_seen'ni har 10s'da yangilab turadi,
+    biroq bu faqat ilova haqiqatda ishlab turgandagina davom etadi; ilova
+    to'liq to'xtasa (yopilsa/signal yo'qolsa), last_seen ham yangilanmay
+    qoladi va shu funksiya buni ushlab, is_on_duty'ni o'chiradi."""
+    from datetime import timedelta
+    from django.db.models import Q
+    from django.utils import timezone
+    from taxi.models import AddressQueueEntry, Driver, DriverActivityLog
+
+    cutoff = timezone.now() - timedelta(minutes=AUTO_OFFLINE_MINUTES)
+    stale_drivers = list(
+        Driver.objects.filter(is_on_duty=True)
+        .filter(Q(last_seen__lt=cutoff) | Q(last_seen__isnull=True))
+    )
+    if not stale_drivers:
+        return
+
+    ids = [d.pk for d in stale_drivers]
+    Driver.objects.filter(pk__in=ids).update(is_on_duty=False)
+    AddressQueueEntry.objects.filter(driver_id__in=ids, left_at__isnull=True).update(left_at=timezone.now())
+    for driver in stale_drivers:
+        DriverActivityLog.objects.create(
+            driver=driver, action=DriverActivityLog.ACTION_DUTY_OFF,
+            detail=f"Avtomatik: {AUTO_OFFLINE_MINUTES}+ daqiqa signal kelmadi",
+        )
+        tg_duty_changed(driver, False)
+
+
 def warn_drivers_before_freeze():
     """freeze_inactive_drivers() dan bir kun oldin ishga tushadi — hali
     muzlamagan, lekin (FREEZE_INACTIVE_DAYS - 1) kundan beri onlayn
