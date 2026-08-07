@@ -1132,6 +1132,19 @@ function _formatDistanceM(m) {
 
   // ── Koordinat keldi ───────────────────────────────────────────────────────
   function gotCoords(lat, lng) {
+    // Diqqat: window._driverLat/_driverLng HAR DOIM darhol yangilanadi —
+    // pastdagi 50m tekshiruvi faqat serverga POST yuborishni (location_sync)
+    // cheklaydi, mahalliy o'zgaruvchini emas. Avval bu ikkalasi bitta
+    // shart ichida edi: sahifa qayta yuklanganda (F5) sessionStorage'dagi
+    // oldingi koordinata bilan solishtirilib, agar haydovchi manzil
+    // navbatida harakatsiz tursa (odatiy holat!) 50m'dan kam farq chiqib,
+    // funksiya window._driverLat'ni HECH QACHON o'rnatmasdan darhol
+    // qaytib ketardi — shu sabab "manzillar" ro'yxati o'zining pozitsiyasini
+    // hech qachon so'ramasdi (haveGeo doim false qolardi), toki haydovchi
+    // 50m dan ko'p ko'chib ketmaguncha yoki sessionStorage tozalanmaguncha.
+    window._driverLat = lat;
+    window._driverLng = lng;
+
     // 50m dan kam ko'chsa serverga qayta yubormaymiz
     if (_lastGeoLat !== null) {
       const dlat = (lat - _lastGeoLat) * 111320;
@@ -1141,10 +1154,6 @@ function _formatDistanceM(m) {
     _lastGeoLat = lat; _lastGeoLng = lng;
     sessionStorage.setItem(SS_LAT, lat);
     sessionStorage.setItem(SS_LNG, lng);
-    // Buyurtma sheet'idagi xarita (_initSheetMap) haydovchining hozirgi
-    // joylashuvini shu global o'zgaruvchilardan o'qiydi.
-    window._driverLat = lat;
-    window._driverLng = lng;
 
     // 1.5s debounce — server ga yuboramiz
     clearTimeout(_syncTimer);
