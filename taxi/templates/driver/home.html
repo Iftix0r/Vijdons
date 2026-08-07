@@ -878,6 +878,12 @@ function _loadHomeAddressesList(){
       });
       rows.sort((a, b) => (a.dist ?? Infinity) - (b.dist ?? Infinity));
 
+      // Diqqat: ro'yxatni DARHOL chizamiz — o'rin so'rovini (ikkinchi,
+      // sekinroq fetch) kutib turmaymiz, aks holda butun ro'yxat kech
+      // ko'rinardi. O'rin ma'lumoti kelgach, faqat shu bitta qatorni
+      // yangilab, qayta chizamiz (tezroq sezilarli bo'lishi uchun).
+      _renderHomeAddressesList(rows);
+
       // Eng yaqin manzil uchun o'zimizning navbatdagi o'rnimizni ham
       // so'raymiz (driver:address_queue — bir xil endpoint, avvalgi
       // "yaqin manzil" belgisida ishlatilgan). Faqat eng yaqinigi uchun —
@@ -890,7 +896,7 @@ function _loadHomeAddressesList(){
             nearest.myPosition = (q.ok && q.position) ? q.position : null;
             _renderHomeAddressesList(rows);
           })
-          .catch(() => { _renderHomeAddressesList(rows); });
+          .catch(() => {});
       } else {
         _renderHomeAddressesList(rows);
       }
@@ -903,7 +909,7 @@ function _loadHomeAddressesList(){
 // keyinroq otilmaydi (o'tib ketgan bo'ladi).
 _loadHomeAddressesList();
 if (_homeAddrListTimer) clearInterval(_homeAddrListTimer);
-_homeAddrListTimer = setInterval(_loadHomeAddressesList, 20000);
+_homeAddrListTimer = setInterval(_loadHomeAddressesList, 10000);
 
 // Bir nechta faol buyurtma yashiringan bo'lsa #my-orders-btn shu ro'yxatni
 // ochadi (pending-drawer bilan bir xil naqsh) — haydovchi qaysi birini
