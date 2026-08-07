@@ -1725,7 +1725,7 @@ ADDRESS_QUEUE_LEAVE_RADIUS_KM = 2.0  # navbatdan "CHIQISH" radiusi — QO'SHILIS
                                       # chiqarib yuborilmasin — faqat chindan ham uzoqlashganda
                                       # (yoki boshqa manzilga o'tganda) chiqariladi.
 ADDRESS_QUEUE_MAX_ATTEMPTS = 3       # navbatdan ketma-ket ko'pi bilan nechta haydovchiga taklif qilinadi
-ADDRESS_QUEUE_STALE_MINUTES = 20     # shuncha daqiqa faollik (Driver.last_seen) bo'lmasa, navbatda
+ADDRESS_QUEUE_STALE_MINUTES = 1      # shuncha daqiqa faollik (Driver.last_seen) bo'lmasa, navbatda
                                       # "hozir turgan" deb hisoblanmaydi — faqat masofa (hysteresis)
                                       # tekshirilsa, uzoq vaqt oflayn/ilovani yopib qo'ygan haydovchi
                                       # (garchi joyidan jilmagan bo'lsa ham) abadiy eski o'rnini
