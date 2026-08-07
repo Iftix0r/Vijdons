@@ -123,9 +123,25 @@
      va tab-bar (pastda) buning USTIDA suzib turadi (ikkalasi ham shaffof/blur
      fon bilan yasalgan), xarita esa ularning OSTIDA ham davom etadi — chetlardan
      hech qanday bo'shliq/qirra qolmasin. -->
-<div id="home-map" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:0"></div>
-<div id="home-map-hint" class="flex items-center justify-center" style="position:fixed;inset:0;z-index:0;pointer-events:none">
+<!-- Diqqat: xarita VAQTINCHA o'chirilgan (display:none) — operator so'rovi
+     bo'yicha, o'rniga pastdagi "Manzillar" ro'yxati asosiy fon sifatida
+     ko'rsatiladi. Kod o'zi olib tashlanmagan, faqat yashirilgan — kerak
+     bo'lsa qaytadan yoqish uchun shu ikkita "display:none"ni olib
+     tashlash kifoya. -->
+<div id="home-map" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:0"></div>
+<div id="home-map-hint" class="flex items-center justify-center" style="display:none;position:fixed;inset:0;z-index:0;pointer-events:none">
   <span class="ios-caption2">GPS signal kutilmoqda…</span>
+</div>
+
+<!-- ══ Xarita o'rniga: "Manzillar" ro'yxati (vaqtincha) ══════════════════════
+     Xuddi xarita turgan joyda (to'liq ekran fon, orders-wrap ustidan
+     o'tmaydi) — barcha saqlangan manzillar, masofa, navbatdagi haydovchilar
+     soni va bugungi buyurtmalar soni bilan. -->
+<div id="home-addresses-bg" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:0;overflow-y:auto;background:var(--ios-bg)">
+  <div style="height:calc(env(safe-area-inset-top,20px) + 78px)"></div>
+  <div id="home-addresses-list" class="px-4 space-y-2.5" style="padding-bottom:calc(env(safe-area-inset-bottom,16px) + 110px)">
+    <div class="ios-caption2 text-center py-6" style="color:var(--ios-label3)">Yuklanmoqda...</div>
+  </div>
 </div>
 <!-- Tepadagi 3ta tugma (Reyting / Yaqin manzil / Balans) — mustaqil
      position:fixed o'rniga BITTA flex qator ichida, shu sabab tor
@@ -193,8 +209,11 @@
 </div>
 
 
+<!-- Diqqat: quyidagi xarita boshqaruv tugmalari (zoom, kompas, markazlash,
+     spidometr) xarita bilan birga vaqtincha o'chirilgan (display:none) —
+     xarita o'zi ko'rinmagach, bularning ham keragi yo'q. -->
 <!-- Yandex Navigator'dagi kabi +/- (yaqinlashtirish/uzoqlashtirish) tugmalari -->
-<div class="ios-glass" style="position:fixed;z-index:15;top:38%;transform:translateY(-50%);right:16px;width:48px;border-radius:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);overflow:hidden">
+<div class="ios-glass" style="display:none;position:fixed;z-index:15;top:38%;transform:translateY(-50%);right:16px;width:48px;border-radius:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);overflow:hidden">
   <button onclick="_homeMapZoom(1)" class="flex items-center justify-center active:opacity-60 transition-opacity" style="width:48px;height:48px">
     <i class="fas fa-plus" style="color:#FFD600;font-size:16px"></i>
   </button>
@@ -207,12 +226,12 @@
      (tilt) saqlanib qoladi. Navigator'dagi kichik uchburchak belgi kabi. -->
 <button onclick="_homeMapResetNorth()"
   class="ios-glass flex items-center justify-center active:opacity-60 transition-opacity"
-  style="position:fixed;z-index:15;top:50%;transform:translateY(-50%);right:16px;width:40px;height:40px;border-radius:50%;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
+  style="display:none;position:fixed;z-index:15;top:50%;transform:translateY(-50%);right:16px;width:40px;height:40px;border-radius:50%;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
   <i class="fas fa-location-arrow" style="color:#FF3B30;font-size:16px"></i>
 </button>
 <button onclick="_homeMapRecenter()"
   class="ios-glass flex items-center justify-center active:opacity-60 transition-opacity"
-  style="position:fixed;z-index:15;top:62%;transform:translateY(-50%);right:16px;width:52px;height:52px;border-radius:50%;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
+  style="display:none;position:fixed;z-index:15;top:62%;transform:translateY(-50%);right:16px;width:52px;height:52px;border-radius:50%;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">
   <i class="fas fa-location-crosshairs" style="color:#FFD600;font-size:20px"></i>
 </button>
 
@@ -230,7 +249,7 @@
 <!-- Tezlik o'lchagich — Navigator'dagi kabi, chap-pastda. GPS'dan 'speed'
      kelmasa (m/s, brauzer/qurilma bermasa yoki harakatsiz bo'lsa) "—"
      ko'rsatiladi, aks holda km/soatga o'girib ko'rsatamiz. -->
-<div id="speedometer" class="ios-glass" style="position:fixed;z-index:15;left:16px;top:50%;transform:translateY(-50%);width:64px;height:64px;border-radius:50%;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 14px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:center">
+<div id="speedometer" class="ios-glass" style="display:none;position:fixed;z-index:15;left:16px;top:50%;transform:translateY(-50%);width:64px;height:64px;border-radius:50%;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 14px rgba(0,0,0,.35);flex-direction:column;align-items:center;justify-content:center">
   <span id="speedometer-value" class="ios-title font-bold" style="color:#FFD600;line-height:1">—</span>
   <span class="ios-caption2" style="color:#8E8E93;line-height:1;margin-top:1px">km/soat</span>
 </div>
@@ -897,6 +916,75 @@ function _loadAddressesDrawer(){
       if (_addressesDrawerOpen) body.innerHTML = '<div class="ios-caption2 text-center py-4" style="color:var(--ios-label3)">Yuklab bo\'lmadi</div>';
     });
 }
+
+// ── Xarita o'rniga: asosiy sahifadagi doimiy "Manzillar" ro'yxati ──────────
+// Xarita vaqtincha o'chirilgani sabab, shu ro'yxat asosiy fon bo'lib
+// ishlaydi — sahifa ochilganda, GPS yangilanganda va har 20s'da o'zi
+// yangilanib turadi.
+let _homeAddrListTimer = null;
+
+function _loadHomeAddressesList(){
+  const list = document.getElementById('home-addresses-list');
+  if (!list) return;
+  fetch('{% url "driver:all_addresses" %}', { cache: 'no-store' })
+    .then(r => r.json())
+    .then(d => {
+      if (!d.ok) return;
+      const haveGeo = window._driverLat && window._driverLng;
+      const rows = (d.addresses || []).map(a => {
+        let dist = null;
+        if (haveGeo) {
+          const dlat = (window._driverLat - a.lat) * 111320;
+          const dlng = (window._driverLng - a.lng) * 111320 * Math.cos(window._driverLat * Math.PI / 180);
+          dist = Math.sqrt(dlat * dlat + dlng * dlng);
+        }
+        return { ...a, dist };
+      });
+      rows.sort((a, b) => (a.dist ?? Infinity) - (b.dist ?? Infinity));
+
+      if (!rows.length) {
+        list.innerHTML = `
+          <div class="ios-card2 rounded-2xl p-8 text-center mt-3">
+            <i class="fas fa-map-pin" style="font-size:28px;color:var(--ios-label3)"></i>
+            <p class="ios-subhead font-semibold mt-3" style="color:var(--ios-label2)">Hali manzillar saqlanmagan</p>
+            <p class="ios-caption2 mt-1" style="color:var(--ios-label3)">Operator panel &gt; Manzillar bo'limidan qo'shiladi</p>
+          </div>`;
+        return;
+      }
+
+      list.innerHTML = rows.map((a, i) => {
+        const isNearest = i === 0 && a.dist !== null && a.dist <= 1000;
+        return `
+        <div class="ios-card2 rounded-2xl p-4 ${isNearest ? 'anim-up' : ''}" style="${isNearest ? 'box-shadow:0 0 0 2px #FFD600' : ''}">
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0" style="background:${isNearest ? '#FFD600' : 'var(--ios-fill)'}">
+                <i class="fas fa-location-dot" style="color:${isNearest ? '#111' : '#FF3B30'};font-size:16px"></i>
+              </div>
+              <div class="min-w-0">
+                <div class="ios-subhead font-bold truncate">${a.name}</div>
+                <div class="ios-caption2" style="color:var(--ios-label3)">${a.dist !== null ? _formatDistanceM(a.dist) : 'Masofa noma’lum'}${isNearest ? ' · eng yaqin' : ''}</div>
+              </div>
+            </div>
+            <div class="flex flex-col items-end gap-1 flex-shrink-0">
+              <span class="ios-caption2 font-bold px-2.5 py-1 rounded-full flex items-center gap-1" style="background:${a.queue_count > 0 ? 'rgba(52,199,89,.15)' : 'var(--ios-fill)'};color:${a.queue_count > 0 ? '#34C759' : 'var(--ios-label3)'}">
+                <i class="fas fa-car-side" style="font-size:9px"></i>${a.queue_count} navbatda
+              </span>
+              <span class="ios-caption2" style="color:var(--ios-label3)">${a.today_orders} ta bugun</span>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    })
+    .catch(() => {});
+}
+
+// Diqqat: DOMContentLoaded ISHLATILMAYDI — bu skript sahifa oxirida
+// joylashgani uchun DOM allaqachon tayyor, shu hodisa hech qachon
+// keyinroq otilmaydi (o'tib ketgan bo'ladi).
+_loadHomeAddressesList();
+if (_homeAddrListTimer) clearInterval(_homeAddrListTimer);
+_homeAddrListTimer = setInterval(_loadHomeAddressesList, 20000);
 
 // Bir nechta faol buyurtma yashiringan bo'lsa #my-orders-btn shu ro'yxatni
 // ochadi (pending-drawer bilan bir xil naqsh) — haydovchi qaysi birini
