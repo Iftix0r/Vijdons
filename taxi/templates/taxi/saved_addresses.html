@@ -25,6 +25,7 @@
                     <th class="px-5 py-3.5">Nomi</th>
                     <th class="px-5 py-3.5">Manzil</th>
                     <th class="px-5 py-3.5">Koordinata</th>
+                    <th class="px-5 py-3.5">Navbatda</th>
                     <th class="px-5 py-3.5">Ishlatilgan</th>
                     <th class="px-5 py-3.5 text-right">Amal</th>
                 </tr>
@@ -39,6 +40,17 @@
                     </td>
                     <td class="px-5 py-3.5 text-xs text-gray-600 dark:text-gray-300">{{ addr.address|default:"—" }}</td>
                     <td class="px-5 py-3.5 text-[11px] text-gray-400 font-mono">{{ addr.lat|floatformat:5 }}, {{ addr.lng|floatformat:5 }}</td>
+                    <td class="px-5 py-3.5">
+                        {% if addr.queue_count > 0 %}
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                            <i class="fas fa-car-side text-[10px]"></i>{{ addr.queue_count }} ta haydovchi
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500">
+                            Bo'sh
+                        </span>
+                        {% endif %}
+                    </td>
                     <td class="px-5 py-3.5">
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
                             {{ addr.usage_count }} marta
@@ -62,7 +74,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" class="text-center py-14">
+                    <td colspan="6" class="text-center py-14">
                         <div class="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-300 dark:text-gray-600 text-2xl mx-auto mb-3">
                             <i class="fas fa-map-pin"></i>
                         </div>

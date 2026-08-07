@@ -3864,7 +3864,17 @@ def security_document_delete(request, pk):
 
 @panel_login_required
 def saved_addresses_list(request):
-    addresses = SavedAddress.objects.all()
+    addresses = SavedAddress.objects.annotate(
+        queue_count=Count(
+            'queue_entries',
+            filter=Q(
+                queue_entries__left_at__isnull=True,
+                queue_entries__driver__is_active=True,
+                queue_entries__driver__is_on_duty=True,
+                queue_entries__driver__approval_status='approved',
+            ),
+        )
+    )
     return render(request, 'taxi/saved_addresses.html', {
         'addresses': addresses,
     })
