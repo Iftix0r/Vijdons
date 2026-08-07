@@ -4092,14 +4092,12 @@ def employee_attendance_manual(request, pk):
 
 @panel_login_required
 def saved_addresses_list(request):
-    # Diqqat: staleness (Driver.last_seen) bo'yicha bu yerda QASDAN
-    # filtrlanmaydi — dispatch_order() (_next_address_queue_driver,
-    # utils.py) navbatda "faol" (yangi last_seen) hech kim topilmasa ham,
-    # baribir navbat old tomonidagi haydovchiga taklif qiladi (butunlay
-    # tashlab, umumiy tabloga chiqarib yubormaydi). Agar bu yerda
-    # staleness bo'yicha chiqarib tashlansa, panel "Navbat bo'sh" deb
-    # ko'rsatgan holatda ham dispatch aslida kimgadir yuborib qo'yishi
-    # mumkin edi — UI dispatch bilan zid ma'lumot berardi.
+    from django.utils import timezone
+    # Faqat online (last_seen yangi) haydovchilar navbatda "ko'rsatiladi" —
+    # eski (masalan bir soat oldin GPS yuborgan) haydovchi navbatda hali ham
+    # turgandek chiqmasin. Dispatch tomonida (_next_address_queue_driver,
+    # utils.py) alohida, tigroq staleness mantig'i bor — u yerga tegilmadi.
+    online_cutoff = timezone.now() - timezone.timedelta(seconds=ONLINE_THRESHOLD_SECONDS)
     addresses = SavedAddress.objects.annotate(
         queue_count=Count(
             'queue_entries',
@@ -4108,6 +4106,7 @@ def saved_addresses_list(request):
                 queue_entries__driver__is_active=True,
                 queue_entries__driver__is_on_duty=True,
                 queue_entries__driver__approval_status='approved',
+                queue_entries__driver__last_seen__gte=online_cutoff,
             ),
         )
     )
@@ -4167,17 +4166,19 @@ def saved_address_delete(request, pk):
 def saved_address_queue_drivers(request, pk):
     """Manzillar ro'yxatida qator ochilganda (strelka) shu manzil navbatidagi
     haydovchilarni tartib bilan qaytaradi — saved_addresses_list'dagi
-    queue_count bilan bir xil filtrlash mantig'i (offline/off-duty
-    chiqarib tashlanadi — staleness EMAS, o'sha yerdagi izohga qarang)."""
+    queue_count bilan bir xil filtrlash mantig'i (offline/off-duty va
+    online bo'lmagan — last_seen eski — haydovchilar chiqarib tashlanadi)."""
     from django.utils import timezone
     from .models import AddressQueueEntry
 
     address = get_object_or_404(SavedAddress, pk=pk)
+    online_cutoff = timezone.now() - timezone.timedelta(seconds=ONLINE_THRESHOLD_SECONDS)
     entries = (
         AddressQueueEntry.objects.filter(
             address=address, left_at__isnull=True,
             driver__is_active=True, driver__is_on_duty=True,
             driver__approval_status='approved',
+            driver__last_seen__gte=online_cutoff,
         )
         .select_related('driver')
         .order_by('joined_at')
