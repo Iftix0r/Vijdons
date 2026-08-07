@@ -3933,6 +3933,43 @@ def saved_address_delete(request, pk):
 
 
 @panel_login_required
+def saved_address_queue_drivers(request, pk):
+    """Manzillar ro'yxatida qator ochilganda (strelka) shu manzil navbatidagi
+    haydovchilarni tartib bilan qaytaradi — saved_addresses_list'dagi
+    queue_count bilan bir xil filtrlash mantig'i (stale/offline/off-duty
+    chiqarib tashlanadi)."""
+    from django.utils import timezone
+    import datetime
+    from .utils import ADDRESS_QUEUE_STALE_MINUTES
+    from .models import AddressQueueEntry
+
+    address = get_object_or_404(SavedAddress, pk=pk)
+    stale_cutoff = timezone.now() - datetime.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
+    entries = (
+        AddressQueueEntry.objects.filter(
+            address=address, left_at__isnull=True,
+            driver__is_active=True, driver__is_on_duty=True,
+            driver__approval_status='approved',
+            driver__last_seen__gte=stale_cutoff,
+        )
+        .select_related('driver')
+        .order_by('joined_at')
+    )
+    drivers = [
+        {
+            'position': i + 1,
+            'full_name': e.driver.full_name,
+            'phone_number': e.driver.phone_number,
+            'car_model': e.driver.car_model,
+            'car_number': e.driver.car_number,
+            'joined_at': timezone.localtime(e.joined_at).strftime('%H:%M'),
+        }
+        for i, e in enumerate(entries)
+    ]
+    return JsonResponse({'ok': True, 'drivers': drivers})
+
+
+@panel_login_required
 @require_POST
 def saved_address_use(request, pk):
     """Yangi buyurtma oynasida tezkor manzil bosilganda chaqiriladi —

@@ -64,6 +64,7 @@ urlpatterns = [
     path('manzillar/<int:pk>/edit/', views.saved_address_update, name='saved_address_update'),
     path('manzillar/<int:pk>/delete/', views.saved_address_delete, name='saved_address_delete'),
     path('manzillar/<int:pk>/use/', views.saved_address_use, name='saved_address_use'),
+    path('manzillar/<int:pk>/haydovchilar/', views.saved_address_queue_drivers, name='saved_address_queue_drivers'),
 
     path('voice/join/',      views.panel_voice_join,      name='panel_voice_join'),
     path('voice/leave/',     views.panel_voice_leave,     name='panel_voice_leave'),

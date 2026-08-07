@@ -22,6 +22,7 @@
         <table class="w-full text-sm">
             <thead>
                 <tr class="text-left text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                    <th class="px-5 py-3.5 w-8"></th>
                     <th class="px-5 py-3.5">Nomi</th>
                     <th class="px-5 py-3.5">Manzil</th>
                     <th class="px-5 py-3.5">Koordinata</th>
@@ -33,6 +34,15 @@
             <tbody class="divide-y divide-gray-50 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
                 {% for addr in addresses %}
                 <tr class="hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-colors">
+                    <td class="px-5 py-3.5">
+                        {% if addr.queue_count > 0 %}
+                        <button type="button" onclick="toggleAddressQueue({{ addr.pk }})"
+                                id="sa_toggle_{{ addr.pk }}"
+                                class="w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-all">
+                            <i class="fas fa-chevron-down text-xs transition-transform"></i>
+                        </button>
+                        {% endif %}
+                    </td>
                     <td class="px-5 py-3.5">
                         <span class="font-semibold text-gray-800 dark:text-white text-xs">
                             <i class="fas fa-map-pin text-yellow-500 mr-1"></i>{{ addr.name }}
@@ -72,9 +82,20 @@
                         </div>
                     </td>
                 </tr>
+                {% if addr.queue_count > 0 %}
+                <tr id="sa_queue_row_{{ addr.pk }}" class="hidden">
+                    <td colspan="7" class="px-0 py-0 bg-gray-50/70 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800">
+                        <div id="sa_queue_body_{{ addr.pk }}" class="px-5 py-4">
+                            <div class="flex items-center gap-2 text-xs text-gray-400">
+                                <i class="fas fa-circle-notch fa-spin"></i> Yuklanmoqda...
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endif %}
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="text-center py-14">
+                    <td colspan="7" class="text-center py-14">
                         <div class="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-300 dark:text-gray-600 text-2xl mx-auto mb-3">
                             <i class="fas fa-map-pin"></i>
                         </div>
@@ -145,6 +166,57 @@
 
 {% block extra_js %}
 <script>
+    // Manzil qatoridagi strelka bosilganda o'sha manzil navbatidagi
+    // haydovchilar ro'yxatini ochib/yopib turadi (ma'lumot har safar
+    // yangi so'rov bilan olinadi — navbat tez-tez o'zgarib turadi).
+    let _saQueueOpen = {};
+
+    function toggleAddressQueue(pk) {
+        const row = document.getElementById('sa_queue_row_' + pk);
+        const btn = document.getElementById('sa_toggle_' + pk);
+        const icon = btn ? btn.querySelector('i') : null;
+        if (!row) return;
+        const isOpen = !_saQueueOpen[pk];
+        _saQueueOpen[pk] = isOpen;
+        if (isOpen) {
+            row.classList.remove('hidden');
+            if (icon) icon.style.transform = 'rotate(180deg)';
+            _loadAddressQueue(pk);
+        } else {
+            row.classList.add('hidden');
+            if (icon) icon.style.transform = 'rotate(0deg)';
+        }
+    }
+
+    function _loadAddressQueue(pk) {
+        const body = document.getElementById('sa_queue_body_' + pk);
+        if (!body) return;
+        body.innerHTML = '<div class="flex items-center gap-2 text-xs text-gray-400"><i class="fas fa-circle-notch fa-spin"></i> Yuklanmoqda...</div>';
+        fetch('/panel/manzillar/' + pk + '/haydovchilar/', { cache: 'no-store' })
+            .then(r => r.json())
+            .then(d => {
+                if (!_saQueueOpen[pk]) return; // shu orada yopilgan bo'lishi mumkin
+                if (!d.ok || !d.drivers || !d.drivers.length) {
+                    body.innerHTML = '<p class="text-xs text-gray-400">Navbat bo\'sh.</p>';
+                    return;
+                }
+                body.innerHTML = '<div class="flex flex-col gap-2">' + d.drivers.map(function (drv) {
+                    return '' +
+                        '<div class="flex items-center gap-3 bg-white dark:bg-gray-900 rounded-xl px-3.5 py-2.5 border border-gray-100 dark:border-gray-800">' +
+                            '<span class="flex-shrink-0 w-7 h-7 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs font-extrabold flex items-center justify-center">' + drv.position + '</span>' +
+                            '<div class="flex-1 min-w-0">' +
+                                '<p class="text-xs font-semibold text-gray-800 dark:text-white truncate">' + drv.full_name + '</p>' +
+                                '<p class="text-[11px] text-gray-400 truncate">' + drv.car_model + ' · ' + drv.car_number + ' · ' + drv.phone_number + '</p>' +
+                            '</div>' +
+                            '<span class="flex-shrink-0 text-[11px] text-gray-400"><i class="far fa-clock mr-1"></i>' + drv.joined_at + '</span>' +
+                        '</div>';
+                }).join('') + '</div>';
+            })
+            .catch(function () {
+                if (_saQueueOpen[pk]) body.innerHTML = '<p class="text-xs text-red-400">Yuklab bo\'lmadi.</p>';
+            });
+    }
+
     let _saMap = null;
     let _saPM  = null;
     // Tahrirlash rejimida openEditAddressModal() shu yerga joriy nuqtani
