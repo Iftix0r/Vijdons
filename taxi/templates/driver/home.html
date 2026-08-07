@@ -2404,11 +2404,12 @@ async function doAction(id,action,extra){
   }
   try { closeNewOrderModal(false); } catch(e) { console.error('closeNewOrderModal xatosi', e); }
   try { sessionStorage.removeItem('vijdon_new_order'); } catch(e) {}
-  try {
-    if(action==='accept') Audio.accept();
-    else if(action==='reject'||action==='cancel') Audio.reject();
-    else if(action==='complete') Audio.complete();
-  } catch(e) { console.error('Audio xatosi', e); }
+  // Diqqat: "Qabul qildim" ovozi AVVAL shu yerda, serverdan javob kelishidan
+  // OLDIN chalinar edi — bir nechta haydovchi bir vaqtda umumiy tablodagi
+  // BITTA buyurtmani bossa, faqat biri chindan olar (server select_for_update
+  // bilan himoyalangan), lekin QOLGANLARI ham "muvaffaqiyat" ovozini eshitib,
+  // chalkashib qolishardi. Endi ovoz FAQAT natija (d.ok) tasdiqlangandan
+  // keyin, pastdagi tegishli success bo'limida chalinadi.
   try {
     if(typeof FlutterNotify !== 'undefined') FlutterNotify.postMessage('0');
   } catch(e) { console.error('FlutterNotify xatosi', e); }
@@ -2438,6 +2439,16 @@ async function doAction(id,action,extra){
     clearTimeout(timeoutId);
     const d=await r.json();
     if(d.ok){
+      // Ovoz FAQAT shu yerda, natija haqiqatan muvaffaqiyatli bo'lgach
+      // chalinadi — masalan bir nechta haydovchi umumiy tablodagi bitta
+      // buyurtmani bir vaqtda bossa, faqat chindan olgan haydovchi
+      // "Qabul qildim" ovozini eshitadi, boshqalari (rad javobi kelganlar)
+      // pastdagi else bo'limida faqat xato xabarini ko'radi, ovoz yo'q.
+      try {
+        if(action==='accept') Audio.accept();
+        else if(action==='reject'||action==='cancel') Audio.reject();
+        else if(action==='complete') Audio.complete();
+      } catch(e) { console.error('Audio xatosi', e); }
       if(action==='on_way'){
         const o=ORDERS.find(x=>x.id===id||x.id===Number(id));
         tmxStart(id, o||null);
