@@ -7,15 +7,28 @@ self.addEventListener('push', function(e) {
   const url   = data.url   || '/driver/home/';
 
   e.waitUntil(
-    self.registration.showNotification(title, {
-      body:    body,
-      icon:    '/static/driver/icon-192.png',
-      badge:   '/static/driver/icon-72.png',
-      vibrate: [100, 50, 100, 50, 200],
-      data:    { url },
-      tag:     'vijdon-order',
-      renotify: true,
-    })
+    Promise.all([
+      self.registration.showNotification(title, {
+        body:    body,
+        icon:    '/static/driver/icon-192.png',
+        badge:   '/static/driver/icon-72.png',
+        vibrate: [100, 50, 100, 50, 200],
+        data:    { url },
+        tag:     'vijdon-order',
+        renotify: true,
+      }),
+      // Diqqat: ilova ochiq bo'lgan sahifaga DARHOL xabar beramiz —
+      // aks holda push faqat tizim bildirishnomasini ko'rsatardi-yu, sahifa
+      // o'zi navbatdagi 10 soniyalik pollingigacha (setInterval(loadOrders,
+      // 10000)) yangi buyurtmani bilmasdi. Manzil navbatida dispatch_timeout
+      // ham 10s bo'lgani uchun, eng yomon holatda haydovchi buyurtmani
+      // ko'rishga ham ulgurmay, vaqt tugab, keyingisiga o'tib ketardi. Endi
+      // sahifa (agar ochiq bo'lsa) shu postMessage'ni eshitib, loadOrders()'ni
+      // kutmasdan zudlik bilan chaqiradi.
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+        list.forEach(c => c.postMessage({ type: 'vijdon_push_refresh' }));
+      }),
+    ])
   );
 });
 

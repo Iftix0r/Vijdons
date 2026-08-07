@@ -1159,6 +1159,20 @@ async function initPush(){
 }
 {% if driver.is_on_duty %}initPush();{% endif %}
 
+// Service worker'dan push kelganda darhol xabar oladi (sw.js'dagi
+// clients.matchAll(...).postMessage) — 10 soniyalik oddiy pollingni
+// (setInterval(loadOrders, 10000)) kutmasdan, yangi buyurtmani ZUDLIK
+// bilan tekshiradi. Bu ayniqsa manzil navbatida muhim: dispatch_timeout
+// ham odatda 10s atrofida bo'lgani uchun, polling kechiksa haydovchi
+// buyurtmani ko'rishga ham ulgurmay, vaqt tugab ketishi mumkin edi.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'vijdon_push_refresh' && typeof loadOrders === 'function') {
+      loadOrders();
+    }
+  });
+}
+
 // Ekranni yoniq tutish (Wake Lock) endi base.html'ga ko'chirildi — barcha
 // sahifalarda (shu jumladan Tarix/Chat/Profil) ishlashi uchun.
 document.addEventListener('visibilitychange', () => {
