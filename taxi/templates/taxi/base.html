@@ -1,4 +1,5 @@
 {% load static %}
+{% load l10n %}
 <!DOCTYPE html>
 <html lang="uz" class="light">
 <head>
@@ -442,7 +443,7 @@
                 <div class="flex items-center gap-1.5 flex-wrap mb-2">
                     <span class="text-[11px] text-gray-400 font-semibold mr-0.5"><i class="fas fa-bolt text-yellow-500"></i> Tezkor:</span>
                     {% for addr in saved_addresses %}
-                    <button type="button" onclick="_pickSavedAddress({{ addr.lat }}, {{ addr.lng }}, '{{ addr.name|escapejs }}', {{ addr.pk }}, '{{ addr.address|escapejs }}')"
+                    <button type="button" onclick="_pickSavedAddress({{ addr.lat|unlocalize }}, {{ addr.lng|unlocalize }}, '{{ addr.name|escapejs }}', {{ addr.pk }}, '{{ addr.address|escapejs }}')"
                             class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800/40 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition">
                         {{ addr.name }}
                     </button>

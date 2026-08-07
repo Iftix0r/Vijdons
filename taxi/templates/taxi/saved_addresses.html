@@ -1,4 +1,5 @@
 {% extends 'taxi/base.html' %}
+{% load l10n %}
 {% block title %}Manzillar — Vijdon Taxi{% endblock %}
 
 {% block content %}
@@ -49,7 +50,7 @@
                         </span>
                     </td>
                     <td class="px-5 py-3.5 text-xs text-gray-600 dark:text-gray-300">{{ addr.address|default:"—" }}</td>
-                    <td class="px-5 py-3.5 text-[11px] text-gray-400 font-mono">{{ addr.lat|floatformat:5 }}, {{ addr.lng|floatformat:5 }}</td>
+                    <td class="px-5 py-3.5 text-[11px] text-gray-400 font-mono">{{ addr.lat|floatformat:"5u" }}, {{ addr.lng|floatformat:"5u" }}</td>
                     <td class="px-5 py-3.5">
                         {% if addr.queue_count > 0 %}
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
@@ -69,7 +70,7 @@
                     <td class="px-5 py-3.5 text-right">
                         <div class="flex items-center justify-end gap-1.5">
                             <button type="button"
-                                    onclick="openEditAddressModal({{ addr.pk }}, '{{ addr.name|escapejs }}', '{{ addr.address|escapejs }}', {{ addr.lat }}, {{ addr.lng }})"
+                                    onclick="openEditAddressModal({{ addr.pk }}, '{{ addr.name|escapejs }}', '{{ addr.address|escapejs }}', {{ addr.lat|unlocalize }}, {{ addr.lng|unlocalize }})"
                                     class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-500 hover:bg-yellow-100 hover:text-yellow-600 transition-colors" title="Tahrirlash">
                                 <i class="fas fa-pen text-xs"></i>
                             </button>
