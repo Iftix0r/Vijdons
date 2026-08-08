@@ -2028,11 +2028,6 @@ function tmxArrived() {
   doAction(id, 'arrived');
 }
 
-function tmxCancel() {
-  if (!_tmxOrderId) return;
-  const id = _tmxOrderId;
-  openCancelReasonModal((k,c) => doAction(id, 'cancel', {reason:k, custom_reason:c}));
-}
 // ─────────────────────────────────────────────────────────────────────────────
 // Diqqat: openTelegram() endi base.html'da (barcha sahifalarda umumiy).
 
@@ -2289,7 +2284,7 @@ function _renderSheet(id, o){
   };
   const label={pending:'Kutilmoqda',accepted:'Qabul qilindi',on_way:"Yo'lda",arrived:'Yetib keldim'};
 
-  const cancelBtn = `<button onclick="openCancelReasonModal((k,c)=>doAction(${id},'cancel',{reason:k,custom_reason:c}))" class="ios-btn-destructive mt-2">❌ Bekor qilish</button>`;
+  const cancelBtn = `<button onclick="cancelOrderCallOperator()" class="ios-btn-destructive mt-2">📞 Bekor qilish</button>`;
   const btns={
     pending: `<button onclick="doAction(${id},'accept')" class="ios-btn-primary">✓ Qabul qilish</button>
               <button onclick="doAction(${id},'reject')" class="ios-btn-destructive mt-2">Rad etish</button>`,
@@ -2504,8 +2499,6 @@ async function doAction(id,action,extra){
       fd.append('tmx_price', parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,'')) || 0);
       fd.append('tmx_time', _tmxTimeStr || '0:00');
     }
-    // Masalan bekor qilish sababi (reason/custom_reason) — cancel-reason
-    // modali orqali kelgan qo'shimcha maydonlar.
     if (extra) { for (const k in extra) fd.append(k, extra[k]); }
     const ctrl = new AbortController();
     const timeoutId = setTimeout(() => ctrl.abort(), 15000);
