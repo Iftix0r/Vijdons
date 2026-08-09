@@ -17,7 +17,11 @@ import android.telephony.TelephonyManager
 import android.util.Log
 import android.view.ContextThemeWrapper
 import android.webkit.WebView
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Doimiy (foreground) xizmat — qurilmaga qo'ng'iroq kelganda raqamni ushlab,
@@ -145,11 +149,25 @@ class CallWatcherService : Service() {
         // Handler'siz chaqirilgan), WebView ham faqat shu thread'dan ishlatilishi
         // shart — shuning uchun to'g'ridan-to'g'ri, alohida thread'siz chaqiramiz.
         session.reportIncomingCall(prefs.siteUrl, number) { success ->
+            val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
             if (success) {
                 Log.i(TAG, "Qo'ng'iroq yuborildi: $number")
+                Toast.makeText(applicationContext, getString(R.string.notif_call_sent, number, time), Toast.LENGTH_LONG).show()
+                updateNotification(getString(R.string.notif_call_sent, number, time))
             } else {
                 Log.e(TAG, "Qo'ng'iroqni yuborib bo'lmadi: $number")
+                Toast.makeText(applicationContext, getString(R.string.notif_call_failed, number, time), Toast.LENGTH_LONG).show()
+                updateNotification(getString(R.string.notif_call_failed, number, time))
             }
+        }
+    }
+
+    private fun updateNotification(text: String) {
+        try {
+            val manager = getSystemService(NotificationManager::class.java)
+            manager?.notify(NOTIF_ID, buildNotification(text))
+        } catch (e: Exception) {
+            Log.w(TAG, "Bildirishnomani yangilashda xato", e)
         }
     }
 
@@ -165,7 +183,7 @@ class CallWatcherService : Service() {
         }
     }
 
-    private fun buildNotification(): Notification {
+    private fun buildNotification(statusText: String = getString(R.string.notif_text)): Notification {
         val openAppIntent = Intent(this, MainActivity::class.java)
         val contentIntent = PendingIntent.getActivity(
             this, 0, openAppIntent,
@@ -173,7 +191,8 @@ class CallWatcherService : Service() {
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.notif_title))
-            .setContentText(getString(R.string.notif_text))
+            .setContentText(statusText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(statusText))
             .setSmallIcon(R.drawable.ic_stat_call)
             .setOngoing(true)
             .setContentIntent(contentIntent)
