@@ -214,6 +214,7 @@ class CallWatcherService : Service() {
                     scheduleRecordingSearch(number, callEndedAt, attempt + 1)
                 } else {
                     Log.w(TAG, "Native qo'ng'iroq yozuvi topilmadi: $number (telefonda bunday funksiya yo'q yoki boshqa papkaga saqlanadi)")
+                    toast(getString(R.string.rec_not_found))
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Native yozuvni qidirishda xato", e)

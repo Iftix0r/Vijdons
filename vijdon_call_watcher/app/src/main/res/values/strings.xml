@@ -25,4 +25,5 @@
 
     <string name="rec_uploaded_native">🎙 Telefonning qo\'ng\'iroq yozuvi saytga yuklandi</string>
     <string name="rec_upload_failed">🎙 Qo\'ng\'iroq yozuvini yuklab bo\'lmadi (%1$s)</string>
+    <string name="rec_not_found">🎙 Qo\'ng\'iroq yozuvi topilmadi (telefonda avtomatik yozib olish funksiyasi yo\'q yoki boshqa papkaga saqlaydi)</string>
 </resources>
