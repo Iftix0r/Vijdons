@@ -433,6 +433,9 @@
                 </div>
             </div>
 
+            <!-- Telefon qidiruv natijasi (haydovchi ogohlantirishi / mijoz tarixi) -->
+            <div id="om_lookup_info" class="hidden"></div>
+
             <!-- Harita mode toggle -->
             <div class="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800/40">
                 <i class="fas fa-map-marked-alt text-yellow-600 text-sm"></i>
@@ -1240,6 +1243,7 @@
             document.getElementById('om_to_lng').value   = '';
             document.getElementById('om_driver_select').value = '';
             document.getElementById('om_driver_map_hint').classList.add('hidden');
+            if (typeof window._resetOrderLookupInfo === 'function') window._resetOrderLookupInfo();
             document.getElementById('map_from_text').textContent = 'Qayerdan belgilanmagan';
             document.getElementById('map_to_text').textContent   = 'Qayerga belgilanmagan';
             document.getElementById('map_from_badge').className = 'flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/40';
@@ -1439,50 +1443,111 @@
     }
     setInterval(pollPanelEvents, 5000);
 
-    // ── Phone lookup ──
+    // ── Phone lookup ── (mijoz/haydovchi ma'lumoti + oldingi buyurtmalar tarixi)
     (function() {
         var _lookupTimer = null;
         var _hint = document.createElement('div');
         _hint.className = 'text-[11px] text-emerald-600 font-semibold mt-1 hidden';
         var _phoneInput = document.getElementById('om_phone');
-        if (_phoneInput) {
-            _phoneInput.parentNode.appendChild(_hint);
-            _phoneInput.addEventListener('input', function() {
-                clearTimeout(_lookupTimer);
-                var phone = this.value.trim();
-                if (phone.length < 9) { _hint.classList.add('hidden'); return; }
-                _lookupTimer = setTimeout(function() {
-                    fetch('/panel/api/client/lookup/?phone=' + encodeURIComponent(phone))
-                        .then(function(r){ return r.json(); })
-                        .then(function(d) {
-                            if (!d.found) { _hint.classList.add('hidden'); return; }
-                            if (d.name) {
-                                var nm = document.querySelector('#orderModal input[name="customer_name"]');
-                                if (nm && !nm.value) nm.value = d.name;
-                            }
-                            if (d.from_address) {
-                                var fa = document.getElementById('om_from_address');
-                                // Diqqat: lat/lng FAQAT shu manzil matni bilan birga, va faqat
-                                // maydon hali bo'sh bo'lganda to'ldiriladi. Avval bu tekshiruvdan
-                                // tashqarida, har doim yozib turardi — operator xaritadan yoki
-                                // "Tezkor" manzildan aniq nuqta tanlab bo'lgandan keyin telefon
-                                // raqamini kiritsa, shu (kech kelgan) so'rov to'g'ri tanlangan
-                                // koordinatani mijozning ESKI buyurtmasidagi (butunlay boshqa
-                                // joydagi) koordinata bilan JIM almashtirib yuborardi — manzil
-                                // matni to'g'ri ko'rinib, lekin buyurtma noto'g'ri joyga (masalan
-                                // minglab km uzoqdagi eski manzilga) yuborilib ketardi.
-                                if (fa && !fa.value) {
-                                    fa.value = d.from_address;
-                                    _hint.textContent = '✓ Oldingi manzil yuklandi: ' + d.from_address;
-                                    _hint.classList.remove('hidden');
-                                    if (d.from_lat) document.getElementById('om_from_lat').value = d.from_lat;
-                                    if (d.from_lng) document.getElementById('om_from_lng').value = d.from_lng;
-                                }
-                            }
-                        }).catch(function(){});
-                }, 600);
+        var _infoBox = document.getElementById('om_lookup_info');
+        if (!_phoneInput) return;
+        _phoneInput.parentNode.appendChild(_hint);
+
+        function escapeHtml(s) {
+            var d = document.createElement('div');
+            d.textContent = s || '';
+            return d.innerHTML;
+        }
+
+        function renderDriverWarning(d) {
+            if (!_infoBox) return;
+            _infoBox.innerHTML =
+                '<div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl text-xs">' +
+                '<div class="font-bold text-red-700 dark:text-red-400 mb-1"><i class="fas fa-triangle-exclamation mr-1"></i>Diqqat — bu HAYDOVCHI raqami!</div>' +
+                '<div class="text-red-700 dark:text-red-300">' + escapeHtml(d.name) + ' — ' + escapeHtml(d.car_model) + ' (' + escapeHtml(d.car_number) + ')</div>' +
+                '<div class="text-red-600 dark:text-red-400 mt-0.5">' + (d.is_on_duty ? '🟢 Navbatda' : '🔴 Navbatda emas') + ' · Balans: ' + escapeHtml(d.balance) + ' UZS · ⭐ ' + escapeHtml(d.rating) + '</div>' +
+                '</div>';
+            _infoBox.classList.remove('hidden');
+        }
+
+        function renderClientInfo(d) {
+            if (!_infoBox) return;
+            var html = '<div class="p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 rounded-xl text-xs space-y-2">';
+            html += '<div class="font-bold text-emerald-700 dark:text-emerald-400"><i class="fas fa-user-check mr-1"></i>' + (d.name ? escapeHtml(d.name) : 'Tanish mijoz') + '</div>';
+            if (d.is_blocked) {
+                html += '<div class="font-bold text-red-600">🚫 Bu mijoz bloklangan!</div>';
+            }
+            if (d.recent_orders && d.recent_orders.length) {
+                html += '<div class="text-gray-500 dark:text-gray-400 font-semibold uppercase text-[10px]">Oldingi buyurtmalar:</div>';
+                html += '<div class="space-y-1">';
+                d.recent_orders.forEach(function(o, i) {
+                    html += '<button type="button" class="om_prev_order_btn w-full text-left px-2 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-emerald-100 dark:border-emerald-900/40 hover:border-emerald-400 transition" data-idx="' + i + '">' +
+                        '<span class="text-gray-700 dark:text-gray-200">' + escapeHtml(o.from_address) + '</span>' +
+                        (o.to_address ? ' <i class="fas fa-arrow-right text-[9px] text-gray-400 mx-1"></i><span class="text-gray-500">' + escapeHtml(o.to_address) + '</span>' : '') +
+                        '<span class="block text-[10px] text-gray-400">' + escapeHtml(o.created_at) + ' · ' + escapeHtml(o.status_display) + '</span>' +
+                        '</button>';
+                });
+                html += '</div>';
+            }
+            html += '</div>';
+            _infoBox.innerHTML = html;
+            _infoBox.classList.remove('hidden');
+            _infoBox.querySelectorAll('.om_prev_order_btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var o = d.recent_orders[parseInt(this.dataset.idx, 10)];
+                    var fa = document.getElementById('om_from_address');
+                    if (fa && o.from_address) fa.value = o.from_address;
+                });
             });
         }
+
+        function resetLookupInfo() {
+            if (_infoBox) { _infoBox.innerHTML = ''; _infoBox.classList.add('hidden'); }
+            _hint.classList.add('hidden');
+        }
+        window._resetOrderLookupInfo = resetLookupInfo;
+
+        _phoneInput.addEventListener('input', function() {
+            clearTimeout(_lookupTimer);
+            var phone = this.value.trim();
+            if (phone.length < 9) { resetLookupInfo(); return; }
+            _lookupTimer = setTimeout(function() {
+                fetch('/panel/api/client/lookup/?phone=' + encodeURIComponent(phone))
+                    .then(function(r){ return r.json(); })
+                    .then(function(d) {
+                        if (!d.found) { resetLookupInfo(); return; }
+
+                        if (d.type === 'driver') {
+                            renderDriverWarning(d);
+                            return;
+                        }
+
+                        // type === 'client'
+                        renderClientInfo(d);
+                        if (d.name) {
+                            var nm = document.querySelector('#orderModal input[name="customer_name"]');
+                            if (nm && !nm.value) nm.value = d.name;
+                        }
+                        if (d.from_address) {
+                            var fa = document.getElementById('om_from_address');
+                            // Diqqat: lat/lng FAQAT shu manzil matni bilan birga, va faqat
+                            // maydon hali bo'sh bo'lganda to'ldiriladi. Avval bu tekshiruvdan
+                            // tashqarida, har doim yozib turardi — operator xaritadan yoki
+                            // "Tezkor" manzildan aniq nuqta tanlab bo'lgandan keyin telefon
+                            // raqamini kiritsa, shu (kech kelgan) so'rov to'g'ri tanlangan
+                            // koordinatani mijozning ESKI buyurtmasidagi (butunlay boshqa
+                            // joydagi) koordinata bilan JIM almashtirib yuborardi — manzil
+                            // matni to'g'ri ko'rinib, lekin buyurtma noto'g'ri joyga (masalan
+                            // minglab km uzoqdagi eski manzilga) yuborilib ketardi.
+                            if (fa && !fa.value) {
+                                fa.value = d.from_address;
+                                if (d.from_lat) document.getElementById('om_from_lat').value = d.from_lat;
+                                if (d.from_lng) document.getElementById('om_from_lng').value = d.from_lng;
+                            }
+                        }
+                    }).catch(function(){});
+            }, 600);
+        });
     })();
 
     // ── Keyboard Shortcuts ──

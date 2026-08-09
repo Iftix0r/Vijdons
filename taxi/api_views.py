@@ -730,11 +730,11 @@ def sos_my(request, driver):
 
 
 from django.http import JsonResponse as DjJsonResponse
-from .models import Client, Order
+from .models import Client, Driver, Order
 
 def client_last_order_api(request):
     # Diqqat (xavfsizlik): bu operator panelidagi "yangi buyurtma" formasi
-    # telefon raqami kiritilganda mijozning oxirgi manzilini avtomatik
+    # telefon raqami kiritilganda mijoz/haydovchi ma'lumotini avtomatik
     # to'ldirish uchun chaqiradi (taxi/templates/taxi/base.html) — hech qanday
     # autentifikatsiya tekshiruvisiz qoldirilgan bo'lsa, istalgan kishi
     # internetdan telefon raqamini almashtirib (Uzbekiston raqamlari kichik,
@@ -745,19 +745,43 @@ def client_last_order_api(request):
     phone = request.GET.get('phone', '').strip()
     if not phone:
         return DjJsonResponse({'found': False})
+
+    driver = Driver.objects.filter(phone_number=phone).first()
+    if driver:
+        return DjJsonResponse({
+            'found': True,
+            'type': 'driver',
+            'name': driver.full_name,
+            'car_model': driver.car_model,
+            'car_number': driver.car_number,
+            'car_type_display': driver.get_car_type_display(),
+            'is_on_duty': driver.is_on_duty,
+            'balance': str(driver.balance),
+            'rating': str(driver.rating),
+        })
+
     try:
         client = Client.objects.get(phone_number=phone)
     except Client.DoesNotExist:
         return DjJsonResponse({'found': False})
-    last = Order.objects.filter(client=client).order_by('-created_at').first()
-    if not last:
-        return DjJsonResponse({'found': True, 'name': client.full_name or '', 'from_address': '', 'from_lat': '', 'from_lng': ''})
+
+    recent = list(Order.objects.filter(client=client).order_by('-created_at')[:5])
+    recent_orders = [{
+        'from_address': o.from_address,
+        'to_address': o.to_address,
+        'created_at': o.created_at.strftime('%d.%m %H:%M'),
+        'status_display': o.get_status_display(),
+    } for o in recent]
+    last = recent[0] if recent else None
     return DjJsonResponse({
         'found': True,
+        'type': 'client',
         'name': client.full_name or '',
-        'from_address': last.from_address,
-        'from_lat': last.from_lat or '',
-        'from_lng': last.from_lng or '',
+        'is_blocked': client.is_blocked,
+        'from_address': last.from_address if last else '',
+        'from_lat': (last.from_lat or '') if last else '',
+        'from_lng': (last.from_lng or '') if last else '',
+        'recent_orders': recent_orders,
     })
 
 
