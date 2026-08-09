@@ -18,12 +18,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import uz.vijdon.driver.data.api.DriverDto
+import uz.vijdon.driver.ui.ApprovedScaffold
 import uz.vijdon.driver.ui.SessionState
 import uz.vijdon.driver.ui.SessionViewModel
 import uz.vijdon.driver.ui.auth.FrozenScreen
 import uz.vijdon.driver.ui.auth.LoginScreen
 import uz.vijdon.driver.ui.auth.PendingScreen
-import uz.vijdon.driver.ui.ApprovedScaffold
 import uz.vijdon.driver.ui.auth.RegisterScreen
 import uz.vijdon.driver.ui.theme.VijdonDriverTheme
 
@@ -34,27 +34,32 @@ private object Routes {
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    // Diqqat: sessiya holatini (hiltViewModel + collectAsState + when-tarmoq)
+    // alohida composable funksiyaga chiqarish (masalan `VijdonDriverApp()`)
+    // shu loyihaning aniq Kotlin/Compose kompilyator versiyasi ostida bu
+    // kompozitsiyani butunlay bo'sh (hech narsa chizilmagan) holga olib
+    // keldi — xatosiz, log'da iz qoldirmasdan. Sinovdan o'tgan yagona
+    // barqaror shakl — buni to'g'ridan-to'g'ri shu yerda, onCreate/setContent
+    // ichida chaqirish (pastdagi yordamchi composable'lar — LoadingBox,
+    // AuthNavHost va ekranlarning o'zi — alohida funksiya sifatida muammosiz
+    // ishlaydi, faqat aynan shu "ildiz" composable muammoli edi).
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             VijdonDriverTheme {
-                VijdonDriverApp()
+                val sessionViewModel: SessionViewModel = hiltViewModel()
+                val session by sessionViewModel.state.collectAsState()
+                val navController = rememberNavController()
+
+                when (val s = session) {
+                    is SessionState.Loading -> LoadingBox()
+                    is SessionState.LoggedOut -> AuthNavHost(navController, onLoggedIn = sessionViewModel::onLoggedIn)
+                    is SessionState.Pending -> PendingScreen(onLogout = sessionViewModel::logout)
+                    is SessionState.Frozen -> FrozenScreen(onLogout = sessionViewModel::logout)
+                    is SessionState.Approved -> ApprovedScaffold(driver = s.driver, onLogout = sessionViewModel::logout)
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun VijdonDriverApp(sessionViewModel: SessionViewModel = hiltViewModel()) {
-    val navController = rememberNavController()
-    val session by sessionViewModel.state.collectAsState()
-
-    when (val s = session) {
-        is SessionState.Loading -> LoadingBox()
-        is SessionState.LoggedOut -> AuthNavHost(navController, onLoggedIn = sessionViewModel::onLoggedIn)
-        is SessionState.Pending -> PendingScreen(onLogout = sessionViewModel::logout)
-        is SessionState.Frozen -> FrozenScreen(onLogout = sessionViewModel::logout)
-        is SessionState.Approved -> ApprovedScaffold(driver = s.driver, onLogout = sessionViewModel::logout)
     }
 }
 
