@@ -15,6 +15,7 @@
     <string name="error_fill_fields">Barcha maydonlarni to\'ldiring</string>
     <string name="error_login_failed">Login yoki parol noto\'g\'ri, yoki sayt bilan aloqa yo\'q</string>
     <string name="error_permissions_needed">Ishlashi uchun telefon holati va qo\'ng\'iroqlar jurnali ruxsatlari kerak</string>
+    <string name="hint_enable_native_recording">⚠️ Qo\'ng\'iroq ovozi yozilishi uchun telefonning O\'Z Dialer (Qo\'ng\'iroq) ilovasida "Qo\'ng\'iroqni yozib olish" funksiyasi yoqilgan bo\'lishi shart (Sozlamalar → Dialer/Telefon ilovasi → Qo\'ng\'iroqni yozib olish). Bu ilova o\'zi ovoz yoza olmaydi — faqat telefon yozib qo\'ygan faylni topib, saytga yuklaydi. Ba\'zi telefonlarda (masalan Samsung) bu funksiya umuman yo\'q.</string>
     <string name="logged_in_as">Kirgan: %1$s</string>
 
     <string name="notif_channel_name">Qo\'ng\'iroq kuzatuvchisi</string>
