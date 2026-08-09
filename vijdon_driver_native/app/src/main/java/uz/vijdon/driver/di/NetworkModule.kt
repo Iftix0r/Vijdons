@@ -14,6 +14,8 @@ import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import uz.vijdon.driver.BuildConfig
 import uz.vijdon.driver.data.api.DriverApiService
+import uz.vijdon.driver.data.challenge.ChallengeInterceptor
+import uz.vijdon.driver.data.challenge.ChallengeSolver
 import uz.vijdon.driver.data.repository.TokenStore
 import javax.inject.Singleton
 
@@ -39,11 +41,12 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(authInterceptor: Interceptor): OkHttpClient =
+    fun provideOkHttpClient(authInterceptor: Interceptor, challengeInterceptor: ChallengeInterceptor): OkHttpClient =
         OkHttpClient.Builder()
             .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
             .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
             .writeTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .addInterceptor(challengeInterceptor)
             .addInterceptor(authInterceptor)
             .addInterceptor(
                 HttpLoggingInterceptor().apply {

@@ -54,8 +54,8 @@ class MainActivity : ComponentActivity() {
                 when (val s = session) {
                     is SessionState.Loading -> LoadingBox()
                     is SessionState.LoggedOut -> AuthNavHost(navController, onLoggedIn = sessionViewModel::onLoggedIn)
-                    is SessionState.Pending -> PendingScreen(onLogout = sessionViewModel::logout)
-                    is SessionState.Frozen -> FrozenScreen(onLogout = sessionViewModel::logout)
+                    is SessionState.Pending -> PendingScreen(onLogout = sessionViewModel::logout, onRefresh = sessionViewModel::refresh)
+                    is SessionState.Frozen -> FrozenScreen(onLogout = sessionViewModel::logout, onRefresh = sessionViewModel::refresh)
                     is SessionState.Approved -> ApprovedScaffold(driver = s.driver, onLogout = sessionViewModel::logout)
                 }
             }

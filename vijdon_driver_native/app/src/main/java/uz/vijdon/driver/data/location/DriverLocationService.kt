@@ -57,6 +57,16 @@ class DriverLocationService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        // Android 14+ (API 34) joylashuv turidagi foreground service'ni
+        // ACCESS_FINE_LOCATION ruxsati bo'lmasa boshlashga umuman
+        // ruxsat bermaydi (SecurityException) — shu sabab avval ruxsat
+        // tekshiriladi, aks holda hech qanday bildirishnoma ko'rsatmasdan
+        // darhol to'xtaydi (HomeViewModel ham xuddi shu tekshiruvni
+        // qiladi, lekin bu yerda ham himoya sifatida qoldirilgan).
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            stopSelf()
+            return
+        }
         startForegroundWithNotification()
         startLocationUpdates()
     }

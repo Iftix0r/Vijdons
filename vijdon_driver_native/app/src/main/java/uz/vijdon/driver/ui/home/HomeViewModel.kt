@@ -65,6 +65,13 @@ class HomeViewModel @Inject constructor(
         syncLocationService(driver.is_on_duty)
     }
 
+    /** Ruxsat ekrandan so'ralganda KEYINROQ berilsa (masalan haydovchi
+     * ilovani birinchi ochganda allaqachon "onlayn" bo'lsa) — fon xizmatini
+     * shu paytda qayta boshlashga urinadi. */
+    fun onLocationPermissionGranted() {
+        _uiState.value.driver?.let { syncLocationService(it.is_on_duty) }
+    }
+
     private fun startPolling() {
         pollJob?.cancel()
         pollJob = viewModelScope.launch {
@@ -168,7 +175,17 @@ class HomeViewModel @Inject constructor(
     private fun syncLocationService(onDuty: Boolean) {
         val intent = Intent(context, DriverLocationService::class.java)
         if (onDuty) {
-            context.startForegroundService(intent)
+            // Android 14+ da joylashuv ruxsati bo'lmasa foreground service
+            // boshlash SecurityException bilan qulaydi — ruxsat hali
+            // so'ralayotgan yoki rad etilgan bo'lishi mumkin (masalan
+            // haydovchi avvaldan "onlaynligicha" ilovani birinchi marta
+            // ochsa), shu sabab avval tekshiramiz.
+            val granted = androidx.core.content.ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.ACCESS_FINE_LOCATION,
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            if (granted) {
+                context.startForegroundService(intent)
+            }
         } else {
             context.stopService(intent)
         }

@@ -3,6 +3,7 @@ package uz.vijdon.driver.ui.home
 import android.Manifest
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -62,9 +63,18 @@ fun HomeScreen(
 
     LaunchedEffect(driver) { viewModel.setDriver(driver) }
 
-    val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) viewModel.onLocationPermissionGranted()
+    }
+    // POST_NOTIFICATIONS Android 13+ da runtime ruxsat — bu so'ralmasa, yangi
+    // buyurtma push xabari kabi muhim bildirishnomalar hech qanday xato
+    // bermasdan, sezilmasdan ko'rsatilmay qoladi.
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     LaunchedEffect(Unit) {
         locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     val currentDriver = state.driver ?: driver

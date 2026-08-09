@@ -27,29 +27,38 @@ import androidx.compose.ui.unit.dp
 import uz.vijdon.driver.ui.theme.VijdonColors
 
 @Composable
-fun PendingScreen(onLogout: () -> Unit) {
+fun PendingScreen(onLogout: () -> Unit, onRefresh: () -> Unit) {
     StatusScreen(
         icon = Icons.Rounded.HourglassTop,
         accentColor = VijdonColors.Yellow,
         title = "Hisobingiz tekshirilmoqda",
         message = "Admin sizning ma'lumotlaringizni tasdiqlagach, ilovadan foydalana olasiz.",
         onLogout = onLogout,
+        onRefresh = onRefresh,
     )
 }
 
 @Composable
-fun FrozenScreen(onLogout: () -> Unit) {
+fun FrozenScreen(onLogout: () -> Unit, onRefresh: () -> Unit) {
     StatusScreen(
         icon = Icons.Rounded.AcUnit,
         accentColor = VijdonColors.Blue,
         title = "Hisobingiz muzlatilgan",
         message = "Uzoq vaqt faol bo'lmaganingiz sababli hisobingiz muzlatildi. Admin bilan bog'laning.",
         onLogout = onLogout,
+        onRefresh = onRefresh,
     )
 }
 
 @Composable
-private fun StatusScreen(icon: ImageVector, accentColor: Color, title: String, message: String, onLogout: () -> Unit) {
+private fun StatusScreen(
+    icon: ImageVector,
+    accentColor: Color,
+    title: String,
+    message: String,
+    onLogout: () -> Unit,
+    onRefresh: () -> Unit,
+) {
     Column(
         modifier = Modifier.fillMaxSize().background(VijdonColors.Background).padding(24.dp),
         verticalArrangement = Arrangement.Center,
@@ -66,6 +75,7 @@ private fun StatusScreen(icon: ImageVector, accentColor: Color, title: String, m
         Spacer(Modifier.height(12.dp))
         Text(message, style = MaterialTheme.typography.bodyMedium, color = VijdonColors.TextSecondary, textAlign = TextAlign.Center)
         Spacer(Modifier.height(24.dp))
-        TextButton(onClick = onLogout) { Text("Chiqish", color = VijdonColors.Yellow) }
+        TextButton(onClick = onRefresh) { Text("Qayta tekshirish", color = accentColor) }
+        TextButton(onClick = onLogout) { Text("Chiqish", color = VijdonColors.TextSecondary) }
     }
 }

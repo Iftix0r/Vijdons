@@ -23,6 +23,7 @@ class TaximeterTracker(
         private const val MIN_INTERVAL_MS = 4_000L
         private const val MIN_NOISE_FLOOR_M = 15.0
         private const val MAX_PLAUSIBLE_SPEED_KMH = 140.0
+        private const val MAX_SINGLE_JUMP_M = 2_000.0
     }
 
     var distanceKm: Double = 0.0
@@ -68,6 +69,7 @@ class TaximeterTracker(
         val distMeters = haversineMeters(prevLat, prevLng, lat, lng)
         val noiseFloor = maxOf(MIN_NOISE_FLOOR_M, (prevAccuracy + accuracy) / 2.0)
         if (distMeters < noiseFloor) return true // harakatsizlik/shovqin — masofaga qo'shilmaydi
+        if (distMeters > MAX_SINGLE_JUMP_M) return false // bitta nuqtada sog'lom bo'lmagan sakrash
 
         val elapsedHours = (timestampMs - prevTimestamp) / 3_600_000.0
         if (elapsedHours > 0) {

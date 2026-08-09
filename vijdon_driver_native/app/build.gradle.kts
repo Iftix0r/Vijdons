@@ -28,13 +28,16 @@ android {
         versionName = "1.0"
 
         buildConfigField("boolean", "HAS_FCM", hasGoogleServices.toString())
-        // Ishlab chiqarish serveri Cloudflare bot-himoyasi ostida — /api/driverapp/
-        // yo'li WAF'da istisno qilinishi kerak (rejaning 0.1-bandi), aks holda
-        // bu yerdan yuborilgan so'rovlar JSON o'rniga Cloudflare tekshiruv
-        // sahifasini qaytaradi. Lokal sinov uchun vaqtincha
+        // Ishlab chiqarish serveri hosting darajasidagi Imunify360 WAF
+        // JS-bot-tekshiruvi ostida — bu WHM/server administratori darajasida
+        // qulflangan (cPanel hisobidan o'zgartirib bo'lmaydi), shu sabab
+        // ChallengeInterceptor (data/challenge/) uni ilova ichida ko'rinmas
+        // WebView orqali avtomatik "yechadi". Lokal sinov uchun vaqtincha
         // "http://127.0.0.1:8000/api/driverapp/" ga o'zgartirib, qurilmada
-        // `adb reverse tcp:8000 tcp:8000` ishga tushiring.
+        // `adb reverse tcp:8000 tcp:8000` ishga tushiring (bu holda
+        // ChallengeInterceptor hech narsa qilmaydi, chunki host boshqacha).
         buildConfigField("String", "BASE_URL", "\"https://vijdontaxi.uz/api/driverapp/\"")
+        buildConfigField("String", "CHALLENGE_ORIGIN", "\"https://vijdontaxi.uz/\"")
     }
 
     buildTypes {
