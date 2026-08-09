@@ -6,9 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -26,8 +24,8 @@ import uz.vijdon.driver.ui.SessionViewModel
 import uz.vijdon.driver.ui.auth.FrozenScreen
 import uz.vijdon.driver.ui.auth.LoginScreen
 import uz.vijdon.driver.ui.auth.PendingScreen
+import uz.vijdon.driver.ui.ApprovedScaffold
 import uz.vijdon.driver.ui.auth.RegisterScreen
-import uz.vijdon.driver.ui.home.HomeScreen
 import uz.vijdon.driver.ui.theme.VijdonDriverTheme
 
 private object Routes {
@@ -53,19 +51,12 @@ private fun VijdonDriverApp(sessionViewModel: SessionViewModel = hiltViewModel()
     val navController = rememberNavController()
     val session by sessionViewModel.state.collectAsState()
 
-    Scaffold { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-            when (val s = session) {
-                is SessionState.Loading -> LoadingBox()
-                is SessionState.LoggedOut -> AuthNavHost(navController, onLoggedIn = sessionViewModel::onLoggedIn)
-                is SessionState.Pending -> PendingScreen(onLogout = sessionViewModel::logout)
-                is SessionState.Frozen -> FrozenScreen(onLogout = sessionViewModel::logout)
-                is SessionState.Approved -> HomeScreen(
-                    driver = s.driver,
-                    onLogout = sessionViewModel::logout,
-                )
-            }
-        }
+    when (val s = session) {
+        is SessionState.Loading -> LoadingBox()
+        is SessionState.LoggedOut -> AuthNavHost(navController, onLoggedIn = sessionViewModel::onLoggedIn)
+        is SessionState.Pending -> PendingScreen(onLogout = sessionViewModel::logout)
+        is SessionState.Frozen -> FrozenScreen(onLogout = sessionViewModel::logout)
+        is SessionState.Approved -> ApprovedScaffold(driver = s.driver, onLogout = sessionViewModel::logout)
     }
 }
 

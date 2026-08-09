@@ -26,4 +26,25 @@ urlpatterns = [
     path('orders/<int:pk>/arrived/',  v.order_arrived,  name='order_arrived'),
     path('orders/<int:pk>/complete/', v.order_complete, name='order_complete'),
     path('orders/<int:pk>/meter/',    v.order_meter,    name='order_meter'),
+
+    path('history/', v.order_history, name='order_history'),
+    path('rating/',  v.rating,        name='rating'),
+
+    path('profile/photo/',    v.profile_photo,    name='profile_photo'),
+    path('profile/password/', v.profile_password, name='profile_password'),
+
+    path('balance/history/', v.balance_history, name='balance_history'),
+    path('balance/topup/',   v.balance_topup,   name='balance_topup'),
+
+    path('contract/',      v.contract_detail, name='contract_detail'),
+    path('contract/sign/', v.contract_sign,   name='contract_sign'),
+
+    path('addresses/',                        v.addresses_list,     name='addresses_list'),
+    path('addresses/<int:pk>/queue/',         v.address_queue_position, name='address_queue_position'),
+    path('addresses/<int:pk>/queue/drivers/', v.address_queue_drivers,  name='address_queue_drivers'),
+
+    path('destination/', v.destination_set, name='destination_set'),
+    path('sos/',          v.sos_send,        name='sos_send'),
+    path('surge/',        v.surge_info,      name='surge_info'),
+    path('nearby-drivers/', v.nearby_drivers, name='nearby_drivers'),
 ]

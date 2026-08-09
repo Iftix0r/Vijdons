@@ -104,3 +104,94 @@ data class OrderDto(
     val isArrived: Boolean get() = status == "arrived"
     val isActive: Boolean get() = status in setOf("accepted", "on_way", "arrived")
 }
+
+@Serializable
+data class OrderHistoryResponse(
+    val orders: List<OrderDto>,
+    val total_earned: Double,
+    val completed: Int,
+)
+
+@Serializable
+data class RatingRowDto(
+    val rank: Int,
+    val full_name: String,
+    val completed: Int,
+    val earned: Int,
+    val is_me: Boolean,
+)
+
+@Serializable
+data class RatingResponse(
+    val rows: List<RatingRowDto>,
+    val my_row: RatingRowDto? = null,
+    val gap_to_next: Int? = null,
+)
+
+@Serializable
+data class PhotoResponse(val photo_url: String)
+
+@Serializable
+data class BalanceEntryDto(val is_income: Boolean, val amount: String, val note: String, val created_at: String)
+
+@Serializable
+data class BalanceHistoryResponse(val entries: List<BalanceEntryDto>, val balance: String)
+
+@Serializable
+data class ContractDto(val title: String, val content: String, val version: Int, val signed: Boolean)
+
+@Serializable
+data class AddressDto(
+    val id: Int,
+    val name: String,
+    val address: String,
+    val lat: Double,
+    val lng: Double,
+    val today_orders: Int,
+    val queue_count: Int,
+)
+
+@Serializable
+data class QueuePositionResponse(val position: Int? = null, val total: Int = 0)
+
+@Serializable
+data class QueueDriverDto(
+    val position: Int,
+    val full_name: String,
+    val car_model: String,
+    val car_number: String,
+    val joined_at: String,
+    val is_me: Boolean,
+)
+
+@Serializable
+data class DestinationRequest(
+    val lat: Double? = null,
+    val lng: Double? = null,
+    val address: String? = null,
+    val clear: Boolean? = null,
+)
+
+@Serializable
+data class DestinationResponse(val active: Boolean)
+
+@Serializable
+data class SosResponse(val id: Int)
+
+@Serializable
+data class SurgeResponse(val multiplier: Double, val reason: String)
+
+@Serializable
+data class NearbyDriverDto(
+    val id: Int,
+    val full_name: String,
+    val car_type: String,
+    val car_model: String,
+    val car_number: String,
+    val photo_url: String,
+    val latitude: Double,
+    val longitude: Double,
+    val trips_count: Int,
+    val rating: Double,
+    val level: String,
+)

@@ -497,3 +497,355 @@ def order_create(request, driver):
     if saved_address and from_lat and from_lng:
         dispatch_order(order)
     return Response(DriverAppOrderSerializer(order, context={'driver': driver}).data, status=201)
+
+
+# ── Tarix / Reyting ────────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@driver_required
+def order_history(request, driver):
+    from django.db.models import Sum, Count, Q as DQ
+    from django.utils import timezone
+    import datetime
+
+    period = request.query_params.get('period', 'all')
+    qs = Order.objects.filter(driver=driver)
+    now = timezone.now()
+    if period == 'today':
+        qs = qs.filter(created_at__date=now.date())
+    elif period == 'week':
+        qs = qs.filter(created_at__gte=now - datetime.timedelta(days=7))
+    elif period == 'month':
+        qs = qs.filter(created_at__gte=now - datetime.timedelta(days=30))
+
+    orders = qs.select_related('client', 'driver').order_by('-created_at')[:100]
+    stats = qs.aggregate(
+        total_earned=Sum('price', filter=DQ(status='completed')),
+        completed=Count('id', filter=DQ(status='completed')),
+    )
+    return Response({
+        'orders': DriverAppOrderSerializer(orders, many=True, context={'driver': driver}).data,
+        'total_earned': stats['total_earned'] or 0,
+        'completed': stats['completed'] or 0,
+    })
+
+
+@api_view(['GET'])
+@driver_required
+def rating(request, driver):
+    from django.db.models import Count, Sum, Q as DQ
+    from django.utils import timezone
+
+    today = timezone.localdate()
+    month_start = today.replace(day=1)
+    leaderboard = list(
+        Driver.objects.filter(is_active=True)
+        .annotate(
+            completed=Count('orders', filter=DQ(
+                orders__status='completed', orders__created_at__date__gte=month_start, orders__created_at__date__lte=today,
+            )),
+            earned=Sum('orders__price', filter=DQ(
+                orders__status='completed', orders__created_at__date__gte=month_start, orders__created_at__date__lte=today,
+            )),
+        )
+        .order_by('-completed', '-earned', 'full_name')
+    )
+    rows = []
+    my_row = None
+    for i, d in enumerate(leaderboard, start=1):
+        row = {'rank': i, 'full_name': d.full_name, 'completed': d.completed, 'earned': int(d.earned or 0), 'is_me': d.id == driver.id}
+        rows.append(row)
+        if row['is_me']:
+            my_row = row
+    gap_to_next = None
+    if my_row and my_row['rank'] > 1:
+        ahead_row = rows[my_row['rank'] - 2]
+        gap_to_next = max(1, ahead_row['completed'] - my_row['completed'] + 1)
+    return Response({'rows': rows, 'my_row': my_row, 'gap_to_next': gap_to_next})
+
+
+# ── Profil ──────────────────────────────────────────────────────────────────────
+
+@api_view(['POST'])
+@driver_required
+def profile_photo(request, driver):
+    photo = request.FILES.get('photo')
+    if not photo:
+        return Response({'detail': 'Rasm tanlanmadi.'}, status=400)
+    if driver.photo:
+        driver.photo.delete(save=False)
+    driver.photo = photo
+    driver.save(update_fields=['photo'])
+    return Response({'photo_url': request.build_absolute_uri(driver.photo.url)})
+
+
+@api_view(['POST'])
+@driver_required
+def profile_password(request, driver):
+    old = str(request.data.get('old_password', ''))
+    new = str(request.data.get('new_password', ''))
+    if not driver.user:
+        return Response({'detail': 'Foydalanuvchi topilmadi.'}, status=400)
+    if not driver.user.check_password(old):
+        return Response({'detail': "Eski parol noto'g'ri."}, status=400)
+    if len(new) < 6:
+        return Response({'detail': "Parol kamida 6 ta belgi bo'lishi kerak."}, status=400)
+    driver.user.set_password(new)
+    driver.user.save()
+    return Response({'detail': 'Parol yangilandi.'})
+
+
+# ── Balans ──────────────────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@driver_required
+def balance_history(request, driver):
+    from .models import BalanceLog
+
+    logs = driver.balance_logs.all()[:100]
+    entries = [{
+        'is_income': log.action == BalanceLog.ACTION_ADD,
+        'amount': str(log.amount),
+        'note': log.note or ("Balans to'ldirildi" if log.action == BalanceLog.ACTION_ADD else 'Balansdan yechildi'),
+        'created_at': log.created_at.isoformat(),
+    } for log in logs]
+
+    commission_orders = Order.objects.filter(
+        driver=driver, status__in=Order.ACTIVE_STATUSES + ('completed',)
+    ).order_by('-updated_at')[:100]
+    entries += [{
+        'is_income': False,
+        'amount': str(o.commission),
+        'note': f"Komissiya — buyurtma #{o.id}",
+        'created_at': o.updated_at.isoformat(),
+    } for o in commission_orders]
+
+    entries.sort(key=lambda e: e['created_at'], reverse=True)
+    return Response({'entries': entries[:100], 'balance': str(driver.balance)})
+
+
+@api_view(['POST'])
+@driver_required
+def balance_topup(request, driver):
+    from decimal import InvalidOperation
+    from .models import BalanceTopupRequest
+    from .utils import tg_topup_request
+
+    receipt = request.FILES.get('receipt')
+    amount_raw = str(request.data.get('amount', '')).strip()
+    if not receipt:
+        return Response({'detail': 'Chek rasmi tanlanmadi.'}, status=400)
+    try:
+        amount = Decimal(amount_raw)
+        if amount <= 0:
+            raise ValueError
+    except (ValueError, InvalidOperation):
+        return Response({'detail': "Summani to'g'ri kiriting."}, status=400)
+
+    topup = BalanceTopupRequest.objects.create(driver=driver, amount=amount, receipt=receipt)
+    tg_topup_request(topup, request.build_absolute_uri(topup.receipt.url))
+    return Response({'detail': "So'rov yuborildi. Admin tasdiqlashini kuting."}, status=201)
+
+
+# ── Shartnoma ───────────────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@driver_required
+def contract_detail(request, driver):
+    from .models import ContractSettings
+
+    contract = ContractSettings.get()
+    signed = driver.contract_signatures.filter(version=contract.version).exists()
+    return Response({'title': contract.title, 'content': contract.content, 'version': contract.version, 'signed': signed})
+
+
+@api_view(['POST'])
+@driver_required
+def contract_sign(request, driver):
+    from .models import ContractSettings, DriverContractSignature
+
+    contract = ContractSettings.get()
+    if driver.contract_signatures.filter(version=contract.version).exists():
+        return Response({'detail': 'Siz bu versiyani allaqachon imzolagansiz.'}, status=400)
+    signature_file = request.FILES.get('signature')
+    if not signature_file:
+        return Response({'detail': 'Imzo chizilmagan.'}, status=400)
+    if str(request.data.get('agree')) != '1':
+        return Response({'detail': 'Shartlarga rozilik belgilanmagan.'}, status=400)
+
+    DriverContractSignature.objects.create(
+        driver=driver, version=contract.version, full_name=driver.full_name,
+        signature=signature_file, ip_address=_get_ip(request),
+    )
+    return Response({'detail': 'Shartnoma imzolandi.'}, status=201)
+
+
+# ── Manzil navbati ────────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@driver_required
+def addresses_list(request, driver):
+    from django.db.models import Count, Q as DQ
+    from django.utils import timezone
+    from .models import SavedAddress
+    from .utils import find_matching_saved_address
+
+    today = timezone.localdate()
+    today_orders = Order.objects.filter(
+        created_at__date=today, from_lat__isnull=False, from_lng__isnull=False,
+    ).exclude(status='cancelled').values_list('from_lat', 'from_lng')
+    counts = {}
+    for lat, lng in today_orders:
+        addr = find_matching_saved_address(lat, lng)
+        if addr:
+            counts[addr.id] = counts.get(addr.id, 0) + 1
+
+    online_cutoff = timezone.now() - timezone.timedelta(seconds=120)
+    addresses = SavedAddress.objects.annotate(
+        queue_count=Count('queue_entries', filter=DQ(
+            queue_entries__left_at__isnull=True, queue_entries__driver__is_active=True,
+            queue_entries__driver__is_on_duty=True, queue_entries__driver__approval_status='approved',
+            queue_entries__driver__last_seen__gte=online_cutoff,
+        )),
+    )
+    return Response([
+        {'id': a.id, 'name': a.name, 'address': a.address, 'lat': a.lat, 'lng': a.lng,
+         'today_orders': counts.get(a.id, 0), 'queue_count': a.queue_count}
+        for a in addresses
+    ])
+
+
+@api_view(['GET'])
+@driver_required
+def address_queue_position(request, driver, pk):
+    from django.utils import timezone
+    import datetime
+    from .models import AddressQueueEntry
+    from .utils import update_address_queue_membership, ADDRESS_QUEUE_STALE_MINUTES
+
+    lat = request.query_params.get('lat')
+    lng = request.query_params.get('lng')
+    if lat and lng:
+        try:
+            stale_cutoff = timezone.now() - datetime.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
+            was_stale = not driver.last_seen or driver.last_seen < stale_cutoff
+            update_address_queue_membership(driver, float(lat), float(lng), was_stale=was_stale)
+            Driver.objects.filter(pk=driver.pk).update(last_seen=timezone.now())
+        except (TypeError, ValueError):
+            pass
+
+    online_cutoff = timezone.now() - datetime.timedelta(seconds=120)
+    queue_ids = list(
+        AddressQueueEntry.objects.filter(
+            address_id=pk, left_at__isnull=True, driver__is_active=True, driver__is_on_duty=True,
+            driver__approval_status='approved', driver__last_seen__gte=online_cutoff,
+        ).order_by('joined_at').values_list('driver_id', flat=True)
+    )
+    position = queue_ids.index(driver.id) + 1 if driver.id in queue_ids else None
+    return Response({'position': position, 'total': len(queue_ids)})
+
+
+@api_view(['GET'])
+@driver_required
+def address_queue_drivers(request, driver, pk):
+    from django.utils import timezone
+    from .models import AddressQueueEntry, SavedAddress
+
+    address = get_object_or_404(SavedAddress, pk=pk)
+    online_cutoff = timezone.now() - timezone.timedelta(seconds=120)
+    entries = (
+        AddressQueueEntry.objects.filter(
+            address=address, left_at__isnull=True, driver__is_active=True, driver__is_on_duty=True,
+            driver__approval_status='approved', driver__last_seen__gte=online_cutoff,
+        ).select_related('driver').order_by('joined_at')
+    )
+    return Response([
+        {
+            'position': i + 1, 'full_name': e.driver.full_name, 'car_model': e.driver.car_model,
+            'car_number': e.driver.car_number, 'joined_at': timezone.localtime(e.joined_at).strftime('%H:%M'),
+            'is_me': e.driver_id == driver.id,
+        }
+        for i, e in enumerate(entries)
+    ])
+
+
+# ── Yo'nalish rejimi / SOS / Surge / Yaqin haydovchilar ────────────────────────
+
+@api_view(['POST'])
+@driver_required
+def destination_set(request, driver):
+    if str(request.data.get('clear')) in ('1', 'true', 'True'):
+        driver.destination_mode = False
+        driver.destination_lat = None
+        driver.destination_lng = None
+        driver.destination_address = ''
+        driver.save(update_fields=['destination_mode', 'destination_lat', 'destination_lng', 'destination_address'])
+        return Response({'active': False})
+
+    lat = request.data.get('lat')
+    lng = request.data.get('lng')
+    address = str(request.data.get('address', '')).strip()
+    if lat is None or lng is None:
+        return Response({'detail': "Koordinata kerak."}, status=400)
+    try:
+        driver.destination_lat = float(lat)
+        driver.destination_lng = float(lng)
+    except (TypeError, ValueError):
+        return Response({'detail': "Koordinata noto'g'ri."}, status=400)
+    driver.destination_mode = True
+    driver.destination_address = address
+    driver.save(update_fields=['destination_mode', 'destination_lat', 'destination_lng', 'destination_address'])
+    return Response({'active': True})
+
+
+@api_view(['POST'])
+@driver_required
+def sos_send(request, driver):
+    from .models import SosAlert
+    from .utils import tg_sos_alert
+
+    lat = request.data.get('lat')
+    lng = request.data.get('lng')
+    try:
+        lat_f = float(lat) if lat is not None else None
+        lng_f = float(lng) if lng is not None else None
+    except (TypeError, ValueError):
+        return Response({'detail': "Koordinata noto'g'ri."}, status=400)
+
+    alert = SosAlert.objects.create(
+        driver=driver, latitude=lat_f, longitude=lng_f,
+        address=str(request.data.get('address', '')).strip(),
+        note=str(request.data.get('note', '')).strip(),
+    )
+    tg_sos_alert(alert)
+    return Response({'id': alert.id}, status=201)
+
+
+@api_view(['GET'])
+@driver_required
+def surge_info(request, driver):
+    from .utils import get_surge_multiplier
+
+    multiplier, reason = get_surge_multiplier()
+    return Response({'multiplier': multiplier, 'reason': reason})
+
+
+@api_view(['GET'])
+@driver_required
+def nearby_drivers(request, driver):
+    from django.utils import timezone
+
+    online_cutoff = timezone.now() - timezone.timedelta(seconds=120)
+    peers = Driver.objects.filter(
+        is_on_duty=True, is_active=True, approval_status=Driver.APPROVAL_APPROVED,
+        latitude__isnull=False, longitude__isnull=False, last_seen__gte=online_cutoff,
+    ).exclude(pk=driver.pk)
+    return Response([
+        {
+            'id': d.id, 'full_name': d.full_name, 'car_type': d.car_type, 'car_model': d.car_model,
+            'car_number': d.car_number, 'photo_url': (d.photo.url if d.photo else ''),
+            'latitude': d.latitude, 'longitude': d.longitude, 'trips_count': d.trips_count,
+            'rating': float(d.rating), 'level': d.level,
+        }
+        for d in peers
+    ])

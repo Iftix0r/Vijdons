@@ -1,9 +1,14 @@
 package uz.vijdon.driver.data.api
 
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.POST
+import retrofit2.http.Part
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface DriverApiService {
 
@@ -34,6 +39,9 @@ interface DriverApiService {
     @GET("orders/my/")
     suspend fun myOrders(): List<OrderDto>
 
+    @POST("orders/create/")
+    suspend fun createOrder(@Body body: Map<String, String>): OrderDto
+
     @POST("orders/{id}/accept/")
     suspend fun acceptOrder(@Path("id") id: Int): OrderDto
 
@@ -51,4 +59,59 @@ interface DriverApiService {
 
     @POST("orders/{id}/meter/")
     suspend fun updateMeter(@Path("id") id: Int, @Body body: Map<String, String>): MeterResponse
+
+    @GET("history/")
+    suspend fun history(@Query("period") period: String): OrderHistoryResponse
+
+    @GET("rating/")
+    suspend fun rating(): RatingResponse
+
+    @Multipart
+    @POST("profile/photo/")
+    suspend fun uploadPhoto(@Part photo: MultipartBody.Part): PhotoResponse
+
+    @POST("profile/password/")
+    suspend fun changePassword(@Body body: Map<String, String>): DetailResponse
+
+    @GET("balance/history/")
+    suspend fun balanceHistory(): BalanceHistoryResponse
+
+    @Multipart
+    @POST("balance/topup/")
+    suspend fun requestTopup(@Part receipt: MultipartBody.Part, @Part("amount") amount: RequestBody): DetailResponse
+
+    @GET("contract/")
+    suspend fun contract(): ContractDto
+
+    @Multipart
+    @POST("contract/sign/")
+    suspend fun signContract(
+        @Part signature: MultipartBody.Part,
+        @Part("agree") agree: RequestBody,
+    ): DetailResponse
+
+    @GET("addresses/")
+    suspend fun addresses(): List<AddressDto>
+
+    @GET("addresses/{id}/queue/")
+    suspend fun addressQueuePosition(
+        @Path("id") id: Int,
+        @Query("lat") lat: Double?,
+        @Query("lng") lng: Double?,
+    ): QueuePositionResponse
+
+    @GET("addresses/{id}/queue/drivers/")
+    suspend fun addressQueueDrivers(@Path("id") id: Int): List<QueueDriverDto>
+
+    @POST("destination/")
+    suspend fun setDestination(@Body body: DestinationRequest): DestinationResponse
+
+    @POST("sos/")
+    suspend fun sendSos(@Body body: Map<String, String>): SosResponse
+
+    @GET("surge/")
+    suspend fun surge(): SurgeResponse
+
+    @GET("nearby-drivers/")
+    suspend fun nearbyDrivers(): List<NearbyDriverDto>
 }

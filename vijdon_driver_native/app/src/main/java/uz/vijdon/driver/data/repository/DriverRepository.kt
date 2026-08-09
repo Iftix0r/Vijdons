@@ -2,13 +2,31 @@ package uz.vijdon.driver.data.repository
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.HttpException
+import uz.vijdon.driver.data.api.AddressDto
 import uz.vijdon.driver.data.api.AvailableOrdersResponse
+import uz.vijdon.driver.data.api.BalanceHistoryResponse
 import uz.vijdon.driver.data.api.ConfigDto
+import uz.vijdon.driver.data.api.ContractDto
+import uz.vijdon.driver.data.api.DestinationRequest
+import uz.vijdon.driver.data.api.DestinationResponse
 import uz.vijdon.driver.data.api.DriverApiService
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.data.api.DutyToggleResponse
+import uz.vijdon.driver.data.api.NearbyDriverDto
 import uz.vijdon.driver.data.api.OrderDto
+import uz.vijdon.driver.data.api.OrderHistoryResponse
+import uz.vijdon.driver.data.api.PhotoResponse
+import uz.vijdon.driver.data.api.QueueDriverDto
+import uz.vijdon.driver.data.api.QueuePositionResponse
+import uz.vijdon.driver.data.api.RatingResponse
+import uz.vijdon.driver.data.api.SosResponse
+import uz.vijdon.driver.data.api.SurgeResponse
+import java.io.File
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -99,4 +117,74 @@ class DriverRepository @Inject constructor(
             ),
         )
     }
+
+    suspend fun createOrder(
+        phone: String, customerName: String, toAddress: String, fromAddress: String, assignTo: String,
+    ) = safeCall {
+        api.createOrder(
+            mapOf(
+                "phone_number" to phone, "customer_name" to customerName, "to_address" to toAddress,
+                "from_address" to fromAddress, "assign_to" to assignTo,
+            ),
+        )
+    }
+
+    suspend fun history(period: String): ApiResult<OrderHistoryResponse> = safeCall { api.history(period) }
+
+    suspend fun rating(): ApiResult<RatingResponse> = safeCall { api.rating() }
+
+    suspend fun uploadPhoto(file: File): ApiResult<PhotoResponse> = safeCall {
+        val body = file.asRequestBody("image/*".toMediaType())
+        api.uploadPhoto(MultipartBody.Part.createFormData("photo", file.name, body))
+    }
+
+    suspend fun changePassword(oldPassword: String, newPassword: String) = safeCall {
+        api.changePassword(mapOf("old_password" to oldPassword, "new_password" to newPassword))
+    }
+
+    suspend fun balanceHistory(): ApiResult<BalanceHistoryResponse> = safeCall { api.balanceHistory() }
+
+    suspend fun requestTopup(receiptFile: File, amount: String) = safeCall {
+        val receiptBody = receiptFile.asRequestBody("image/*".toMediaType())
+        val amountBody = amount.toRequestBody("text/plain".toMediaType())
+        api.requestTopup(MultipartBody.Part.createFormData("receipt", receiptFile.name, receiptBody), amountBody)
+    }
+
+    suspend fun contract(): ApiResult<ContractDto> = safeCall { api.contract() }
+
+    suspend fun signContract(signatureFile: File) = safeCall {
+        val signatureBody = signatureFile.asRequestBody("image/png".toMediaType())
+        val agreeBody = "1".toRequestBody("text/plain".toMediaType())
+        api.signContract(MultipartBody.Part.createFormData("signature", signatureFile.name, signatureBody), agreeBody)
+    }
+
+    suspend fun addresses(): ApiResult<List<AddressDto>> = safeCall { api.addresses() }
+
+    suspend fun addressQueuePosition(id: Int, lat: Double?, lng: Double?): ApiResult<QueuePositionResponse> = safeCall {
+        api.addressQueuePosition(id, lat, lng)
+    }
+
+    suspend fun addressQueueDrivers(id: Int): ApiResult<List<QueueDriverDto>> = safeCall { api.addressQueueDrivers(id) }
+
+    suspend fun setDestination(lat: Double, lng: Double, address: String): ApiResult<DestinationResponse> = safeCall {
+        api.setDestination(DestinationRequest(lat = lat, lng = lng, address = address))
+    }
+
+    suspend fun clearDestination(): ApiResult<DestinationResponse> = safeCall {
+        api.setDestination(DestinationRequest(clear = true))
+    }
+
+    suspend fun sendSos(lat: Double?, lng: Double?, note: String): ApiResult<SosResponse> = safeCall {
+        api.sendSos(
+            buildMap {
+                lat?.let { put("lat", it.toString()) }
+                lng?.let { put("lng", it.toString()) }
+                put("note", note)
+            },
+        )
+    }
+
+    suspend fun surge(): ApiResult<SurgeResponse> = safeCall { api.surge() }
+
+    suspend fun nearbyDrivers(): ApiResult<List<NearbyDriverDto>> = safeCall { api.nearbyDrivers() }
 }
