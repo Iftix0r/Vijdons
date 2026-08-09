@@ -841,3 +841,25 @@ def incoming_call_report(request):
     from .models import PanelEvent
     PanelEvent.objects.create(event_type='panel_incoming_call', message=phone)
     return Response({'ok': True})
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication, SessionAuthentication])
+@permission_classes([IsAuthenticated])
+def call_recording_upload(request):
+    """Android ilova qo'ng'iroq audio yozuvini shu yerga yuklaydi (agar
+    qurilma/OS versiyasi yozib olishga ruxsat bergan bo'lsa)."""
+    if not request.user.is_staff:
+        return Response({'detail': "Ruxsat yo'q."}, status=403)
+    audio_file = request.FILES.get('audio')
+    if not audio_file:
+        return Response({'detail': 'audio fayl kerak.'}, status=400)
+    phone = _normalize_call_phone(request.data.get('phone_number'))
+    duration = request.data.get('duration_sec')
+    from .models import CallRecording
+    rec = CallRecording.objects.create(
+        phone_number=phone or '',
+        audio=audio_file,
+        duration_sec=int(duration) if duration and str(duration).isdigit() else None,
+    )
+    return Response({'ok': True, 'id': rec.id})

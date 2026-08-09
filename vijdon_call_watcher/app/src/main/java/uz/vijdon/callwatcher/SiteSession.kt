@@ -3,12 +3,14 @@ package uz.vijdon.callwatcher
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.util.Base64
 import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import org.json.JSONObject
+import java.io.File
 
 /**
  * Saytga haqiqiy brauzer dvigateli (WebView) orqali ulanadi — shunday qilib
@@ -90,32 +92,51 @@ class SiteSession(context: Context, private val webView: WebView) {
     /** Sessiya (cookie) allaqachon mavjud deb hisoblab, qo'ng'iroq raqamini saytga yuboradi.
      * onResult(success, detail) — detail diagnostika uchun (masalan "HTTP 401"). */
     fun reportIncomingCall(baseUrl: String, phone: String, onResult: (Boolean, String) -> Unit) {
+        ensureSessionThen(baseUrl, onResult) {
+            pendingCallResult = onResult
+            webView.evaluateJavascript(buildFetchJs(baseUrl, phone), null)
+        }
+    }
+
+    /** Yozilgan qo'ng'iroq audio faylini saytga yuklaydi (base64 orqali WebView'ning
+     * o'z fetch()'iga uzatiladi — shu bilan WAF challenge muammosidan qochiladi). */
+    fun uploadCallRecording(baseUrl: String, phone: String, file: File, durationSec: Int, onResult: (Boolean, String) -> Unit) {
+        ensureSessionThen(baseUrl, onResult) {
+            val base64 = try {
+                Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
+            } catch (e: Exception) {
+                Log.e(TAG, "Fayl o'qishda xato", e)
+                onResult(false, "fayl o'qib bo'lmadi")
+                return@ensureSessionThen
+            }
+            pendingCallResult = onResult
+            webView.evaluateJavascript(buildUploadJs(baseUrl, phone, durationSec, base64), null)
+        }
+    }
+
+    /** Sessiya sahifasi (bir marta) yuklanganini ta'minlab, so'ng berilgan amalni bajaradi. */
+    private fun ensureSessionThen(baseUrl: String, onFail: (Boolean, String) -> Unit, action: () -> Unit) {
         val currentUrl = webView.url
         if (currentUrl.isNullOrEmpty() || !currentUrl.startsWith(baseUrl)) {
             webView.webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView, url: String) {
                     if (url.contains("/panel/login")) {
                         Log.w(TAG, "Sessiya tugagan ko'rinadi — ilovada qayta login qiling")
-                        onResult(false, "sessiya tugagan")
+                        onFail(false, "sessiya tugagan")
                     } else {
-                        doFetch(baseUrl, phone, onResult)
+                        action()
                     }
                 }
 
                 override fun onReceivedError(view: WebView, errorCode: Int, description: String?, failingUrl: String?) {
-                    Log.e(TAG, "WebView xatosi (call report): $description")
-                    onResult(false, description ?: "tarmoq xatosi")
+                    Log.e(TAG, "WebView xatosi: $description")
+                    onFail(false, description ?: "tarmoq xatosi")
                 }
             }
             webView.loadUrl(baseUrl + "panel/")
         } else {
-            doFetch(baseUrl, phone, onResult)
+            action()
         }
-    }
-
-    private fun doFetch(baseUrl: String, phone: String, onResult: (Boolean, String) -> Unit) {
-        pendingCallResult = onResult
-        webView.evaluateJavascript(buildFetchJs(baseUrl, phone), null)
     }
 
     private inner class JsBridge {
@@ -167,6 +188,42 @@ class SiteSession(context: Context, private val webView: WebView) {
                 }).catch(function(e){
                     if (window.AndroidCall) window.AndroidCall.onCallResult(false, String(e));
                 });
+            })();
+        """.trimIndent()
+    }
+
+    private fun buildUploadJs(baseUrl: String, phone: String, durationSec: Int, base64Audio: String): String {
+        val url = JSONObject.quote(baseUrl + "panel/api/operator/call-recording/")
+        val phoneJson = JSONObject.quote(phone)
+        val b64Json = JSONObject.quote(base64Audio)
+        return """
+            (function(){
+                function getCookie(name) {
+                    var m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+                    return m ? m.pop() : '';
+                }
+                try {
+                    var byteChars = atob($b64Json);
+                    var byteNumbers = new Array(byteChars.length);
+                    for (var i = 0; i < byteChars.length; i++) { byteNumbers[i] = byteChars.charCodeAt(i); }
+                    var blob = new Blob([new Uint8Array(byteNumbers)], { type: 'audio/mp4' });
+                    var fd = new FormData();
+                    fd.append('audio', blob, 'call.m4a');
+                    fd.append('phone_number', $phoneJson);
+                    fd.append('duration_sec', '$durationSec');
+                    fetch($url, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                        body: fd
+                    }).then(function(r){
+                        if (window.AndroidCall) window.AndroidCall.onCallResult(r.ok, 'HTTP ' + r.status);
+                    }).catch(function(e){
+                        if (window.AndroidCall) window.AndroidCall.onCallResult(false, String(e));
+                    });
+                } catch (e) {
+                    if (window.AndroidCall) window.AndroidCall.onCallResult(false, 'JS xato: ' + String(e));
+                }
             })();
         """.trimIndent()
     }

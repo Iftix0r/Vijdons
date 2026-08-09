@@ -12,6 +12,7 @@ urlpatterns = [
     path('', views.panel_dashboard, name='panel_dashboard'),
 
     path('orders/', views.order_list, name='order_list'),
+    path('qongiroqlar/', views.call_recordings_list, name='call_recordings_list'),
     path('orders/aging/count/', views.aging_orders_count, name='aging_orders_count'),
     path('orders/on-route/', views.orders_on_route_poll, name='orders_on_route_poll'),
     path('orders/add/', views.order_create, name='order_create'),
@@ -91,6 +92,7 @@ urlpatterns = [
     # Qo'ng'iroq-xabarchi Android ilovasi
     path('api/operator/login/', api_views.operator_login, name='api_operator_login'),
     path('api/operator/incoming-call/', api_views.incoming_call_report, name='api_incoming_call_report'),
+    path('api/operator/call-recording/', api_views.call_recording_upload, name='api_call_recording_upload'),
 
     # ── Telegram Bot Webhooks ──
     path('bot/client-webhook/', views.client_bot_webhook, name='client_bot_webhook'),

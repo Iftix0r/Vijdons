@@ -1303,3 +1303,23 @@ class EmployeeAttendance(models.Model):
         verbose_name_plural = 'Davomat'
         unique_together = ('employee', 'date')
         ordering = ['-date']
+
+
+class CallRecording(models.Model):
+    """Qo'ng'iroq-kuzatuvchi Android ilova operator telefoniga kelgan
+    qo'ng'iroqning audio yozuvini shu yerga yuklaydi (agar qurilma/OS versiyasi
+    yozib olishga ruxsat bersa — Android 10+ da uchinchi tomon ilovalar uchun
+    tizim darajasida cheklangan, shuning uchun ba'zi qurilmalarda ishlamasligi
+    mumkin)."""
+    phone_number = models.CharField(max_length=20, blank=True, default='', db_index=True, verbose_name="Telefon raqami")
+    audio        = models.FileField(upload_to='call_recordings/%Y/%m/', verbose_name="Audio fayl")
+    duration_sec = models.PositiveIntegerField(null=True, blank=True, verbose_name="Davomiyligi (soniya)")
+    created_at   = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name="Vaqt")
+
+    def __str__(self):
+        return f"{self.phone_number or 'noma\'lum'} — {self.created_at:%d.%m.%Y %H:%M}"
+
+    class Meta:
+        verbose_name = "Qo'ng'iroq yozuvi"
+        verbose_name_plural = "Qo'ng'iroq yozuvlari"
+        ordering = ['-created_at']

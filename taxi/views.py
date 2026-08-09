@@ -812,6 +812,23 @@ def order_list(request):
 
 
 @panel_login_required
+def call_recordings_list(request):
+    from django.core.paginator import Paginator
+    from .models import CallRecording
+
+    qs = CallRecording.objects.all()
+    q = request.GET.get('q', '').strip()
+    if q:
+        qs = qs.filter(phone_number__icontains=q)
+    page_obj = Paginator(qs, 30).get_page(request.GET.get('page'))
+    return render(request, 'taxi/call_recordings.html', {
+        'recordings': page_obj,
+        'total_count': page_obj.paginator.count,
+        'q': q,
+    })
+
+
+@panel_login_required
 def driver_list(request):
     from django.db.models import Case, When, Value, IntegerField
     from django.utils import timezone

@@ -205,6 +205,11 @@
             <span class="flex-1">Buyurtmalar</span>
             <span id="aging-orders-badge" class="hidden bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center animate-pulse"></span>
         </a>
+        <a href="{% url 'taxi:call_recordings_list' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'call_recordings_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-microphone-lines w-5 text-center"></i>
+            <span class="flex-1">Qo'ng'iroq yozuvlari</span>
+        </a>
         <a href="{% url 'taxi:driver_list' %}"
            class="nav-link {% if request.resolver_match.url_name == 'driver_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-id-card w-5 text-center"></i>

@@ -40,6 +40,11 @@ class CallWatcherService : Service() {
     private var lastReportedNumber: String? = null
     private var lastReportedAt: Long = 0L
 
+    // Qo'ng'iroq audio yozuvi uchun holat
+    private var pendingCallNumber: String? = null
+    private var callRecorder: CallRecorder? = null
+    private var recordingNumber: String? = null
+
     private val phoneStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             try {
@@ -81,6 +86,11 @@ class CallWatcherService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        try {
+            callRecorder?.stop()
+        } catch (e: Exception) {
+            Log.w(TAG, "Faol yozuvni to'xtatishda xato", e)
+        }
         if (receiverRegistered) {
             try {
                 unregisterReceiver(phoneStateReceiver)
@@ -119,13 +129,20 @@ class CallWatcherService : Service() {
 
     private fun handlePhoneStateChanged(intent: Intent) {
         val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE) ?: return
-        if (state != TelephonyManager.EXTRA_STATE_RINGING) return
+        when (state) {
+            TelephonyManager.EXTRA_STATE_RINGING -> handleRinging(intent)
+            TelephonyManager.EXTRA_STATE_OFFHOOK -> handleOffhook()
+            TelephonyManager.EXTRA_STATE_IDLE     -> handleIdle()
+        }
+    }
 
+    private fun handleRinging(intent: Intent) {
         val number = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)
         if (number.isNullOrBlank()) {
             Log.w(TAG, "Qo'ng'iroq raqami bo'sh keldi (ruxsat berilmagan yoki operator yashirgan)")
             return
         }
+        pendingCallNumber = number
 
         // Bitta qo'ng'iroq uchun RINGING broadcast bir necha marta kelishi mumkin —
         // shu raqam uchun 10 soniya ichida faqat bitta so'rov yuboriladi.
@@ -160,6 +177,48 @@ class CallWatcherService : Service() {
                 Toast.makeText(applicationContext, text, Toast.LENGTH_LONG).show()
                 updateNotification(text)
             }
+        }
+    }
+
+    /** Qo'ng'iroq javob berildi (OFFHOOK) — faqat RINGING'dan keyin kelgan (ya'ni
+     * kiruvchi) qo'ng'iroqlar uchun yozib olishga urinamiz, operator o'zi
+     * chiqish qo'ng'iroq qilganda emas (u holda RINGING kelmaydi). */
+    private fun handleOffhook() {
+        val number = pendingCallNumber ?: return
+        pendingCallNumber = null
+        try {
+            val recorder = CallRecorder(applicationContext)
+            if (recorder.start(number)) {
+                callRecorder = recorder
+                recordingNumber = number
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Yozib olishni boshlashda xato", e)
+        }
+    }
+
+    private fun handleIdle() {
+        pendingCallNumber = null
+        val recorder = callRecorder ?: return
+        val number = recordingNumber
+        callRecorder = null
+        recordingNumber = null
+        try {
+            val result = recorder.stop() ?: return
+            val (file, durationSec) = result
+            val prefs = Prefs(applicationContext)
+            val session = siteSession
+            if (!prefs.loggedIn || session == null || number == null) return
+            session.uploadCallRecording(prefs.siteUrl, number, file, durationSec) { success, detail ->
+                if (success) {
+                    Log.i(TAG, "Qo'ng'iroq yozuvi yuklandi: $number, ${durationSec}s ($detail)")
+                    file.delete()
+                } else {
+                    Log.e(TAG, "Qo'ng'iroq yozuvini yuklab bo'lmadi: $number ($detail)")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Yozuvni to'xtatish/yuklashda xato", e)
         }
     }
 
