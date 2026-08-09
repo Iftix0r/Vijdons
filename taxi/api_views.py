@@ -751,6 +751,7 @@ def client_last_order_api(request):
         return DjJsonResponse({
             'found': True,
             'type': 'driver',
+            'id': driver.id,
             'name': driver.full_name,
             'car_model': driver.car_model,
             'car_number': driver.car_number,
@@ -776,6 +777,7 @@ def client_last_order_api(request):
     return DjJsonResponse({
         'found': True,
         'type': 'client',
+        'id': client.id,
         'name': client.full_name or '',
         'is_blocked': client.is_blocked,
         'from_address': last.from_address if last else '',

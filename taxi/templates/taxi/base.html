@@ -1466,6 +1466,7 @@
                 '<div class="font-bold text-red-700 dark:text-red-400 mb-1"><i class="fas fa-triangle-exclamation mr-1"></i>Diqqat — bu HAYDOVCHI raqami!</div>' +
                 '<div class="text-red-700 dark:text-red-300">' + escapeHtml(d.name) + ' — ' + escapeHtml(d.car_model) + ' (' + escapeHtml(d.car_number) + ')</div>' +
                 '<div class="text-red-600 dark:text-red-400 mt-0.5">' + (d.is_on_duty ? '🟢 Navbatda' : '🔴 Navbatda emas') + ' · Balans: ' + escapeHtml(d.balance) + ' UZS · ⭐ ' + escapeHtml(d.rating) + '</div>' +
+                (d.id ? '<a href="/panel/drivers/' + d.id + '/detail/" target="_blank" class="inline-block mt-1.5 text-red-700 dark:text-red-400 font-semibold underline underline-offset-2"><i class="fas fa-arrow-up-right-from-square mr-1"></i>To\'liq profilni ko\'rish</a>' : '') +
                 '</div>';
             _infoBox.classList.remove('hidden');
         }
@@ -1473,7 +1474,12 @@
         function renderClientInfo(d) {
             if (!_infoBox) return;
             var html = '<div class="p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 rounded-xl text-xs space-y-2">';
+            html += '<div class="flex items-center justify-between">';
             html += '<div class="font-bold text-emerald-700 dark:text-emerald-400"><i class="fas fa-user-check mr-1"></i>' + (d.name ? escapeHtml(d.name) : 'Tanish mijoz') + '</div>';
+            if (d.id) {
+                html += '<a href="/panel/clients/' + d.id + '/" target="_blank" class="text-emerald-700 dark:text-emerald-400 font-semibold underline underline-offset-2 shrink-0"><i class="fas fa-arrow-up-right-from-square mr-1"></i>To\'liq profil</a>';
+            }
+            html += '</div>';
             if (d.is_blocked) {
                 html += '<div class="font-bold text-red-600">🚫 Bu mijoz bloklangan!</div>';
             }
