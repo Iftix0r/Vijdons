@@ -1317,7 +1317,8 @@ class CallRecording(models.Model):
     created_at   = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name="Vaqt")
 
     def __str__(self):
-        return f"{self.phone_number or 'noma\'lum'} — {self.created_at:%d.%m.%Y %H:%M}"
+        phone = self.phone_number or "noma'lum"
+        return f"{phone} — {self.created_at:%d.%m.%Y %H:%M}"
 
     class Meta:
         verbose_name = "Qo'ng'iroq yozuvi"
