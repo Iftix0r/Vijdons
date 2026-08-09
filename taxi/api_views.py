@@ -771,6 +771,7 @@ def client_last_order_api(request):
         'from_address': o.from_address,
         'to_address': o.to_address,
         'created_at': o.created_at.strftime('%d.%m %H:%M'),
+        'status': o.status,
         'status_display': o.get_status_display(),
     } for o in recent]
     last = recent[0] if recent else None
@@ -780,6 +781,8 @@ def client_last_order_api(request):
         'id': client.id,
         'name': client.full_name or '',
         'is_blocked': client.is_blocked,
+        'trips_count': client.trips_count,
+        'rating': str(client.rating),
         'from_address': last.from_address if last else '',
         'from_lat': (last.from_lat or '') if last else '',
         'from_lng': (last.from_lng or '') if last else '',

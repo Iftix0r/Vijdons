@@ -1417,6 +1417,7 @@
         setTimeout(function() {
             var ph = document.querySelector('#orderModal input[name="phone_number"]');
             if (!ph) return;
+            window._omIncomingCallActive = true;
             ph.value = phone;
             ph.dispatchEvent(new Event('input', { bubbles: true }));
         }, 100);
@@ -1443,7 +1444,8 @@
     }
     setInterval(pollPanelEvents, 5000);
 
-    // ── Phone lookup ── (mijoz/haydovchi ma'lumoti + oldingi buyurtmalar tarixi)
+    // ── Phone lookup ── (mijoz/haydovchi ma'lumoti + oldingi buyurtmalar tarixi —
+    // qo'ng'iroq-markazlar CRM'idagi "screen-pop" kartochkasiga o'xshash)
     (function() {
         var _lookupTimer = null;
         var _hint = document.createElement('div');
@@ -1453,6 +1455,9 @@
         if (!_phoneInput) return;
         _phoneInput.parentNode.appendChild(_hint);
 
+        // Haqiqiy klaviaturadan yozilsa — bu "qo'ng'iroqdan avtomatik" emas, qo'lda qidiruv.
+        _phoneInput.addEventListener('keydown', function() { window._omIncomingCallActive = false; });
+
         function escapeHtml(s) {
             var d = document.createElement('div');
             d.textContent = s || '';
@@ -1461,48 +1466,97 @@
 
         function _setModalWide(wide) {
             var box = document.getElementById('om_modal_box');
-            if (box) box.style.maxWidth = wide ? '52rem' : '';
+            if (box) box.style.maxWidth = wide ? '54rem' : '';
         }
+
+        function _avatar(name, bgClass) {
+            var letter = (name || '?').trim().charAt(0).toUpperCase() || '?';
+            return '<div class="w-12 h-12 rounded-full ' + bgClass + ' text-white flex items-center justify-center text-lg font-bold flex-shrink-0 shadow-sm">' + escapeHtml(letter) + '</div>';
+        }
+
+        function _callBadge() {
+            if (!window._omIncomingCallActive) return '';
+            window._omIncomingCallActive = false;
+            return '<div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/50 text-blue-700 dark:text-blue-300 text-xs font-bold mb-3">' +
+                '<span class="relative flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span></span>' +
+                'Kiruvchi qo\'ng\'iroqdan aniqlandi</div>';
+        }
+
+        function _statPill(value, label) {
+            return '<div class="bg-gray-50 dark:bg-gray-800/70 rounded-xl px-2 py-2 text-center">' +
+                '<div class="text-sm font-bold text-gray-900 dark:text-white leading-tight">' + escapeHtml(value) + '</div>' +
+                '<div class="text-[9px] text-gray-400 dark:text-gray-500 uppercase font-semibold tracking-wide">' + escapeHtml(label) + '</div>' +
+                '</div>';
+        }
+
+        var STATUS_STYLE = {
+            pending:   'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+            accepted:  'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+            on_way:    'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+            arrived:   'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+            completed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+            cancelled: 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
+        };
 
         function renderDriverWarning(d) {
             if (!_infoBox) return;
             _setModalWide(true);
-            _infoBox.innerHTML =
-                '<div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl text-xs">' +
-                '<div class="font-bold text-red-700 dark:text-red-400 mb-1"><i class="fas fa-triangle-exclamation mr-1"></i>Diqqat — bu HAYDOVCHI raqami!</div>' +
-                '<div class="text-red-700 dark:text-red-300">' + escapeHtml(d.name) + ' — ' + escapeHtml(d.car_model) + ' (' + escapeHtml(d.car_number) + ')</div>' +
-                '<div class="text-red-600 dark:text-red-400 mt-0.5">' + (d.is_on_duty ? '🟢 Navbatda' : '🔴 Navbatda emas') + ' · Balans: ' + escapeHtml(d.balance) + ' UZS · ⭐ ' + escapeHtml(d.rating) + '</div>' +
-                (d.id ? '<a href="/panel/drivers/' + d.id + '/detail/" target="_blank" class="inline-block mt-1.5 text-red-700 dark:text-red-400 font-semibold underline underline-offset-2"><i class="fas fa-arrow-up-right-from-square mr-1"></i>To\'liq profilni ko\'rish</a>' : '') +
+            var html = _callBadge();
+            html += '<div class="rounded-2xl border-2 border-red-200 dark:border-red-800/50 overflow-hidden">';
+            html += '<div class="bg-red-500 text-white text-[11px] font-bold uppercase tracking-wide px-3 py-1.5"><i class="fas fa-triangle-exclamation mr-1"></i>Haydovchi raqami — buyurtma emas</div>';
+            html += '<div class="p-3.5 space-y-3 bg-red-50/60 dark:bg-red-900/10">';
+            html += '<div class="flex items-center gap-3">' + _avatar(d.name, 'bg-red-500') +
+                '<div class="min-w-0"><div class="font-bold text-gray-900 dark:text-white truncate">' + escapeHtml(d.name) + '</div>' +
+                '<div class="text-xs text-gray-500 dark:text-gray-400 truncate">' + escapeHtml(d.car_model) + ' · ' + escapeHtml(d.car_number) + '</div></div></div>';
+            html += '<div class="grid grid-cols-3 gap-2">' +
+                _statPill(d.is_on_duty ? '🟢 Onlayn' : '🔴 Offlayn', 'Holat') +
+                _statPill(d.balance + ' UZS', 'Balans') +
+                _statPill('⭐ ' + d.rating, 'Reyting') +
                 '</div>';
+            if (d.id) {
+                html += '<a href="/panel/drivers/' + d.id + '/detail/" target="_blank" class="block text-center py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-bold transition"><i class="fas fa-arrow-up-right-from-square mr-1.5"></i>To\'liq profilni ko\'rish</a>';
+            }
+            html += '</div></div>';
+            _infoBox.innerHTML = html;
             _infoBox.classList.remove('hidden');
         }
 
         function renderClientInfo(d) {
             if (!_infoBox) return;
             _setModalWide(true);
-            var html = '<div class="p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 rounded-xl text-xs space-y-2">';
-            html += '<div class="flex items-center justify-between">';
-            html += '<div class="font-bold text-emerald-700 dark:text-emerald-400"><i class="fas fa-user-check mr-1"></i>' + (d.name ? escapeHtml(d.name) : 'Tanish mijoz') + '</div>';
+            var html = _callBadge();
+            html += '<div class="rounded-2xl border-2 border-emerald-200 dark:border-emerald-800/50 overflow-hidden">';
+            html += '<div class="bg-emerald-500 text-white text-[11px] font-bold uppercase tracking-wide px-3 py-1.5"><i class="fas fa-user-check mr-1"></i>Tanish mijoz</div>';
+            html += '<div class="p-3.5 space-y-3 bg-emerald-50/60 dark:bg-emerald-900/10">';
+            html += '<div class="flex items-center gap-3">' + _avatar(d.name, 'bg-emerald-500') +
+                '<div class="min-w-0"><div class="font-bold text-gray-900 dark:text-white truncate">' + (d.name ? escapeHtml(d.name) : 'Ism kiritilmagan') + '</div>' +
+                (d.is_blocked ? '<div class="text-xs text-red-600 font-bold">🚫 Bloklangan mijoz</div>' : '<div class="text-xs text-gray-500 dark:text-gray-400">Faol mijoz</div>') +
+                '</div></div>';
+            html += '<div class="grid grid-cols-2 gap-2">' +
+                _statPill(d.trips_count, 'Jami safar') +
+                _statPill('⭐ ' + d.rating, 'Reyting') +
+                '</div>';
             if (d.id) {
-                html += '<a href="/panel/clients/' + d.id + '/" target="_blank" class="text-emerald-700 dark:text-emerald-400 font-semibold underline underline-offset-2 shrink-0"><i class="fas fa-arrow-up-right-from-square mr-1"></i>To\'liq profil</a>';
-            }
-            html += '</div>';
-            if (d.is_blocked) {
-                html += '<div class="font-bold text-red-600">🚫 Bu mijoz bloklangan!</div>';
+                html += '<a href="/panel/clients/' + d.id + '/" target="_blank" class="block text-center py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition"><i class="fas fa-arrow-up-right-from-square mr-1.5"></i>To\'liq profilni ko\'rish</a>';
             }
             if (d.recent_orders && d.recent_orders.length) {
-                html += '<div class="text-gray-500 dark:text-gray-400 font-semibold uppercase text-[10px]">Oldingi buyurtmalar:</div>';
-                html += '<div class="space-y-1">';
+                html += '<div class="pt-1">';
+                html += '<div class="text-gray-500 dark:text-gray-400 font-semibold uppercase text-[10px] mb-1.5">Oldingi buyurtmalar</div>';
+                html += '<div class="space-y-1.5">';
                 d.recent_orders.forEach(function(o, i) {
-                    html += '<button type="button" class="om_prev_order_btn w-full text-left px-2 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-emerald-100 dark:border-emerald-900/40 hover:border-emerald-400 transition" data-idx="' + i + '">' +
-                        '<span class="text-gray-700 dark:text-gray-200">' + escapeHtml(o.from_address) + '</span>' +
-                        (o.to_address ? ' <i class="fas fa-arrow-right text-[9px] text-gray-400 mx-1"></i><span class="text-gray-500">' + escapeHtml(o.to_address) + '</span>' : '') +
-                        '<span class="block text-[10px] text-gray-400">' + escapeHtml(o.created_at) + ' · ' + escapeHtml(o.status_display) + '</span>' +
+                    var badge = STATUS_STYLE[o.status] || STATUS_STYLE.pending;
+                    html += '<button type="button" class="om_prev_order_btn w-full text-left px-2.5 py-2 rounded-xl bg-white dark:bg-gray-800 border border-emerald-100 dark:border-emerald-900/40 hover:border-emerald-400 hover:shadow-sm transition" data-idx="' + i + '">' +
+                        '<div class="flex items-center justify-between gap-2">' +
+                        '<span class="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate">' + escapeHtml(o.from_address) + '</span>' +
+                        '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ' + badge + '">' + escapeHtml(o.status_display) + '</span>' +
+                        '</div>' +
+                        (o.to_address ? '<div class="text-[10px] text-gray-400 truncate"><i class="fas fa-arrow-right text-[8px] mr-1"></i>' + escapeHtml(o.to_address) + '</div>' : '') +
+                        '<div class="text-[10px] text-gray-400 mt-0.5">' + escapeHtml(o.created_at) + '</div>' +
                         '</button>';
                 });
-                html += '</div>';
+                html += '</div></div>';
             }
-            html += '</div>';
+            html += '</div></div>';
             _infoBox.innerHTML = html;
             _infoBox.classList.remove('hidden');
             _infoBox.querySelectorAll('.om_prev_order_btn').forEach(function(btn) {
@@ -1518,6 +1572,7 @@
             if (_infoBox) { _infoBox.innerHTML = ''; _infoBox.classList.add('hidden'); }
             _hint.classList.add('hidden');
             _setModalWide(false);
+            window._omIncomingCallActive = false;
         }
         window._resetOrderLookupInfo = resetLookupInfo;
 
