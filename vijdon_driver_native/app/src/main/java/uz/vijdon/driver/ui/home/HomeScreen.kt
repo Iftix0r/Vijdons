@@ -5,7 +5,10 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,19 +16,25 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CreditCard
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.LocalTaxi
+import androidx.compose.material.icons.rounded.Phone
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -37,10 +46,17 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.data.api.OrderDto
+import uz.vijdon.driver.ui.theme.CardShape
+import uz.vijdon.driver.ui.theme.Pill
+import uz.vijdon.driver.ui.theme.VijdonColors
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(driver: DriverDto, onLogout: () -> Unit, viewModel: HomeViewModel = hiltViewModel()) {
+fun HomeScreen(
+    driver: DriverDto,
+    onLogout: () -> Unit,
+    onOpenRating: () -> Unit,
+    viewModel: HomeViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
@@ -51,56 +67,63 @@ fun HomeScreen(driver: DriverDto, onLogout: () -> Unit, viewModel: HomeViewModel
         locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Vijdon Taxi") },
-                actions = {
-                    TextButton(onClick = onLogout) { Text("Chiqish") }
-                },
+    val currentDriver = state.driver ?: driver
+
+    Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background)) {
+        TopBar(rank = state.rank, balance = currentDriver.balance, onOpenRating = onOpenRating)
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                if (currentDriver.is_on_duty) "Onlayn" else "Oflayn",
+                color = if (currentDriver.is_on_duty) VijdonColors.Green else VijdonColors.TextSecondary,
             )
-        },
-    ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            DriverStatusBar(state.driver ?: driver, onToggleDuty = viewModel::toggleDuty)
+            Switch(
+                checked = currentDriver.is_on_duty,
+                onCheckedChange = { viewModel.toggleDuty() },
+                colors = SwitchDefaults.colors(checkedTrackColor = VijdonColors.Green, checkedThumbColor = VijdonColors.TextPrimary),
+            )
+        }
 
-            if (state.lowBalance) {
-                Text(
-                    "Balansingiz kam — buyurtma qabul qilish uchun to'ldiring",
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                )
-            }
-            state.error?.let {
-                Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp))
-            }
+        if (state.lowBalance) {
+            Text(
+                "Balansingiz kam — buyurtma qabul qilish uchun to'ldiring",
+                color = VijdonColors.Red,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+        }
+        state.error?.let {
+            Text(it, color = VijdonColors.Red, modifier = Modifier.padding(horizontal = 16.dp))
+        }
 
-            if (state.orders.isEmpty()) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text("Hozircha buyurtma yo'q", style = MaterialTheme.typography.bodyLarge)
+        if (state.orders.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Rounded.LocalTaxi, contentDescription = null, tint = VijdonColors.Border, modifier = Modifier.size(48.dp))
+                    Spacer(Modifier.height(8.dp))
+                    Text("Hozircha buyurtma yo'q", color = VijdonColors.TextSecondary)
                 }
-            } else {
-                LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
-                    items(state.orders, key = { it.id }) { order ->
-                        OrderCard(
-                            order = order,
-                            operatorPhone = state.operatorPhone,
-                            inProgress = order.id in state.actionInProgress,
-                            onAccept = { viewModel.acceptOrder(order.id) },
-                            onReject = { viewModel.rejectOrder(order.id) },
-                            onWay = { viewModel.orderOnWay(order.id) },
-                            onArrived = { viewModel.orderArrived(order.id) },
-                            onComplete = { viewModel.orderComplete(order.id) },
-                            onCallOperator = {
-                                context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${state.operatorPhone}")))
-                            },
-                        )
-                        Spacer(Modifier.height(8.dp))
-                    }
+            }
+        } else {
+            LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+                items(state.orders, key = { it.id }) { order ->
+                    OrderCard(
+                        order = order,
+                        operatorPhone = state.operatorPhone,
+                        inProgress = order.id in state.actionInProgress,
+                        onAccept = { viewModel.acceptOrder(order.id) },
+                        onReject = { viewModel.rejectOrder(order.id) },
+                        onWay = { viewModel.orderOnWay(order.id) },
+                        onArrived = { viewModel.orderArrived(order.id) },
+                        onComplete = { viewModel.orderComplete(order.id) },
+                        onCallOperator = {
+                            context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${state.operatorPhone}")))
+                        },
+                    )
+                    Spacer(Modifier.height(10.dp))
                 }
             }
         }
@@ -108,19 +131,32 @@ fun HomeScreen(driver: DriverDto, onLogout: () -> Unit, viewModel: HomeViewModel
 }
 
 @Composable
-private fun DriverStatusBar(driver: DriverDto, onToggleDuty: () -> Unit) {
+private fun TopBar(rank: Int?, balance: String, onOpenRating: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column {
-            Text(driver.full_name, style = MaterialTheme.typography.titleMedium)
-            Text("Balans: ${driver.balance} so'm", style = MaterialTheme.typography.bodyMedium)
+        Row(
+            modifier = Modifier
+                .background(VijdonColors.BadgeNeutral, CircleShape)
+                .clickable(onClick = onOpenRating)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = VijdonColors.Yellow, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(if (rank != null) "$rank-o'rin" else "—", color = VijdonColors.TextPrimary, style = MaterialTheme.typography.labelLarge)
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(if (driver.is_on_duty) "Onlayn" else "Oflayn")
-            Switch(checked = driver.is_on_duty, onCheckedChange = { onToggleDuty() })
+        Row(
+            modifier = Modifier
+                .background(VijdonColors.BadgeNeutral, CircleShape)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Rounded.CreditCard, contentDescription = null, tint = VijdonColors.Green, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("$balance so'm", color = VijdonColors.Green, style = MaterialTheme.typography.labelLarge)
         }
     }
 }
@@ -137,43 +173,66 @@ private fun OrderCard(
     onComplete: () -> Unit,
     onCallOperator: () -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(order.status_label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(4.dp))
-            Text("Qayerdan: ${order.from_address}", style = MaterialTheme.typography.bodyMedium)
-            if (order.to_address.isNotBlank()) {
-                Text("Qayerga: ${order.to_address}", style = MaterialTheme.typography.bodyMedium)
-            }
-            Text("${order.client_name} · ${order.client_phone}", style = MaterialTheme.typography.bodySmall)
-            order.price?.let { Text("Narx: $it so'm", style = MaterialTheme.typography.bodySmall) }
-            order.timer_sec?.let { Text("Qolgan vaqt: ${it}s", style = MaterialTheme.typography.bodySmall) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(VijdonColors.Surface, CardShape)
+            .padding(16.dp),
+    ) {
+        Pill(order.status_label, color = VijdonColors.Green, background = VijdonColors.BadgeNeutral)
+        Spacer(Modifier.height(8.dp))
+        Text("Qayerdan: ${order.from_address}", color = VijdonColors.TextPrimary)
+        if (order.to_address.isNotBlank()) {
+            Text("Qayerga: ${order.to_address}", color = VijdonColors.TextPrimary)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.Phone, contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(4.dp))
+            Text("${order.client_name} · ${order.client_phone}", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+        }
+        order.price?.let { Text("$it so'm", color = VijdonColors.Green, style = MaterialTheme.typography.titleMedium) }
+        order.timer_sec?.let { Text("Qolgan vaqt: ${it}s", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall) }
 
-            Spacer(Modifier.height(12.dp))
-            if (inProgress) {
-                CircularProgressIndicator(modifier = Modifier.height(20.dp))
-                return@Column
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                when {
-                    order.isPending -> {
-                        Button(onClick = onAccept) { Text("Qabul qilish") }
-                        OutlinedButton(onClick = onReject) { Text("Rad etish") }
-                    }
-                    order.isAccepted -> {
-                        Button(onClick = onWay) { Text("Yo'lga chiqdim") }
-                        OutlinedButton(onClick = onCallOperator) { Text("Operator") }
-                    }
-                    order.isOnWay -> {
-                        Button(onClick = onArrived) { Text("Yetib keldim") }
-                        OutlinedButton(onClick = onCallOperator) { Text("Operator") }
-                    }
-                    order.isArrived -> {
-                        Button(onClick = onComplete) { Text("Yakunlash") }
-                        OutlinedButton(onClick = onCallOperator) { Text("Operator") }
-                    }
+        Spacer(Modifier.height(12.dp))
+        if (inProgress) {
+            CircularProgressIndicator(modifier = Modifier.height(20.dp), color = VijdonColors.Yellow)
+            return@Column
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            when {
+                order.isPending -> {
+                    YellowButton("Qabul qilish", onAccept)
+                    OutlineButton("Rad etish", onReject)
+                }
+                order.isAccepted -> {
+                    YellowButton("Yo'lga chiqdim", onWay)
+                    OutlineButton("Operator", onCallOperator)
+                }
+                order.isOnWay -> {
+                    YellowButton("Yetib keldim", onArrived)
+                    OutlineButton("Operator", onCallOperator)
+                }
+                order.isArrived -> {
+                    YellowButton("Yakunlash", onComplete)
+                    OutlineButton("Operator", onCallOperator)
                 }
             }
         }
     }
+}
+
+@Composable
+private fun YellowButton(text: String, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(containerColor = VijdonColors.Yellow, contentColor = VijdonColors.TextOnYellow),
+    ) { Text(text) }
+}
+
+@Composable
+private fun OutlineButton(text: String, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = VijdonColors.TextPrimary),
+    ) { Text(text) }
 }

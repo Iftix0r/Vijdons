@@ -28,11 +28,13 @@ android {
         versionName = "1.0"
 
         buildConfigField("boolean", "HAS_FCM", hasGoogleServices.toString())
-        // VAQTINCHA — lokal sinov uchun (adb reverse tcp:8000 tcp:8000 orqali
-        // qurilma kompyuterdagi lokal serverga ulanadi). Cloudflare
-        // (0.1-band) hal qilingach, quyidagini production manzilga qaytaring:
-        // "https://vijdontaxi.uz/api/driverapp/"
-        buildConfigField("String", "BASE_URL", "\"http://127.0.0.1:8000/api/driverapp/\"")
+        // Ishlab chiqarish serveri Cloudflare bot-himoyasi ostida — /api/driverapp/
+        // yo'li WAF'da istisno qilinishi kerak (rejaning 0.1-bandi), aks holda
+        // bu yerdan yuborilgan so'rovlar JSON o'rniga Cloudflare tekshiruv
+        // sahifasini qaytaradi. Lokal sinov uchun vaqtincha
+        // "http://127.0.0.1:8000/api/driverapp/" ga o'zgartirib, qurilmada
+        // `adb reverse tcp:8000 tcp:8000` ishga tushiring.
+        buildConfigField("String", "BASE_URL", "\"https://vijdontaxi.uz/api/driverapp/\"")
     }
 
     buildTypes {
@@ -66,6 +68,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
     implementation("androidx.navigation:navigation-compose:2.9.8")

@@ -29,6 +29,7 @@ data class HomeUiState(
     val error: String? = null,
     val actionInProgress: Set<Int> = emptySet(),
     val operatorPhone: String = "1351",
+    val rank: Int? = null,
 )
 
 @HiltViewModel
@@ -52,6 +53,11 @@ class HomeViewModel @Inject constructor(
         }
         startPolling()
         collectLocationForTaximeter()
+        viewModelScope.launch {
+            val result = repository.rating()
+            val rank = (result as? ApiResult.Success)?.data?.my_row?.rank
+            _uiState.value = _uiState.value.copy(rank = rank)
+        }
     }
 
     fun setDriver(driver: DriverDto) {

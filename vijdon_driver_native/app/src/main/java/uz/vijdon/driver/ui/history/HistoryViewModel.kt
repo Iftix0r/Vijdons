@@ -13,15 +13,27 @@ import uz.vijdon.driver.data.repository.DriverRepository
 import javax.inject.Inject
 
 val HISTORY_PERIODS = listOf("all" to "Barchasi", "today" to "Bugun", "week" to "7 kun", "month" to "30 kun")
+val STATUS_TABS = listOf("all" to "Hammasi", "completed" to "Yakunlangan", "cancelled" to "Bekor")
 
 data class HistoryUiState(
     val period: String = "all",
+    val statusTab: String = "all",
     val orders: List<OrderDto> = emptyList(),
     val totalEarned: Double = 0.0,
     val completed: Int = 0,
     val loading: Boolean = false,
     val error: String? = null,
-)
+) {
+    val visibleOrders: List<OrderDto>
+        get() = when (statusTab) {
+            "completed" -> orders.filter { it.status == "completed" }
+            "cancelled" -> orders.filter { it.status == "cancelled" }
+            else -> orders
+        }
+
+    val totalKm: Double
+        get() = orders.filter { it.status == "completed" }.sumOf { it.distance_km ?: 0.0 }
+}
 
 @HiltViewModel
 class HistoryViewModel @Inject constructor(private val repository: DriverRepository) : ViewModel() {
@@ -33,6 +45,10 @@ class HistoryViewModel @Inject constructor(private val repository: DriverReposit
     fun onPeriodChange(period: String) {
         _uiState.value = _uiState.value.copy(period = period)
         load()
+    }
+
+    fun onStatusTabChange(tab: String) {
+        _uiState.value = _uiState.value.copy(statusTab = tab)
     }
 
     fun load() {
