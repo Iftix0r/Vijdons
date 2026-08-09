@@ -115,11 +115,13 @@ class MainActivity : AppCompatActivity() {
     private fun requiredPermissions(): List<String> {
         val perms = mutableListOf(
             Manifest.permission.READ_PHONE_STATE,
-            Manifest.permission.READ_CALL_LOG,
-            Manifest.permission.RECORD_AUDIO
+            Manifest.permission.READ_CALL_LOG
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             perms.add(Manifest.permission.POST_NOTIFICATIONS)
+            perms.add(Manifest.permission.READ_MEDIA_AUDIO)
+        } else {
+            perms.add(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
         return perms
     }

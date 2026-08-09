@@ -11,7 +11,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.SystemClock
 import android.telephony.TelephonyManager
 import android.util.Log
@@ -31,6 +33,13 @@ import java.util.Locale
  * o'tkazadi (SiteSession.kt'ga qarang). Ilova recents'dan o'chirilsa yoki
  * tizim tomonidan to'xtatilsa ham ishlashda davom etishi uchun START_STICKY +
  * onTaskRemoved orqali qayta ishga tushirish qo'llanilgan.
+ *
+ * Qo'ng'iroq audiosi: Android uchinchi tomon ilovalarga qo'ng'iroq vaqtida
+ * mikrofon/telefoniya ovozini bermaydi (sinovdan o'tgan — hamma manba jim
+ * chiqadi), shuning uchun to'g'ridan-to'g'ri yozib olishga urinilmaydi.
+ * Buning o'rniga telefonning O'Z Dialer ilovasi (agar shunday funksiyasi
+ * bo'lsa) saqlagan yozuvni MediaStore'dan topib, saytga yuklaymiz
+ * (NativeRecordingWatcher.kt'ga qarang).
  */
 class CallWatcherService : Service() {
 
@@ -40,10 +49,9 @@ class CallWatcherService : Service() {
     private var lastReportedNumber: String? = null
     private var lastReportedAt: Long = 0L
 
-    // Qo'ng'iroq audio yozuvi uchun holat
     private var pendingCallNumber: String? = null
-    private var callRecorder: CallRecorder? = null
-    private var recordingNumber: String? = null
+    private var answeredCallNumber: String? = null
+    private val recordingHandler = Handler(Looper.getMainLooper())
 
     private val phoneStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -86,11 +94,7 @@ class CallWatcherService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        try {
-            callRecorder?.stop()
-        } catch (e: Exception) {
-            Log.w(TAG, "Faol yozuvni to'xtatishda xato", e)
-        }
+        recordingHandler.removeCallbacksAndMessages(null)
         if (receiverRegistered) {
             try {
                 unregisterReceiver(phoneStateReceiver)
@@ -181,66 +185,58 @@ class CallWatcherService : Service() {
     }
 
     /** Qo'ng'iroq javob berildi (OFFHOOK) — faqat RINGING'dan keyin kelgan (ya'ni
-     * kiruvchi) qo'ng'iroqlar uchun yozib olishga urinamiz, operator o'zi
-     * chiqish qo'ng'iroq qilganda emas (u holda RINGING kelmaydi). */
+     * kiruvchi) qo'ng'iroqlar uchun kuzatamiz, operator o'zi chiqish qo'ng'iroq
+     * qilganda emas (u holda RINGING kelmaydi, pendingCallNumber bo'sh bo'ladi). */
     private fun handleOffhook() {
         val number = pendingCallNumber ?: return
         pendingCallNumber = null
-        try {
-            val prefs = Prefs(applicationContext)
-            val recorder = CallRecorder(applicationContext)
-            if (recorder.start(number, prefs.audioSourceIndex)) {
-                callRecorder = recorder
-                recordingNumber = number
-            } else {
-                toast(getString(R.string.rec_start_failed))
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Yozib olishni boshlashda xato", e)
-            toast(getString(R.string.rec_start_failed))
-        }
+        answeredCallNumber = number
     }
 
+    /** Qo'ng'iroq tugadi — telefonning o'z Dialer ilovasi yozib olgan bo'lsa,
+     * MediaStore'da bir necha marta (kechikish bilan) qidirib, topilsa saytga
+     * yuklaymiz. */
     private fun handleIdle() {
         pendingCallNumber = null
-        val recorder = callRecorder ?: return
-        val number = recordingNumber
-        callRecorder = null
-        recordingNumber = null
-        val prefs = Prefs(applicationContext)
-        try {
-            val result = recorder.stop()
-            if (result == null) {
-                if (recorder.wasSilent()) {
-                    // Bu manba jim chiqdi — keyingi qo'ng'iroqda ro'yxatdagi keyingi
-                    // manbadan (oxirida mikrofon + dinamik rejim) boshlaymiz.
-                    val next = (prefs.audioSourceIndex + 1).coerceAtMost(CallRecorder.AUDIO_SOURCES.size - 1)
-                    if (next != prefs.audioSourceIndex) {
-                        Log.w(TAG, "Audio manba jim edi — keyingi qo'ng'iroqda $next -indeks sinaladi")
-                        prefs.audioSourceIndex = next
-                        toast(getString(R.string.rec_silent_retry))
-                    } else {
-                        Log.e(TAG, "Barcha audio manbalar sinab ko'rildi, hech biri ovoz yozmadi — bu qurilmada qo'ng'iroq yozib olish imkonsiz ko'rinadi")
-                        toast(getString(R.string.rec_silent_exhausted))
-                    }
-                }
-                return
-            }
-            val (file, durationSec) = result
-            val session = siteSession
-            if (!prefs.loggedIn || session == null || number == null) return
-            session.uploadCallRecording(prefs.siteUrl, number, file, durationSec) { success, detail ->
-                if (success) {
-                    Log.i(TAG, "Qo'ng'iroq yozuvi yuklandi: $number, ${durationSec}s ($detail)")
-                    toast(getString(R.string.rec_uploaded, durationSec))
-                    file.delete()
+        val number = answeredCallNumber ?: return
+        answeredCallNumber = null
+        scheduleRecordingSearch(number, System.currentTimeMillis(), attempt = 1)
+    }
+
+    private fun scheduleRecordingSearch(number: String, callEndedAt: Long, attempt: Int) {
+        val delayMs = SEARCH_DELAYS_MS.getOrElse(attempt - 1) { SEARCH_DELAYS_MS.last() }
+        recordingHandler.postDelayed({
+            try {
+                val file = NativeRecordingWatcher(applicationContext).findRecentRecording(callEndedAt - 3000)
+                if (file != null) {
+                    uploadNativeRecording(number, file)
+                } else if (attempt < SEARCH_DELAYS_MS.size) {
+                    scheduleRecordingSearch(number, callEndedAt, attempt + 1)
                 } else {
-                    Log.e(TAG, "Qo'ng'iroq yozuvini yuklab bo'lmadi: $number ($detail)")
-                    toast(getString(R.string.rec_upload_failed, detail))
+                    Log.w(TAG, "Native qo'ng'iroq yozuvi topilmadi: $number (telefonda bunday funksiya yo'q yoki boshqa papkaga saqlanadi)")
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Native yozuvni qidirishda xato", e)
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Yozuvni to'xtatish/yuklashda xato", e)
+        }, delayMs)
+    }
+
+    private fun uploadNativeRecording(number: String, file: java.io.File) {
+        val prefs = Prefs(applicationContext)
+        val session = siteSession
+        if (!prefs.loggedIn || session == null) {
+            file.delete()
+            return
+        }
+        session.uploadCallRecording(prefs.siteUrl, number, file, 0) { success, detail ->
+            if (success) {
+                Log.i(TAG, "Qo'ng'iroq yozuvi yuklandi: $number ($detail)")
+                toast(getString(R.string.rec_uploaded_native))
+                file.delete()
+            } else {
+                Log.e(TAG, "Qo'ng'iroq yozuvini yuklab bo'lmadi: $number ($detail)")
+                toast(getString(R.string.rec_upload_failed, detail))
+            }
         }
     }
 
@@ -289,5 +285,9 @@ class CallWatcherService : Service() {
         private const val TAG = "VijdonCallWatcher"
         private const val CHANNEL_ID = "call_watcher_channel"
         private const val NOTIF_ID = 42
+
+        // Native yozuvchi faylni MediaStore'ga saqlab ulgurishi uchun qo'ng'iroq
+        // tugagandan keyin bir necha marta, oralig'ini kattalashtirib qidiramiz.
+        private val SEARCH_DELAYS_MS = longArrayOf(3000, 4000, 6000, 8000)
     }
 }
