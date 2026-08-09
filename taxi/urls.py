@@ -88,6 +88,10 @@ urlpatterns = [
 
     path('api/client/lookup/', api_views.client_last_order_api, name='api_client_lookup'),
 
+    # Qo'ng'iroq-xabarchi Android ilovasi
+    path('api/operator/login/', api_views.operator_login, name='api_operator_login'),
+    path('api/operator/incoming-call/', api_views.incoming_call_report, name='api_incoming_call_report'),
+
     # ── Telegram Bot Webhooks ──
     path('bot/client-webhook/', views.client_bot_webhook, name='client_bot_webhook'),
     path('bot/operator-webhook/', views.operator_bot_webhook, name='operator_bot_webhook'),

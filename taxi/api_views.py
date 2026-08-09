@@ -758,3 +758,51 @@ def client_last_order_api(request):
         'from_lat': last.from_lat or '',
         'from_lng': last.from_lng or '',
     })
+
+
+# ── Qo'ng'iroq-xabarchi Android ilovasi ─────────────────────────────────────
+# Operator telefoniga qo'ng'iroq kelganda ilova shu raqamni saytga yuboradi,
+# sayt esa operator panelida "Yangi buyurtma" oynasini ochib, telefon
+# maydonini avtomatik to'ldiradi (mavjud PanelEvent polling infratuzilmasi
+# orqali — taxi/templates/taxi/base.html, pollPanelEvents()).
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def operator_login(request):
+    """Faqat is_staff (operator/xodim) foydalanuvchilarga token beradi."""
+    username = (request.data.get('username') or '').strip()
+    password = request.data.get('password') or ''
+    user = authenticate(request, username=username, password=password)
+    if user is None or not user.is_staff:
+        return Response({'detail': "Login yoki parol noto'g'ri."}, status=401)
+    token, _ = Token.objects.get_or_create(user=user)
+    return Response({'token': token.key, 'username': user.username})
+
+
+def _normalize_call_phone(raw):
+    """Qo'ng'iroq ilovasidan kelgan xom raqamni saytdagi '+998XXXXXXXXX'
+    formatiga keltiradi (order oynasidagi telefon maydoni bilan mos bo'lishi
+    va mavjud mijozni topish/qidirish ishlashi uchun)."""
+    raw = (raw or '').strip()
+    digits = ''.join(ch for ch in raw if ch.isdigit())
+    if digits.startswith('00998'):
+        digits = digits[2:]
+    if digits.startswith('998') and len(digits) == 12:
+        return '+' + digits
+    if len(digits) == 9:
+        return '+998' + digits
+    return raw
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def incoming_call_report(request):
+    """Android ilova kiruvchi qo'ng'iroq raqamini shu yerga POST qiladi."""
+    if not request.user.is_staff:
+        return Response({'detail': "Ruxsat yo'q."}, status=403)
+    phone = _normalize_call_phone(request.data.get('phone_number'))
+    if not phone:
+        return Response({'detail': 'phone_number kerak.'}, status=400)
+    from .models import PanelEvent
+    PanelEvent.objects.create(event_type='panel_incoming_call', message=phone)
+    return Response({'ok': True})

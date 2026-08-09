@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.CallWatcher" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/brand_yellow</item>
+        <item name="colorPrimaryDark">@color/brand_yellow_dark</item>
+        <item name="colorAccent">@color/brand_yellow_dark</item>
+        <item name="android:windowBackground">@color/bg_light</item>
+    </style>
+</resources>

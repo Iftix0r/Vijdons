@@ -1406,7 +1406,17 @@
         panel_driver_blocked:    [[0, 392, 0.3, 0.14], [0.15, 330, 0.3, 0.2]],
         panel_balance_changed:   [[0, 659, 0.3, 0.1], [0.12, 880, 0.35, 0.22]],
         panel_sos_alert:         [[0, 880, 0.4, 0.12], [0.15, 660, 0.4, 0.12], [0.3, 880, 0.4, 0.12], [0.45, 660, 0.4, 0.2]],
+        panel_incoming_call:     [[0, 587, 0.2, 0.16], [0.22, 587, 0.2, 0.16], [0.44, 587, 0.2, 0.16]],
     };
+    function _openOrderModalForIncomingCall(phone) {
+        openModal('orderModal');
+        setTimeout(function() {
+            var ph = document.querySelector('#orderModal input[name="phone_number"]');
+            if (!ph) return;
+            ph.value = phone;
+            ph.dispatchEvent(new Event('input', { bubbles: true }));
+        }, 100);
+    }
     function _playPanelEventSound(evt) {
         if (evt.sound_url) {
             try { new window.Audio(evt.sound_url).play().catch(() => {}); } catch (_) {}
@@ -1423,6 +1433,7 @@
                 d.events.forEach(evt => {
                     if (evt.message) showToast(evt.message);
                     if (evt.enabled) _playPanelEventSound(evt);
+                    if (evt.type === 'panel_incoming_call' && evt.message) _openOrderModalForIncomingCall(evt.message);
                 });
             }).catch(() => {});
     }

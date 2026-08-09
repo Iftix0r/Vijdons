@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">Vijdon Qo\'ng\'iroq</string>
+
+    <string name="label_site_url">Sayt manzili</string>
+    <string name="label_username">Login</string>
+    <string name="label_password">Parol</string>
+    <string name="btn_login">Kirish</string>
+    <string name="btn_logout">Chiqish</string>
+    <string name="btn_start">Xizmatni yoqish</string>
+    <string name="btn_stop">Xizmatni o\'chirish</string>
+
+    <string name="status_stopped">Kuzatuv o\'chirilgan</string>
+    <string name="status_running">Kuzatuv ishlamoqda — qo\'ng\'iroqlar avtomatik saytga yuboriladi</string>
+    <string name="status_logging_in">Kirilmoqda…</string>
+    <string name="error_fill_fields">Barcha maydonlarni to\'ldiring</string>
+    <string name="error_login_failed">Login yoki parol noto\'g\'ri, yoki sayt bilan aloqa yo\'q</string>
+    <string name="error_permissions_needed">Ishlashi uchun telefon holati va qo\'ng\'iroqlar jurnali ruxsatlari kerak</string>
+    <string name="logged_in_as">Kirgan: %1$s</string>
+
+    <string name="notif_channel_name">Qo\'ng\'iroq kuzatuvchisi</string>
+    <string name="notif_title">Vijdon Taxi — qo\'ng\'iroq kuzatuvchisi</string>
+    <string name="notif_text">Kiruvchi qo\'ng\'iroqlar avtomatik saytga yuborilmoqda</string>
+</resources>

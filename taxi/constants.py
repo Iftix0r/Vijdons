@@ -18,6 +18,7 @@ PANEL_SOUND_EVENTS = [
     ('panel_low_balance',      '⚠️ Balans kam'),
     ('panel_topup_request',    "💳 Balans to'ldirish so'rovi"),
     ('panel_sos_alert',        '🆘 SOS signal'),
+    ('panel_incoming_call',    '📞 Kiruvchi qo\'ng\'iroq'),
 ]
 
 DRIVER_SOUND_EVENTS = [

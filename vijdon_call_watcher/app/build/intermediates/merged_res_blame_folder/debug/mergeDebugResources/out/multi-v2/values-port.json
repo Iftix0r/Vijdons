@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "uz.vijdon.callwatcher.app-mergeDebugResources-33:/values-port/values-port.xml",
+            "map": [
+                {
+                    "source": "/home/if/.gradle/caches/8.14/transforms/f78b8a9ced564b1baf1cdfa4c11a7e2e/transformed/appcompat-1.7.0/res/values-port/values-port.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "55",
+                        "endOffsets": "106"
+                    }
+                }
+            ]
+        }
+    ]
+}

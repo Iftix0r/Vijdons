@@ -1,0 +1,8 @@
+<resources>
+    <color name="brand_yellow">#F5B400</color>
+    <color name="brand_yellow_dark">#C68F00</color>
+    <color name="bg_light">#FFFFFF</color>
+    <color name="text_dark">#1A1A1A</color>
+    <color name="status_ok">#1E8E3E</color>
+    <color name="status_off">#8A8A8A</color>
+</resources>

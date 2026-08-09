@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "uz.vijdon.callwatcher.app-mergeDebugResources-33:/values-h550dp-port-v13/values-h550dp-port-v13.xml",
+            "map": [
+                {
+                    "source": "/home/if/.gradle/caches/8.14/transforms/415c6e066cd8e1853dc643418fae4889/transformed/material-1.12.0/res/values-h550dp-port-v13/values-h550dp-port-v13.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "64",
+                        "endOffsets": "115"
+                    }
+                }
+            ]
+        }
+    ]
+}
