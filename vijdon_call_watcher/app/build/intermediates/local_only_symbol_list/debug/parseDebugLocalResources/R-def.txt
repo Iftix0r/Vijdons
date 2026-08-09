@@ -10,6 +10,7 @@ color text_dark
 drawable ic_launcher_foreground
 drawable ic_stat_call
 id loginButton
+id loginWebView
 id logoutButton
 id passwordInput
 id siteUrlInput

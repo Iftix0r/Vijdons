@@ -10,13 +10,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import uz.vijdon.callwatcher.databinding.ActivityMainBinding
-import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var prefs: Prefs
-    private val executor = Executors.newSingleThreadExecutor()
+    private lateinit var siteSession: SiteSession
 
     private val requestPermissionsLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
@@ -32,6 +31,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         prefs = Prefs(this)
+        siteSession = SiteSession(this, binding.loginWebView)
 
         binding.siteUrlInput.setText(prefs.siteUrl)
         prefs.username?.let { binding.usernameInput.setText(it) }
@@ -44,36 +44,31 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onLoginClicked() {
-        val siteUrl = binding.siteUrlInput.text?.toString()?.trim().orEmpty()
+        val siteUrlRaw = binding.siteUrlInput.text?.toString()?.trim().orEmpty()
         val username = binding.usernameInput.text?.toString()?.trim().orEmpty()
         val password = binding.passwordInput.text?.toString().orEmpty()
 
-        if (siteUrl.isEmpty() || username.isEmpty() || password.isEmpty()) {
+        if (siteUrlRaw.isEmpty() || username.isEmpty() || password.isEmpty()) {
             Toast.makeText(this, R.string.error_fill_fields, Toast.LENGTH_SHORT).show()
             return
         }
 
+        val siteUrl = SiteSession.normalizeBaseUrl(siteUrlRaw)
         binding.loginButton.isEnabled = false
         binding.statusText.setText(R.string.status_logging_in)
 
-        executor.execute {
-            val result = ApiClient.login(siteUrl, username, password)
-            runOnUiThread {
-                binding.loginButton.isEnabled = true
-                when (result) {
-                    is ApiClient.LoginResult.Success -> {
-                        prefs.siteUrl = ApiClient.normalizeBaseUrl(siteUrl)
-                        prefs.token = result.token
-                        prefs.username = username
-                        binding.passwordInput.setText("")
-                        Toast.makeText(this, getString(R.string.logged_in_as, username), Toast.LENGTH_SHORT).show()
-                        refreshUiState()
-                    }
-                    is ApiClient.LoginResult.Failure -> {
-                        binding.statusText.setText(R.string.status_stopped)
-                        Toast.makeText(this, result.message.ifEmpty { getString(R.string.error_login_failed) }, Toast.LENGTH_LONG).show()
-                    }
-                }
+        siteSession.login(siteUrl, username, password) { success, message ->
+            binding.loginButton.isEnabled = true
+            if (success) {
+                prefs.siteUrl = siteUrl
+                prefs.loggedIn = true
+                prefs.username = username
+                binding.passwordInput.setText("")
+                Toast.makeText(this, getString(R.string.logged_in_as, username), Toast.LENGTH_SHORT).show()
+                refreshUiState()
+            } else {
+                binding.statusText.setText(R.string.status_stopped)
+                Toast.makeText(this, message ?: getString(R.string.error_login_failed), Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -129,7 +124,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshUiState() {
-        val loggedIn = !prefs.token.isNullOrEmpty()
+        val loggedIn = prefs.loggedIn
         binding.toggleButton.isEnabled = loggedIn
         binding.logoutButton.isEnabled = loggedIn
 

@@ -22,10 +22,11 @@ Endpoints:
 from django.contrib.auth import authenticate
 from django.db.models import Q
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
+from rest_framework.authentication import TokenAuthentication, SessionAuthentication
 
 from .models import Driver, Order, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, SosAlert
 from .serializers import (
@@ -798,9 +799,11 @@ def _normalize_call_phone(raw):
 
 
 @api_view(['POST'])
+@authentication_classes([TokenAuthentication, SessionAuthentication])
 @permission_classes([IsAuthenticated])
 def incoming_call_report(request):
-    """Android ilova kiruvchi qo'ng'iroq raqamini shu yerga POST qiladi."""
+    """Android ilova (WebView orqali, sessiya cookie + CSRF bilan, yoki token
+    bilan) kiruvchi qo'ng'iroq raqamini shu yerga POST qiladi."""
     if not request.user.is_staff:
         return Response({'detail': "Ruxsat yo'q."}, status=403)
     phone = _normalize_call_phone(request.data.get('phone_number'))

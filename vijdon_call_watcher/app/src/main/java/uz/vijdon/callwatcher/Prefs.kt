@@ -3,7 +3,10 @@ package uz.vijdon.callwatcher
 import android.content.Context
 import android.content.SharedPreferences
 
-/** Sayt manzili, operator tokeni va xizmat holatini saqlaydi. */
+/** Sayt manzili, kirish holati va xizmat holatini saqlaydi.
+ * Diqqat: token endi saqlanmaydi — sessiya WebView'ning o'z cookie
+ * ombori (CookieManager, diskka saqlanadi) orqali ushlab turiladi;
+ * shu klass faqat "kirilganmi" bayrog'ini saqlaydi. */
 class Prefs(context: Context) {
     private val sp: SharedPreferences =
         context.getSharedPreferences("vijdon_call_watcher", Context.MODE_PRIVATE)
@@ -12,9 +15,9 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_SITE_URL, DEFAULT_SITE_URL) ?: DEFAULT_SITE_URL
         set(value) = sp.edit().putString(KEY_SITE_URL, value).apply()
 
-    var token: String?
-        get() = sp.getString(KEY_TOKEN, null)
-        set(value) = sp.edit().putString(KEY_TOKEN, value).apply()
+    var loggedIn: Boolean
+        get() = sp.getBoolean(KEY_LOGGED_IN, false)
+        set(value) = sp.edit().putBoolean(KEY_LOGGED_IN, value).apply()
 
     var username: String?
         get() = sp.getString(KEY_USERNAME, null)
@@ -26,7 +29,7 @@ class Prefs(context: Context) {
 
     fun clearSession() {
         sp.edit()
-            .remove(KEY_TOKEN)
+            .putBoolean(KEY_LOGGED_IN, false)
             .remove(KEY_USERNAME)
             .putBoolean(KEY_SERVICE_ENABLED, false)
             .apply()
@@ -34,7 +37,7 @@ class Prefs(context: Context) {
 
     companion object {
         private const val KEY_SITE_URL = "site_url"
-        private const val KEY_TOKEN = "token"
+        private const val KEY_LOGGED_IN = "logged_in"
         private const val KEY_USERNAME = "username"
         private const val KEY_SERVICE_ENABLED = "service_enabled"
         const val DEFAULT_SITE_URL = "https://vijdontaxi.uz"

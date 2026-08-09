@@ -4,6 +4,7 @@ package uz.vijdon.callwatcher.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -25,6 +26,9 @@ public final class ActivityMainBinding implements ViewBinding {
   public final Button loginButton;
 
   @NonNull
+  public final WebView loginWebView;
+
+  @NonNull
   public final Button logoutButton;
 
   @NonNull
@@ -43,11 +47,13 @@ public final class ActivityMainBinding implements ViewBinding {
   public final TextInputEditText usernameInput;
 
   private ActivityMainBinding(@NonNull ScrollView rootView, @NonNull Button loginButton,
-      @NonNull Button logoutButton, @NonNull TextInputEditText passwordInput,
-      @NonNull TextInputEditText siteUrlInput, @NonNull TextView statusText,
-      @NonNull Button toggleButton, @NonNull TextInputEditText usernameInput) {
+      @NonNull WebView loginWebView, @NonNull Button logoutButton,
+      @NonNull TextInputEditText passwordInput, @NonNull TextInputEditText siteUrlInput,
+      @NonNull TextView statusText, @NonNull Button toggleButton,
+      @NonNull TextInputEditText usernameInput) {
     this.rootView = rootView;
     this.loginButton = loginButton;
+    this.loginWebView = loginWebView;
     this.logoutButton = logoutButton;
     this.passwordInput = passwordInput;
     this.siteUrlInput = siteUrlInput;
@@ -89,6 +95,12 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.loginWebView;
+      WebView loginWebView = ViewBindings.findChildViewById(rootView, id);
+      if (loginWebView == null) {
+        break missingId;
+      }
+
       id = R.id.logoutButton;
       Button logoutButton = ViewBindings.findChildViewById(rootView, id);
       if (logoutButton == null) {
@@ -125,7 +137,7 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ActivityMainBinding((ScrollView) rootView, loginButton, logoutButton,
+      return new ActivityMainBinding((ScrollView) rootView, loginButton, loginWebView, logoutButton,
           passwordInput, siteUrlInput, statusText, toggleButton, usernameInput);
     }
     String missingId = rootView.getResources().getResourceName(id);

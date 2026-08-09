@@ -14,7 +14,7 @@ class BootReceiver : BroadcastReceiver() {
         }
         try {
             val prefs = Prefs(context)
-            if (prefs.serviceEnabled && !prefs.token.isNullOrEmpty()) {
+            if (prefs.serviceEnabled && prefs.loggedIn) {
                 val serviceIntent = Intent(context, CallWatcherService::class.java)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     context.startForegroundService(serviceIntent)

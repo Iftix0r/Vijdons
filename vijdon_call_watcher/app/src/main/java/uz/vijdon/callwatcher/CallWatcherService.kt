@@ -15,19 +15,23 @@ import android.os.IBinder
 import android.os.SystemClock
 import android.telephony.TelephonyManager
 import android.util.Log
+import android.view.ContextThemeWrapper
+import android.webkit.WebView
 import androidx.core.app.NotificationCompat
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 /**
  * Doimiy (foreground) xizmat — qurilmaga qo'ng'iroq kelganda raqamni ushlab,
- * saytga yuboradi. Ilova recents'dan o'chirilsa yoki tizim tomonidan
- * to'xtatilsa ham ishlashda davom etishi uchun START_STICKY + onTaskRemoved
- * orqali qayta ishga tushirish qo'llanilgan.
+ * saytga yuboradi. Saytga ulanish uchun oddiy HTTP so'rov emas, balki
+ * WebView (haqiqiy brauzer dvigateli) ishlatiladi — sababi: server oldidagi
+ * bot-tekshiruv (JS challenge) faqat JavaScript bajaradigan mijozlarni
+ * o'tkazadi (SiteSession.kt'ga qarang). Ilova recents'dan o'chirilsa yoki
+ * tizim tomonidan to'xtatilsa ham ishlashda davom etishi uchun START_STICKY +
+ * onTaskRemoved orqali qayta ishga tushirish qo'llanilgan.
  */
 class CallWatcherService : Service() {
 
-    private lateinit var executor: ExecutorService
+    private var webView: WebView? = null
+    private var siteSession: SiteSession? = null
     private var receiverRegistered = false
     private var lastReportedNumber: String? = null
     private var lastReportedAt: Long = 0L
@@ -44,12 +48,19 @@ class CallWatcherService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        executor = Executors.newSingleThreadExecutor()
         createNotificationChannel()
         try {
             startForeground(NOTIF_ID, buildNotification())
         } catch (e: Exception) {
             Log.e(TAG, "startForeground xatosi", e)
+        }
+        try {
+            val themedContext = ContextThemeWrapper(applicationContext, R.style.Theme_CallWatcher)
+            val wv = WebView(themedContext)
+            webView = wv
+            siteSession = SiteSession(this, wv)
+        } catch (e: Exception) {
+            Log.e(TAG, "WebView yaratishda xato", e)
         }
         try {
             registerReceiver(phoneStateReceiver, IntentFilter(TelephonyManager.ACTION_PHONE_STATE_CHANGED))
@@ -73,7 +84,11 @@ class CallWatcherService : Service() {
                 Log.w(TAG, "Receiverni bekor qilishda xato", e)
             }
         }
-        executor.shutdownNow()
+        try {
+            webView?.destroy()
+        } catch (e: Exception) {
+            Log.w(TAG, "WebView'ni tozalashda xato", e)
+        }
         super.onDestroy()
     }
 
@@ -116,18 +131,24 @@ class CallWatcherService : Service() {
         lastReportedAt = now
 
         val prefs = Prefs(applicationContext)
-        val token = prefs.token
-        if (token.isNullOrEmpty()) {
-            Log.w(TAG, "Token yo'q — avval ilovaga kiring")
+        if (!prefs.loggedIn) {
+            Log.w(TAG, "Kirilmagan — avval ilovaga login qiling")
+            return
+        }
+        val session = siteSession
+        if (session == null) {
+            Log.e(TAG, "SiteSession tayyor emas")
             return
         }
 
-        val siteUrl = prefs.siteUrl
-        executor.execute {
-            try {
-                ApiClient.reportIncomingCall(siteUrl, token, number)
-            } catch (e: Exception) {
-                Log.e(TAG, "reportIncomingCall xatosi", e)
+        // handlePhoneStateChanged asosiy (UI) thread'da ishlaydi (registerReceiver
+        // Handler'siz chaqirilgan), WebView ham faqat shu thread'dan ishlatilishi
+        // shart — shuning uchun to'g'ridan-to'g'ri, alohida thread'siz chaqiramiz.
+        session.reportIncomingCall(prefs.siteUrl, number) { success ->
+            if (success) {
+                Log.i(TAG, "Qo'ng'iroq yuborildi: $number")
+            } else {
+                Log.e(TAG, "Qo'ng'iroqni yuborib bo'lmadi: $number")
             }
         }
     }
