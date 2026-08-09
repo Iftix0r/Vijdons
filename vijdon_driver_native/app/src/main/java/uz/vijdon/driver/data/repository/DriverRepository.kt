@@ -52,6 +52,16 @@ class DriverRepository @Inject constructor(
         )
     } catch (e: IOException) {
         ApiResult.Error("Internet aloqasi yo'q. Qayta urinib ko'ring.")
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        // Server JSON o'rniga kutilmagan javob qaytarsa (masalan Cloudflare
+        // HTML tekshiruv sahifasi — 0.1-band hali bajarilmagan bo'lsa),
+        // kotlinx.serialization SerializationException tashlaydi — bu
+        // HttpException/IOException EMAS, shu sabab alohida tutiladi.
+        // Aks holda tutilmagan xato butun ilovani (yoki hech bo'lmasa joriy
+        // ekranni) buzib qo'yardi.
+        ApiResult.Error("Kutilmagan javob. Server sozlamalarini tekshiring.")
     }
 
     suspend fun register(
