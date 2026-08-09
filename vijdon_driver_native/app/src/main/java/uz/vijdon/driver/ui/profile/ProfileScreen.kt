@@ -4,6 +4,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,6 +55,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.ui.theme.CardShape
 import uz.vijdon.driver.ui.theme.Pill
+import uz.vijdon.driver.ui.theme.ScreenHeader
 import uz.vijdon.driver.ui.theme.VijdonColors
 import uz.vijdon.driver.ui.theme.cardShadow
 import uz.vijdon.driver.util.copyUriToCacheFile
@@ -89,14 +92,10 @@ fun ProfileScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(VijdonColors.Background)
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
     ) {
-        Box(
-            modifier = Modifier.fillMaxWidth().background(VijdonColors.Surface, CardShape).padding(vertical = 12.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("Profil", color = VijdonColors.TextPrimary, style = MaterialTheme.typography.titleLarge)
-        }
+        ScreenHeader("Profil")
 
         Spacer(Modifier.height(20.dp))
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -149,8 +148,13 @@ fun ProfileScreen(
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StatBox("Safarlar", currentDriver.trips_count.toString(), Modifier.weight(1f))
-            StatBox("Reyting", currentDriver.rating, Modifier.weight(1f))
-            StatBox("Daraja", currentDriver.level, Modifier.weight(1f))
+            StatBox("Reyting", currentDriver.rating, Modifier.weight(1f), valueColor = VijdonColors.YellowDark)
+            StatBox(
+                "Navbat",
+                if (currentDriver.is_on_duty) "Faol" else "—",
+                Modifier.weight(1f),
+                valueColor = if (currentDriver.is_on_duty) VijdonColors.Green else VijdonColors.TextSecondary,
+            )
         }
 
         Spacer(Modifier.height(20.dp))
@@ -203,14 +207,14 @@ fun ProfileScreen(
 }
 
 @Composable
-private fun StatBox(label: String, value: String, modifier: Modifier = Modifier) {
+private fun StatBox(label: String, value: String, modifier: Modifier = Modifier, valueColor: androidx.compose.ui.graphics.Color = VijdonColors.Yellow) {
     Column(
-        modifier = modifier.background(VijdonColors.Surface, CardShape).padding(12.dp),
+        modifier = modifier.cardShadow().background(VijdonColors.Surface, CardShape).padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(label, color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
         Spacer(Modifier.height(4.dp))
-        Text(value, color = VijdonColors.Yellow, style = MaterialTheme.typography.titleMedium)
+        Text(value, color = valueColor, style = MaterialTheme.typography.titleMedium)
     }
 }
 
@@ -226,6 +230,7 @@ private fun MenuRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .cardShadow()
             .background(VijdonColors.Surface, CardShape)
             .clickable(onClick = onClick)
             .padding(16.dp),

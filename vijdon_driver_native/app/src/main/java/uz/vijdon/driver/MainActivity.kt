@@ -8,14 +8,23 @@ import androidx.activity.ComponentActivity
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.activity.compose.setContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -57,6 +66,17 @@ class MainActivity : ComponentActivity() {
         showOverLockscreenIfNeeded(intent)
         setContent {
             VijdonDriverTheme {
+                // Status-bar/navigatsiya-bar ikonkalari — tizim yorug' rejimda
+                // bo'lsa qora, qorong'i rejimda oq bo'lishi kerak, aks holda
+                // yorug' rejimda oq ikonkalar yorug' fon ustida ko'rinmay qolardi.
+                val darkTheme = isSystemInDarkTheme()
+                val view = LocalView.current
+                SideEffect {
+                    val controller = WindowCompat.getInsetsController(window, view)
+                    controller.isAppearanceLightStatusBars = !darkTheme
+                    controller.isAppearanceLightNavigationBars = !darkTheme
+                }
+
                 val sessionViewModel: SessionViewModel = hiltViewModel()
                 val session by sessionViewModel.state.collectAsState()
                 val navController = rememberNavController()
@@ -109,7 +129,14 @@ private fun LoadingBox() {
 
 @Composable
 private fun AuthNavHost(navController: NavHostController, onLoggedIn: (DriverDto) -> Unit) {
-    NavHost(navController = navController, startDestination = Routes.LOGIN) {
+    NavHost(
+        navController = navController,
+        startDestination = Routes.LOGIN,
+        enterTransition = { slideInHorizontally(tween(280)) { it } + fadeIn(tween(280)) },
+        exitTransition = { slideOutHorizontally(tween(200)) { -it / 4 } + fadeOut(tween(200)) },
+        popEnterTransition = { slideInHorizontally(tween(280)) { -it / 4 } + fadeIn(tween(280)) },
+        popExitTransition = { slideOutHorizontally(tween(220)) { it } + fadeOut(tween(220)) },
+    ) {
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoggedIn = onLoggedIn,

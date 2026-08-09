@@ -46,16 +46,18 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import uz.vijdon.driver.data.api.BalanceEntryDto
 import uz.vijdon.driver.ui.theme.CardShape
+import uz.vijdon.driver.ui.theme.ScreenHeader
 import uz.vijdon.driver.ui.theme.VijdonColors
+import uz.vijdon.driver.ui.theme.cardShadow
 import uz.vijdon.driver.util.copyUriToCacheFile
 
 @Composable
 fun BalanceHistoryScreen(viewModel: BalanceHistoryViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
     Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background).padding(16.dp)) {
-        Text("Balans tarixi", color = VijdonColors.TextPrimary, style = MaterialTheme.typography.headlineSmall)
+        ScreenHeader("Balans tarixi")
         Spacer(Modifier.height(8.dp))
-        Column(modifier = Modifier.fillMaxWidth().background(VijdonColors.Surface, CardShape).padding(16.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().cardShadow().background(VijdonColors.Surface, CardShape).padding(16.dp)) {
             Text("JORIY BALANS", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
             Text("${state.balance} so'm", color = VijdonColors.Green, style = MaterialTheme.typography.headlineMedium)
         }
@@ -75,7 +77,7 @@ fun BalanceHistoryScreen(viewModel: BalanceHistoryViewModel = hiltViewModel()) {
 @Composable
 private fun BalanceEntryRow(entry: BalanceEntryDto) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).background(VijdonColors.Surface, CardShape).padding(14.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).cardShadow().background(VijdonColors.Surface, CardShape).padding(14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -114,7 +116,7 @@ fun TopupScreen(onDone: () -> Unit, viewModel: TopupViewModel = hiltViewModel())
     LaunchedEffect(state.success) { if (state.success) onDone() }
 
     Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background).padding(16.dp)) {
-        Text("Balans to'ldirish", style = MaterialTheme.typography.headlineSmall, color = VijdonColors.TextPrimary)
+        ScreenHeader("Balans to'ldirish")
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = state.amount, onValueChange = viewModel::onAmountChange,

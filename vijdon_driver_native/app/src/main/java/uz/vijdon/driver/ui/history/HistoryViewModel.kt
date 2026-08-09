@@ -33,16 +33,6 @@ data class HistoryUiState(
 
     val totalKm: Double
         get() = orders.filter { it.status == "completed" }.sumOf { it.distance_km ?: 0.0 }
-
-    /** Kunlar bo'yicha daromad (sanaga ko'ra o'sish tartibida) — Yandex Pro
-     * uslubidagi daromad grafigi uchun. Faqat 2+ kunlik ma'lumot bo'lsa
-     * ma'noli (bitta kunlik "grafik" chizishning hojati yo'q). */
-    val dailyEarnings: List<Pair<String, Double>>
-        get() = orders.filter { it.status == "completed" }
-            .groupBy { it.created_at.take(10) }
-            .mapValues { (_, dayOrders) -> dayOrders.sumOf { it.price?.toDoubleOrNull() ?: 0.0 } }
-            .toSortedMap()
-            .map { it.key to it.value }
 }
 
 @HiltViewModel

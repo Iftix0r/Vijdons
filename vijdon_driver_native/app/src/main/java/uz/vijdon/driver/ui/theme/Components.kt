@@ -1,6 +1,10 @@
 package uz.vijdon.driver.ui.theme
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /** Veb paneldagi "2 navbatda" / "Yakunlandi" kabi dumaloq nishonlar. */
@@ -32,3 +37,30 @@ val ChipShape = RoundedCornerShape(ChipRadius)
 /** Kartalarga Yandex Taxi uslubidagi yengil "ko'tarilgan" soya beradi — tekis fon o'rniga chuqurlik hissi. */
 fun Modifier.cardShadow(shape: Shape = CardShape, elevation: androidx.compose.ui.unit.Dp = 8.dp): Modifier =
     this.shadow(elevation = elevation, shape = shape, clip = false, ambientColor = Color.Black, spotColor = Color.Black)
+
+/**
+ * Veb paneldagi `.ios-navbar` + `.ios-large-title` bilan bir xil — suzib
+ * turuvchi, dumaloq burchakli, chapga tekislangan katta sarlavha kartasi.
+ * Barcha ichki ekranlarda (Tarix, Reyting, Manzillar, Balans, Shartnoma,
+ * SOS...) bir xil uslubdagi sarlavha uchun ishlatiladi.
+ */
+@Composable
+fun ScreenHeader(title: String, subtitle: String? = null, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .cardShadow()
+            .background(VijdonColors.Surface, CardShape)
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+    ) {
+        Text(
+            title,
+            color = VijdonColors.TextPrimary,
+            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+        )
+        subtitle?.let {
+            Spacer(Modifier.height(2.dp))
+            Text(it, color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}

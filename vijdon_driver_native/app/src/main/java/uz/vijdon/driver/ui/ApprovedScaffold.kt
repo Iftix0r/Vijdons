@@ -1,5 +1,10 @@
 package uz.vijdon.driver.ui
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -22,6 +27,20 @@ import uz.vijdon.driver.ui.rating.RatingScreen
 import uz.vijdon.driver.ui.sos.SosScreen
 
 private val bottomBarRoutes = setOf(Tabs.HOME, Tabs.HISTORY, Tabs.CHAT, Tabs.PROFILE)
+
+// Pastki tab-bar bo'limlari orasida — iOS/Telegram'dagi kabi yumshoq
+// crossfade (chetdan surilib kirish emas, chunki bular teng darajadagi
+// bo'limlar, biri ikkinchisining "ustiga" chiqmaydi).
+private val tabEnter = fadeIn(tween(220))
+private val tabExit = fadeOut(tween(160))
+
+// Profildan ochiladigan ichki (Balans, Shartnoma, Manzillar, SOS, Reyting,
+// Buyurtma yaratish) sahifalar — iOS'dagi "push" navigatsiyasi kabi
+// o'ngdan kirib, orqaga qaytishda o'ngga chiqib ketadi.
+private val pushEnter = slideInHorizontally(tween(280)) { it } + fadeIn(tween(280))
+private val pushExit = slideOutHorizontally(tween(200)) { -it / 4 } + fadeOut(tween(200))
+private val popEnter = slideInHorizontally(tween(280)) { -it / 4 } + fadeIn(tween(280))
+private val popExit = slideOutHorizontally(tween(220)) { it } + fadeOut(tween(220))
 
 @Composable
 fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
@@ -56,6 +75,10 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
             navController = navController,
             startDestination = Tabs.HOME,
             modifier = Modifier.padding(padding),
+            enterTransition = { tabEnter },
+            exitTransition = { tabExit },
+            popEnterTransition = { tabEnter },
+            popExitTransition = { tabExit },
         ) {
             composable(Tabs.HOME) {
                 HomeScreen(
@@ -77,13 +100,41 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
                     onLogout = onLogout,
                 )
             }
-            composable(SubRoutes.BALANCE_HISTORY) { BalanceHistoryScreen() }
-            composable(SubRoutes.TOPUP) { TopupScreen(onDone = { navController.popBackStack() }) }
-            composable(SubRoutes.CONTRACT) { ContractScreen() }
-            composable(SubRoutes.ADDRESSES) { AddressesScreen() }
-            composable(SubRoutes.SOS) { SosScreen() }
-            composable(SubRoutes.RATING) { RatingScreen() }
-            composable(SubRoutes.ORDER_CREATE) {
+            composable(
+                SubRoutes.BALANCE_HISTORY,
+                enterTransition = { pushEnter }, exitTransition = { pushExit },
+                popEnterTransition = { popEnter }, popExitTransition = { popExit },
+            ) { BalanceHistoryScreen() }
+            composable(
+                SubRoutes.TOPUP,
+                enterTransition = { pushEnter }, exitTransition = { pushExit },
+                popEnterTransition = { popEnter }, popExitTransition = { popExit },
+            ) { TopupScreen(onDone = { navController.popBackStack() }) }
+            composable(
+                SubRoutes.CONTRACT,
+                enterTransition = { pushEnter }, exitTransition = { pushExit },
+                popEnterTransition = { popEnter }, popExitTransition = { popExit },
+            ) { ContractScreen() }
+            composable(
+                SubRoutes.ADDRESSES,
+                enterTransition = { pushEnter }, exitTransition = { pushExit },
+                popEnterTransition = { popEnter }, popExitTransition = { popExit },
+            ) { AddressesScreen() }
+            composable(
+                SubRoutes.SOS,
+                enterTransition = { pushEnter }, exitTransition = { pushExit },
+                popEnterTransition = { popEnter }, popExitTransition = { popExit },
+            ) { SosScreen() }
+            composable(
+                SubRoutes.RATING,
+                enterTransition = { pushEnter }, exitTransition = { pushExit },
+                popEnterTransition = { popEnter }, popExitTransition = { popExit },
+            ) { RatingScreen() }
+            composable(
+                SubRoutes.ORDER_CREATE,
+                enterTransition = { pushEnter }, exitTransition = { pushExit },
+                popEnterTransition = { popEnter }, popExitTransition = { popExit },
+            ) {
                 OrderCreateScreen(
                     onDone = { navController.popBackStack() },
                     onBack = { navController.popBackStack() },

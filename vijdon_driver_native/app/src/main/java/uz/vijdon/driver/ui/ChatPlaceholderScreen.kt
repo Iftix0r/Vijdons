@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material3.Icon
@@ -15,19 +17,37 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import uz.vijdon.driver.ui.theme.VijdonColors
 
 @Composable
 fun ChatPlaceholderScreen() {
     Box(
-        modifier = Modifier.fillMaxSize().background(VijdonColors.Background),
+        modifier = Modifier.fillMaxSize().background(VijdonColors.Background).padding(32.dp),
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Rounded.Forum, contentDescription = null, tint = VijdonColors.Border, modifier = Modifier.size(48.dp))
+            Box(
+                modifier = Modifier.size(88.dp).background(VijdonColors.Yellow.copy(alpha = 0.15f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Rounded.Forum, contentDescription = null, tint = VijdonColors.Yellow, modifier = Modifier.size(40.dp))
+            }
+            Spacer(Modifier.height(20.dp))
+            Text(
+                "Guruh chat tez orada qo'shiladi",
+                color = VijdonColors.TextPrimary,
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+            )
             Spacer(Modifier.height(8.dp))
-            Text("Guruh chat tez orada qo'shiladi", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                "Haydovchilar bilan yozishma va operatorga murojaat shu bo'limdan bo'ladi.",
+                color = VijdonColors.TextSecondary,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }

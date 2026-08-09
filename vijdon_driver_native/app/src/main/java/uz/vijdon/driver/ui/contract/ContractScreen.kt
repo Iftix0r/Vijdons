@@ -14,7 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -35,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import uz.vijdon.driver.ui.theme.CardShape
+import uz.vijdon.driver.ui.theme.ScreenHeader
 import uz.vijdon.driver.ui.theme.VijdonColors
 import java.io.File
 
@@ -46,11 +46,7 @@ fun ContractScreen(viewModel: ContractViewModel = hiltViewModel()) {
     var agree by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background).padding(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.Description, contentDescription = null, tint = VijdonColors.Yellow)
-            Spacer(Modifier.width(8.dp))
-            Text("${state.title} (v${state.version})", style = MaterialTheme.typography.titleLarge, color = VijdonColors.TextPrimary)
-        }
+        ScreenHeader(if (state.title.isNotBlank()) "${state.title} (v${state.version})" else "Shartnoma")
         Spacer(Modifier.height(8.dp))
 
         if (state.signed) {

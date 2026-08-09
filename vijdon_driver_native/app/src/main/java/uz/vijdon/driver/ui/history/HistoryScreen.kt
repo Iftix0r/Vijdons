@@ -2,13 +2,11 @@ package uz.vijdon.driver.ui.history
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,10 +15,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Flag
+import androidx.compose.material.icons.rounded.Inbox
 import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.Route
 import androidx.compose.material3.Icon
@@ -39,6 +37,7 @@ import uz.vijdon.driver.data.api.OrderDto
 import uz.vijdon.driver.ui.theme.CardShape
 import uz.vijdon.driver.ui.theme.ChipShape
 import uz.vijdon.driver.ui.theme.Pill
+import uz.vijdon.driver.ui.theme.ScreenHeader
 import uz.vijdon.driver.ui.theme.VijdonColors
 import uz.vijdon.driver.ui.theme.cardShadow
 
@@ -53,7 +52,7 @@ fun HistoryScreen(viewModel: HistoryViewModel = hiltViewModel()) {
     LaunchedEffect(Unit) { viewModel.load() }
 
     Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background).padding(16.dp)) {
-        Text("Tarix", color = VijdonColors.TextPrimary, style = MaterialTheme.typography.headlineMedium)
+        ScreenHeader("Tarix")
         Spacer(Modifier.height(12.dp))
 
         Row(
@@ -99,15 +98,19 @@ fun HistoryScreen(viewModel: HistoryViewModel = hiltViewModel()) {
             StatCard(Icons.Rounded.Route, "Km", String.format("%.1f", state.totalKm), VijdonColors.Blue, Modifier.weight(1f))
         }
 
-        if (state.dailyEarnings.size >= 2) {
-            Spacer(Modifier.height(14.dp))
-            EarningsChart(state.dailyEarnings)
-        }
-
         Spacer(Modifier.height(14.dp))
         if (state.visibleOrders.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Bu bo'limda buyurtma yo'q", color = VijdonColors.TextSecondary)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier.size(72.dp).background(VijdonColors.Surface, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Rounded.Inbox, contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(32.dp))
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text("Bu bo'limda buyurtma yo'q", color = VijdonColors.TextSecondary)
+                }
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -139,48 +142,10 @@ private fun StatCard(
     }
 }
 
-/** Yandex Pro'dagi kabi kunlik daromad ustunli grafigi — tashqi kutubxonasiz, oddiy ustunlar orqali. */
-@Composable
-private fun EarningsChart(data: List<Pair<String, Double>>) {
-    val maxValue = data.maxOf { it.second }.coerceAtLeast(1.0)
-    Column(modifier = Modifier.fillMaxWidth().cardShadow().background(VijdonColors.Surface, CardShape).padding(16.dp)) {
-        Text("Daromad dinamikasi", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
-        Spacer(Modifier.height(12.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth().height(120.dp).horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            data.forEach { (date, value) ->
-                val fraction = (value / maxValue).toFloat().coerceIn(0.04f, 1f)
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.width(44.dp).fillMaxHeight(),
-                ) {
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.BottomCenter) {
-                        Box(
-                            modifier = Modifier
-                                .width(18.dp)
-                                .fillMaxHeight(fraction)
-                                .background(VijdonColors.Green, RoundedCornerShape(6.dp)),
-                        )
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        date.takeLast(5),
-                        color = VijdonColors.TextSecondary,
-                        style = MaterialTheme.typography.labelSmall,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
-    }
-}
-
 @Composable
 private fun HistoryRow(order: OrderDto) {
     Column(
-        modifier = Modifier.fillMaxWidth().background(VijdonColors.Surface, CardShape).padding(14.dp),
+        modifier = Modifier.fillMaxWidth().cardShadow().background(VijdonColors.Surface, CardShape).padding(14.dp),
     ) {
         Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
             Pill(

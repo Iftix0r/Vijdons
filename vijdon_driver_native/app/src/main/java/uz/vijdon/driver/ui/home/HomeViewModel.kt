@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import uz.vijdon.driver.data.api.AddressDto
 import uz.vijdon.driver.data.api.ConfigDto
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.data.api.OrderDto
@@ -32,6 +33,7 @@ data class HomeUiState(
     val rank: Int? = null,
     val alertOrder: OrderDto? = null,
     val alertTotalSec: Int = 30,
+    val addresses: List<AddressDto> = emptyList(),
 )
 
 @HiltViewModel
@@ -60,6 +62,7 @@ class HomeViewModel @Inject constructor(
             config?.let { _uiState.value = _uiState.value.copy(operatorPhone = it.operator_phone) }
         }
         startPolling()
+        startAddressPolling()
         collectLocationForTaximeter()
         viewModelScope.launch {
             val result = repository.rating()
@@ -86,6 +89,25 @@ class HomeViewModel @Inject constructor(
             while (true) {
                 refreshOrders()
                 delay(4_000)
+            }
+        }
+    }
+
+    // Veb haydovchi panelida "Asosiy" sahifaning fon kontenti aynan shu
+    // ro'yxat (xarita hozircha o'chirilgan) — navbatdagi haydovchilar va
+    // bugungi buyurtmalar soni haydovchiga talab qayerda ekanini ko'rsatadi,
+    // shu sabab bu native Home ekraniga ham qo'shildi (ilgari faqat Profil >
+    // "Yaqin manzillar" bo'limida ko'rinardi). Veb bilan bir xil kadensiya — 20s.
+    private var addressPollJob: Job? = null
+    private fun startAddressPolling() {
+        addressPollJob?.cancel()
+        addressPollJob = viewModelScope.launch {
+            while (true) {
+                val result = repository.addresses()
+                if (result is ApiResult.Success) {
+                    _uiState.value = _uiState.value.copy(addresses = result.data)
+                }
+                delay(20_000)
             }
         }
     }
@@ -212,6 +234,7 @@ class HomeViewModel @Inject constructor(
 
     override fun onCleared() {
         pollJob?.cancel()
+        addressPollJob?.cancel()
         super.onCleared()
     }
 }

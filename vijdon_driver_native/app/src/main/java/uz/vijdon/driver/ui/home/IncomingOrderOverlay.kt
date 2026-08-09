@@ -89,11 +89,12 @@ fun IncomingOrderOverlay(order: OrderDto, totalSec: Int, onAccept: () -> Unit, o
 
         Spacer(Modifier.weight(1f))
 
+        val trackColor = VijdonColors.Border
         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(180.dp)) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val stroke = Stroke(width = 10.dp.toPx(), cap = StrokeCap.Round)
                 drawArc(
-                    color = VijdonColors.Border,
+                    color = trackColor,
                     startAngle = -90f,
                     sweepAngle = 360f,
                     useCenter = false,

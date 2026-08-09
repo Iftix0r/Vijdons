@@ -33,14 +33,16 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import uz.vijdon.driver.data.api.AddressDto
 import uz.vijdon.driver.ui.theme.CardShape
 import uz.vijdon.driver.ui.theme.Pill
+import uz.vijdon.driver.ui.theme.ScreenHeader
 import uz.vijdon.driver.ui.theme.VijdonColors
+import uz.vijdon.driver.ui.theme.cardShadow
 
 @Composable
 fun AddressesScreen(viewModel: AddressesViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background).padding(16.dp)) {
-        Text("Yaqin manzillar", color = VijdonColors.TextPrimary, style = MaterialTheme.typography.headlineSmall)
+        ScreenHeader("Yaqin manzillar")
         Spacer(Modifier.height(12.dp))
 
         if (state.addresses.isEmpty()) {
@@ -81,6 +83,7 @@ private fun AddressRow(address: AddressDto, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
+            .cardShadow()
             .background(VijdonColors.Surface, CardShape)
             .clickable(onClick = onClick)
             .padding(14.dp),
