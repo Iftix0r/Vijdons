@@ -187,8 +187,9 @@ class CallWatcherService : Service() {
         val number = pendingCallNumber ?: return
         pendingCallNumber = null
         try {
+            val prefs = Prefs(applicationContext)
             val recorder = CallRecorder(applicationContext)
-            if (recorder.start(number)) {
+            if (recorder.start(number, prefs.audioSourceIndex)) {
                 callRecorder = recorder
                 recordingNumber = number
             }
@@ -203,10 +204,24 @@ class CallWatcherService : Service() {
         val number = recordingNumber
         callRecorder = null
         recordingNumber = null
+        val prefs = Prefs(applicationContext)
         try {
-            val result = recorder.stop() ?: return
+            val result = recorder.stop()
+            if (result == null) {
+                if (recorder.wasSilent()) {
+                    // Bu manba jim chiqdi — keyingi qo'ng'iroqda ro'yxatdagi keyingi
+                    // manbadan (oxirida mikrofon + dinamik rejim) boshlaymiz.
+                    val next = (prefs.audioSourceIndex + 1).coerceAtMost(CallRecorder.AUDIO_SOURCES.size - 1)
+                    if (next != prefs.audioSourceIndex) {
+                        Log.w(TAG, "Audio manba jim edi — keyingi qo'ng'iroqda $next -indeks sinaladi")
+                        prefs.audioSourceIndex = next
+                    } else {
+                        Log.e(TAG, "Barcha audio manbalar sinab ko'rildi, hech biri ovoz yozmadi — bu qurilmada qo'ng'iroq yozib olish imkonsiz ko'rinadi")
+                    }
+                }
+                return
+            }
             val (file, durationSec) = result
-            val prefs = Prefs(applicationContext)
             val session = siteSession
             if (!prefs.loggedIn || session == null || number == null) return
             session.uploadCallRecording(prefs.siteUrl, number, file, durationSec) { success, detail ->

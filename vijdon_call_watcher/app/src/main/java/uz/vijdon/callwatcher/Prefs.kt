@@ -27,6 +27,12 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_SERVICE_ENABLED, false)
         set(value) = sp.edit().putBoolean(KEY_SERVICE_ENABLED, value).apply()
 
+    /** Qaysi audio manbadan (CallRecorder.AUDIO_SOURCES indeksi) boshlash kerakligi —
+     * bir manba jim chiqsa, keyingi qo'ng'iroqda ro'yxatdagi keyingisidan boshlanadi. */
+    var audioSourceIndex: Int
+        get() = sp.getInt(KEY_AUDIO_SOURCE_INDEX, 0)
+        set(value) = sp.edit().putInt(KEY_AUDIO_SOURCE_INDEX, value).apply()
+
     fun clearSession() {
         sp.edit()
             .putBoolean(KEY_LOGGED_IN, false)
@@ -40,6 +46,7 @@ class Prefs(context: Context) {
         private const val KEY_LOGGED_IN = "logged_in"
         private const val KEY_USERNAME = "username"
         private const val KEY_SERVICE_ENABLED = "service_enabled"
+        private const val KEY_AUDIO_SOURCE_INDEX = "audio_source_index"
         const val DEFAULT_SITE_URL = "https://vijdontaxi.uz"
     }
 }
