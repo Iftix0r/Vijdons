@@ -1,0 +1,35 @@
+<resources>
+    <string name="app_name">Vijdon Haydovchi</string>
+
+    <string name="login_title">Kirish</string>
+    <string name="phone_number">Telefon raqami</string>
+    <string name="password">Parol</string>
+    <string name="login_button">Kirish</string>
+    <string name="register_link">Ro\'yxatdan o\'tish</string>
+    <string name="register_title">Ro\'yxatdan o\'tish</string>
+    <string name="full_name">To\'liq ism</string>
+    <string name="car_model">Mashina modeli</string>
+    <string name="car_number">Mashina raqami</string>
+    <string name="car_type">Mashina turi</string>
+    <string name="register_button">Ro\'yxatdan o\'tish</string>
+    <string name="register_success">So\'rovingiz yuborildi. Admin tasdiqlashini kuting.</string>
+
+    <string name="pending_title">Hisobingiz tekshirilmoqda</string>
+    <string name="pending_message">Admin sizning ma\'lumotlaringizni tasdiqlagach, ilovadan foydalana olasiz.</string>
+    <string name="frozen_title">Hisobingiz muzlatilgan</string>
+    <string name="frozen_message">Uzoq vaqt faol bo\'lmaganingiz sababli hisobingiz muzlatildi. Admin bilan bog\'laning.</string>
+    <string name="logout">Chiqish</string>
+
+    <string name="home_title">Asosiy</string>
+    <string name="duty_on">Onlayn</string>
+    <string name="duty_off">Oflayn</string>
+    <string name="no_orders">Hozircha buyurtma yo\'q</string>
+    <string name="accept">Qabul qilish</string>
+    <string name="reject">Rad etish</string>
+    <string name="on_way">Yo\'lga chiqdim</string>
+    <string name="arrived">Yetib keldim</string>
+    <string name="complete">Yakunlash</string>
+    <string name="call_operator">Operatorga qo\'ng\'iroq</string>
+    <string name="balance">Balans</string>
+    <string name="low_balance_warning">Balansingiz kam — buyurtma qabul qilish uchun to\'ldiring</string>
+</resources>

@@ -1,3 +1,0 @@
--keep class io.flutter.** { *; }
--keep class androidx.webkit.** { *; }
--dontwarn io.flutter.**

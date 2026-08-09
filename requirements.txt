@@ -9,3 +9,4 @@ reportlab==5.0.0
 pywebpush==2.0.0
 aiogram==3.13.1
 aiogram==3.13.1
+google-auth==2.56.3

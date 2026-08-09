@@ -1679,30 +1679,61 @@ def tg_sos_alert(alert):
         _notify_driver_group(text, reply_markup=markup)
 
 
-def send_fcm(fcm_token, title, body, data=None):
-    """FCM push notification yuborish."""
+_fcm_credentials = None  # lazy-cached google.oauth2.service_account.Credentials
+
+
+def _get_fcm_access_token():
+    """FCM HTTP v1 uchun OAuth2 access token qaytaradi (xizmat hisobi
+    kalitidan) — modul darajasida keshlanadi va muddati tugaganda
+    avtomatik yangilanadi, har chaqiriqda diskdan qayta o'qimaslik uchun."""
+    global _fcm_credentials
     from django.conf import settings
-    fcm_key = getattr(settings, 'FCM_SERVER_KEY', '')
-    if not fcm_key or not fcm_token:
+    from google.oauth2 import service_account
+    from google.auth.transport.requests import Request
+
+    key_file = getattr(settings, 'FCM_SERVICE_ACCOUNT_FILE', '')
+    if not key_file:
+        return None
+    if _fcm_credentials is None:
+        _fcm_credentials = service_account.Credentials.from_service_account_file(
+            key_file, scopes=['https://www.googleapis.com/auth/firebase.messaging'],
+        )
+    if not _fcm_credentials.valid:
+        _fcm_credentials.refresh(Request())
+    return _fcm_credentials.token
+
+
+def send_fcm(fcm_token, title, body, data=None):
+    """FCM push notification yuborish (HTTP v1 API — legacy 'fcm/send' Google
+    tomonidan butunlay o'chirilgan, shu sabab xizmat hisobi orqali OAuth2
+    bilan ishlaydigan v1 endpoint ishlatiladi)."""
+    from django.conf import settings
+    project_id = getattr(settings, 'FCM_PROJECT_ID', '')
+    if not project_id or not fcm_token:
         return False
     try:
+        access_token = _get_fcm_access_token()
+        if not access_token:
+            return False
+        # v1 xabarida `data` faqat string qiymatlarni qabul qiladi.
+        str_data = {str(k): str(v) for k, v in (data or {}).items()}
         payload = json.dumps({
-            'to': fcm_token,
-            'priority': 'high',
-            'notification': {
-                'title': title,
-                'body': body,
-                'sound': 'default',
-                'android_channel_id': 'new_orders_channel',
+            'message': {
+                'token': fcm_token,
+                'notification': {'title': title, 'body': body},
+                'data': str_data,
+                'android': {
+                    'priority': 'high',
+                    'notification': {'sound': 'default', 'channel_id': 'new_orders_channel'},
+                },
             },
-            'data': data or {},
         }).encode()
         req = urllib.request.Request(
-            'https://fcm.googleapis.com/fcm/send',
+            f'https://fcm.googleapis.com/v1/projects/{project_id}/messages:send',
             data=payload,
             headers={
-                'Authorization': f'key={fcm_key}',
-                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {access_token}',
+                'Content-Type': 'application/json; UTF-8',
             },
         )
         urllib.request.urlopen(req, timeout=5)

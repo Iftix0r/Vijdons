@@ -178,6 +178,13 @@ VAPID_PUBLIC_KEY  = 'BLgc9UVdWIvPZqoVrGTc3ukeDgdz7Ag9E-QTwlS-mIMZJPJn1dNYJSwEHJC
 VAPID_PRIVATE_KEY = '-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgACpyjx8C5aZMitgM\nIpfNE/vY0vD00tUf8fZrqi91sYKhRANCAAS4HPVFXViLz2aqFaxk3N7pHg4Hc+wI\nPRPkE8JUvpiDGSTyZ9XTWCUsBByQq+e1mUbdmUJ8Evg3el7HGAlY79RQ\n-----END PRIVATE KEY-----'
 VAPID_CLAIMS      = {'sub': 'mailto:admin@vijdontaxi.uz'}
 
+# Firebase Cloud Messaging (HTTP v1) — native Android haydovchi ilovasiga push
+# xabar yuborish uchun. Firebase konsolida loyiha yaratib, Project settings →
+# Service accounts → "Generate new private key" orqali JSON faylni oling va
+# yo'lini shu yerga yozing (masalan BASE_DIR / 'fcm-service-account.json').
+FCM_PROJECT_ID            = ''  # masalan: 'vijdon-taxi'
+FCM_SERVICE_ACCOUNT_FILE  = ''  # xizmat hisobi JSON fayli yo'li
+
 # DRF
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
