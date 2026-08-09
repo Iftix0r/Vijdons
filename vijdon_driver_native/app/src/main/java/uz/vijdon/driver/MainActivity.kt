@@ -5,6 +5,8 @@ import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -59,12 +61,14 @@ class MainActivity : ComponentActivity() {
                 val session by sessionViewModel.state.collectAsState()
                 val navController = rememberNavController()
 
-                when (val s = session) {
-                    is SessionState.Loading -> LoadingBox()
-                    is SessionState.LoggedOut -> AuthNavHost(navController, onLoggedIn = sessionViewModel::onLoggedIn)
-                    is SessionState.Pending -> PendingScreen(onLogout = sessionViewModel::logout, onRefresh = sessionViewModel::refresh)
-                    is SessionState.Frozen -> FrozenScreen(onLogout = sessionViewModel::logout, onRefresh = sessionViewModel::refresh)
-                    is SessionState.Approved -> ApprovedScaffold(driver = s.driver, onLogout = sessionViewModel::logout)
+                Crossfade(targetState = session, animationSpec = tween(250), label = "session") { s ->
+                    when (s) {
+                        is SessionState.Loading -> LoadingBox()
+                        is SessionState.LoggedOut -> AuthNavHost(navController, onLoggedIn = sessionViewModel::onLoggedIn)
+                        is SessionState.Pending -> PendingScreen(onLogout = sessionViewModel::logout, onRefresh = sessionViewModel::refresh)
+                        is SessionState.Frozen -> FrozenScreen(onLogout = sessionViewModel::logout, onRefresh = sessionViewModel::refresh)
+                        is SessionState.Approved -> ApprovedScaffold(driver = s.driver, onLogout = sessionViewModel::logout)
+                    }
                 }
             }
         }

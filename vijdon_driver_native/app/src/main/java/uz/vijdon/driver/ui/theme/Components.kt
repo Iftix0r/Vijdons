@@ -8,7 +8,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 
 /** Veb paneldagi "2 navbatda" / "Yakunlandi" kabi dumaloq nishonlar. */
@@ -26,3 +28,7 @@ fun Pill(text: String, color: Color = VijdonColors.TextSecondary, background: Co
 
 val CardShape = RoundedCornerShape(CardRadius)
 val ChipShape = RoundedCornerShape(ChipRadius)
+
+/** Kartalarga Yandex Taxi uslubidagi yengil "ko'tarilgan" soya beradi — tekis fon o'rniga chuqurlik hissi. */
+fun Modifier.cardShadow(shape: Shape = CardShape, elevation: androidx.compose.ui.unit.Dp = 8.dp): Modifier =
+    this.shadow(elevation = elevation, shape = shape, clip = false, ambientColor = Color.Black, spotColor = Color.Black)

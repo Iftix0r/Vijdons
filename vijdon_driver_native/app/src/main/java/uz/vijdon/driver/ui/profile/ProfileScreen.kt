@@ -54,6 +54,7 @@ import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.ui.theme.CardShape
 import uz.vijdon.driver.ui.theme.Pill
 import uz.vijdon.driver.ui.theme.VijdonColors
+import uz.vijdon.driver.ui.theme.cardShadow
 import uz.vijdon.driver.util.copyUriToCacheFile
 
 @Composable
@@ -136,7 +137,7 @@ fun ProfileScreen(
         }
 
         Spacer(Modifier.height(20.dp))
-        Column(modifier = Modifier.fillMaxWidth().background(VijdonColors.Surface, CardShape).padding(16.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().cardShadow().background(VijdonColors.Surface, CardShape).padding(16.dp)) {
             Text("JORIY BALANS", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(currentDriver.balance, color = VijdonColors.Green, style = MaterialTheme.typography.headlineMedium)

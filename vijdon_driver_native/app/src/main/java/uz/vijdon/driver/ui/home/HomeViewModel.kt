@@ -30,6 +30,8 @@ data class HomeUiState(
     val actionInProgress: Set<Int> = emptySet(),
     val operatorPhone: String = "1351",
     val rank: Int? = null,
+    val alertOrder: OrderDto? = null,
+    val alertTotalSec: Int = 30,
 )
 
 @HiltViewModel
@@ -44,6 +46,12 @@ class HomeViewModel @Inject constructor(
     private var config: ConfigDto? = null
     private var pollJob: Job? = null
     private val taximeters = mutableMapOf<Int, TaximeterTracker>()
+
+    // Yandex Pro uslubidagi to'liq ekranli "yangi buyurtma" ogohlantirishi
+    // uchun — faqat shu haydovchiga shaxsan yo'naltirilgan (is_dispatched)
+    // va hali javob berish muddati (timer_sec) tugamagan buyurtmada ko'rinadi.
+    private var alertOrderId: Int? = null
+    private var alertInitialTimerSec: Int = 30
 
     init {
         viewModelScope.launch {
@@ -86,10 +94,21 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = repository.availableOrders()) {
                 is ApiResult.Success -> {
+                    val alertCandidate = result.data.orders.firstOrNull {
+                        it.isPending && it.is_dispatched && (it.timer_sec ?: 0) > 0
+                    }
+                    if (alertCandidate != null && alertCandidate.id != alertOrderId) {
+                        alertOrderId = alertCandidate.id
+                        alertInitialTimerSec = alertCandidate.timer_sec ?: 30
+                    } else if (alertCandidate == null) {
+                        alertOrderId = null
+                    }
                     _uiState.value = _uiState.value.copy(
                         orders = result.data.orders,
                         lowBalance = result.data.low_balance,
                         error = null,
+                        alertOrder = alertCandidate,
+                        alertTotalSec = alertInitialTimerSec,
                     )
                     pruneFinishedTaximeters(result.data.orders)
                 }

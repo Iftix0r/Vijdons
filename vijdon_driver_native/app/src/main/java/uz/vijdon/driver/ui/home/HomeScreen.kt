@@ -50,6 +50,7 @@ import uz.vijdon.driver.data.api.OrderDto
 import uz.vijdon.driver.ui.theme.CardShape
 import uz.vijdon.driver.ui.theme.Pill
 import uz.vijdon.driver.ui.theme.VijdonColors
+import uz.vijdon.driver.ui.theme.cardShadow
 
 @Composable
 fun HomeScreen(
@@ -78,6 +79,17 @@ fun HomeScreen(
     }
 
     val currentDriver = state.driver ?: driver
+
+    val alertOrder = state.alertOrder
+    if (alertOrder != null) {
+        IncomingOrderOverlay(
+            order = alertOrder,
+            totalSec = state.alertTotalSec,
+            onAccept = { viewModel.acceptOrder(alertOrder.id) },
+            onReject = { viewModel.rejectOrder(alertOrder.id) },
+        )
+        return
+    }
 
     Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background)) {
         TopBar(rank = state.rank, balance = currentDriver.balance, onOpenRating = onOpenRating)
@@ -186,6 +198,7 @@ private fun OrderCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .cardShadow()
             .background(VijdonColors.Surface, CardShape)
             .padding(16.dp),
     ) {
