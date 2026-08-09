@@ -383,7 +383,7 @@
 
 <!-- Order modal -->
 <div id="orderModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-lg shadow-2xl border border-gray-100 dark:border-gray-800 max-h-[95vh] flex flex-col">
+    <div id="om_modal_box" class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-lg shadow-2xl border border-gray-100 dark:border-gray-800 max-h-[95vh] flex flex-col transition-[max-width] duration-150">
         <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
             <h2 class="text-lg font-bold text-gray-900 dark:text-white">
                 <i class="fas fa-plus-circle text-yellow-500 mr-2"></i>Yangi Buyurtma
@@ -393,8 +393,8 @@
                 <i class="fas fa-times text-sm"></i>
             </button>
         </div>
-        <div class="overflow-y-auto flex-1">
-        <form action="{% url 'taxi:order_create' %}" method="POST" class="px-6 py-5 space-y-4">
+        <div class="overflow-y-auto flex-1 flex flex-col md:flex-row">
+        <form action="{% url 'taxi:order_create' %}" method="POST" class="flex-1 min-w-0 px-6 py-5 space-y-4">
             {% csrf_token %}
             <input type="hidden" name="from_lat" id="om_from_lat">
             <input type="hidden" name="from_lng" id="om_from_lng">
@@ -432,9 +432,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Telefon qidiruv natijasi (haydovchi ogohlantirishi / mijoz tarixi) -->
-            <div id="om_lookup_info" class="hidden"></div>
 
             <!-- Harita mode toggle -->
             <div class="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800/40">
@@ -584,6 +581,9 @@
                 </button>
             </div>
         </form>
+
+        <!-- Telefon qidiruv natijasi (haydovchi ogohlantirishi / mijoz tarixi va oldingi buyurtmalari) -->
+        <div id="om_lookup_info" class="hidden w-full md:w-72 md:flex-shrink-0 border-t md:border-t-0 md:border-l border-gray-100 dark:border-gray-800 px-4 py-4 overflow-y-auto"></div>
         </div>
     </div>
 </div>
@@ -1459,8 +1459,14 @@
             return d.innerHTML;
         }
 
+        function _setModalWide(wide) {
+            var box = document.getElementById('om_modal_box');
+            if (box) box.style.maxWidth = wide ? '52rem' : '';
+        }
+
         function renderDriverWarning(d) {
             if (!_infoBox) return;
+            _setModalWide(true);
             _infoBox.innerHTML =
                 '<div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl text-xs">' +
                 '<div class="font-bold text-red-700 dark:text-red-400 mb-1"><i class="fas fa-triangle-exclamation mr-1"></i>Diqqat — bu HAYDOVCHI raqami!</div>' +
@@ -1473,6 +1479,7 @@
 
         function renderClientInfo(d) {
             if (!_infoBox) return;
+            _setModalWide(true);
             var html = '<div class="p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 rounded-xl text-xs space-y-2">';
             html += '<div class="flex items-center justify-between">';
             html += '<div class="font-bold text-emerald-700 dark:text-emerald-400"><i class="fas fa-user-check mr-1"></i>' + (d.name ? escapeHtml(d.name) : 'Tanish mijoz') + '</div>';
@@ -1510,6 +1517,7 @@
         function resetLookupInfo() {
             if (_infoBox) { _infoBox.innerHTML = ''; _infoBox.classList.add('hidden'); }
             _hint.classList.add('hidden');
+            _setModalWide(false);
         }
         window._resetOrderLookupInfo = resetLookupInfo;
 
