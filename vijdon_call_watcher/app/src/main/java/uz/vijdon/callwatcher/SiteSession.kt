@@ -21,7 +21,7 @@ class SiteSession(context: Context, private val webView: WebView) {
 
     private val appContext = context.applicationContext
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var pendingCallResult: ((Boolean) -> Unit)? = null
+    private var pendingCallResult: ((Boolean, String) -> Unit)? = null
 
     init {
         webView.settings.javaScriptEnabled = true
@@ -87,15 +87,16 @@ class SiteSession(context: Context, private val webView: WebView) {
         webView.loadUrl(loginUrl)
     }
 
-    /** Sessiya (cookie) allaqachon mavjud deb hisoblab, qo'ng'iroq raqamini saytga yuboradi. */
-    fun reportIncomingCall(baseUrl: String, phone: String, onResult: (Boolean) -> Unit) {
+    /** Sessiya (cookie) allaqachon mavjud deb hisoblab, qo'ng'iroq raqamini saytga yuboradi.
+     * onResult(success, detail) — detail diagnostika uchun (masalan "HTTP 401"). */
+    fun reportIncomingCall(baseUrl: String, phone: String, onResult: (Boolean, String) -> Unit) {
         val currentUrl = webView.url
         if (currentUrl.isNullOrEmpty() || !currentUrl.startsWith(baseUrl)) {
             webView.webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView, url: String) {
                     if (url.contains("/panel/login")) {
                         Log.w(TAG, "Sessiya tugagan ko'rinadi — ilovada qayta login qiling")
-                        onResult(false)
+                        onResult(false, "sessiya tugagan")
                     } else {
                         doFetch(baseUrl, phone, onResult)
                     }
@@ -103,7 +104,7 @@ class SiteSession(context: Context, private val webView: WebView) {
 
                 override fun onReceivedError(view: WebView, errorCode: Int, description: String?, failingUrl: String?) {
                     Log.e(TAG, "WebView xatosi (call report): $description")
-                    onResult(false)
+                    onResult(false, description ?: "tarmoq xatosi")
                 }
             }
             webView.loadUrl(baseUrl + "panel/")
@@ -112,16 +113,16 @@ class SiteSession(context: Context, private val webView: WebView) {
         }
     }
 
-    private fun doFetch(baseUrl: String, phone: String, onResult: (Boolean) -> Unit) {
+    private fun doFetch(baseUrl: String, phone: String, onResult: (Boolean, String) -> Unit) {
         pendingCallResult = onResult
         webView.evaluateJavascript(buildFetchJs(baseUrl, phone), null)
     }
 
     private inner class JsBridge {
         @JavascriptInterface
-        fun onCallResult(success: Boolean) {
+        fun onCallResult(success: Boolean, detail: String) {
             mainHandler.post {
-                pendingCallResult?.invoke(success)
+                pendingCallResult?.invoke(success, detail)
                 pendingCallResult = null
             }
         }
@@ -162,9 +163,9 @@ class SiteSession(context: Context, private val webView: WebView) {
                     },
                     body: JSON.stringify({phone_number: $phoneJson})
                 }).then(function(r){
-                    if (window.AndroidCall) window.AndroidCall.onCallResult(r.ok);
-                }).catch(function(){
-                    if (window.AndroidCall) window.AndroidCall.onCallResult(false);
+                    if (window.AndroidCall) window.AndroidCall.onCallResult(r.ok, 'HTTP ' + r.status);
+                }).catch(function(e){
+                    if (window.AndroidCall) window.AndroidCall.onCallResult(false, String(e));
                 });
             })();
         """.trimIndent()

@@ -148,16 +148,17 @@ class CallWatcherService : Service() {
         // handlePhoneStateChanged asosiy (UI) thread'da ishlaydi (registerReceiver
         // Handler'siz chaqirilgan), WebView ham faqat shu thread'dan ishlatilishi
         // shart — shuning uchun to'g'ridan-to'g'ri, alohida thread'siz chaqiramiz.
-        session.reportIncomingCall(prefs.siteUrl, number) { success ->
+        session.reportIncomingCall(prefs.siteUrl, number) { success, detail ->
             val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
             if (success) {
-                Log.i(TAG, "Qo'ng'iroq yuborildi: $number")
+                Log.i(TAG, "Qo'ng'iroq yuborildi: $number ($detail)")
                 Toast.makeText(applicationContext, getString(R.string.notif_call_sent, number, time), Toast.LENGTH_LONG).show()
                 updateNotification(getString(R.string.notif_call_sent, number, time))
             } else {
-                Log.e(TAG, "Qo'ng'iroqni yuborib bo'lmadi: $number")
-                Toast.makeText(applicationContext, getString(R.string.notif_call_failed, number, time), Toast.LENGTH_LONG).show()
-                updateNotification(getString(R.string.notif_call_failed, number, time))
+                Log.e(TAG, "Qo'ng'iroqni yuborib bo'lmadi: $number ($detail)")
+                val text = getString(R.string.notif_call_failed, number, time) + " [$detail]"
+                Toast.makeText(applicationContext, text, Toast.LENGTH_LONG).show()
+                updateNotification(text)
             }
         }
     }
