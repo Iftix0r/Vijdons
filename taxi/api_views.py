@@ -770,12 +770,15 @@ def client_last_order_api(request):
 @permission_classes([AllowAny])
 def operator_login(request):
     """Faqat is_staff (operator/xodim) foydalanuvchilarga token beradi."""
+    from .utils import log_system_event
     username = (request.data.get('username') or '').strip()
     password = request.data.get('password') or ''
     user = authenticate(request, username=username, password=password)
     if user is None or not user.is_staff:
+        log_system_event('operator_login_failed', f"Qo'ng'iroq ilovasi: '{username}' bilan kirish urinishi muvaffaqiyatsiz", level='warning', request=request)
         return Response({'detail': "Login yoki parol noto'g'ri."}, status=401)
     token, _ = Token.objects.get_or_create(user=user)
+    log_system_event('operator_login_success', f"Qo'ng'iroq ilovasi: '{username}' muvaffaqiyatli kirdi", request=request, user=user)
     return Response({'token': token.key, 'username': user.username})
 
 
