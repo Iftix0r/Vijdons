@@ -35,6 +35,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +71,12 @@ fun ProfileScreen(
     val context = LocalContext.current
     var showPasswordDialog by remember { mutableStateOf(false) }
     val currentDriver = state.driver ?: driver
+
+    // `driver` — sessiya boshida (kirishda) olingan bir martalik nusxa, shu
+    // sabab bu yerda har safar ekranga kirilganda haqiqiy balans/safarlar
+    // sonini serverdan qayta so'raymiz — aks holda balans hech qachon
+    // yangilanmasdi (masalan buyurtma qabul qilib komissiya yechilgandan keyin).
+    LaunchedEffect(Unit) { viewModel.refresh() }
 
     val photoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {

@@ -1706,7 +1706,16 @@ def _get_fcm_access_token():
 def send_fcm(fcm_token, title, body, data=None):
     """FCM push notification yuborish (HTTP v1 API — legacy 'fcm/send' Google
     tomonidan butunlay o'chirilgan, shu sabab xizmat hisobi orqali OAuth2
-    bilan ishlaydigan v1 endpoint ishlatiladi)."""
+    bilan ishlaydigan v1 endpoint ishlatiladi).
+
+    Diqqat: xabarda ATAYLAB `notification` bloki YO'Q — faqat `data`. Agar
+    top-level `notification` bo'lsa, Android ilova fonda/o'chirilgan
+    bo'lganda FCM SDK bildirishnomani android tizimi darajasida o'zi avtomatik
+    ko'rsatib yuboradi va ilovaning `onMessageReceived()` kodi umuman
+    chaqirilmaydi — bu esa yangi buyurtma uchun to'liq ekran (full-screen)
+    ochish, ovoz/tebranish kabi maxsus mantiqni chetlab o'tib ketardi. Sof
+    `data`-xabar esa ilova qaysi holatda bo'lishidan qat'i nazar (fonda,
+    o'chirilgan, ochiq) doim `onMessageReceived()`ga yetib boradi."""
     from django.conf import settings
     project_id = getattr(settings, 'FCM_PROJECT_ID', '')
     if not project_id or not fcm_token:
@@ -1717,15 +1726,13 @@ def send_fcm(fcm_token, title, body, data=None):
             return False
         # v1 xabarida `data` faqat string qiymatlarni qabul qiladi.
         str_data = {str(k): str(v) for k, v in (data or {}).items()}
+        str_data['title'] = title
+        str_data['body'] = body
         payload = json.dumps({
             'message': {
                 'token': fcm_token,
-                'notification': {'title': title, 'body': body},
                 'data': str_data,
-                'android': {
-                    'priority': 'high',
-                    'notification': {'sound': 'default', 'channel_id': 'new_orders_channel'},
-                },
+                'android': {'priority': 'high'},
             },
         }).encode()
         req = urllib.request.Request(

@@ -45,15 +45,26 @@ fun SosScreen(viewModel: SosViewModel = hiltViewModel()) {
     val context = LocalContext.current
     var lat by remember { mutableStateOf<Double?>(null) }
     var lng by remember { mutableStateOf<Double?>(null) }
+    // SOS favqulodda vaziyat uchun — haydovchi joylashuv biriktirilib
+    // yuborilayotganini yoki yo'qligini bilishi kerak, aks holda sukut
+    // bo'yicha joylashuvsiz jo'natilgani sezilmasdan qolib ketardi.
+    var locationStatus by remember { mutableStateOf("Joylashuv aniqlanmoqda...") }
 
     LaunchedEffect(Unit) {
         val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        if (granted) {
-            LocationServices.getFusedLocationProviderClient(context).lastLocation.addOnSuccessListener { location ->
+        if (!granted) {
+            locationStatus = "Joylashuv ruxsati yo'q — SOS joylashuvsiz yuboriladi"
+            return@LaunchedEffect
+        }
+        LocationServices.getFusedLocationProviderClient(context).lastLocation
+            .addOnSuccessListener { location ->
                 lat = location?.latitude
                 lng = location?.longitude
+                locationStatus = if (location != null) "Joylashuv aniqlandi" else "Joylashuv topilmadi — SOS joylashuvsiz yuboriladi"
             }
-        }
+            .addOnFailureListener {
+                locationStatus = "Joylashuv topilmadi — SOS joylashuvsiz yuboriladi"
+            }
     }
 
     Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background).padding(16.dp)) {
@@ -67,6 +78,8 @@ fun SosScreen(viewModel: SosViewModel = hiltViewModel()) {
         Text("SOS — favqulodda yordam", style = MaterialTheme.typography.headlineSmall, color = VijdonColors.Red)
         Spacer(Modifier.height(8.dp))
         Text("Yuborilganda joriy joylashuvingiz operatorlarga darhol xabar qilinadi.", style = MaterialTheme.typography.bodyMedium, color = VijdonColors.TextSecondary)
+        Spacer(Modifier.height(8.dp))
+        Text(locationStatus, style = MaterialTheme.typography.bodySmall, color = if (lat != null) VijdonColors.Green else VijdonColors.TextSecondary)
         Spacer(Modifier.height(20.dp))
         OutlinedTextField(
             value = state.note, onValueChange = viewModel::onNoteChange,

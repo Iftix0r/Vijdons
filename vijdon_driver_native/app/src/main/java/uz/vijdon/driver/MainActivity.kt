@@ -1,6 +1,9 @@
 package uz.vijdon.driver
 
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
@@ -43,8 +46,13 @@ class MainActivity : ComponentActivity() {
     // ichida chaqirish (pastdagi yordamchi composable'lar — LoadingBox,
     // AuthNavHost va ekranlarning o'zi — alohida funksiya sifatida muammosiz
     // ishlaydi, faqat aynan shu "ildiz" composable muammoli edi).
+    companion object {
+        const val EXTRA_NEW_ORDER_ALERT = "extra_new_order_alert"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        showOverLockscreenIfNeeded(intent)
         setContent {
             VijdonDriverTheme {
                 val sessionViewModel: SessionViewModel = hiltViewModel()
@@ -59,6 +67,31 @@ class MainActivity : ComponentActivity() {
                     is SessionState.Approved -> ApprovedScaffold(driver = s.driver, onLogout = sessionViewModel::logout)
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        showOverLockscreenIfNeeded(intent)
+    }
+
+    /**
+     * Yangi buyurtma push-bildirishnomasidan "to'liq ekran" sifatida
+     * ochilganda — qurilma qulflangan bo'lsa ham ekran ustida ko'rinishi
+     * uchun. Oddiy (bildirishnomasiz) ochilishda bu bayroqlar qo'yilmaydi,
+     * aks holda ilova doim qulf ekranini chetlab o'tgan bo'lardi.
+     */
+    private fun showOverLockscreenIfNeeded(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_NEW_ORDER_ALERT, false) != true) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        } else {
+            @Suppress("DEPRECATION")
+            window.addFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON,
+            )
         }
     }
 }
