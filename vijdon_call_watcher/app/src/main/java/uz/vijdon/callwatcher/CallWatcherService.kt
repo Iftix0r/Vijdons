@@ -192,9 +192,12 @@ class CallWatcherService : Service() {
             if (recorder.start(number, prefs.audioSourceIndex)) {
                 callRecorder = recorder
                 recordingNumber = number
+            } else {
+                toast(getString(R.string.rec_start_failed))
             }
         } catch (e: Exception) {
             Log.e(TAG, "Yozib olishni boshlashda xato", e)
+            toast(getString(R.string.rec_start_failed))
         }
     }
 
@@ -215,8 +218,10 @@ class CallWatcherService : Service() {
                     if (next != prefs.audioSourceIndex) {
                         Log.w(TAG, "Audio manba jim edi — keyingi qo'ng'iroqda $next -indeks sinaladi")
                         prefs.audioSourceIndex = next
+                        toast(getString(R.string.rec_silent_retry))
                     } else {
                         Log.e(TAG, "Barcha audio manbalar sinab ko'rildi, hech biri ovoz yozmadi — bu qurilmada qo'ng'iroq yozib olish imkonsiz ko'rinadi")
+                        toast(getString(R.string.rec_silent_exhausted))
                     }
                 }
                 return
@@ -227,14 +232,20 @@ class CallWatcherService : Service() {
             session.uploadCallRecording(prefs.siteUrl, number, file, durationSec) { success, detail ->
                 if (success) {
                     Log.i(TAG, "Qo'ng'iroq yozuvi yuklandi: $number, ${durationSec}s ($detail)")
+                    toast(getString(R.string.rec_uploaded, durationSec))
                     file.delete()
                 } else {
                     Log.e(TAG, "Qo'ng'iroq yozuvini yuklab bo'lmadi: $number ($detail)")
+                    toast(getString(R.string.rec_upload_failed, detail))
                 }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Yozuvni to'xtatish/yuklashda xato", e)
         }
+    }
+
+    private fun toast(text: String) {
+        Toast.makeText(applicationContext, text, Toast.LENGTH_LONG).show()
     }
 
     private fun updateNotification(text: String) {

@@ -22,4 +22,10 @@
     <string name="notif_text">Kiruvchi qo\'ng\'iroqlar avtomatik saytga yuborilmoqda</string>
     <string name="notif_call_sent">So\'nggi qo\'ng\'iroq: %1$s — saytga yuborildi ✅ (%2$s)</string>
     <string name="notif_call_failed">So\'nggi qo\'ng\'iroq: %1$s — yuborilmadi ❌ (%2$s)</string>
+
+    <string name="rec_start_failed">🎙 Ovoz yozib bo\'lmadi (ruxsat yo\'q yoki qurilma qo\'llamaydi)</string>
+    <string name="rec_silent_retry">🎙 Yozuv jim chiqdi — keyingi qo\'ng\'iroqda boshqa usul sinaladi</string>
+    <string name="rec_silent_exhausted">🎙 Bu qurilmada qo\'ng\'iroq ovozini yozib bo\'lmayapti (barcha usullar sinaldi)</string>
+    <string name="rec_uploaded">🎙 Qo\'ng\'iroq yozuvi saytga yuklandi (%1$ds)</string>
+    <string name="rec_upload_failed">🎙 Qo\'ng\'iroq yozuvini yuklab bo\'lmadi (%1$s)</string>
 </resources>
