@@ -42,9 +42,17 @@ def active_drivers(request):
     return {
         # Yangi buyurtma oynasida haydovchini tanlashda "bugun nechta buyurtma
         # oldi" ko'rinib tursin — operator kam zakaz olganlarga ham teng
-        # taqsimlab bera olsin.
+        # taqsimlab bera olsin. `is_on_duty=True` ATAYLAB qo'shilgan — xaritadan
+        # tanlashda allaqachon shu cheklov bor (bazadagi izohga qarang), lekin
+        # oddiy matnli ro'yxat filtrlanmagan edi: operator oflayn haydovchini
+        # tanlab qo'ysa, `dispatch_order()` uni baribir kandidat sifatida
+        # ko'rmaydi (u ham xuddi shu is_on_duty shartini talab qiladi) — bu
+        # esa buyurtmani `dispatch_timeout` (odatda 10s) ichida hech kim
+        # ko'rmasdan boshqasiga qayta yo'naltirilishiga olib kelardi, garchi
+        # ilovada FCM push ishlab tursa ham (haydovchi oflayn bo'lgani uchun
+        # asosiy ekran ro'yxatni umuman ko'rsatmaydi).
         'active_drivers': Driver.objects.filter(
-            is_active=True, approval_status=Driver.APPROVAL_APPROVED
+            is_active=True, is_on_duty=True, approval_status=Driver.APPROVAL_APPROVED
         ).annotate(
             today_orders_count=Count(
                 'orders', filter=Q(orders__created_at__date=today) & ~Q(orders__status='cancelled')
