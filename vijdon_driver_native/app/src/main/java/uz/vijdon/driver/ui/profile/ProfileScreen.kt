@@ -18,16 +18,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.AddCard
 import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.DirectionsCar
 import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.FiberManualRecord
+import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Receipt
 import androidx.compose.material.icons.rounded.Sos
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -46,6 +51,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -134,12 +140,16 @@ fun ProfileScreen(
         Text(currentDriver.phone_number, color = VijdonColors.TextSecondary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
         Spacer(Modifier.height(8.dp))
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Pill(if (currentDriver.is_on_duty) "Onlayn" else "Oflayn", color = if (currentDriver.is_on_duty) VijdonColors.Green else VijdonColors.TextSecondary)
+            Pill(if (currentDriver.is_on_duty) "Ish navbatida" else "Oflayn", color = if (currentDriver.is_on_duty) VijdonColors.Green else VijdonColors.TextSecondary)
         }
 
         Spacer(Modifier.height(20.dp))
         Column(modifier = Modifier.fillMaxWidth().cardShadow().background(VijdonColors.Surface, CardShape).padding(16.dp)) {
-            Text("JORIY BALANS", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.AccountBalanceWallet, contentDescription = null, tint = VijdonColors.Yellow, modifier = Modifier.size(11.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("JORIY BALANS", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
+            }
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(currentDriver.balance, color = VijdonColors.Green, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold))
                 Spacer(Modifier.width(6.dp))
@@ -149,11 +159,13 @@ fun ProfileScreen(
 
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatBox("Safarlar", currentDriver.trips_count.toString(), Modifier.weight(1f))
-            StatBox("Reyting", currentDriver.rating, Modifier.weight(1f), valueColor = VijdonColors.YellowDark)
+            StatBox("Safarlar", currentDriver.trips_count.toString(), Icons.Rounded.Flag, VijdonColors.Yellow, Modifier.weight(1f), valueColor = VijdonColors.Yellow)
+            StatBox("Reyting", currentDriver.rating, Icons.Rounded.Star, Color(0xFFFF9500), Modifier.weight(1f), valueColor = Color(0xFFFF9500))
             StatBox(
                 "Navbat",
                 if (currentDriver.is_on_duty) "Faol" else "—",
+                Icons.Rounded.FiberManualRecord,
+                if (currentDriver.is_on_duty) VijdonColors.Green else Color(0xFF8E8E93),
                 Modifier.weight(1f),
                 valueColor = if (currentDriver.is_on_duty) VijdonColors.Green else VijdonColors.TextSecondary,
             )
@@ -162,22 +174,22 @@ fun ProfileScreen(
         Spacer(Modifier.height(20.dp))
         Text("TRANSPORT VOSITASI", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
         Spacer(Modifier.height(6.dp))
-        MenuRow(Icons.Rounded.DirectionsCar, currentDriver.car_model, currentDriver.car_number, showChevron = false) {}
+        MenuRow(Icons.Rounded.DirectionsCar, currentDriver.car_model, currentDriver.car_number, tint = VijdonColors.Blue, showChevron = false) {}
 
         Spacer(Modifier.height(16.dp))
         Text("SOZLAMALAR", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
         Spacer(Modifier.height(6.dp))
-        MenuRow(Icons.Rounded.Receipt, "Balans tarixi", "", onClick = onOpenBalanceHistory)
+        MenuRow(Icons.Rounded.Receipt, "Balans tarixi", "", tint = VijdonColors.Yellow, onClick = onOpenBalanceHistory)
         Spacer(Modifier.height(8.dp))
-        MenuRow(Icons.Rounded.AddCard, "Balans to'ldirish", "", onClick = onOpenTopup)
+        MenuRow(Icons.Rounded.AddCard, "Balans to'ldirish", "", tint = VijdonColors.Green, onClick = onOpenTopup)
         Spacer(Modifier.height(8.dp))
-        MenuRow(Icons.Rounded.Description, "Shartnoma", "", onClick = onOpenContract)
+        MenuRow(Icons.Rounded.Description, "Shartnoma", "", tint = VijdonColors.Blue, onClick = onOpenContract)
         Spacer(Modifier.height(8.dp))
-        MenuRow(Icons.Rounded.LocationOn, "Yaqin manzillar", "", onClick = onOpenAddresses)
+        MenuRow(Icons.Rounded.LocationOn, "Yaqin manzillar", "", tint = VijdonColors.Red, onClick = onOpenAddresses)
         Spacer(Modifier.height(8.dp))
         MenuRow(Icons.Rounded.Sos, "SOS", "", tint = VijdonColors.Red, onClick = onOpenSos)
         Spacer(Modifier.height(8.dp))
-        MenuRow(Icons.Rounded.Lock, "Parolni o'zgartirish", "") { showPasswordDialog = true }
+        MenuRow(Icons.Rounded.Lock, "Parolni o'zgartirish", "", tint = Color(0xFF8E8E93)) { showPasswordDialog = true }
 
         state.error?.let {
             Spacer(Modifier.height(8.dp))
@@ -209,12 +221,23 @@ fun ProfileScreen(
 }
 
 @Composable
-private fun StatBox(label: String, value: String, modifier: Modifier = Modifier, valueColor: androidx.compose.ui.graphics.Color = VijdonColors.Yellow) {
+private fun StatBox(
+    label: String,
+    value: String,
+    icon: ImageVector,
+    iconTint: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier,
+    valueColor: androidx.compose.ui.graphics.Color = VijdonColors.Yellow,
+) {
     Column(
         modifier = modifier.cardShadow().background(VijdonColors.Surface, CardShape).padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(label, color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(11.dp))
+            Spacer(Modifier.width(5.dp))
+            Text(label, color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
+        }
         Spacer(Modifier.height(4.dp))
         Text(value, color = valueColor, style = MaterialTheme.typography.titleMedium)
     }
@@ -240,7 +263,12 @@ private fun MenuRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+            Box(
+                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(tint.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
+            }
             Spacer(Modifier.width(12.dp))
             Text(title, color = VijdonColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }

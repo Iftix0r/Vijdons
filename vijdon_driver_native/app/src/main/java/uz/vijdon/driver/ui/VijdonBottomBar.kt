@@ -20,7 +20,6 @@ import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.LocalTaxi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,11 +33,12 @@ import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.ui.theme.VijdonColors
 
 /**
- * Pastki navigatsiya paneli — Uzumbank ilovasidagi kabi, to'liq kenglikda,
- * ekranning pastki qismini butunlay egallagan, suzib turmaydigan oddiy
- * panel (avvalgi "dumaloq/pill" suzib turuvchi versiya bir nechta
- * qurilmada soya bilan bog'liq g'alati vizual nuqsonlarga sabab bo'lgani
- * uchun butunlay soddalashtirilgan tuzilishga o'tkazildi).
+ * Pastki navigatsiya paneli — veb haydovchi panelidagi (`.ios-glass`,
+ * `left-4 right-4 rounded-full`) bilan bir xil: chetlardan bo'shliq bilan
+ * suzib turuvchi, to'liq dumaloq, shaffof "shisha" pill panel. Diqqat:
+ * atayin SOYASIZ (`.shadow()` ishlatilmagan) — bu aynan shu uslubdagi
+ * avvalgi versiyada bir nechta qurilmada g'alati vizual nuqsonlarga sabab
+ * bo'lgan edi; shaffof fonning o'zi yetarlicha ajratib turadi.
  */
 @Composable
 fun VijdonBottomBar(
@@ -48,22 +48,21 @@ fun VijdonBottomBar(
     onTabSelected: (String) -> Unit,
     onCreateOrder: () -> Unit,
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = VijdonColors.BottomBar,
-        shadowElevation = 8.dp,
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .clip(CircleShape)
+            .background(VijdonColors.Glass)
+            .padding(horizontal = 6.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            BottomIcon(Icons.Rounded.LocalTaxi, label = "Asosiy", selected = currentRoute == Tabs.HOME) { onTabSelected(Tabs.HOME) }
-            BottomIcon(Icons.Rounded.History, label = "Tarix", selected = currentRoute == Tabs.HISTORY) { onTabSelected(Tabs.HISTORY) }
-            FabIcon(onClick = onCreateOrder)
-            BottomIcon(Icons.Rounded.Forum, label = "Chat", selected = currentRoute == Tabs.CHAT, badge = chatBadge) { onTabSelected(Tabs.CHAT) }
-            ProfileIcon(driver = driver, selected = currentRoute == Tabs.PROFILE) { onTabSelected(Tabs.PROFILE) }
-        }
+        BottomIcon(Icons.Rounded.LocalTaxi, label = "Asosiy", selected = currentRoute == Tabs.HOME) { onTabSelected(Tabs.HOME) }
+        BottomIcon(Icons.Rounded.History, label = "Tarix", selected = currentRoute == Tabs.HISTORY) { onTabSelected(Tabs.HISTORY) }
+        FabIcon(onClick = onCreateOrder)
+        BottomIcon(Icons.Rounded.Forum, label = "Chat", selected = currentRoute == Tabs.CHAT, badge = chatBadge) { onTabSelected(Tabs.CHAT) }
+        ProfileIcon(driver = driver, selected = currentRoute == Tabs.PROFILE) { onTabSelected(Tabs.PROFILE) }
     }
 }
 
