@@ -219,7 +219,10 @@ fun HomeScreen(
     val showListBranch = currentDriver.is_on_duty && (state.orders.isNotEmpty() || state.addresses.isNotEmpty())
 
     Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background)) {
-        TopBar(rank = state.rank, balance = currentDriver.balance, onOpenRating = onOpenRating, onOpenBalance = onOpenBalance)
+        // Vaqtincha OLIB TASHLANDI — status-bar zonasidagi vizual muammoni
+        // (Reyting/Balans tugmalari bilan bog'liq) alohida tekshirish uchun.
+        // Qayta yoqish uchun quyidagi qatorni oching.
+        // TopBar(rank = state.rank, balance = currentDriver.balance, onOpenRating = onOpenRating, onOpenBalance = onOpenBalance)
 
         if (notificationPermissionMissing) {
             NotificationPermissionBanner(
