@@ -96,7 +96,7 @@ private fun AddressRow(address: AddressDto, onClick: () -> Unit) {
             .cardShadow()
             .background(VijdonColors.Surface, CardShape)
             .clickable(onClick = onClick)
-            .padding(14.dp),
+            .padding(horizontal = 18.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -104,9 +104,9 @@ private fun AddressRow(address: AddressDto, onClick: () -> Unit) {
             Box(modifier = Modifier.size(36.dp).background(VijdonColors.BadgeNeutral, CircleShape), contentAlignment = Alignment.Center) {
                 Icon(Icons.Rounded.LocationOn, contentDescription = null, tint = VijdonColors.Red, modifier = Modifier.size(18.dp))
             }
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(address.name, color = VijdonColors.TextPrimary, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                Text(address.name, color = VijdonColors.TextPrimary, style = MaterialTheme.typography.titleMedium, maxLines = 1)
                 Text("Bugun: ${address.today_orders} buyurtma", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
         }

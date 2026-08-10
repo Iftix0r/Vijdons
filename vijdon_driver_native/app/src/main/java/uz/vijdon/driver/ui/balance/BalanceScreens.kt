@@ -54,27 +54,23 @@ import uz.vijdon.driver.ui.theme.ScreenHeader
 import uz.vijdon.driver.ui.theme.VijdonColors
 import uz.vijdon.driver.ui.theme.cardShadow
 import uz.vijdon.driver.util.copyUriToCacheFile
+import uz.vijdon.driver.util.formatMoney
 
 @Composable
 fun BalanceHistoryScreen(viewModel: BalanceHistoryViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
     Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background).padding(16.dp)) {
-        ScreenHeader("Balans tarixi")
-        Spacer(Modifier.height(8.dp))
-        Column(modifier = Modifier.fillMaxWidth().cardShadow().background(VijdonColors.Surface, CardShape).padding(16.dp)) {
-            Text("JORIY BALANS", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
-            Text("${state.balance} so'm", color = VijdonColors.Green, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold))
-        }
-        state.error?.let {
-            Spacer(Modifier.height(10.dp))
-            ErrorBanner(it)
-        }
+        ScreenHeader("O'tkazmalar tarixi", subtitle = "Joriy balans: ${formatMoney(state.balance)} so'm")
         Spacer(Modifier.height(12.dp))
+        state.error?.let {
+            ErrorBanner(it)
+            Spacer(Modifier.height(10.dp))
+        }
         if (state.loading && state.entries.isEmpty()) {
             CenteredLoading()
         } else if (state.entries.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Tarix bo'sh", color = VijdonColors.TextSecondary)
+                Text("Hali o'tkazmalar yo'q", color = VijdonColors.TextSecondary)
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -82,6 +78,16 @@ fun BalanceHistoryScreen(viewModel: BalanceHistoryViewModel = hiltViewModel()) {
             }
         }
     }
+}
+
+/** Server "yyyy-MM-ddTHH:mm:ss..." beradi — veb'dagi kabi "kun.oy.yil soat:daqiqa" ko'rinishiga o'giradi. */
+private fun formatFullDate(iso: String): String {
+    if (iso.length < 16) return iso
+    val year = iso.substring(0, 4)
+    val month = iso.substring(5, 7)
+    val day = iso.substring(8, 10)
+    val time = iso.substring(11, 16)
+    return "$day.$month.$year $time"
 }
 
 @Composable
@@ -102,12 +108,12 @@ private fun BalanceEntryRow(entry: BalanceEntryDto) {
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(entry.note, color = VijdonColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
-                Text(entry.created_at.take(16).replace("T", " "), color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Text(formatFullDate(entry.created_at), color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
         }
         Spacer(Modifier.width(8.dp))
         Text(
-            "${if (entry.is_income) "+" else "-"}${entry.amount}",
+            "${if (entry.is_income) "+" else "-"}${formatMoney(entry.amount)}",
             color = if (entry.is_income) VijdonColors.Green else VijdonColors.Red,
             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
             maxLines = 1,

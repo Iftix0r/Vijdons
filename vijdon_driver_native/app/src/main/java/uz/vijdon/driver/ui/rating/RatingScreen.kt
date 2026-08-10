@@ -38,12 +38,21 @@ import uz.vijdon.driver.ui.theme.cardShadow
 
 private val medalEmoji = mapOf(1 to "🥇", 2 to "🥈", 3 to "🥉")
 
+private val UZ_MONTHS = listOf(
+    "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
+    "Iyul", "Avgust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr",
+)
+
+/** Veb'dagi kabi — "{{ month_label }} oyi · yakunlangan buyurtmalar bo'yicha". API oy nomini bermaydi, shu sabab qurilma vaqtidan olinadi. */
+private fun currentMonthLabel(): String =
+    UZ_MONTHS[java.util.Calendar.getInstance().get(java.util.Calendar.MONTH)]
+
 @Composable
 fun RatingScreen(viewModel: RatingViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background).padding(16.dp)) {
-        ScreenHeader("Reyting", subtitle = "Joriy oy — eng ko'p safar bajargan haydovchilar")
+        ScreenHeader("Reyting", subtitle = "${currentMonthLabel()} oyi · yakunlangan buyurtmalar bo'yicha")
 
         Spacer(Modifier.height(14.dp))
         RankHeroCard(myRow = state.myRow, totalDrivers = state.rows.size, gapToNext = state.gapToNext)
@@ -58,7 +67,7 @@ fun RatingScreen(viewModel: RatingViewModel = hiltViewModel()) {
             CenteredLoading()
         } else if (state.rows.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Reyting hali mavjud emas", color = VijdonColors.TextSecondary)
+                Text("Haydovchilar topilmadi", color = VijdonColors.TextSecondary)
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {

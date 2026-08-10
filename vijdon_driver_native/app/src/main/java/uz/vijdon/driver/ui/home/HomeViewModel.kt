@@ -46,9 +46,6 @@ data class HomeUiState(
     val queueDrivers: List<QueueDriverDto> = emptyList(),
     val queueLoading: Boolean = false,
     val orderDistancesM: Map<Int, Double> = emptyMap(),
-    val todayEarned: Double? = null,
-    val todayTrips: Int? = null,
-    val todayStatsExpanded: Boolean = false,
 )
 
 @HiltViewModel
@@ -87,25 +84,6 @@ class HomeViewModel @Inject constructor(
             val rank = (result as? ApiResult.Success)?.data?.my_row?.rank
             _uiState.value = _uiState.value.copy(rank = rank)
         }
-        refreshTodayStats()
-    }
-
-    // Yandex Pro'dagi kabi — Asosiy ekranda bugungi daromad va safarlar
-    // sonini bir bosishda ochish/yopish mumkin bo'lgan qisqa panel.
-    fun refreshTodayStats() {
-        viewModelScope.launch {
-            val result = repository.history("today")
-            if (result is ApiResult.Success) {
-                _uiState.value = _uiState.value.copy(
-                    todayEarned = result.data.total_earned,
-                    todayTrips = result.data.completed,
-                )
-            }
-        }
-    }
-
-    fun toggleTodayStats() {
-        _uiState.value = _uiState.value.copy(todayStatsExpanded = !_uiState.value.todayStatsExpanded)
     }
 
     fun setDriver(driver: DriverDto) {
@@ -271,7 +249,7 @@ class HomeViewModel @Inject constructor(
 
     fun orderComplete(id: Int) {
         val tracker = taximeters[id]
-        runAction(id, onSuccess = ::refreshTodayStats) { repository.orderComplete(id, tracker?.distanceKm, tracker?.priceUzs) }
+        runAction(id) { repository.orderComplete(id, tracker?.distanceKm, tracker?.priceUzs) }
     }
 
     fun toggleWaiting(id: Int) {

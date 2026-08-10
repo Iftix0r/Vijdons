@@ -1,14 +1,15 @@
 package uz.vijdon.driver.ui.home
 
 import android.Manifest
+import android.app.NotificationManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.LocalTaxi
 import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Phone
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -44,22 +46,28 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import uz.vijdon.driver.data.api.AddressDto
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.data.api.OrderDto
@@ -68,8 +76,10 @@ import uz.vijdon.driver.ui.theme.CardShape
 import uz.vijdon.driver.ui.theme.CenteredLoading
 import uz.vijdon.driver.ui.theme.ErrorBanner
 import uz.vijdon.driver.ui.theme.Pill
+import uz.vijdon.driver.ui.theme.RouteAddresses
 import uz.vijdon.driver.ui.theme.VijdonColors
 import uz.vijdon.driver.ui.theme.cardShadow
+import uz.vijdon.driver.util.formatMoney
 
 @Composable
 fun HomeScreen(
@@ -98,6 +108,29 @@ fun HomeScreen(
         }
     }
 
+    // Android 14+ da "to'liq ekranli bildirishnoma" (yangi buyurtma — ilova
+    // fonda yoki ekran qulflangan bo'lsa ham boshqa ilovalar ustidan avtomatik
+    // ochiladigan ogohlantirish) endi tizim tomonidan SUKUT BO'YICHA
+    // O'CHIRILGAN — oddiy runtime ruxsat so'rovi bilan yoqib bo'lmaydi, faqat
+    // qurilma Sozlamalaridan qo'lda yoqiladi. Shu sabab har safar ekranga
+    // qaytilganda (masalan Sozlamalardan orqaga qaytgach) tekshirib, o'chiq
+    // bo'lsa ogohlantiramiz — aks holda haydovchi ilovadan chiqib ketganda
+    // yangi buyurtmalarni umuman ko'rmay qolishi mumkin.
+    var fullScreenIntentMissing by remember { mutableStateOf(false) }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        val lifecycleOwner = LocalLifecycleOwner.current
+        DisposableEffect(lifecycleOwner) {
+            val notificationManager = context.getSystemService(NotificationManager::class.java)
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    fullScreenIntentMissing = !notificationManager.canUseFullScreenIntent()
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        }
+    }
+
     val currentDriver = state.driver ?: driver
 
     val alertOrder = state.alertOrder
@@ -112,47 +145,27 @@ fun HomeScreen(
         return
     }
 
+    // Ro'yxat ko'rinadigan holatda ("else" tarmog'i) navbat almashtirgichi
+    // endi tepada QOTIB QOLMAYDI — ro'yxat bilan birga LazyColumn ichida
+    // birinchi element sifatida suriladi. Boshqa holatlarda (yuklanmoqda,
+    // bo'sh, oflayn) suriladigan hech narsa yo'q, shu sabab tepada qoladi.
+    val showListBranch = currentDriver.is_on_duty && (state.orders.isNotEmpty() || state.addresses.isNotEmpty())
+
     Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background)) {
         TopBar(rank = state.rank, balance = currentDriver.balance, onOpenRating = onOpenRating, onOpenBalance = onOpenBalance)
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp)
-                .cardShadow()
-                .background(VijdonColors.Surface, CardShape)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .background(if (currentDriver.is_on_duty) VijdonColors.Green else VijdonColors.TextSecondary, CircleShape),
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    if (currentDriver.is_on_duty) "Onlayn" else "Oflayn",
-                    color = if (currentDriver.is_on_duty) VijdonColors.Green else VijdonColors.TextSecondary,
-                    style = MaterialTheme.typography.titleSmall,
-                )
-            }
-            Switch(
-                checked = currentDriver.is_on_duty,
-                onCheckedChange = { viewModel.toggleDuty() },
-                colors = SwitchDefaults.colors(checkedTrackColor = VijdonColors.Green, checkedThumbColor = VijdonColors.TextPrimary),
+        if (fullScreenIntentMissing) {
+            FullScreenIntentBanner(
+                onEnable = {
+                    context.startActivity(
+                        Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:${context.packageName}")),
+                    )
+                },
             )
         }
 
-        val todayEarned = state.todayEarned
-        if (todayEarned != null) {
-            TodayStatsBar(
-                earned = todayEarned,
-                trips = state.todayTrips ?: 0,
-                expanded = state.todayStatsExpanded,
-                onToggle = { viewModel.toggleTodayStats() },
-            )
+        if (!showListBranch) {
+            DutyToggleRow(isOnDuty = currentDriver.is_on_duty, onToggle = { viewModel.toggleDuty() })
         }
 
         if (state.lowBalance) {
@@ -180,8 +193,7 @@ fun HomeScreen(
         if (!currentDriver.is_on_duty) {
             // Oflaynda haydovchiga buyurtma/manzil ro'yxati emas — chunki
             // ular baribir unga tegishli emas — balki onlayn bo'lishga
-            // undovchi chaqiruv ko'rsatiladi. Bugungi statistika (yuqoridagi
-            // TodayStatsBar) baribir onlayn/oflaynligidan qat'i nazar ko'rinadi.
+            // undovchi chaqiruv ko'rsatiladi.
             OfflineCallToAction(onGoOnline = { viewModel.toggleDuty() })
         } else if (state.loading && state.orders.isEmpty() && state.addresses.isEmpty()) {
             CenteredLoading()
@@ -206,6 +218,13 @@ fun HomeScreen(
                 state.addressDistancesM[addr.id]?.takeIf { it <= 1000.0 }?.let { addr.id }
             }
             LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+                item {
+                    Column {
+                        Spacer(Modifier.height(4.dp))
+                        DutyToggleRow(isOnDuty = currentDriver.is_on_duty, onToggle = { viewModel.toggleDuty() }, horizontalPadding = 0.dp)
+                        Spacer(Modifier.height(10.dp))
+                    }
+                }
                 items(state.orders, key = { "order-${it.id}" }) { order ->
                     Column(Modifier.animateItem()) {
                         OrderCard(
@@ -266,6 +285,72 @@ fun HomeScreen(
     }
 }
 
+/**
+ * Onlayn/oflayn almashtirgichi. Ro'yxat bo'lganda LazyColumn ichiga birinchi
+ * element sifatida qo'yiladi — shu sabab ro'yxatni yuqoriga surganda bu ham
+ * QOTIB QOLMASDAN boshqa qatorlar bilan birga suriladi (avval doim tepada
+ * qattiq turardi). Ro'yxat yo'q (yuklanmoqda/bo'sh/oflayn) holatlarda esa
+ * suriladigan hech narsa yo'q, shu sabab tepada oddiy sarlavha sifatida qoladi.
+ */
+@Composable
+private fun DutyToggleRow(isOnDuty: Boolean, onToggle: () -> Unit, horizontalPadding: androidx.compose.ui.unit.Dp = 16.dp) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = horizontalPadding, vertical = 4.dp)
+            .cardShadow()
+            .background(VijdonColors.Surface, CardShape)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .background(if (isOnDuty) VijdonColors.Green else VijdonColors.TextSecondary, CircleShape),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                if (isOnDuty) "Onlayn" else "Oflayn",
+                color = if (isOnDuty) VijdonColors.Green else VijdonColors.TextSecondary,
+                style = MaterialTheme.typography.titleSmall,
+            )
+        }
+        Switch(
+            checked = isOnDuty,
+            onCheckedChange = { onToggle() },
+            colors = SwitchDefaults.colors(checkedTrackColor = VijdonColors.Green, checkedThumbColor = VijdonColors.TextPrimary),
+        )
+    }
+}
+
+/** Android 14+ da "to'liq ekranli bildirishnoma" ruxsati o'chiq bo'lsa —
+ * haydovchi ilovadan chiqib ketganda yangi buyurtmani ko'rmay qolishi mumkin,
+ * shu sabab qurilma Sozlamalariga yo'naltiruvchi ogohlantirish ko'rsatiladi. */
+@Composable
+private fun FullScreenIntentBanner(onEnable: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .background(VijdonColors.Blue.copy(alpha = 0.12f), CardShape)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Rounded.NotificationsActive, contentDescription = null, tint = VijdonColors.Blue, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "Ilovadan chiqib ketganda yangi buyurtma ogohlantirishi ko'rinishi uchun to'liq ekranli bildirishnomani yoqing",
+            color = VijdonColors.Blue,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(8.dp))
+        TextButton(onClick = onEnable) { Text("Yoqish", color = VijdonColors.Blue, style = MaterialTheme.typography.labelMedium) }
+    }
+}
+
 /** Haydovchi oflaynda bo'lganda Bosh sahifaning asosiy qismi — buyurtma va
  * manzil ro'yxati o'rniga, onlayn bo'lishga undovchi katta chaqiruv. */
 @Composable
@@ -319,9 +404,13 @@ private fun HomeAddressRow(
         modifier = Modifier
             .fillMaxWidth()
             .cardShadow()
-            .let { if (isNearest) it.border(2.dp, VijdonColors.Yellow, CardShape) else it }
+            .let { if (isNearest) it.border(2.5.dp, VijdonColors.Yellow, CardShape) else it }
             .background(VijdonColors.Surface, CardShape)
-            .padding(14.dp),
+            // Faol (eng yaqin) karta fonga qo'shimcha sariq tus beriladi —
+            // qora fonda ingichka border yolg'iz o'zi yetarlicha ajralib
+            // turmaydi, shu sabab butun karta sal "iliqroq" ko'rinadi.
+            .let { if (isNearest) it.background(VijdonColors.Yellow.copy(alpha = 0.08f), CardShape) else it }
+            .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
@@ -335,12 +424,15 @@ private fun HomeAddressRow(
                         modifier = Modifier.size(18.dp),
                     )
                 }
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(address.name, color = VijdonColors.TextPrimary, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                    Text(address.name, color = VijdonColors.TextPrimary, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                    // "· eng yaqin" matni ortiqcha edi — bu ma'lumot allaqachon
+                    // sariq border/badge orqali ko'rinib turibdi, shu sabab
+                    // olib tashlandi va masofaning o'zi kattaroq ko'rsatiladi.
                     Text(
-                        if (distanceM != null) formatDistanceM(distanceM) + if (isNearest) " · eng yaqin" else "" else "Masofa noma'lum",
-                        color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall,
+                        distanceM?.let { formatDistanceM(it) } ?: "Masofa noma'lum",
+                        color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             }
@@ -413,50 +505,13 @@ private fun QueueDriverRow(d: QueueDriverDto) {
 }
 
 internal fun formatDistanceM(m: Double): String =
-    if (m < 1000) "${m.toInt()} m" else "%.1f km".format(m / 1000)
+    if (m < 1000) "${m.toInt()} m" else String.format(java.util.Locale.US, "%.1f km", m / 1000)
 
 /** Yandex Pro'dagi "3 km - 5 daqiqa" formatiga o'xshash — shahar ichi
  * o'rtacha tezlik (~28 km/soat) asosida taxminiy vaqt. */
 internal fun formatDistanceEta(m: Double): String {
     val etaMin = (m / 1000.0 / 28.0 * 60.0).toInt().coerceAtLeast(1)
     return "${formatDistanceM(m)} · $etaMin daqiqa"
-}
-
-@Composable
-private fun TodayStatsBar(earned: Double, trips: Int, expanded: Boolean, onToggle: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-            .cardShadow()
-            .background(VijdonColors.Surface, CardShape)
-            .clip(CardShape)
-            .clickable(onClick = onToggle)
-            .padding(horizontal = 16.dp, vertical = if (expanded) 14.dp else 10.dp),
-    ) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Bugungi daromad", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
-            Icon(
-                if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(18.dp),
-            )
-        }
-        if (expanded) {
-            Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                Column {
-                    Text("${earned.toInt()} so'm", color = VijdonColors.Green, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold))
-                    Text("Daromad", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
-                }
-                Column {
-                    Text(trips.toString(), color = VijdonColors.Yellow, style = MaterialTheme.typography.headlineSmall)
-                    Text("Safar", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
-                }
-            }
-        } else {
-            Text("${earned.toInt()} so'm · $trips safar", color = VijdonColors.Green, style = MaterialTheme.typography.titleSmall)
-        }
-    }
 }
 
 /** Web'dagi rangi: 1-o'rin — oltin, 2-3-o'rin — apelsin, qolganlari — kulrang. */
@@ -480,15 +535,15 @@ private fun TopBar(rank: Int?, balance: String, onOpenRating: () -> Unit, onOpen
             onClick = onOpenRating,
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = rankIconColor(rank), modifier = Modifier.size(15.dp))
-                Spacer(Modifier.width(6.dp))
+                Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = rankIconColor(rank), modifier = Modifier.size(19.dp))
+                Spacer(Modifier.width(7.dp))
                 Text(
                     if (rank != null) "$rank-o'rin" else "—",
                     color = VijdonColors.TextPrimary,
-                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 )
             }
         }
@@ -499,15 +554,15 @@ private fun TopBar(rank: Int?, balance: String, onOpenRating: () -> Unit, onOpen
             onClick = onOpenBalance,
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Rounded.CreditCard, contentDescription = null, tint = VijdonColors.Green, modifier = Modifier.size(15.dp))
-                Spacer(Modifier.width(6.dp))
+                Icon(Icons.Rounded.CreditCard, contentDescription = null, tint = VijdonColors.Green, modifier = Modifier.size(19.dp))
+                Spacer(Modifier.width(7.dp))
                 Text(
-                    "$balance so'm",
+                    "${formatMoney(balance)} so'm",
                     color = VijdonColors.TextPrimary,
-                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 )
             }
         }
@@ -552,17 +607,32 @@ private fun OrderCard(
                 Text(formatDistanceEta(distanceM), color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
             }
         }
+        Spacer(Modifier.height(10.dp))
+        RouteAddresses(order.from_address, order.to_address)
         Spacer(Modifier.height(8.dp))
-        Text("Qayerdan: ${order.from_address}", color = VijdonColors.TextPrimary)
-        if (order.to_address.isNotBlank()) {
-            Text("Qayerga: ${order.to_address}", color = VijdonColors.TextPrimary)
-        }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.Phone, contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(4.dp))
             Text("${order.client_name} · ${order.client_phone}", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
         }
-        order.price?.let { Text("$it so'm", color = VijdonColors.Green, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold)) }
+
+        // Veb'dagi buyurtma kartasidagi kabi — narx (katta, yashil) va
+        // masofa/to'lov turi bir qatorda, ajratuvchi chiziqdan pastda.
+        Spacer(Modifier.height(10.dp))
+        HorizontalDivider(color = VijdonColors.Border)
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            order.price?.let {
+                Text("${formatMoney(it)} so'm", color = VijdonColors.Green, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
+            } ?: Spacer(Modifier.width(1.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "${if (order.payment_type == "cash") "💵" else "💳"} ${order.car_type_display}",
+                    color = VijdonColors.TextSecondary,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
+        }
 
         Spacer(Modifier.height(12.dp))
         if (inProgress) {

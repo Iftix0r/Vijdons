@@ -67,6 +67,7 @@ import uz.vijdon.driver.ui.theme.ScreenHeader
 import uz.vijdon.driver.ui.theme.VijdonColors
 import uz.vijdon.driver.ui.theme.cardShadow
 import uz.vijdon.driver.util.copyUriToCacheFile
+import uz.vijdon.driver.util.formatMoney
 
 @Composable
 fun ProfileScreen(
@@ -151,7 +152,7 @@ fun ProfileScreen(
                 Text("JORIY BALANS", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
             }
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(currentDriver.balance, color = VijdonColors.Green, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold))
+                Text(formatMoney(currentDriver.balance), color = VijdonColors.Green, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold))
                 Spacer(Modifier.width(6.dp))
                 Text("so'm", color = VijdonColors.TextSecondary, modifier = Modifier.padding(bottom = 6.dp))
             }

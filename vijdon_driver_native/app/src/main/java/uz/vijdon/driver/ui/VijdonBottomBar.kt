@@ -5,9 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -66,35 +64,32 @@ fun VijdonBottomBar(
     }
 }
 
+/** Veb'dagi pastki panelda ikonka ostida matn yozuvi yo'q — faqat ikonka. */
 @Composable
 private fun BottomIcon(icon: ImageVector, label: String, selected: Boolean, badge: Int? = null, onClick: () -> Unit) {
     val tint by animateColorAsState(
         if (selected) VijdonColors.Yellow else VijdonColors.TextSecondary,
         label = "bottomIconTint",
     )
-    Column(
+    Box(
         modifier = Modifier
             .clip(CircleShape)
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(24.dp))
-            if (badge != null && badge > 0) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .size(14.dp)
-                        .background(VijdonColors.Red, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(badge.toString(), color = VijdonColors.TextPrimary, fontSize = 9.sp)
-                }
+        Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(26.dp))
+        if (badge != null && badge > 0) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(14.dp)
+                    .background(VijdonColors.Red, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(badge.toString(), color = VijdonColors.TextPrimary, fontSize = 9.sp)
             }
         }
-        Spacer(Modifier.height(2.dp))
-        Text(label, color = tint, style = MaterialTheme.typography.labelSmall)
     }
 }
 
@@ -115,27 +110,25 @@ private fun FabIcon(onClick: () -> Unit) {
 @Composable
 private fun ProfileIcon(driver: DriverDto, selected: Boolean, onClick: () -> Unit) {
     val initial = driver.full_name.trim().firstOrNull()?.uppercase() ?: "?"
-    val tint by animateColorAsState(
-        if (selected) VijdonColors.Yellow else VijdonColors.TextSecondary,
-        label = "profileIconTint",
-    )
-    Column(
+    Box(
         modifier = Modifier
             .clip(CircleShape)
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Box(
             modifier = Modifier
-                .size(24.dp)
+                .size(26.dp)
                 .clip(CircleShape)
-                .background(if (selected) VijdonColors.Yellow else VijdonColors.Red),
+                // Diqqat: sukut rang avval QIZIL edi — pastki panelda
+                // yagona qizil dumaloq bo'lgani uchun ogohlantirish/xabar
+                // nishoniga o'xshab, chalkashlik keltirib chiqarardi. Qizil
+                // faqat haqiqiy nishonlar (masalan chat badge'i) uchun qoladi.
+                .background(if (selected) VijdonColors.Yellow else VijdonColors.Blue),
             contentAlignment = Alignment.Center,
         ) {
             Text(initial, color = VijdonColors.TextPrimary, style = MaterialTheme.typography.labelSmall)
         }
-        Spacer(Modifier.height(2.dp))
-        Text("Profil", color = tint, style = MaterialTheme.typography.labelSmall)
     }
 }

@@ -28,6 +28,11 @@ object VijdonColors {
     val Green = Color(0xFF34C759)
     val Red = Color(0xFFFF3B30)
     val Blue = Color(0xFF007AFF)
+    // Qorong'i fonda oddiy --ios-blue past kontrastli ko'rinadi (masalan
+    // statistika kartalaridagi kichik matnlarda) — shu o'rinlarda iOS tizim
+    // ko'k-havo rangi (--ios-cyan) ishlatiladi, yorug' mavzuda esa oddiy
+    // ko'k yetarli kontrast beradi.
+    val Cyan: Color @Composable get() = if (isSystemInDarkTheme()) Color(0xFF64D2FF) else Blue
 
     // --ios-label
     val TextPrimary: Color @Composable get() = if (isSystemInDarkTheme()) Color(0xFFFFFFFF) else Color(0xFF000000)

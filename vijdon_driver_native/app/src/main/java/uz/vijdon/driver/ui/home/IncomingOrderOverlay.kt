@@ -48,6 +48,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import uz.vijdon.driver.data.api.OrderDto
 import uz.vijdon.driver.ui.theme.VijdonColors
+import uz.vijdon.driver.util.formatMoney
 
 /**
  * Yandex Pro haydovchi ilovasidagi kabi — yangi (shaxsan shu haydovchiga
@@ -151,7 +152,7 @@ fun IncomingOrderOverlay(order: OrderDto, totalSec: Int, distanceM: Double?, onA
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Payments, contentDescription = null, tint = VijdonColors.Green, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("$it so'm", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold), color = VijdonColors.Green)
+                Text("${formatMoney(it)} so'm", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold), color = VijdonColors.Green)
             }
             Spacer(Modifier.height(12.dp))
         }

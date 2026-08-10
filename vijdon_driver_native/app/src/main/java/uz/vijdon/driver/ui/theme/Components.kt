@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,9 +31,14 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-/** Veb paneldagi "2 navbatda" / "Yakunlandi" kabi dumaloq nishonlar. */
+/**
+ * Veb paneldagi "2 navbatda" / "Yakunlandi" kabi dumaloq nishonlar. Fon
+ * sukut bo'yicha matn rangining o'zidan tintlanadi (`.pill-green`/`.pill-red`
+ * web klasslari kabi) — bir xil neytral kulrang fonda rangli matnga
+ * qaraganda ancha yaxshi kontrast beradi.
+ */
 @Composable
-fun Pill(text: String, color: Color = VijdonColors.TextSecondary, background: Color = VijdonColors.BadgeNeutral, modifier: Modifier = Modifier) {
+fun Pill(text: String, color: Color = VijdonColors.TextSecondary, background: Color = color.copy(alpha = 0.15f), modifier: Modifier = Modifier) {
     Text(
         text,
         color = color,
@@ -107,6 +113,41 @@ fun ScreenHeader(title: String, subtitle: String? = null, modifier: Modifier = M
 fun CenteredLoading(modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         CircularProgressIndicator(color = VijdonColors.Yellow)
+    }
+}
+
+/**
+ * Veb paneldagi buyurtma kartalaridagi kabi — yashil nuqta (qayerdan) va
+ * qizil manzil belgisi (qayerga) orasida chiziq bilan marshrutni bir
+ * qarashda ko'rsatadi. Matn prefiksi ("Qayerdan:"/"Qayerga:") o'rniga shu
+ * vizual belgi ishlatiladi — Buyurtma kartasi (Home) va Tarix bir xil.
+ * B nuqta har doim (manzil ko'rsatilmagan bo'lsa ham) chiziladi — ba'zi
+ * kartalarda faqat A, boshqalarida A+B ko'rinishi haydovchini
+ * chalg'itmasligi uchun format doim bir xil bo'lishi kerak.
+ */
+@Composable
+fun RouteAddresses(fromAddress: String, toAddress: String, modifier: Modifier = Modifier) {
+    val hasDestination = toAddress.isNotBlank()
+    Row(modifier = modifier) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(top = 4.dp)) {
+            Box(modifier = Modifier.size(8.dp).background(VijdonColors.Green, CircleShape))
+            Box(modifier = Modifier.width(2.dp).height(20.dp).padding(vertical = 2.dp).background(VijdonColors.Border))
+            Icon(
+                Icons.Rounded.LocationOn, contentDescription = null,
+                tint = if (hasDestination) VijdonColors.Red else VijdonColors.TextSecondary.copy(alpha = 0.5f),
+                modifier = Modifier.size(12.dp),
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(fromAddress, color = VijdonColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                if (hasDestination) toAddress else "Manzil ko'rsatilmagan",
+                color = VijdonColors.TextSecondary.copy(alpha = if (hasDestination) 1f else 0.6f),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
     }
 }
 
