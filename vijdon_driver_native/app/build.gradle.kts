@@ -82,6 +82,22 @@ dependencies {
     kapt("com.google.dagger:hilt-compiler:2.58")
     implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
 
+    // WorkManager — bildirishnoma tugmasidan (OrderActionReceiver) kelgan
+    // "Qabul qilish/Rad etish" so'rovi kafolatlangan bajarilishi uchun.
+    // Oddiy BroadcastReceiver + goAsync() + korutina — tizim ilova jarayonini
+    // (ayniqsa OEM'larning agressiv "battery saver"i) o'sha ondayoq
+    // to'xtatib qo'yishi mumkin bo'lgan holatlarda tarmoq so'rovi hech
+    // qachon yetib bormay qolishi mumkin edi; WorkManager esa buni albatta
+    // (kerak bo'lsa jarayon o'lganidan keyin ham qayta urinib) bajaradi.
+    // Diqqat: `androidx.hilt:hilt-work` (kapt orqali @HiltWorker generatsiya
+    // qiladigan) ATAYLAB ishlatilmagan — uning kapt protsessori hozirgi
+    // Kotlin (2.2.20) metadata formatini o'qiy olmasdan xato berdi ("Unable
+    // to read Kotlin metadata due to unsupported metadata kind"). Shu sabab
+    // `OrderActionWorker` oddiy Worker sifatida yozilgan, Hilt'dan
+    // `EntryPointAccessors` orqali (kodda generatsiya shart bo'lmagan yo'l
+    // bilan) foydalanadi.
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
+
     // Tarmoq
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
     implementation("com.squareup.retrofit2:converter-kotlinx-serialization:3.0.0")

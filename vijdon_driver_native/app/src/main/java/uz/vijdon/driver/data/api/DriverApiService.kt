@@ -114,4 +114,7 @@ interface DriverApiService {
 
     @GET("nearby-drivers/")
     suspend fun nearbyDrivers(): List<NearbyDriverDto>
+
+    @GET("sounds/")
+    suspend fun driverSounds(): Map<String, DriverSoundDto>
 }

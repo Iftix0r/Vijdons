@@ -195,3 +195,9 @@ data class NearbyDriverDto(
     val rating: Double,
     val level: String,
 )
+
+/** Veb paneldagi `PanelSound` bilan bir xil — operator sozlagan (yoki
+ * standart) ovoz fayli. `url` to'liq (absolute) manzil, `null` bo'lsa
+ * o'sha hodisa uchun ovoz yo'q (chalinmaydi). */
+@Serializable
+data class DriverSoundDto(val enabled: Boolean, val url: String? = null)

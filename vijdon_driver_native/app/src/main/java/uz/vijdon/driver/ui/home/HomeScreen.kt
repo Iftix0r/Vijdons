@@ -126,6 +126,18 @@ fun HomeScreen(
     var activeOrderSheetId by remember { mutableStateOf<Int?>(null) }
     var showActiveOrdersChooser by remember { mutableStateOf(false) }
 
+    // Bildirishnomadagi "Qabul qilish" tugmasidan keyin (OpenOrderBus →
+    // HomeViewModel.pendingOpenOrderId) — buyurtma `state.orders`da
+    // ko'rinishi bilan (server javobi biroz kechikishi mumkin) uning
+    // tafsilot oynasi avtomatik ochiladi.
+    LaunchedEffect(state.pendingOpenOrderId, state.orders) {
+        val pendingId = state.pendingOpenOrderId
+        if (pendingId != null && state.orders.any { it.id == pendingId }) {
+            activeOrderSheetId = pendingId
+            viewModel.clearPendingOpenOrder()
+        }
+    }
+
     LaunchedEffect(driver) { viewModel.setDriver(driver) }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->

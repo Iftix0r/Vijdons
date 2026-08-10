@@ -40,6 +40,21 @@ fun sendTestNewOrderNotification(context: Context) {
     val pendingIntent = PendingIntent.getActivity(
         context, TEST_NOTIFICATION_ID, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
+    val actionIntent = { actionName: String ->
+        Intent(context, OrderActionReceiver::class.java).apply {
+            action = actionName
+            putExtra(OrderActionReceiver.EXTRA_ORDER_ID, TEST_ORDER_ID)
+            putExtra(OrderActionReceiver.EXTRA_NOTIFICATION_ID, TEST_NOTIFICATION_ID)
+        }
+    }
+    val acceptPendingIntent = PendingIntent.getBroadcast(
+        context, TEST_NOTIFICATION_ID * 10 + 1, actionIntent(OrderActionReceiver.ACTION_ACCEPT),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+    val rejectPendingIntent = PendingIntent.getBroadcast(
+        context, TEST_NOTIFICATION_ID * 10 + 2, actionIntent(OrderActionReceiver.ACTION_REJECT),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
     val builder = NotificationCompat.Builder(context, "new_orders_channel")
         .setContentTitle("🧪 SINOV — Yangi buyurtma!")
         .setContentText("Bu sinov xabari — bildirishnoma to'g'ri ishlayaptimi tekshirish uchun yuborildi.")
@@ -48,6 +63,8 @@ fun sendTestNewOrderNotification(context: Context) {
         .setAutoCancel(true)
         .setPriority(NotificationCompat.PRIORITY_HIGH)
         .setCategory(NotificationCompat.CATEGORY_CALL)
+        .addAction(0, "✅ Qabul qilish", acceptPendingIntent)
+        .addAction(0, "❌ Rad etish", rejectPendingIntent)
 
     val canUseFullScreen = Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE ||
         context.getSystemService(NotificationManager::class.java).canUseFullScreenIntent()

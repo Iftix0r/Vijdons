@@ -858,3 +858,28 @@ def nearby_drivers(request, driver):
         }
         for d in peers
     ])
+
+
+@api_view(['GET'])
+@driver_required
+def driver_sounds(request, driver):
+    """Veb haydovchi panelidagi bilan bir xil, operator sozlagan (yoki
+    standart) ovoz fayllari — `taxi/context_processors.py`dagi
+    `driver_sounds` bilan bir xil mantiq, faqat native ilova uchun JSON
+    ko'rinishida. `PanelSound.resolve_url()` NISBIY (masalan `/media/...`)
+    yo'l qaytaradi — native ilova bevosita ishlata olishi uchun bu yerda
+    `request.build_absolute_uri()` bilan TO'LIQ URL'ga aylantiriladi."""
+    from .models import PanelSound
+    from .constants import DRIVER_SOUND_EVENTS
+
+    sounds = PanelSound.get_map()
+    data = {}
+    for key, _label in DRIVER_SOUND_EVENTS:
+        snd = sounds.get(key)
+        enabled = snd.enabled if snd else True
+        url = snd.resolve_url() if snd else None
+        data[key] = {
+            'enabled': enabled,
+            'url': request.build_absolute_uri(url) if url else None,
+        }
+    return Response(data)

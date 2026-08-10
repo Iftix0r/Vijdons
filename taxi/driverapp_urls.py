@@ -47,4 +47,5 @@ urlpatterns = [
     path('sos/',          v.sos_send,        name='sos_send'),
     path('surge/',        v.surge_info,      name='surge_info'),
     path('nearby-drivers/', v.nearby_drivers, name='nearby_drivers'),
+    path('sounds/', v.driver_sounds, name='driver_sounds'),
 ]

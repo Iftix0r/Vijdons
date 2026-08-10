@@ -17,6 +17,7 @@ import uz.vijdon.driver.data.api.DestinationResponse
 import uz.vijdon.driver.data.api.DriverApiService
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.data.api.DutyToggleResponse
+import uz.vijdon.driver.data.api.DriverSoundDto
 import uz.vijdon.driver.data.api.NearbyDriverDto
 import uz.vijdon.driver.data.api.OrderDto
 import uz.vijdon.driver.data.api.OrderHistoryResponse
@@ -206,4 +207,6 @@ class DriverRepository @Inject constructor(
     suspend fun surge(): ApiResult<SurgeResponse> = safeCall { api.surge() }
 
     suspend fun nearbyDrivers(): ApiResult<List<NearbyDriverDto>> = safeCall { api.nearbyDrivers() }
+
+    suspend fun driverSounds(): ApiResult<Map<String, DriverSoundDto>> = safeCall { api.driverSounds() }
 }

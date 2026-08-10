@@ -35,6 +35,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import uz.vijdon.driver.data.api.DriverDto
+import uz.vijdon.driver.data.push.OpenOrderBus
 import uz.vijdon.driver.data.push.TestAlertBus
 import uz.vijdon.driver.data.push.sendTestNewOrderNotification
 import uz.vijdon.driver.ui.ApprovedScaffold
@@ -65,12 +66,14 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val EXTRA_NEW_ORDER_ALERT = "extra_new_order_alert"
         const val EXTRA_TEST_ORDER_ALERT = "extra_test_order_alert"
+        const val EXTRA_OPEN_ORDER_ID = "extra_open_order_id"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         showOverLockscreenIfNeeded(intent)
         handleTestAlertIfNeeded(intent)
+        handleOpenOrderIfNeeded(intent)
         // Bildirishnoma quvuri (kanal/ruxsat/to'liq ekranli intent) haqiqatan
         // ishlayaptimi tekshirish uchun — real buyurtma kutmasdan, ilova har
         // ochilganda bir marta SINOV bildirishnomasi yuboriladi. Kechikish —
@@ -116,6 +119,18 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         showOverLockscreenIfNeeded(intent)
         handleTestAlertIfNeeded(intent)
+        handleOpenOrderIfNeeded(intent)
+    }
+
+    /** Bildirishnomadagi "Qabul qilish" tugmasidan keyin (`OrderActionWorker`
+     * buyurtmani muvaffaqiyatli qabul qilgach ilovani ochsa) — to'g'ridan-
+     * to'g'ri o'sha buyurtma tafsiloti oynasini ko'rsatish uchun
+     * `HomeViewModel`ga `OpenOrderBus` orqali signal beradi. */
+    private fun handleOpenOrderIfNeeded(intent: Intent?) {
+        val orderId = intent?.getIntExtra(EXTRA_OPEN_ORDER_ID, -1) ?: -1
+        if (orderId == -1) return
+        intent?.removeExtra(EXTRA_OPEN_ORDER_ID)
+        lifecycleScope.launch { OpenOrderBus.trigger(orderId) }
     }
 
     /** SINOV bildirishnomasi bosilganda — `HomeViewModel`ga SOXTA "Yangi

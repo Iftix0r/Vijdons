@@ -19,6 +19,10 @@ import uz.vijdon.driver.data.api.OrderDto
 import uz.vijdon.driver.data.api.QueueDriverDto
 import uz.vijdon.driver.data.location.DriverLocationService
 import uz.vijdon.driver.data.location.LocationBus
+import uz.vijdon.driver.data.push.DriverSoundEvent
+import uz.vijdon.driver.data.push.DriverSoundPlayer
+import uz.vijdon.driver.data.push.OpenOrderBus
+import uz.vijdon.driver.data.push.TEST_ORDER_ID
 import uz.vijdon.driver.data.push.TestAlertBus
 import uz.vijdon.driver.data.repository.ApiResult
 import uz.vijdon.driver.data.repository.DriverRepository
@@ -49,6 +53,7 @@ data class HomeUiState(
     val orderDistancesM: Map<Int, Double> = emptyMap(),
     val surgeMultiplier: Double? = null,
     val surgeReason: String? = null,
+    val pendingOpenOrderId: Int? = null,
 )
 
 @HiltViewModel
@@ -97,6 +102,27 @@ class HomeViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(alertOrder = fakeTestOrder(), alertTotalSec = 30)
             }
         }
+        // Veb paneldagi kabi ovozli bildirishnomalar (operator sozlagan yoki
+        // standart fayllar) — bir marta yuklab olinadi, keyin qabul
+        // qilish/rad etish/yakunlash kabi hodisalarda shundan chalinadi.
+        viewModelScope.launch {
+            val result = repository.driverSounds()
+            if (result is ApiResult.Success) DriverSoundPlayer.updateSounds(result.data)
+        }
+        // Bildirishnomadagi "Qabul qilish" tugmasidan keyin (MainActivity →
+        // OpenOrderBus) — o'sha buyurtma tafsiloti oynasini avtomatik ochish.
+        viewModelScope.launch {
+            OpenOrderBus.events.collect { orderId ->
+                _uiState.value = _uiState.value.copy(pendingOpenOrderId = orderId)
+                refreshOrders()
+            }
+        }
+    }
+
+    /** `HomeScreen` buyurtma `state.orders`da paydo bo'lishi bilan sheet'ni
+     * ochib, shu funksiyani chaqirib holatni tozalaydi. */
+    fun clearPendingOpenOrder() {
+        _uiState.value = _uiState.value.copy(pendingOpenOrderId = null)
     }
 
     fun setDriver(driver: DriverDto) {
@@ -253,9 +279,16 @@ class HomeViewModel @Inject constructor(
                         if (alertCandidate != null && alertCandidate.id != alertOrderId) {
                             alertOrderId = alertCandidate.id
                             alertInitialTimerSec = alertCandidate.timer_sec ?: 30
+                            DriverSoundPlayer.play(DriverSoundEvent.NEW_ORDER)
                         } else if (alertCandidate == null) {
                             alertOrderId = null
                         }
+                    }
+                    // Faqat "oflaynda edi, endi kamaydi" chegarasini kesib
+                    // o'tganda bir marta ogohlantiradi — har 4 soniyalik
+                    // pollingda qayta-qayta chalinib ketmasin deb.
+                    if (result.data.low_balance && !_uiState.value.lowBalance) {
+                        DriverSoundPlayer.play(DriverSoundEvent.LOW_BALANCE)
                     }
                     _uiState.value = _uiState.value.copy(
                         orders = result.data.orders,
@@ -301,7 +334,7 @@ class HomeViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(alertOrder = null)
             return
         }
-        runAction(id) { repository.acceptOrder(id) }
+        runAction(id, onSuccess = { DriverSoundPlayer.play(DriverSoundEvent.ACCEPT) }) { repository.acceptOrder(id) }
     }
 
     fun rejectOrder(id: Int) {
@@ -310,7 +343,7 @@ class HomeViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(alertOrder = null)
             return
         }
-        runAction(id) { repository.rejectOrder(id) }
+        runAction(id, onSuccess = { DriverSoundPlayer.play(DriverSoundEvent.REJECT) }) { repository.rejectOrder(id) }
     }
 
     fun orderOnWay(id: Int) {
@@ -325,7 +358,9 @@ class HomeViewModel @Inject constructor(
 
     fun orderComplete(id: Int) {
         val tracker = taximeters[id]
-        runAction(id) { repository.orderComplete(id, tracker?.distanceKm, tracker?.priceUzs()) }
+        runAction(id, onSuccess = { DriverSoundPlayer.play(DriverSoundEvent.COMPLETE) }) {
+            repository.orderComplete(id, tracker?.distanceKm, tracker?.priceUzs())
+        }
     }
 
     fun toggleWaiting(id: Int) {
@@ -416,11 +451,6 @@ class HomeViewModel @Inject constructor(
         super.onCleared()
     }
 }
-
-/** SINOV bildirishnomasi orqali ko'rsatiladigan, serverda mavjud bo'lmagan
- * soxta buyurtma ID'si — `acceptOrder`/`rejectOrder` shu ID'ni ko'rsa
- * API'ga murojaat qilmaydi, faqat oynani yopadi. */
-private const val TEST_ORDER_ID = -999
 
 private fun fakeTestOrder() = OrderDto(
     id = TEST_ORDER_ID,

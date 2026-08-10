@@ -3,6 +3,12 @@ package uz.vijdon.driver.data.push
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 
+/** Serverda mavjud bo'lmagan, faqat SINOV bildirishnomasi uchun ishlatiladigan
+ * soxta buyurtma ID'si — shu ID kelsa, `OrderActionReceiver` va
+ * `HomeViewModel` real API'ga murojaat qilmaydi, faqat oynani/bildirishnomani
+ * yopadi. Bir joyda saqlanadi — bir nechta faylda takrorlanmasin deb. */
+const val TEST_ORDER_ID = -999
+
 /**
  * SINOV bildirishnomasi bosilganda (`MainActivity`) shuni signal qiladi —
  * `HomeViewModel` shu hodisani tinglab, to'liq ekranli "Yangi buyurtma"

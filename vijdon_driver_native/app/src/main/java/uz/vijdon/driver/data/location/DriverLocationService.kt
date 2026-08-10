@@ -28,6 +28,9 @@ import kotlinx.coroutines.launch
 import uz.vijdon.driver.MainActivity
 import uz.vijdon.driver.R
 import uz.vijdon.driver.data.api.OrderDto
+import uz.vijdon.driver.data.push.DriverSoundEvent
+import uz.vijdon.driver.data.push.DriverSoundPlayer
+import uz.vijdon.driver.data.push.OrderActionReceiver
 import uz.vijdon.driver.data.repository.ApiResult
 import uz.vijdon.driver.data.repository.DriverRepository
 import javax.inject.Inject
@@ -90,6 +93,13 @@ class DriverLocationService : Service() {
         startForegroundWithNotification()
         startLocationUpdates()
         startOrderAlertPolling()
+        // Ovozlar (HomeViewModel bilan bir xil) — ilova hech ochilmagan,
+        // faqat shu fon xizmati onlayn bo'lgan holatda ham "Yangi buyurtma"
+        // ovozi to'g'ri chalinishi uchun shu yerda ham yuklab olinadi.
+        scope.launch {
+            val result = repository.driverSounds()
+            if (result is ApiResult.Success) DriverSoundPlayer.updateSounds(result.data)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
@@ -182,6 +192,7 @@ class DriverLocationService : Service() {
     }
 
     private fun showNewOrderNotification(order: OrderDto) {
+        DriverSoundPlayer.play(DriverSoundEvent.NEW_ORDER)
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(MainActivity.EXTRA_NEW_ORDER_ALERT, true)
@@ -197,6 +208,8 @@ class DriverLocationService : Service() {
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
+            .addAction(0, "✅ Qabul qilish", orderActionPendingIntent(order.id, OrderActionReceiver.ACTION_ACCEPT))
+            .addAction(0, "❌ Rad etish", orderActionPendingIntent(order.id, OrderActionReceiver.ACTION_REJECT))
 
         // "To'liq ekran" bildirishnoma — VijdonFirebaseMessagingService bilan
         // bir xil (ilova fonda yoki qurilma qulflangan bo'lsa ham, boshqa
@@ -210,6 +223,19 @@ class DriverLocationService : Service() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
             NotificationManagerCompat.from(this).notify(NEW_ORDER_ALERT_NOTIFICATION_ID, builder.build())
         }
+    }
+
+    /** Bildirishnomadagi "Qabul qilish"/"Rad etish" tugmasi bosilganda —
+     * ilovani ochmasdan, to'g'ridan-to'g'ri `OrderActionReceiver`ga
+     * (boshqa ilova ustida turgan holatda ham) signal beradi. */
+    private fun orderActionPendingIntent(orderId: Int, actionName: String): PendingIntent {
+        val intent = Intent(this, OrderActionReceiver::class.java).apply {
+            action = actionName
+            putExtra(OrderActionReceiver.EXTRA_ORDER_ID, orderId)
+            putExtra(OrderActionReceiver.EXTRA_NOTIFICATION_ID, NEW_ORDER_ALERT_NOTIFICATION_ID)
+        }
+        val requestCode = orderId * 10 + (if (actionName == OrderActionReceiver.ACTION_ACCEPT) 1 else 2)
+        return PendingIntent.getBroadcast(this, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
     private companion object {
