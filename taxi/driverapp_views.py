@@ -229,6 +229,15 @@ def _visible_orders_qs(driver):
             if o.status != 'pending':
                 filtered.append(o)
                 continue
+            # Shaxsan shu haydovchiga yuborilgan (dispatched_to) buyurtma —
+            # yo'nalish filtridan qat'i nazar HAR DOIM ko'rinishi kerak.
+            # Aks holda operator/tizim aynan unga yo'llagan buyurtma
+            # "yo'nalish rejimi" tufayli sezilmasdan yashirinib, haydovchi
+            # hech qachon ko'rmasdan "javob bermadi" bo'lib qolardi —
+            # shaxsiy tayinlash umumiy filtrlardan ustun turishi kerak.
+            if o.dispatched_to_id == driver.id:
+                filtered.append(o)
+                continue
             if o.to_lat and o.to_lng:
                 d = haversine(o.to_lat, o.to_lng, driver.destination_lat, driver.destination_lng)
                 if d is not None and d <= 5:

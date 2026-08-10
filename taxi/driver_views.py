@@ -86,6 +86,9 @@ def _pending_orders_count(driver):
     if driver.destination_mode and driver.destination_lat and driver.destination_lng:
         count = 0
         for o in qs:
+            if o.dispatched_to_id == driver.id:
+                count += 1
+                continue
             if o.to_lat and o.to_lng:
                 d = haversine(o.to_lat, o.to_lng, driver.destination_lat, driver.destination_lng)
                 if d is not None and d <= 5:
@@ -272,6 +275,14 @@ def driver_home(request, driver):
         filtered = []
         for o in base_qs:
             if o.status != 'pending':
+                filtered.append(o)
+                continue
+            # Shaxsan shu haydovchiga yuborilgan buyurtma yo'nalish
+            # filtridan qat'i nazar HAR DOIM ko'rinishi kerak — aks holda
+            # operator/tizim aynan unga yo'llagan buyurtma "yo'nalish
+            # rejimi" tufayli sezilmasdan yashirinib, haydovchi hech
+            # qachon ko'rmasdan "javob bermadi" bo'lib qolardi.
+            if o.dispatched_to_id == driver.id:
                 filtered.append(o)
                 continue
             if o.to_lat and o.to_lng:
