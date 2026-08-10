@@ -76,6 +76,18 @@ class MainActivity : ComponentActivity() {
         // dumaloq panelning ORQASIDA yana bir "panel" bordek ko'rinardi.
         // Endi ilovaning o'z foni ekran chetigacha uzluksiz davom etadi.
         enableEdgeToEdge()
+        // `enableEdgeToEdge()`ning o'zi ba'zi qurilma/versiyalarda yetarli
+        // bo'lmadi — Android navigatsiya panelining orqasiga KONTRAST UCHUN
+        // avtomatik yarim shaffof "scrim" (qorong'i parda) chizishni davom
+        // ettirar edi (API 29+ "navigation bar contrast enforcement").
+        // Shu sabab bu yerda ANIQ ravishda shaffof qilib, kontrast
+        // majburlashi ham o'chiriladi — ortiqcha fon butunlay yo'qoladi.
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+            window.isStatusBarContrastEnforced = false
+        }
         showOverLockscreenIfNeeded(intent)
         handleTestAlertIfNeeded(intent)
         handleOpenOrderIfNeeded(intent)
