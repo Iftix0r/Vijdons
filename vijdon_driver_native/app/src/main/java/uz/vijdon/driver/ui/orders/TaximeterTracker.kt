@@ -26,6 +26,10 @@ class TaximeterTracker(
         private const val MAX_SINGLE_JUMP_M = 2_000.0
     }
 
+    /** Safar (Yo'lga chiqdim) boshlangan payt — Bosh sahifadagi taximetr
+     * vidjetida "VAQT" sekundomerini shundan hisoblab ko'rsatish uchun. */
+    val startedAtMs: Long = System.currentTimeMillis()
+
     var distanceKm: Double = 0.0
         private set
     var waitingMs: Long = 0L
@@ -38,8 +42,19 @@ class TaximeterTracker(
     private var lastTimestampMs: Long = 0L
     private var waitingStartedAtMs: Long? = null
 
-    val priceUzs: Double
-        get() = basePrice + distanceKm * pricePerKm + (waitingMs / 60_000.0) * waitingPricePerMinute
+    /** Hozir kutish rejimida bo'lsa, joriy (hali yakunlanmagan) kutish
+     * sessiyasini ham qo'shib hisoblaydi — shu sabab UI har soniyada shu
+     * funksiyani chaqirib, kutish vaqtini JONLI (real vaqtda) ko'rsata oladi. */
+    fun currentWaitingMs(nowMs: Long = System.currentTimeMillis()): Long =
+        waitingMs + (if (isWaiting) (waitingStartedAtMs?.let { nowMs - it } ?: 0L) else 0L)
+
+    fun priceUzs(nowMs: Long = System.currentTimeMillis()): Double =
+        basePrice + distanceKm * pricePerKm + (currentWaitingMs(nowMs) / 60_000.0) * waitingPricePerMinute
+
+    /** Faqat kutish vaqti tufayli qo'shilgan summa — UI'da "kutish narxi"
+     * qo'shimchasini alohida ko'rsatish uchun. */
+    fun currentWaitingPriceUzs(nowMs: Long = System.currentTimeMillis()): Double =
+        (currentWaitingMs(nowMs) / 60_000.0) * waitingPricePerMinute
 
     fun setWaiting(waiting: Boolean, nowMs: Long = System.currentTimeMillis()) {
         if (waiting == isWaiting) return

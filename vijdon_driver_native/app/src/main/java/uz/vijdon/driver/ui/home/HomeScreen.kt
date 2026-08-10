@@ -8,10 +8,17 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,6 +34,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Message
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CreditCard
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.ExpandLess
@@ -34,7 +42,12 @@ import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.LocalTaxi
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.Phone
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Route
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -61,6 +74,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -68,22 +82,28 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import kotlinx.coroutines.delay
 import uz.vijdon.driver.data.api.AddressDto
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.data.api.OrderDto
 import uz.vijdon.driver.data.api.QueueDriverDto
+import uz.vijdon.driver.ui.orders.TaximeterTracker
 import uz.vijdon.driver.ui.theme.CardShape
 import uz.vijdon.driver.ui.theme.CenteredLoading
+import uz.vijdon.driver.ui.theme.ChipShape
 import uz.vijdon.driver.ui.theme.ErrorBanner
 import uz.vijdon.driver.ui.theme.Pill
 import uz.vijdon.driver.ui.theme.RouteAddresses
 import uz.vijdon.driver.ui.theme.VijdonColors
 import uz.vijdon.driver.ui.theme.cardShadow
 import uz.vijdon.driver.util.formatMoney
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -337,37 +357,366 @@ fun HomeScreen(
 
     val sheetOrder = state.orders.firstOrNull { it.id == activeOrderSheetId }
     if (sheetOrder != null) {
-        val orderSheetState = rememberModalBottomSheetState()
-        ModalBottomSheet(onDismissRequest = { activeOrderSheetId = null }, sheetState = orderSheetState) {
-            Box(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
-                OrderCard(
-                    order = sheetOrder,
-                    operatorPhone = state.operatorPhone,
-                    distanceM = state.orderDistancesM[sheetOrder.id],
-                    inProgress = sheetOrder.id in state.actionInProgress,
-                    onAccept = { viewModel.acceptOrder(sheetOrder.id) },
-                    onReject = { viewModel.rejectOrder(sheetOrder.id) },
-                    onWay = { viewModel.orderOnWay(sheetOrder.id) },
-                    onArrived = { viewModel.orderArrived(sheetOrder.id) },
-                    onComplete = {
-                        viewModel.orderComplete(sheetOrder.id)
-                        activeOrderSheetId = null
-                    },
-                    onCallOperator = {
-                        context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${state.operatorPhone}")))
-                    },
-                    onCallClient = {
-                        context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${sheetOrder.client_phone}")))
-                    },
-                    onQuickMessage = { message ->
-                        val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${sheetOrder.client_phone}"))
-                        intent.putExtra("sms_body", message)
-                        context.startActivity(intent)
-                    },
+        // "Faol buyurtma" oynasi bo'sh joy qoldirmasdan butun ekranni
+        // egallashi so'ralgan — shu sabab standart (yarim balandlikdagi,
+        // kenglikka chegara qo'yadigan) bottom sheet o'rniga to'liq
+        // kenglik/balandlikka cho'zilgan holatda ochiladi.
+        val orderSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+        // Taximetr (VAQT/MASOFA/NARX) "Yo'lga chiqdim"dan keyin real vaqtda
+        // yangilanib turishi kerak — GPS nuqtasi kelishini kutmasdan, har
+        // soniyada o'zini qayta chizadi (VAQT sekundomeri GPS'ga bog'liq
+        // emas, doim yurishi kerak).
+        var meterTick by remember(sheetOrder.id) { mutableStateOf(System.currentTimeMillis()) }
+        LaunchedEffect(sheetOrder.id, sheetOrder.status) {
+            if (sheetOrder.isOnWay || sheetOrder.isArrived) {
+                while (true) {
+                    meterTick = System.currentTimeMillis()
+                    delay(1_000L)
+                }
+            }
+        }
+
+        ModalBottomSheet(
+            onDismissRequest = { activeOrderSheetId = null },
+            sheetState = orderSheetState,
+            sheetMaxWidth = Dp.Unspecified,
+        ) {
+            OrderDetailSheetContent(
+                order = sheetOrder,
+                operatorPhone = state.operatorPhone,
+                distanceM = state.orderDistancesM[sheetOrder.id],
+                inProgress = sheetOrder.id in state.actionInProgress,
+                taximeter = viewModel.taximeterFor(sheetOrder.id),
+                meterTick = meterTick,
+                onToggleWaiting = { viewModel.toggleWaiting(sheetOrder.id) },
+                onClose = { activeOrderSheetId = null },
+                onAccept = { viewModel.acceptOrder(sheetOrder.id) },
+                onReject = { viewModel.rejectOrder(sheetOrder.id) },
+                onWay = { viewModel.orderOnWay(sheetOrder.id) },
+                onArrived = { viewModel.orderArrived(sheetOrder.id) },
+                onComplete = {
+                    viewModel.orderComplete(sheetOrder.id)
+                    activeOrderSheetId = null
+                },
+                onCallOperator = {
+                    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${state.operatorPhone}")))
+                },
+                onCallClient = {
+                    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${sheetOrder.client_phone}")))
+                },
+                onQuickMessage = { message ->
+                    val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${sheetOrder.client_phone}"))
+                    intent.putExtra("sms_body", message)
+                    context.startActivity(intent)
+                },
+            )
+        }
+    }
+}
+
+/**
+ * Buyurtma tafsiloti — to'liq ekranli sheet uchun. `OrderCard`dan (ro'yxatdagi
+ * ixcham karta) farqli — bu yerda ma'lumot (manzil, mijoz, narx) yuqorida
+ * SKROLL bo'ladigan qismda, amal tugmalari ("Yo'lga chiqdim"/"Operator"/
+ * "Xabar" va h.k.) esa pastda QOTIB turadi (ekran skroll qilinganda ham
+ * doim ko'rinadi) — sahifa tarzida.
+ */
+@Composable
+private fun OrderDetailSheetContent(
+    order: OrderDto,
+    operatorPhone: String,
+    distanceM: Double?,
+    inProgress: Boolean,
+    taximeter: TaximeterTracker?,
+    meterTick: Long,
+    onToggleWaiting: () -> Unit,
+    onClose: () -> Unit,
+    onAccept: () -> Unit,
+    onReject: () -> Unit,
+    onWay: () -> Unit,
+    onArrived: () -> Unit,
+    onComplete: () -> Unit,
+    onCallOperator: () -> Unit,
+    onCallClient: () -> Unit,
+    onQuickMessage: (String) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "Buyurtma tafsiloti",
+                color = VijdonColors.TextPrimary,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            )
+            IconButton(onClick = onClose) {
+                Icon(Icons.Rounded.Close, contentDescription = "Yopish", tint = VijdonColors.TextSecondary)
+            }
+        }
+        HorizontalDivider(color = VijdonColors.Border)
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+        ) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Pill(order.status_label, color = VijdonColors.Green, background = VijdonColors.BadgeNeutral)
+                if (distanceM != null && (order.isPending || order.isAccepted)) {
+                    Text(formatDistanceEta(distanceM), color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            RouteAddresses(order.from_address, order.to_address)
+            Spacer(Modifier.height(16.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Phone, contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("${order.client_name} · ${order.client_phone}", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
+            }
+
+            // Taximetr — "Yo'lga chiqdim"dan "Yakunlash"gacha, real vaqtda
+            // yangilanadigan masofa/vaqt/narx. Yakuniy haq shundan olinadi,
+            // shu sabab buyurtma yaratilgandagi taxminiy narxdan alohida
+            // va aniqroq ko'rinishda ko'rsatiladi.
+            if ((order.isOnWay || order.isArrived) && taximeter != null) {
+                Spacer(Modifier.height(16.dp))
+                TaximeterCard(
+                    distanceKm = taximeter.distanceKm,
+                    elapsedMs = meterTick - taximeter.startedAtMs,
+                    priceUzs = taximeter.priceUzs(meterTick),
+                    isWaiting = taximeter.isWaiting,
+                    waitingMs = taximeter.currentWaitingMs(meterTick),
+                    waitingPriceUzs = taximeter.currentWaitingPriceUzs(meterTick),
+                    onToggleWaiting = onToggleWaiting,
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider(color = VijdonColors.Border)
+            Spacer(Modifier.height(16.dp))
+            if (order.isOnWay || order.isArrived) {
+                Text(
+                    "Boshlang'ich taxminiy narx",
+                    color = VijdonColors.TextSecondary,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+                Spacer(Modifier.height(4.dp))
+            }
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                order.price?.let {
+                    Text("${formatMoney(it)} so'm", color = VijdonColors.Green, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold))
+                } ?: Spacer(Modifier.width(1.dp))
+                Text(
+                    "${if (order.payment_type == "cash") "💵" else "💳"} ${order.car_type_display}",
+                    color = VijdonColors.TextSecondary,
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+        }
+
+        HorizontalDivider(color = VijdonColors.Border)
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)) {
+            if (inProgress) {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(modifier = Modifier.height(24.dp), color = VijdonColors.Yellow)
+                }
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    when {
+                        order.isPending -> {
+                            YellowButton("Qabul qilish", Modifier.weight(1f), onAccept)
+                            OutlineButton("Rad etish", Modifier.weight(1f), onReject)
+                        }
+                        order.isAccepted -> {
+                            YellowButton("Yo'lga chiqdim", Modifier.weight(1f), onWay)
+                            OutlineButton("Operator", Modifier.weight(1f), onCallOperator)
+                        }
+                        order.isOnWay -> {
+                            YellowButton("Yetib keldim", Modifier.weight(1f), onArrived)
+                            OutlineButton("Operator", Modifier.weight(1f), onCallOperator)
+                        }
+                        order.isArrived -> {
+                            YellowButton("Yakunlash", Modifier.weight(1f), onComplete)
+                            OutlineButton("Operator", Modifier.weight(1f), onCallOperator)
+                        }
+                    }
+                }
+                if (order.isAccepted || order.isOnWay || order.isArrived) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        IconTextButton(Icons.Rounded.Phone, "Qo'ng'iroq", Modifier.weight(1f), onCallClient)
+                        quickMessageFor(order)?.let { message ->
+                            IconTextButton(Icons.AutoMirrored.Rounded.Message, "Xabar", Modifier.weight(1f)) { onQuickMessage(message) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Taximetr vidjeti — "Yo'lga chiqdim"dan "Yakunlash"gacha real vaqtda
+ * yangilanadigan masofa/vaqt/narx (veb paneldagi "Taximetr" panjarasi
+ * bilan bir xil g'oyada — quyuq gradient fon, yashil-binafsha-oltin
+ * rangdagi metrikalar, jonli nuqta belgisi).
+ */
+@Composable
+private fun TaximeterCard(
+    distanceKm: Double,
+    elapsedMs: Long,
+    priceUzs: Double,
+    isWaiting: Boolean,
+    waitingMs: Long,
+    waitingPriceUzs: Double,
+    onToggleWaiting: () -> Unit,
+) {
+    val purple = Color(0xFFAF52DE)
+    val orange = Color(0xFFFF9500)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(listOf(Color(0xFF1C1C1F), Color(0xFF0A0A0B))),
+                CardShape,
+            )
+            .border(1.dp, Color.White.copy(alpha = 0.08f), CardShape)
+            .padding(vertical = 14.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier.size(20.dp).background(purple.copy(alpha = 0.16f), ChipShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Rounded.Speed, contentDescription = null, tint = purple, modifier = Modifier.size(11.dp))
+            }
+            Spacer(Modifier.width(7.dp))
+            Text(
+                "TAXIMETR",
+                color = Color.White.copy(alpha = 0.4f),
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp),
+            )
+            Spacer(Modifier.width(7.dp))
+            PulsingDot(color = purple)
+        }
+        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    formatMoney(priceUzs.toString()),
+                    color = VijdonColors.Yellow,
+                    style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "so'm",
+                    color = VijdonColors.Yellow.copy(alpha = 0.55f),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+            }
+        }
+        HorizontalDivider(color = Color.White.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 14.dp))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+        ) {
+            MetricChip(Icons.Rounded.Timer, purple, formatElapsed(elapsedMs), null, "VAQT", Modifier.weight(1f))
+            MetricChip(Icons.Rounded.Route, VijdonColors.Blue, String.format(Locale.US, "%.2f", distanceKm), "km", "MASOFA", Modifier.weight(1f))
+        }
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(if (isWaiting) orange.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.06f), ChipShape)
+                    .clickable(onClick = onToggleWaiting)
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    if (isWaiting) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
+                    contentDescription = null,
+                    tint = if (isWaiting) orange else Color.White.copy(alpha = 0.65f),
+                    modifier = Modifier.size(15.dp),
+                )
+                Spacer(Modifier.width(7.dp))
+                Text(
+                    if (isWaiting) "Davom etish" else "Kutish (mijoz band)",
+                    color = if (isWaiting) orange else Color.White.copy(alpha = 0.65f),
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                )
+            }
+            if (waitingMs > 500) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "⏱ ${formatElapsed(waitingMs)} (+${formatMoney(waitingPriceUzs.toString())} so'm)",
+                    color = orange,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
     }
+}
+
+@Composable
+private fun MetricChip(icon: ImageVector, color: Color, value: String, unit: String?, label: String, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .background(Color.White.copy(alpha = 0.05f), ChipShape)
+            .border(1.dp, Color.White.copy(alpha = 0.07f), ChipShape)
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier.size(28.dp).background(color.copy(alpha = 0.15f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(13.dp))
+        }
+        Spacer(Modifier.width(9.dp))
+        Column {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(value, color = Color.White, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold))
+                if (unit != null) {
+                    Spacer(Modifier.width(3.dp))
+                    Text(unit, color = Color.White.copy(alpha = 0.4f), style = MaterialTheme.typography.labelSmall)
+                }
+            }
+            Text(label, color = Color.White.copy(alpha = 0.4f), style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, letterSpacing = 0.3.sp))
+        }
+    }
+}
+
+/** Jonli GPS/taximetr holatini bildiruvchi pulsatsiyalanuvchi nuqta —
+ * veb'dagi `animation:pulse-dot` bilan bir xil g'oya. */
+@Composable
+private fun PulsingDot(color: Color) {
+    val transition = rememberInfiniteTransition(label = "pulseDot")
+    val alpha by transition.animateFloat(
+        initialValue = 1f, targetValue = 0.25f,
+        animationSpec = infiniteRepeatable(animation = tween(700), repeatMode = RepeatMode.Reverse),
+        label = "pulseDotAlpha",
+    )
+    Box(modifier = Modifier.size(6.dp).background(color.copy(alpha = alpha), CircleShape))
+}
+
+/** "125000" ms -> "2:05" (soatlik bo'lsa "1:02:05"). */
+private fun formatElapsed(ms: Long): String {
+    val totalSec = (ms / 1000).coerceAtLeast(0)
+    val h = totalSec / 3600
+    val m = (totalSec % 3600) / 60
+    val s = totalSec % 60
+    return if (h > 0) String.format(Locale.US, "%d:%02d:%02d", h, m, s) else String.format(Locale.US, "%d:%02d", m, s)
 }
 
 /**
@@ -794,20 +1143,20 @@ private fun OrderCard(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             when {
                 order.isPending -> {
-                    YellowButton("Qabul qilish", onAccept)
-                    OutlineButton("Rad etish", onReject)
+                    YellowButton("Qabul qilish", onClick = onAccept)
+                    OutlineButton("Rad etish", onClick = onReject)
                 }
                 order.isAccepted -> {
-                    YellowButton("Yo'lga chiqdim", onWay)
-                    OutlineButton("Operator", onCallOperator)
+                    YellowButton("Yo'lga chiqdim", onClick = onWay)
+                    OutlineButton("Operator", onClick = onCallOperator)
                 }
                 order.isOnWay -> {
-                    YellowButton("Yetib keldim", onArrived)
-                    OutlineButton("Operator", onCallOperator)
+                    YellowButton("Yetib keldim", onClick = onArrived)
+                    OutlineButton("Operator", onClick = onCallOperator)
                 }
                 order.isArrived -> {
-                    YellowButton("Yakunlash", onComplete)
-                    OutlineButton("Operator", onCallOperator)
+                    YellowButton("Yakunlash", onClick = onComplete)
+                    OutlineButton("Operator", onClick = onCallOperator)
                 }
             }
         }
@@ -816,7 +1165,7 @@ private fun OrderCard(
         if (order.isAccepted || order.isOnWay || order.isArrived) {
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconTextButton(Icons.Rounded.Phone, "Qo'ng'iroq", onCallClient)
+                IconTextButton(Icons.Rounded.Phone, "Qo'ng'iroq", onClick = onCallClient)
                 quickMessageFor(order)?.let { message ->
                     IconTextButton(Icons.AutoMirrored.Rounded.Message, "Xabar") { onQuickMessage(message) }
                 }
@@ -826,9 +1175,10 @@ private fun OrderCard(
 }
 
 @Composable
-private fun IconTextButton(icon: ImageVector, text: String, onClick: () -> Unit) {
+private fun IconTextButton(icon: ImageVector, text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     OutlinedButton(
         onClick = onClick,
+        modifier = modifier,
         colors = ButtonDefaults.outlinedButtonColors(contentColor = VijdonColors.TextSecondary),
     ) {
         Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -838,17 +1188,19 @@ private fun IconTextButton(icon: ImageVector, text: String, onClick: () -> Unit)
 }
 
 @Composable
-private fun YellowButton(text: String, onClick: () -> Unit) {
+private fun YellowButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Button(
         onClick = onClick,
+        modifier = modifier,
         colors = ButtonDefaults.buttonColors(containerColor = VijdonColors.Yellow, contentColor = VijdonColors.TextOnYellow),
     ) { Text(text) }
 }
 
 @Composable
-private fun OutlineButton(text: String, onClick: () -> Unit) {
+private fun OutlineButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     OutlinedButton(
         onClick = onClick,
+        modifier = modifier,
         colors = ButtonDefaults.outlinedButtonColors(contentColor = VijdonColors.TextPrimary),
     ) { Text(text) }
 }

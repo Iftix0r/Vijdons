@@ -222,6 +222,12 @@ class HomeViewModel @Inject constructor(
                     )
                     recomputeOrderDistances()
                     pruneFinishedTaximeters(result.data.orders)
+                    // Ilova qayta ochilganda (masalan yo'lda paytida majburan
+                    // yopib qo'yilgan bo'lsa) safar allaqachon "yo'lda"/"yetib
+                    // keldim" holatida bo'lishi mumkin — taximetr shu yerda
+                    // ham (faqat GPS nuqtasini kutmasdan) darhol yaratiladi,
+                    // aks holda vidjet birinchi GPS nuqtasigacha ko'rinmasdi.
+                    result.data.orders.filter { it.isOnWay || it.isArrived }.forEach { ensureTaximeter(it.id) }
                 }
                 is ApiResult.Error -> _uiState.value = _uiState.value.copy(error = result.message, loading = false)
             }
@@ -244,12 +250,20 @@ class HomeViewModel @Inject constructor(
 
     fun acceptOrder(id: Int) = runAction(id) { repository.acceptOrder(id) }
     fun rejectOrder(id: Int) = runAction(id) { repository.rejectOrder(id) }
-    fun orderOnWay(id: Int) = runAction(id) { repository.orderOnWay(id) }
+
+    fun orderOnWay(id: Int) {
+        // Server javobini kutmasdan darhol yaratiladi — "Yo'lga chiqdim"
+        // bosilgan zahoti taximetr vidjeti (VAQT sekundomeri) shu ondan
+        // boshlab ishga tushishi kerak, tarmoq javobi kelguncha emas.
+        ensureTaximeter(id)
+        runAction(id) { repository.orderOnWay(id) }
+    }
+
     fun orderArrived(id: Int) = runAction(id) { repository.orderArrived(id) }
 
     fun orderComplete(id: Int) {
         val tracker = taximeters[id]
-        runAction(id) { repository.orderComplete(id, tracker?.distanceKm, tracker?.priceUzs) }
+        runAction(id) { repository.orderComplete(id, tracker?.distanceKm, tracker?.priceUzs()) }
     }
 
     fun toggleWaiting(id: Int) {
@@ -257,6 +271,12 @@ class HomeViewModel @Inject constructor(
     }
 
     fun taximeterFor(id: Int): TaximeterTracker? = taximeters[id]
+
+    private fun ensureTaximeter(id: Int) {
+        if (taximeters.containsKey(id)) return
+        val cfg = config ?: return
+        taximeters[id] = TaximeterTracker(cfg.base_price, cfg.price_per_km, cfg.waiting_price_per_minute)
+    }
 
     private fun runAction(orderId: Int, onSuccess: () -> Unit = {}, block: suspend () -> ApiResult<*>) {
         viewModelScope.launch {
@@ -279,12 +299,11 @@ class HomeViewModel @Inject constructor(
                 driverLng = point.lng
                 recomputeAddressDistances()
                 recomputeOrderDistances()
-                val cfg = config ?: return@collect
+                if (config == null) return@collect
                 val activeOrderIds = _uiState.value.orders.filter { it.isOnWay || it.isArrived }.map { it.id }
                 activeOrderIds.forEach { orderId ->
-                    val tracker = taximeters.getOrPut(orderId) {
-                        TaximeterTracker(cfg.base_price, cfg.price_per_km, cfg.waiting_price_per_minute)
-                    }
+                    ensureTaximeter(orderId)
+                    val tracker = taximeters[orderId] ?: return@forEach
                     if (tracker.addPoint(point.lat, point.lng, point.accuracy, point.timestampMs)) {
                         flushMeter(orderId, tracker)
                     }
@@ -300,7 +319,7 @@ class HomeViewModel @Inject constructor(
         if (now - last < 5_000) return
         lastFlushAtMs[orderId] = now
         viewModelScope.launch {
-            repository.updateMeter(orderId, tracker.distanceKm, tracker.priceUzs, tracker.isWaiting, tracker.waitingMs)
+            repository.updateMeter(orderId, tracker.distanceKm, tracker.priceUzs(), tracker.isWaiting, tracker.currentWaitingMs())
         }
     }
 
