@@ -2,6 +2,8 @@ package uz.vijdon.driver.data.location
 
 import android.Manifest
 import android.app.Notification
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -10,6 +12,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -20,8 +23,12 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import uz.vijdon.driver.MainActivity
 import uz.vijdon.driver.R
+import uz.vijdon.driver.data.api.OrderDto
+import uz.vijdon.driver.data.repository.ApiResult
 import uz.vijdon.driver.data.repository.DriverRepository
 import javax.inject.Inject
 import kotlin.math.sqrt
@@ -41,6 +48,15 @@ class DriverLocationService : Service() {
     private val scope = CoroutineScope(SupervisorJob())
     private var lastReportedLat: Double? = null
     private var lastReportedLng: Double? = null
+
+    // FCM hali sozlanmagan (Firebase loyihasi ulanmagan) — shu sabab
+    // "shaxsan menga yuborilgan" yangi buyurtmani ilova fonda/boshqa ilova
+    // ustida ochiq bo'lganda ham bilish uchun push'ga tayanib bo'lmaydi.
+    // Shu foreground service (haydovchi onlayn bo'lgan vaqt davomida ishlaydi)
+    // GPS bilan bir qatorda buyurtmalarni ham davriy so'raydi va topilsa
+    // xuddi FCM push kelgandagi kabi to'liq ekranli bildirishnoma chiqaradi
+    // (VijdonFirebaseMessagingService.onMessageReceived bilan bir xil uslubda).
+    private var alertedOrderId: Int? = null
 
     private val fusedClient by lazy { LocationServices.getFusedLocationProviderClient(this) }
     private val locationCallback = object : LocationCallback() {
@@ -69,6 +85,7 @@ class DriverLocationService : Service() {
         }
         startForegroundWithNotification()
         startLocationUpdates()
+        startOrderAlertPolling()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
@@ -122,5 +139,69 @@ class DriverLocationService : Service() {
         val dLat = (lat2 - lat1) * 111_000
         val dLng = (lng2 - lng1) * 111_000 * kotlin.math.cos(Math.toRadians(lat1))
         return sqrt(dLat * dLat + dLng * dLng)
+    }
+
+    /** HomeViewModel.refreshOrders()dagi bilan bir xil kadensiya (~4-6s) va
+     * "menga shaxsan yuborilgan" mezoni (is_dispatched + hali tugamagan
+     * timer_sec) — ekranda ham, shu yerda ham bir xil buyurtma alert deb topiladi. */
+    private fun startOrderAlertPolling() {
+        scope.launch {
+            while (true) {
+                pollForDispatchedOrder()
+                delay(6_000L)
+            }
+        }
+    }
+
+    private suspend fun pollForDispatchedOrder() {
+        val result = repository.availableOrders()
+        if (result !is ApiResult.Success) return
+        val candidate = result.data.orders.firstOrNull {
+            it.isPending && it.is_dispatched && (it.timer_sec ?: 0) > 0
+        }
+        if (candidate == null) {
+            alertedOrderId = null
+            return
+        }
+        // Bir xil buyurtma uchun har 6 soniyada qayta-qayta bezovta
+        // qilmaslik — faqat YANGI (hali ogohlantirilmagan) buyurtmada.
+        if (candidate.id == alertedOrderId) return
+        alertedOrderId = candidate.id
+        showNewOrderNotification(candidate)
+    }
+
+    private fun showNewOrderNotification(order: OrderDto) {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(MainActivity.EXTRA_NEW_ORDER_ALERT, true)
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this, order.id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val builder = NotificationCompat.Builder(this, "new_orders_channel")
+            .setContentTitle("Yangi buyurtma!")
+            .setContentText(order.from_address)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+
+        // "To'liq ekran" bildirishnoma — VijdonFirebaseMessagingService bilan
+        // bir xil (ilova fonda yoki qurilma qulflangan bo'lsa ham, boshqa
+        // ilovalar ustidan avtomatik ochiladi).
+        val canUseFullScreen = Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE ||
+            getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
+        if (canUseFullScreen) {
+            builder.setFullScreenIntent(pendingIntent, true)
+        }
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+            NotificationManagerCompat.from(this).notify(NEW_ORDER_ALERT_NOTIFICATION_ID, builder.build())
+        }
+    }
+
+    private companion object {
+        const val NEW_ORDER_ALERT_NOTIFICATION_ID = 2
     }
 }
