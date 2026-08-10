@@ -152,7 +152,24 @@ def order_create(request):
             if customer_name and not client.full_name:
                 client.full_name = customer_name
                 client.save(update_fields=['full_name'])
-            driver = Driver.objects.filter(pk=driver_id).first() if driver_id else None
+
+            # SINOV UCHUN (VAQTINCHALIK) — shu raqamdan (+998505009356)
+            # kelgan buyurtma FAQAT xuddi shu raqamdagi haydovchiga
+            # boradi, boshqa hech qanday haydovchiga so'rov yubormaydi
+            # (operator boshqa haydovchi tanlagan/tanlamagan bo'lsa ham).
+            # Raqamlar turli formatda kiritilishi mumkinligi uchun (bo'shliq,
+            # +998 bilan/-siz) faqat oxirgi 9 ta raqam solishtiriladi. Sinov
+            # tugagach shu blokni butunlay olib tashlang.
+            _TEST_PHONE_LAST9 = '505009356'
+
+            def _phone_last9(raw):
+                digits = ''.join(ch for ch in (raw or '') if ch.isdigit())
+                return digits[-9:]
+
+            if _phone_last9(phone_number) == _TEST_PHONE_LAST9:
+                driver = Driver.objects.filter(phone_number__endswith=_TEST_PHONE_LAST9).first()
+            else:
+                driver = Driver.objects.filter(pk=driver_id).first() if driver_id else None
 
             f_lat = float(from_lat) if from_lat else None
             f_lng = float(from_lng) if from_lng else None

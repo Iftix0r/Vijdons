@@ -26,12 +26,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import uz.vijdon.driver.data.api.DriverDto
+import uz.vijdon.driver.data.push.TestAlertBus
+import uz.vijdon.driver.data.push.sendTestNewOrderNotification
 import uz.vijdon.driver.ui.ApprovedScaffold
 import uz.vijdon.driver.ui.SessionState
 import uz.vijdon.driver.ui.SessionViewModel
@@ -59,11 +64,23 @@ class MainActivity : ComponentActivity() {
     // ishlaydi, faqat aynan shu "ildiz" composable muammoli edi).
     companion object {
         const val EXTRA_NEW_ORDER_ALERT = "extra_new_order_alert"
+        const val EXTRA_TEST_ORDER_ALERT = "extra_test_order_alert"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         showOverLockscreenIfNeeded(intent)
+        handleTestAlertIfNeeded(intent)
+        // Bildirishnoma quvuri (kanal/ruxsat/to'liq ekranli intent) haqiqatan
+        // ishlayaptimi tekshirish uchun — real buyurtma kutmasdan, ilova har
+        // ochilganda bir marta SINOV bildirishnomasi yuboriladi. Kechikish —
+        // POST_NOTIFICATIONS ruxsati so'rovi (Bosh sahifada) javob olguncha
+        // biroz vaqt berish uchun, aks holda ruxsat hali berilmagan bo'lsa
+        // sinov ham sezilmasdan o'tib ketardi.
+        lifecycleScope.launch {
+            delay(4_000L)
+            sendTestNewOrderNotification(this@MainActivity)
+        }
         setContent {
             VijdonDriverTheme {
                 // Status-bar/navigatsiya-bar ikonkalari — tizim yorug' rejimda
@@ -98,6 +115,18 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         showOverLockscreenIfNeeded(intent)
+        handleTestAlertIfNeeded(intent)
+    }
+
+    /** SINOV bildirishnomasi bosilganda — `HomeViewModel`ga SOXTA "Yangi
+     * buyurtma" oynasini (qabul qilish/rad etish bilan) ko'rsatishni
+     * so'raydi, `TestAlertBus` orqali (bir martalik hodisa, shu sabab
+     * `intent.getBooleanExtra` bilan qayta-qayta ishga tushib qolmasin
+     * deb `removeExtra` bilan tozalanadi). */
+    private fun handleTestAlertIfNeeded(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_TEST_ORDER_ALERT, false) != true) return
+        intent.removeExtra(EXTRA_TEST_ORDER_ALERT)
+        lifecycleScope.launch { TestAlertBus.trigger() }
     }
 
     /**

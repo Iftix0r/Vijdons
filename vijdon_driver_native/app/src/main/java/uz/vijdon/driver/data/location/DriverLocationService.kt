@@ -145,14 +145,21 @@ class DriverLocationService : Service() {
         return sqrt(dLat * dLat + dLng * dLng)
     }
 
-    /** HomeViewModel.refreshOrders()dagi bilan bir xil kadensiya (~4-6s) va
-     * "menga shaxsan yuborilgan" mezoni (is_dispatched + hali tugamagan
-     * timer_sec) — ekranda ham, shu yerda ham bir xil buyurtma alert deb topiladi. */
+    /** "Menga shaxsan yuborilgan" mezoni (is_dispatched + hali tugamagan
+     * timer_sec) — ekrandagi HomeViewModel.refreshOrders() bilan bir xil.
+     * Diqqat: operator sozlamasidagi `TariffSettings.dispatch_timeout`
+     * SUKUT BO'YICHA atigi 10 soniya — avval bu yerda 6s oralig'da so'ralar
+     * edi, ya'ni haydovchi ilovadan tashqarida bo'lsa, dispetcherlik
+     * navbatning aksariyat holatlarida BOR-YO'G'I 1 marta (ba'zan
+     * umuman ulgurmasdan) so'rov yuborilardi — vaqt tugab, buyurtma
+     * "javob bermadi" deb boshqa haydovchiga o'tib ketishi mumkin edi,
+     * hatto bildirishnoma hali ko'rsatilmasdan turib. Endi 3 soniyada bir
+     * so'raladi — 10 soniyalik oynada kamida 2-3 marta urinish bo'ladi. */
     private fun startOrderAlertPolling() {
         scope.launch {
             while (true) {
                 pollForDispatchedOrder()
-                delay(6_000L)
+                delay(3_000L)
             }
         }
     }

@@ -19,6 +19,7 @@ import uz.vijdon.driver.data.api.OrderDto
 import uz.vijdon.driver.data.api.QueueDriverDto
 import uz.vijdon.driver.data.location.DriverLocationService
 import uz.vijdon.driver.data.location.LocationBus
+import uz.vijdon.driver.data.push.TestAlertBus
 import uz.vijdon.driver.data.repository.ApiResult
 import uz.vijdon.driver.data.repository.DriverRepository
 import uz.vijdon.driver.ui.orders.TaximeterTracker
@@ -86,6 +87,15 @@ class HomeViewModel @Inject constructor(
             val result = repository.rating()
             val rank = (result as? ApiResult.Success)?.data?.my_row?.rank
             _uiState.value = _uiState.value.copy(rank = rank)
+        }
+        // SINOV bildirishnomasi bosilganda (MainActivity → TestAlertBus) —
+        // haqiqiy buyurtma kutmasdan, to'liq ekranli "Yangi buyurtma" oynasini
+        // (qabul qilish/rad etish bilan) SOXTA ma'lumot bilan ko'rsatish uchun.
+        viewModelScope.launch {
+            TestAlertBus.events.collect {
+                alertOrderId = TEST_ORDER_ID
+                _uiState.value = _uiState.value.copy(alertOrder = fakeTestOrder(), alertTotalSec = 30)
+            }
         }
     }
 
@@ -227,14 +237,25 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = repository.availableOrders()) {
                 is ApiResult.Success -> {
-                    val alertCandidate = result.data.orders.firstOrNull {
-                        it.isPending && it.is_dispatched && (it.timer_sec ?: 0) > 0
+                    // SINOV (soxta) ogohlantirish ko'rsatilib turgan bo'lsa —
+                    // bu yerda hisoblangan (serverdan kelgan haqiqiy
+                    // buyurtmalar asosidagi) alertCandidate uni qayta
+                    // yozib, muddatidan oldin yopib qo'ymasin.
+                    val showingTestAlert = alertOrderId == TEST_ORDER_ID
+                    val alertCandidate = if (showingTestAlert) {
+                        _uiState.value.alertOrder
+                    } else {
+                        result.data.orders.firstOrNull {
+                            it.isPending && it.is_dispatched && (it.timer_sec ?: 0) > 0
+                        }
                     }
-                    if (alertCandidate != null && alertCandidate.id != alertOrderId) {
-                        alertOrderId = alertCandidate.id
-                        alertInitialTimerSec = alertCandidate.timer_sec ?: 30
-                    } else if (alertCandidate == null) {
-                        alertOrderId = null
+                    if (!showingTestAlert) {
+                        if (alertCandidate != null && alertCandidate.id != alertOrderId) {
+                            alertOrderId = alertCandidate.id
+                            alertInitialTimerSec = alertCandidate.timer_sec ?: 30
+                        } else if (alertCandidate == null) {
+                            alertOrderId = null
+                        }
                     }
                     _uiState.value = _uiState.value.copy(
                         orders = result.data.orders,
@@ -272,8 +293,25 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun acceptOrder(id: Int) = runAction(id) { repository.acceptOrder(id) }
-    fun rejectOrder(id: Int) = runAction(id) { repository.rejectOrder(id) }
+    fun acceptOrder(id: Int) {
+        // SOXTA (sinov) buyurtma serverda mavjud emas — API'ga murojaat
+        // qilmasdan, shunchaki oynani yopamiz.
+        if (id == TEST_ORDER_ID) {
+            alertOrderId = null
+            _uiState.value = _uiState.value.copy(alertOrder = null)
+            return
+        }
+        runAction(id) { repository.acceptOrder(id) }
+    }
+
+    fun rejectOrder(id: Int) {
+        if (id == TEST_ORDER_ID) {
+            alertOrderId = null
+            _uiState.value = _uiState.value.copy(alertOrder = null)
+            return
+        }
+        runAction(id) { repository.rejectOrder(id) }
+    }
 
     fun orderOnWay(id: Int) {
         // Server javobini kutmasdan darhol yaratiladi — "Yo'lga chiqdim"
@@ -378,3 +416,30 @@ class HomeViewModel @Inject constructor(
         super.onCleared()
     }
 }
+
+/** SINOV bildirishnomasi orqali ko'rsatiladigan, serverda mavjud bo'lmagan
+ * soxta buyurtma ID'si — `acceptOrder`/`rejectOrder` shu ID'ni ko'rsa
+ * API'ga murojaat qilmaydi, faqat oynani yopadi. */
+private const val TEST_ORDER_ID = -999
+
+private fun fakeTestOrder() = OrderDto(
+    id = TEST_ORDER_ID,
+    status = "pending",
+    status_label = "Kutilmoqda",
+    from_address = "SINOV: Bu — haqiqiy buyurtma emas",
+    to_address = "SINOV: Yo'nalish manzili",
+    client_name = "Sinov mijoz",
+    client_phone = "+998 90 000 00 00",
+    price = "25000",
+    commission = "3000",
+    distance_km = 4.2,
+    payment_type = "cash",
+    payment_type_display = "Naqd",
+    car_type = "light",
+    car_type_display = "Yengil",
+    note = "Bu bildirishnoma/oyna oqimini sinash uchun yaratilgan soxta buyurtma.",
+    is_dispatched = true,
+    timer_sec = 30,
+    created_at = "",
+    updated_at = "",
+)
