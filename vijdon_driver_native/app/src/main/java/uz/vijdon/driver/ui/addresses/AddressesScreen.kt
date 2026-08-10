@@ -105,7 +105,10 @@ private fun AddressQueueDriverRow(d: uz.vijdon.driver.data.api.QueueDriverDto) {
         Spacer(Modifier.width(8.dp))
         Text(
             "${d.full_name}${if (d.is_me) " (Siz)" else ""} — ${d.car_model} (${d.car_number})",
-            color = if (d.is_me) VijdonColors.Yellow else VijdonColors.TextPrimary,
+            // Bosh sahifadagi bilan bir xil sabab: to'liq to'yingan Yellow
+            // matn kartaning oq/och fonida past-kontrastli edi — YellowDark
+            // ishlatiladi (uyg'unlik uchun Home ekrani bilan bir xil qoida).
+            color = if (d.is_me) VijdonColors.YellowDark else VijdonColors.TextPrimary,
             style = MaterialTheme.typography.bodySmall,
             maxLines = 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
@@ -138,9 +141,13 @@ private fun AddressRow(address: AddressDto, onClick: () -> Unit) {
             }
         }
         Spacer(Modifier.width(8.dp))
-        Pill(
-            "${address.queue_count} navbatda",
-            color = if (address.queue_count > 0) VijdonColors.Green else VijdonColors.TextSecondary,
-        )
+        // Bosh sahifadagi manzil ro'yxati bilan bir xil qoida (uyg'unlik
+        // uchun): navbat bo'sh bo'lsa "0 navbatda" emas, aniq "Bo'sh" so'zi
+        // ko'rsatiladi, va band bo'lsa yorqinroq GreenBadge rangi ishlatiladi.
+        if (address.queue_count > 0) {
+            Pill("${address.queue_count} navbatda", color = VijdonColors.GreenBadge, background = VijdonColors.GreenBadge.copy(alpha = 0.22f))
+        } else {
+            Pill("Bo'sh", color = VijdonColors.TextSecondary, background = VijdonColors.TextSecondary.copy(alpha = 0.18f))
+        }
     }
 }

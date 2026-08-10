@@ -48,7 +48,7 @@ import uz.vijdon.driver.ui.theme.ChipShape
 import uz.vijdon.driver.ui.theme.ErrorBanner
 import uz.vijdon.driver.ui.theme.Pill
 import uz.vijdon.driver.ui.theme.RouteAddresses
-import uz.vijdon.driver.ui.theme.ScreenHeader
+import uz.vijdon.driver.ui.theme.TabHeader
 import uz.vijdon.driver.ui.theme.VijdonColors
 import uz.vijdon.driver.ui.theme.cardShadow
 import uz.vijdon.driver.util.formatMoney
@@ -65,7 +65,7 @@ fun HistoryScreen(viewModel: HistoryViewModel = hiltViewModel()) {
     LaunchedEffect(Unit) { viewModel.load() }
 
     Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background).padding(16.dp)) {
-        ScreenHeader("Tarix")
+        TabHeader("Tarix")
         Spacer(Modifier.height(12.dp))
 
         // Ikkita mustaqil filtr — holat (Hammasi/Yakunlangan/Bekor) va davr

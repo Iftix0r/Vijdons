@@ -28,6 +28,12 @@ object VijdonColors {
     val Green = Color(0xFF34C759)
     val Red = Color(0xFFFF3B30)
     val Blue = Color(0xFF007AFF)
+    // "N navbatda" kabi status-badge matni uchun — oddiy Green qorong'i
+    // fondagi (kartalar, "Joriy navbatingiz" bloki) yarim-shaffof yashil
+    // fonda past-kontrastli, xira ko'rinardi. Cyan bilan bir xil g'oya:
+    // qorong'i rejimda yorqinroq (emerald-400 uslubidagi) muqobil, yorug'
+    // rejimda oddiy Green o'zi yetarli kontrastli.
+    val GreenBadge: Color @Composable get() = if (isSystemInDarkTheme()) Color(0xFF34D399) else Green
     // Qorong'i fonda oddiy --ios-blue past kontrastli ko'rinadi (masalan
     // statistika kartalaridagi kichik matnlarda) — shu o'rinlarda iOS tizim
     // ko'k-havo rangi (--ios-cyan) ishlatiladi, yorug' mavzuda esa oddiy

@@ -65,7 +65,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.ui.theme.CardShape
 import uz.vijdon.driver.ui.theme.Pill
-import uz.vijdon.driver.ui.theme.ScreenHeader
+import uz.vijdon.driver.ui.theme.TabHeader
 import uz.vijdon.driver.ui.theme.VijdonColors
 import uz.vijdon.driver.ui.theme.cardShadow
 import uz.vijdon.driver.util.copyUriToCacheFile
@@ -109,7 +109,7 @@ fun ProfileScreen(
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
     ) {
-        ScreenHeader("Profil")
+        TabHeader("Profil")
 
         Spacer(Modifier.height(20.dp))
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -146,7 +146,7 @@ fun ProfileScreen(
         Text(currentDriver.phone_number, color = VijdonColors.TextSecondary, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
         Spacer(Modifier.height(8.dp))
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Pill(if (currentDriver.is_on_duty) "Ish navbatida" else "Oflayn", color = if (currentDriver.is_on_duty) VijdonColors.Green else VijdonColors.TextSecondary)
+            Pill(if (currentDriver.is_on_duty) "Ish navbatida" else "Oflayn", color = if (currentDriver.is_on_duty) VijdonColors.GreenBadge else VijdonColors.TextSecondary)
         }
 
         Spacer(Modifier.height(20.dp))

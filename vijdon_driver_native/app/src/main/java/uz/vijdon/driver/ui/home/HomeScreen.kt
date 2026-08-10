@@ -87,6 +87,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -377,6 +378,16 @@ fun HomeScreen(
                                     address = address,
                                     distanceM = state.addressDistancesM[address.id],
                                     expanded = state.expandedAddressId == address.id && address.id != nearestId,
+                                    // Shu manzil aynan "Joriy navbatingiz" kartasida
+                                    // ko'rsatilayotgan bo'lsa — ikkalasi bir xil sonni
+                                    // ko'rsatishi uchun aynan o'sha jonli ro'yxat uzunligi
+                                    // ishlatiladi (address.queue_count boshqa so'rovdan
+                                    // kelib, biroz eskirgan/farqli bo'lishi mumkin edi).
+                                    liveQueueCount = if (address.id == nearestId && state.expandedAddressId == nearestId) {
+                                        state.queueDrivers.size
+                                    } else {
+                                        null
+                                    },
                                     queueDrivers = state.queueDrivers,
                                     queueLoading = state.queueLoading,
                                     onToggleExpand = { viewModel.toggleAddressExpand(address) },
@@ -1108,16 +1119,19 @@ private fun CurrentQueueCard(addressName: String, queueDrivers: List<QueueDriver
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.4.sp),
                 )
             }
+            // Diqqat: avval fon (10% shaffoflik) va border (20%) juda ingichka
+            // bo'lib, to'q kartaga qo'shilib ketardi — endi ikkalasi ham
+            // kuchaytirildi va matn Bold qilindi, aniqroq ajralib turadi.
             Text(
                 addressName,
                 color = VijdonColors.Yellow,
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
-                    .background(VijdonColors.Yellow.copy(alpha = 0.1f), CircleShape)
-                    .border(1.dp, VijdonColors.Yellow.copy(alpha = 0.2f), CircleShape)
-                    .padding(horizontal = 10.dp, vertical = 3.dp),
+                    .background(VijdonColors.Yellow.copy(alpha = 0.2f), CircleShape)
+                    .border(1.dp, VijdonColors.Yellow.copy(alpha = 0.45f), CircleShape)
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
             )
         }
         Spacer(Modifier.height(12.dp))
@@ -1170,35 +1184,42 @@ private fun DarkQueueRow(d: QueueDriverDto) {
             Text(
                 d.joined_at.takeLastWhile { it != 'T' }.take(5),
                 color = Color(0xFF0E1621).copy(alpha = 0.65f),
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace),
             )
         }
     } else {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 1.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // Raqam va ism orasidagi bo'shliq avval juda tor edi (6dp) —
+            // 10dp'ga kengaytirildi. Ism ham vaqt bilan bir xil kulrang
+            // tusda bo'lib, ikkalasi qo'shilib ketardi — endi ism ancha
+            // ochroq (0.9f) va o'rta-qalin, vaqt esa pastda alohida
+            // kichikroq/monospace shrift bilan aniq ajratiladi.
+            Row(modifier = Modifier.weight(1f, fill = false), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     d.position.toString(),
                     color = Color.White.copy(alpha = 0.4f),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                     modifier = Modifier.width(16.dp),
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(10.dp))
                 Text(
                     d.full_name,
-                    color = Color.White.copy(alpha = 0.75f),
-                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.9f),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
                 )
             }
+            Spacer(Modifier.width(8.dp))
             Text(
                 d.joined_at.takeLastWhile { it != 'T' }.take(5),
-                color = Color.White.copy(alpha = 0.35f),
-                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.3f),
+                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 10.sp),
             )
         }
     }
@@ -1209,16 +1230,24 @@ private fun HomeAddressRow(
     address: AddressDto,
     distanceM: Double?,
     expanded: Boolean,
+    // Shu manzil hozir "Joriy navbatingiz" kartasida ham ko'rsatilayotgan
+    // bo'lsa — o'sha yerdagi (queueDrivers ro'yxati) bilan bir xil, jonli
+    // sonni ko'rsatish uchun. Aks holda address.queue_count (alohida
+    // so'rovdan, biroz eskirgan bo'lishi mumkin) ishlatiladi. Avval
+    // ikkalasi turli manbadan kelib, bir-biriga mos kelmasligi mumkin edi
+    // (masalan yuqorida "4-o'rin" ko'rsatilib, pastda "3 navbatda").
+    liveQueueCount: Int?,
     queueDrivers: List<QueueDriverDto>,
     queueLoading: Boolean,
     onToggleExpand: () -> Unit,
 ) {
+    val effectiveQueueCount = liveQueueCount ?: address.queue_count
     // Pin ikonkasi statusni bildiradi: navbatda haydovchi bor — rose/qizil
     // (band), navbat bo'sh — neytral kulrang (darhol qo'shilish mumkin).
     // `demo.html` maketidagi kabi — endi "eng yaqin" holati uchun alohida
     // sariq bezak yo'q, chunki bu ma'lumot yuqoridagi "Joriy navbatingiz"
     // kartasida allaqachon ko'rsatiladi.
-    val busy = address.queue_count > 0
+    val busy = effectiveQueueCount > 0
     val pinColor = if (busy) VijdonColors.Red else VijdonColors.TextSecondary
     val pinBackground = if (busy) VijdonColors.Red.copy(alpha = 0.1f) else VijdonColors.BadgeNeutral
     Column(
@@ -1250,21 +1279,26 @@ private fun HomeAddressRow(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Spacer(Modifier.height(2.dp))
+                    // Bitta qatorga sig'ishi uchun ataylab kichikroq shrift
+                    // (labelSmall) va torroq bo'shliqlar — avval bodySmall
+                    // bilan "N ta bugun" matni ikkinchi qatorga tushib qolardi.
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.NearMe, contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(11.dp))
-                        Spacer(Modifier.width(3.dp))
+                        Icon(Icons.Rounded.NearMe, contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(10.dp))
+                        Spacer(Modifier.width(2.dp))
                         Text(
                             distanceM?.let { formatDistanceM(it) } ?: "noma'lum",
-                            color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall,
+                            color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
-                        Spacer(Modifier.width(6.dp))
-                        Text("•", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
-                        Spacer(Modifier.width(6.dp))
-                        Icon(Icons.Rounded.DirectionsCar, contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(11.dp))
-                        Spacer(Modifier.width(3.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("•", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
+                        Spacer(Modifier.width(4.dp))
+                        Icon(Icons.Rounded.DirectionsCar, contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(10.dp))
+                        Spacer(Modifier.width(2.dp))
                         Text(
                             "${address.today_orders} ta bugun",
-                            color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall,
+                            color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
@@ -1272,9 +1306,9 @@ private fun HomeAddressRow(
             Spacer(Modifier.width(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (busy) {
-                    Pill("${address.queue_count} navbatda", color = VijdonColors.Green)
+                    Pill("$effectiveQueueCount navbatda", color = VijdonColors.GreenBadge, background = VijdonColors.GreenBadge.copy(alpha = 0.22f))
                 } else {
-                    Pill("Bo'sh", color = VijdonColors.TextSecondary)
+                    Pill("Bo'sh", color = VijdonColors.TextSecondary, background = VijdonColors.TextSecondary.copy(alpha = 0.18f))
                 }
                 if (busy) {
                     IconButton(onClick = onToggleExpand, modifier = Modifier.size(28.dp)) {
@@ -1370,7 +1404,7 @@ internal fun formatDistanceEta(m: Double): String {
 @Composable
 private fun HomeHeader(driverFullName: String, balance: String, onOpenBalance: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {

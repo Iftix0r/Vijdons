@@ -38,7 +38,7 @@ import androidx.compose.ui.unit.dp
  * qaraganda ancha yaxshi kontrast beradi.
  */
 @Composable
-fun Pill(text: String, color: Color = VijdonColors.TextSecondary, background: Color = color.copy(alpha = 0.15f), modifier: Modifier = Modifier) {
+fun Pill(text: String, color: Color = VijdonColors.TextSecondary, background: Color = color.copy(alpha = 0.18f), modifier: Modifier = Modifier) {
     Text(
         text,
         color = color,
@@ -100,6 +100,29 @@ fun ScreenHeader(title: String, subtitle: String? = null, modifier: Modifier = M
                 Spacer(Modifier.height(2.dp))
                 Text(it, color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
+        }
+    }
+}
+
+/**
+ * Pastki panel bo'limlari ("Asosiy", "Tarix", "Profil") uchun — `ScreenHeader`
+ * kabi soyali/suzuvchi karta EMAS, balki fonga to'g'ridan-to'g'ri yozilgan
+ * TEKIS sarlavha. Ikkisining farqi ataylab: tab-bo'limlar (asosiy navigatsiya)
+ * shu tekis uslubda, ichki (orqaga tugmali) sahifalar esa `ScreenHeader`
+ * kartasida — shu bilan foydalanuvchi qayerda ekanini (asosiy tab / ichki
+ * sahifa) hatto tugmasiz ham bir qarashda sezadi.
+ */
+@Composable
+fun TabHeader(title: String, subtitle: String? = null, modifier: Modifier = Modifier) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            title,
+            color = VijdonColors.TextPrimary,
+            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+        )
+        subtitle?.let {
+            Spacer(Modifier.height(2.dp))
+            Text(it, color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
