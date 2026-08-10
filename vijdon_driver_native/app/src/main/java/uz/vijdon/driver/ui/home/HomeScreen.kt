@@ -34,6 +34,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Message
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CreditCard
 import androidx.compose.material.icons.rounded.EmojiEvents
@@ -219,14 +220,10 @@ fun HomeScreen(
     val showListBranch = currentDriver.is_on_duty && (state.orders.isNotEmpty() || state.addresses.isNotEmpty())
 
     Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background)) {
-        // Vaqtincha OLIB TASHLANDI — status-bar zonasidagi vizual muammoni
-        // (Reyting/Balans tugmalari bilan bog'liq) alohida tekshirish uchun.
-        // Qayta yoqish uchun quyidagi qatorni oching.
-        // TopBar(rank = state.rank, balance = currentDriver.balance, onOpenRating = onOpenRating, onOpenBalance = onOpenBalance)
-        // TopBar olib tashlangach, uning bo'shlig'i ham yo'qolib, kontent
-        // to'g'ridan-to'g'ri status-bar tagiga yopishib qolgan edi — shu
-        // sabab kichik bo'shliq alohida qaytarildi.
-        Spacer(Modifier.height(12.dp))
+        // Hamburger tugmasi endi yuqori CHAP burchakda (ApprovedScaffold)
+        // turgani uchun Balans tugmasi shu qatorda faqat O'NGGA
+        // tekislanadi — Reyting tugmasi hozircha qaytarilmadi.
+        BalanceBar(balance = currentDriver.balance, onOpenBalance = onOpenBalance)
 
         if (notificationPermissionMissing) {
             NotificationPermissionBanner(
@@ -998,11 +995,14 @@ private fun SurgeBanner(multiplier: Double, reason: String?) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 "Talab yuqori — narxlar ${String.format(Locale.US, "%.1f", multiplier)}x oshirilgan",
-                color = VijdonColors.Yellow,
+                // Yellow.copy(alpha=0.14f) fon ustida to'liq to'yingan
+                // VijdonColors.Yellow matn deyarli o'qilmas edi — YellowDark
+                // bilan almashtirildi (kontrast tuzatildi).
+                color = VijdonColors.YellowDark,
                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
             )
             if (!reason.isNullOrBlank()) {
-                Text(reason, color = VijdonColors.Yellow.copy(alpha = 0.8f), style = MaterialTheme.typography.labelSmall)
+                Text(reason, color = VijdonColors.YellowDark.copy(alpha = 0.85f), style = MaterialTheme.typography.labelSmall)
             }
         }
     }
@@ -1071,25 +1071,41 @@ private fun HomeAddressRow(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                // Pin ikonkasi endi statusni ham bildiradi: eng yaqin — sariq,
+                // navbatda haydovchi bor — qizil (band), navbat bo'sh — yashil
+                // (darhol qo'shilish mumkin). Avval barchasi bir xil qizil edi.
+                val pinColor = when {
+                    isNearest -> VijdonColors.TextOnYellow
+                    address.queue_count > 0 -> VijdonColors.Red
+                    else -> VijdonColors.Green
+                }
+                val pinBackground = when {
+                    isNearest -> VijdonColors.Yellow
+                    address.queue_count > 0 -> VijdonColors.Red.copy(alpha = 0.12f)
+                    else -> VijdonColors.Green.copy(alpha = 0.12f)
+                }
                 Box(
-                    modifier = Modifier.size(36.dp).background(if (isNearest) VijdonColors.Yellow else VijdonColors.BadgeNeutral, CircleShape),
+                    modifier = Modifier.size(36.dp).background(pinBackground, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        Icons.Rounded.LocationOn, contentDescription = null,
-                        tint = if (isNearest) VijdonColors.TextOnYellow else VijdonColors.Red,
-                        modifier = Modifier.size(18.dp),
-                    )
+                    Icon(Icons.Rounded.LocationOn, contentDescription = null, tint = pinColor, modifier = Modifier.size(18.dp))
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(address.name, color = VijdonColors.TextPrimary, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                    // "· eng yaqin" matni ortiqcha edi — bu ma'lumot allaqachon
-                    // sariq border/badge orqali ko'rinib turibdi, shu sabab
-                    // olib tashlandi va masofaning o'zi kattaroq ko'rsatiladi.
+                    // Manzil nomi — ro'yxatdagi eng muhim ma'lumot, shu sabab
+                    // qalinroq (SemiBold) qilib ajratib ko'rsatiladi, masofa
+                    // esa kichikroq va och rangda ikkilamchi ma'lumot sifatida.
+                    Text(
+                        address.name,
+                        color = VijdonColors.TextPrimary,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(1.dp))
                     Text(
                         distanceM?.let { formatDistanceM(it) } ?: "Masofa noma'lum",
-                        color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodyMedium,
+                        color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall,
                     )
                 }
             }
@@ -1097,7 +1113,7 @@ private fun HomeAddressRow(
             Column(horizontalAlignment = Alignment.End) {
                 if (isNearest && queuePosition != null) {
                     Pill("Siz: $queuePosition-o'rin", color = VijdonColors.TextOnYellow, background = VijdonColors.Yellow)
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(6.dp))
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Pill(
@@ -1114,7 +1130,12 @@ private fun HomeAddressRow(
                         }
                     }
                 }
-                Text("${address.today_orders} ta bugun", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    "${address.today_orders} ta bugun",
+                    color = VijdonColors.TextSecondary.copy(alpha = 0.75f),
+                    style = MaterialTheme.typography.labelSmall,
+                )
             }
         }
 
@@ -1127,7 +1148,15 @@ private fun HomeAddressRow(
             } else if (queueDrivers.isEmpty()) {
                 Text("Navbatda hech kim yo'q", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
             } else {
-                queueDrivers.forEach { d -> QueueDriverRow(d) }
+                queueDrivers.forEachIndexed { index, d ->
+                    QueueDriverRow(d)
+                    // Har bir haydovchi qatorini bir-biridan ajratib turish
+                    // uchun — avval faqat bo'sh joy bilan chegaralangan bo'lib,
+                    // "pala-partish" ko'rinardi.
+                    if (index != queueDrivers.lastIndex) {
+                        HorizontalDivider(color = VijdonColors.Border.copy(alpha = 0.5f))
+                    }
+                }
             }
         }
     }
@@ -1136,7 +1165,7 @@ private fun HomeAddressRow(
 @Composable
 private fun QueueDriverRow(d: QueueDriverDto) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1150,8 +1179,18 @@ private fun QueueDriverRow(d: QueueDriverDto) {
             Spacer(Modifier.width(8.dp))
             Text(
                 d.full_name + if (d.is_me) " (Siz)" else "",
-                color = if (d.is_me) VijdonColors.Yellow else VijdonColors.TextPrimary,
-                style = MaterialTheme.typography.bodySmall,
+                // Diqqat: avval bu qator sariq (VijdonColors.Yellow) matn
+                // bilan chizilardi — eng yaqin manzil kartasi sal sariq
+                // tusga bo'yalgani (pastda, isNearest) uchun "sariq fonda
+                // sariq matn" past-kontrast holatiga olib kelardi. YellowDark
+                // (to'q oltin) esa oq/qora VA och-sariq fonlarning barchasida
+                // yetarli kontrast beradi.
+                color = if (d.is_me) VijdonColors.YellowDark else VijdonColors.TextPrimary,
+                style = if (d.is_me) {
+                    MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
+                } else {
+                    MaterialTheme.typography.bodySmall
+                },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false),
@@ -1169,6 +1208,42 @@ internal fun formatDistanceM(m: Double): String =
 internal fun formatDistanceEta(m: Double): String {
     val etaMin = (m / 1000.0 / 28.0 * 60.0).toInt().coerceAtLeast(1)
     return "${formatDistanceM(m)} · $etaMin daqiqa"
+}
+
+/** Faqat Balans tugmasi — hamburger tugmasi endi yuqori chapda (ApprovedScaffold)
+ * turgani va Reyting tugmasi hozircha qaytarilmagani uchun, `TopBar`dagi
+ * (pastda, hozir chaqirilmayapti) Balans qismining o'zi, o'ngga tekislangan. */
+@Composable
+private fun BalanceBar(balance: String, onOpenBalance: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = VijdonColors.Glass,
+            shadowElevation = 4.dp,
+            onClick = onOpenBalance,
+        ) {
+            Row(
+                modifier = Modifier.padding(start = 16.dp, end = 10.dp, top = 12.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Rounded.CreditCard, contentDescription = null, tint = VijdonColors.Green, modifier = Modifier.size(19.dp))
+                Spacer(Modifier.width(7.dp))
+                Text(
+                    "${formatMoney(balance)} so'm",
+                    color = VijdonColors.TextPrimary,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                )
+                // Bu tugmani oddiy matn/badge'dan ajratib, aynan BOSILADIGAN
+                // ekanini bildirish uchun — o'qga ishora qiluvchi kichik
+                // strelka (Balans tarixi sahifasiga o'tishni anglatadi).
+                Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(16.dp))
+            }
+        }
+    }
 }
 
 /** Web'dagi rangi: 1-o'rin — oltin, 2-3-o'rin — apelsin, qolganlari — kulrang. */
