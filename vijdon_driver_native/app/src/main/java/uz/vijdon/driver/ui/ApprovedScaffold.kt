@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -78,7 +79,12 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
         NavHost(
             navController = navController,
             startDestination = Tabs.HOME,
-            modifier = Modifier.padding(padding),
+            // Edge-to-edge (enableEdgeToEdge()) yoqilgach, Scaffold'ning
+            // o'zi bergan `padding` status-bar zonasini yetarlicha hisobga
+            // olmadi — TopBar (reyting/balans) status-bar bilan ustma-ust
+            // tushib qolgan edi. Shu sabab bu yerda ANIQ ravishda ham
+            // qo'shiladi.
+            modifier = Modifier.padding(padding).statusBarsPadding(),
             enterTransition = { tabEnter },
             exitTransition = { tabExit },
             popEnterTransition = { tabEnter },
