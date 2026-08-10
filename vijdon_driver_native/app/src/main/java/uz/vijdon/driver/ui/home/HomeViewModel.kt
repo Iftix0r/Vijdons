@@ -16,24 +16,39 @@ import uz.vijdon.driver.data.api.AddressDto
 import uz.vijdon.driver.data.api.ConfigDto
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.data.api.OrderDto
+import uz.vijdon.driver.data.api.QueueDriverDto
 import uz.vijdon.driver.data.location.DriverLocationService
 import uz.vijdon.driver.data.location.LocationBus
 import uz.vijdon.driver.data.repository.ApiResult
 import uz.vijdon.driver.data.repository.DriverRepository
 import uz.vijdon.driver.ui.orders.TaximeterTracker
 import javax.inject.Inject
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 data class HomeUiState(
     val driver: DriverDto? = null,
     val orders: List<OrderDto> = emptyList(),
     val lowBalance: Boolean = false,
     val error: String? = null,
+    val loading: Boolean = true,
     val actionInProgress: Set<Int> = emptySet(),
     val operatorPhone: String = "1351",
     val rank: Int? = null,
     val alertOrder: OrderDto? = null,
     val alertTotalSec: Int = 30,
     val addresses: List<AddressDto> = emptyList(),
+    val addressDistancesM: Map<Int, Double> = emptyMap(),
+    val expandedAddressId: Int? = null,
+    val queuePosition: Int? = null,
+    val queueDrivers: List<QueueDriverDto> = emptyList(),
+    val queueLoading: Boolean = false,
+    val orderDistancesM: Map<Int, Double> = emptyMap(),
+    val todayEarned: Double? = null,
+    val todayTrips: Int? = null,
+    val todayStatsExpanded: Boolean = false,
 )
 
 @HiltViewModel
@@ -48,6 +63,9 @@ class HomeViewModel @Inject constructor(
     private var config: ConfigDto? = null
     private var pollJob: Job? = null
     private val taximeters = mutableMapOf<Int, TaximeterTracker>()
+    private var driverLat: Double? = null
+    private var driverLng: Double? = null
+    private var autoExpandedOnce = false
 
     // Yandex Pro uslubidagi to'liq ekranli "yangi buyurtma" ogohlantirishi
     // uchun — faqat shu haydovchiga shaxsan yo'naltirilgan (is_dispatched)
@@ -69,6 +87,25 @@ class HomeViewModel @Inject constructor(
             val rank = (result as? ApiResult.Success)?.data?.my_row?.rank
             _uiState.value = _uiState.value.copy(rank = rank)
         }
+        refreshTodayStats()
+    }
+
+    // Yandex Pro'dagi kabi — Asosiy ekranda bugungi daromad va safarlar
+    // sonini bir bosishda ochish/yopish mumkin bo'lgan qisqa panel.
+    fun refreshTodayStats() {
+        viewModelScope.launch {
+            val result = repository.history("today")
+            if (result is ApiResult.Success) {
+                _uiState.value = _uiState.value.copy(
+                    todayEarned = result.data.total_earned,
+                    todayTrips = result.data.completed,
+                )
+            }
+        }
+    }
+
+    fun toggleTodayStats() {
+        _uiState.value = _uiState.value.copy(todayStatsExpanded = !_uiState.value.todayStatsExpanded)
     }
 
     fun setDriver(driver: DriverDto) {
@@ -106,10 +143,82 @@ class HomeViewModel @Inject constructor(
                 val result = repository.addresses()
                 if (result is ApiResult.Success) {
                     _uiState.value = _uiState.value.copy(addresses = result.data)
+                    recomputeAddressDistances()
                 }
                 delay(20_000)
             }
         }
+    }
+
+    /** Masofa haydovchining joriy GPS'iga bog'liq bo'lgani uchun server
+     * bermaydi (veb versiyada ham xuddi shunday — JS'da hisoblanadi),
+     * shu sabab mahalliy so'nggi joylashuv asosida hisoblanadi. Eng yaqin
+     * (<=1000m) manzil bo'lsa va navbatda odam bo'lsa, veb'dagi kabi
+     * avtomatik ochiladi — haydovchi darhol kim navbatda ekanini ko'rsin. */
+    private fun recomputeAddressDistances() {
+        val lat = driverLat
+        val lng = driverLng
+        val addresses = _uiState.value.addresses
+        if (lat == null || lng == null || addresses.isEmpty()) return
+        val distances = addresses.associate { it.id to haversineMeters(lat, lng, it.lat, it.lng) }
+        _uiState.value = _uiState.value.copy(addressDistancesM = distances)
+
+        if (!autoExpandedOnce) {
+            val nearest = addresses.minByOrNull { distances[it.id] ?: Double.MAX_VALUE }
+            val nearestDist = nearest?.let { distances[it.id] }
+            if (nearest != null && nearestDist != null && nearestDist <= 1000.0 && nearest.queue_count > 0) {
+                autoExpandedOnce = true
+                toggleAddressExpand(nearest, forceExpand = true)
+            }
+        }
+    }
+
+    fun toggleAddressExpand(address: AddressDto, forceExpand: Boolean = false) {
+        val current = _uiState.value
+        if (!forceExpand && current.expandedAddressId == address.id) {
+            _uiState.value = current.copy(expandedAddressId = null, queuePosition = null, queueDrivers = emptyList())
+            return
+        }
+        _uiState.value = current.copy(expandedAddressId = address.id, queueLoading = true)
+        viewModelScope.launch {
+            val posResult = repository.addressQueuePosition(address.id, driverLat, driverLng)
+            val driversResult = repository.addressQueueDrivers(address.id)
+            if (_uiState.value.expandedAddressId != address.id) return@launch
+            _uiState.value = _uiState.value.copy(
+                queuePosition = (posResult as? ApiResult.Success)?.data?.position,
+                queueDrivers = (driversResult as? ApiResult.Success)?.data ?: emptyList(),
+                queueLoading = false,
+            )
+        }
+    }
+
+    /** Yandex Pro'dagi "Offer Screen"dagi kabi — mijozgacha bo'lgan masofa
+     * server bermaydi (manzillar bilan bir xil sabab: haydovchining joriy
+     * GPS'iga bog'liq), shu sabab mahalliy hisoblanadi. Faqat hali
+     * mijozning oldiga yetib borilmagan holatlarda (pending/accepted)
+     * ma'noli — yo'lda/yetib kelgan holatda taximetr o'zi ishlaydi. */
+    private fun recomputeOrderDistances() {
+        val lat = driverLat ?: return
+        val lng = driverLng ?: return
+        val distances = _uiState.value.orders.mapNotNull { order ->
+            val flat = order.from_lat
+            val flng = order.from_lng
+            if (flat != null && flng != null && (order.isPending || order.isAccepted)) {
+                order.id to haversineMeters(lat, lng, flat, flng)
+            } else {
+                null
+            }
+        }.toMap()
+        _uiState.value = _uiState.value.copy(orderDistancesM = distances)
+    }
+
+    private fun haversineMeters(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
+        val r = 6_371_000.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLng = Math.toRadians(lng2 - lng1)
+        val a = sin(dLat / 2) * sin(dLat / 2) +
+            cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) * sin(dLng / 2) * sin(dLng / 2)
+        return r * 2 * atan2(sqrt(a), sqrt(1 - a))
     }
 
     fun refreshOrders() {
@@ -129,12 +238,14 @@ class HomeViewModel @Inject constructor(
                         orders = result.data.orders,
                         lowBalance = result.data.low_balance,
                         error = null,
+                        loading = false,
                         alertOrder = alertCandidate,
                         alertTotalSec = alertInitialTimerSec,
                     )
+                    recomputeOrderDistances()
                     pruneFinishedTaximeters(result.data.orders)
                 }
-                is ApiResult.Error -> _uiState.value = _uiState.value.copy(error = result.message)
+                is ApiResult.Error -> _uiState.value = _uiState.value.copy(error = result.message, loading = false)
             }
         }
     }
@@ -160,7 +271,7 @@ class HomeViewModel @Inject constructor(
 
     fun orderComplete(id: Int) {
         val tracker = taximeters[id]
-        runAction(id) { repository.orderComplete(id, tracker?.distanceKm, tracker?.priceUzs) }
+        runAction(id, onSuccess = ::refreshTodayStats) { repository.orderComplete(id, tracker?.distanceKm, tracker?.priceUzs) }
     }
 
     fun toggleWaiting(id: Int) {
@@ -169,11 +280,14 @@ class HomeViewModel @Inject constructor(
 
     fun taximeterFor(id: Int): TaximeterTracker? = taximeters[id]
 
-    private fun runAction(orderId: Int, block: suspend () -> ApiResult<*>) {
+    private fun runAction(orderId: Int, onSuccess: () -> Unit = {}, block: suspend () -> ApiResult<*>) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(actionInProgress = _uiState.value.actionInProgress + orderId)
             when (val result = block()) {
-                is ApiResult.Success -> refreshOrders()
+                is ApiResult.Success -> {
+                    refreshOrders()
+                    onSuccess()
+                }
                 is ApiResult.Error -> _uiState.value = _uiState.value.copy(error = result.message)
             }
             _uiState.value = _uiState.value.copy(actionInProgress = _uiState.value.actionInProgress - orderId)
@@ -183,6 +297,10 @@ class HomeViewModel @Inject constructor(
     private fun collectLocationForTaximeter() {
         viewModelScope.launch {
             LocationBus.points.collect { point ->
+                driverLat = point.lat
+                driverLng = point.lng
+                recomputeAddressDistances()
+                recomputeOrderDistances()
                 val cfg = config ?: return@collect
                 val activeOrderIds = _uiState.value.orders.filter { it.isOnWay || it.isArrived }.map { it.id }
                 activeOrderIds.forEach { orderId ->

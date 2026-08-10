@@ -13,7 +13,12 @@ import uz.vijdon.driver.data.repository.DriverRepository
 import java.io.File
 import javax.inject.Inject
 
-data class BalanceHistoryUiState(val entries: List<BalanceEntryDto> = emptyList(), val balance: String = "0", val error: String? = null)
+data class BalanceHistoryUiState(
+    val entries: List<BalanceEntryDto> = emptyList(),
+    val balance: String = "0",
+    val loading: Boolean = true,
+    val error: String? = null,
+)
 
 @HiltViewModel
 class BalanceHistoryViewModel @Inject constructor(private val repository: DriverRepository) : ViewModel() {
@@ -23,8 +28,8 @@ class BalanceHistoryViewModel @Inject constructor(private val repository: Driver
     init {
         viewModelScope.launch {
             when (val result = repository.balanceHistory()) {
-                is ApiResult.Success -> _uiState.value = BalanceHistoryUiState(result.data.entries, result.data.balance)
-                is ApiResult.Error -> _uiState.value = _uiState.value.copy(error = result.message)
+                is ApiResult.Success -> _uiState.value = BalanceHistoryUiState(result.data.entries, result.data.balance, loading = false)
+                is ApiResult.Error -> _uiState.value = _uiState.value.copy(loading = false, error = result.message)
             }
         }
     }

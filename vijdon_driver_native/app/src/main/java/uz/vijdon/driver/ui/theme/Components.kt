@@ -1,16 +1,28 @@
 package uz.vijdon.driver.ui.theme
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -34,9 +46,21 @@ fun Pill(text: String, color: Color = VijdonColors.TextSecondary, background: Co
 val CardShape = RoundedCornerShape(CardRadius)
 val ChipShape = RoundedCornerShape(ChipRadius)
 
-/** Kartalarga Yandex Taxi uslubidagi yengil "ko'tarilgan" soya beradi — tekis fon o'rniga chuqurlik hissi. */
-fun Modifier.cardShadow(shape: Shape = CardShape, elevation: androidx.compose.ui.unit.Dp = 8.dp): Modifier =
-    this.shadow(elevation = elevation, shape = shape, clip = false, ambientColor = Color.Black, spotColor = Color.Black)
+/**
+ * Kartalarga yengil "ko'tarilgan" soya beradi. Diqqat: Yandex Pro'ning
+ * o'zi og'ir soyali kartalar emas — TEKIS, grid-asosli bo'linmalar
+ * ishlatadi (chuqurlik emas, bo'sh joy va chiziqlar bilan ajratish), shu
+ * sabab sukut bo'yicha soya juda yengil (deyarli sezilmas) qilindi — faqat
+ * chindan "suzib turadigan" elementlar (FAB, sarlavha) uchun yuqoriroq
+ * qiymat beriladi.
+ */
+fun Modifier.cardShadow(
+    shape: Shape = CardShape,
+    elevation: androidx.compose.ui.unit.Dp = 2.dp,
+    glowColor: Color = Color.Black,
+    clip: Boolean = false,
+): Modifier =
+    this.shadow(elevation = elevation, shape = shape, clip = clip, ambientColor = glowColor, spotColor = glowColor)
 
 /**
  * Veb paneldagi `.ios-navbar` + `.ios-large-title` bilan bir xil — suzib
@@ -45,22 +69,59 @@ fun Modifier.cardShadow(shape: Shape = CardShape, elevation: androidx.compose.ui
  * SOS...) bir xil uslubdagi sarlavha uchun ishlatiladi.
  */
 @Composable
-fun ScreenHeader(title: String, subtitle: String? = null, modifier: Modifier = Modifier) {
-    Column(
+fun ScreenHeader(title: String, subtitle: String? = null, modifier: Modifier = Modifier, onBack: (() -> Unit)? = null) {
+    Row(
         modifier = modifier
             .fillMaxWidth()
             .cardShadow()
             .background(VijdonColors.Surface, CardShape)
-            .padding(horizontal = 18.dp, vertical = 16.dp),
+            .padding(horizontal = if (onBack != null) 8.dp else 18.dp, vertical = if (onBack != null) 4.dp else 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            title,
-            color = VijdonColors.TextPrimary,
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-        )
-        subtitle?.let {
-            Spacer(Modifier.height(2.dp))
-            Text(it, color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+        if (onBack != null) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Orqaga", tint = VijdonColors.TextPrimary)
+            }
+            Spacer(Modifier.width(2.dp))
         }
+        Column {
+            Text(
+                title,
+                color = VijdonColors.TextPrimary,
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+            )
+            subtitle?.let {
+                Spacer(Modifier.height(2.dp))
+                Text(it, color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
+/**
+ * Ro'yxat birinchi marta yuklanayotganda (hali natija ham, xato ham yo'q)
+ * ko'rsatiladi — aks holda ekran bir lahzaga "hozircha hech narsa yo'q"
+ * degan noto'g'ri xulosaga olib keladigan bo'sh holatni ko'rsatib qo'yardi.
+ */
+@Composable
+fun CenteredLoading(modifier: Modifier = Modifier) {
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator(color = VijdonColors.Yellow)
+    }
+}
+
+/** Tarmoq/server xatoligini ko'rsatuvchi qizil banner — barcha ro'yxat ekranlarida bir xil ko'rinishda. */
+@Composable
+fun ErrorBanner(message: String, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(VijdonColors.Red.copy(alpha = 0.12f), CardShape)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Rounded.ErrorOutline, contentDescription = null, tint = VijdonColors.Red, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(message, color = VijdonColors.Red, style = MaterialTheme.typography.bodySmall)
     }
 }

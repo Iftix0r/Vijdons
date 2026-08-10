@@ -25,6 +25,7 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Receipt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -41,11 +42,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import uz.vijdon.driver.data.api.BalanceEntryDto
 import uz.vijdon.driver.ui.theme.CardShape
+import uz.vijdon.driver.ui.theme.CenteredLoading
+import uz.vijdon.driver.ui.theme.ErrorBanner
 import uz.vijdon.driver.ui.theme.ScreenHeader
 import uz.vijdon.driver.ui.theme.VijdonColors
 import uz.vijdon.driver.ui.theme.cardShadow
@@ -59,10 +63,16 @@ fun BalanceHistoryScreen(viewModel: BalanceHistoryViewModel = hiltViewModel()) {
         Spacer(Modifier.height(8.dp))
         Column(modifier = Modifier.fillMaxWidth().cardShadow().background(VijdonColors.Surface, CardShape).padding(16.dp)) {
             Text("JORIY BALANS", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
-            Text("${state.balance} so'm", color = VijdonColors.Green, style = MaterialTheme.typography.headlineMedium)
+            Text("${state.balance} so'm", color = VijdonColors.Green, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold))
+        }
+        state.error?.let {
+            Spacer(Modifier.height(10.dp))
+            ErrorBanner(it)
         }
         Spacer(Modifier.height(12.dp))
-        if (state.entries.isEmpty()) {
+        if (state.loading && state.entries.isEmpty()) {
+            CenteredLoading()
+        } else if (state.entries.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Tarix bo'sh", color = VijdonColors.TextSecondary)
             }
@@ -81,7 +91,7 @@ private fun BalanceEntryRow(entry: BalanceEntryDto) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             val color = if (entry.is_income) VijdonColors.Green else VijdonColors.Red
             Box(modifier = Modifier.size(32.dp).background(color.copy(alpha = 0.15f), CircleShape), contentAlignment = Alignment.Center) {
                 Icon(
@@ -90,15 +100,17 @@ private fun BalanceEntryRow(entry: BalanceEntryDto) {
                 )
             }
             Spacer(Modifier.width(10.dp))
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(entry.note, color = VijdonColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
                 Text(entry.created_at.take(16).replace("T", " "), color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
         }
+        Spacer(Modifier.width(8.dp))
         Text(
             "${if (entry.is_income) "+" else "-"}${entry.amount}",
             color = if (entry.is_income) VijdonColors.Green else VijdonColors.Red,
-            style = MaterialTheme.typography.titleSmall,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+            maxLines = 1,
         )
     }
 }
@@ -156,7 +168,11 @@ fun TopupScreen(onDone: () -> Unit, viewModel: TopupViewModel = hiltViewModel())
             colors = ButtonDefaults.buttonColors(containerColor = VijdonColors.Yellow, contentColor = VijdonColors.TextOnYellow),
             modifier = Modifier.fillMaxWidth().height(52.dp),
         ) {
-            Text("Yuborish")
+            if (state.loading) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = VijdonColors.TextOnYellow, strokeWidth = 2.dp)
+            } else {
+                Text("Yuborish")
+            }
         }
     }
 }

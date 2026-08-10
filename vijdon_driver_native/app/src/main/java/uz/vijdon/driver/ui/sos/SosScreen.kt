@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Sos
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -100,7 +101,11 @@ fun SosScreen(viewModel: SosViewModel = hiltViewModel()) {
                 colors = ButtonDefaults.buttonColors(containerColor = VijdonColors.Red, contentColor = VijdonColors.TextPrimary),
                 modifier = Modifier.fillMaxWidth().height(52.dp),
             ) {
-                Text("SOS Yuborish")
+                if (state.loading) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = VijdonColors.TextPrimary, strokeWidth = 2.dp)
+                } else {
+                    Text("SOS Yuborish")
+                }
             }
         }
         state.error?.let {

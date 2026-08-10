@@ -18,6 +18,7 @@ data class AddressesUiState(
     val selectedAddress: AddressDto? = null,
     val queueDrivers: List<QueueDriverDto> = emptyList(),
     val myPosition: Int? = null,
+    val loading: Boolean = true,
     val error: String? = null,
 )
 
@@ -31,8 +32,8 @@ class AddressesViewModel @Inject constructor(private val repository: DriverRepos
     fun load() {
         viewModelScope.launch {
             when (val result = repository.addresses()) {
-                is ApiResult.Success -> _uiState.value = _uiState.value.copy(addresses = result.data)
-                is ApiResult.Error -> _uiState.value = _uiState.value.copy(error = result.message)
+                is ApiResult.Success -> _uiState.value = _uiState.value.copy(addresses = result.data, loading = false)
+                is ApiResult.Error -> _uiState.value = _uiState.value.copy(loading = false, error = result.message)
             }
         }
     }

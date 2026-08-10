@@ -16,6 +16,7 @@ data class RatingUiState(
     val rows: List<RatingRowDto> = emptyList(),
     val myRow: RatingRowDto? = null,
     val gapToNext: Int? = null,
+    val loading: Boolean = true,
     val error: String? = null,
 )
 
@@ -27,8 +28,8 @@ class RatingViewModel @Inject constructor(private val repository: DriverReposito
     init {
         viewModelScope.launch {
             when (val result = repository.rating()) {
-                is ApiResult.Success -> _uiState.value = RatingUiState(result.data.rows, result.data.my_row, result.data.gap_to_next)
-                is ApiResult.Error -> _uiState.value = _uiState.value.copy(error = result.message)
+                is ApiResult.Success -> _uiState.value = RatingUiState(result.data.rows, result.data.my_row, result.data.gap_to_next, loading = false)
+                is ApiResult.Error -> _uiState.value = _uiState.value.copy(loading = false, error = result.message)
             }
         }
     }

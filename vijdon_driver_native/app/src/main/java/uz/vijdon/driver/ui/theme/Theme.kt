@@ -8,30 +8,42 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-// Vijdon Taxi haydovchi paneli (veb)dagi kabi — ilova qurilmaning tizim
-// sozlamasiga (yorug'/qorong'i) qarab avtomatik moslashadi. Aksent ranglar
-// (Yellow/Green/Red/Blue) ikkala rejimda ham bir xil qoladi — faqat fon,
-// karta va matn ranglari almashadi.
+// Vijdon Taxi haydovchi paneli (veb, taxi/templates/driver/base.html dagi
+// --ios-* CSS o'zgaruvchilari) bilan AYNAN bir xil rang tokenlari — ilova
+// qurilmaning tizim sozlamasiga (yorug'/qorong'i) qarab avtomatik moslashadi.
 object VijdonColors {
-    // Qorong'i rejim — Telegram tungi mavzusidagi kabi yumshoq to'q ko'k-kulrang
-    // fon (pure black emas) — ko'zga yumshoqroq va "chuqurlik" hissi beradi.
-    val Background: Color @Composable get() = if (isSystemInDarkTheme()) Color(0xFF17212B) else Color(0xFFF2F2F7)
-    val Surface: Color @Composable get() = if (isSystemInDarkTheme()) Color(0xFF1C2733) else Color(0xFFFFFFFF)
-    val SurfaceRaised: Color @Composable get() = if (isSystemInDarkTheme()) Color(0xFF232E3C) else Color(0xFFF7F7FA)
-    val BottomBar: Color @Composable get() = if (isSystemInDarkTheme()) Color(0xFF0E1621) else Color(0xFFFFFFFF)
-    val Border: Color @Composable get() = if (isSystemInDarkTheme()) Color(0xFF2B3946) else Color(0xFFD1D1D6)
+    // --ios-bg / --ios-card
+    val Background: Color @Composable get() = if (isSystemInDarkTheme()) Color(0xFF0E1621) else Color(0xFFF2F2F7)
+    val Surface: Color @Composable get() = if (isSystemInDarkTheme()) Color(0xFF17212B) else Color(0xFFFFFFFF)
+    // --ios-card2
+    val SurfaceRaised: Color @Composable get() = if (isSystemInDarkTheme()) Color(0xFF1C2733) else Color(0xFFF2F2F7)
+    // Web'dagi suzuvchi panel — o'zi fondan bir bosqich ochiqroq karta rangida (.ios-glass taxminiy ekvivalenti)
+    val BottomBar: Color @Composable get() = if (isSystemInDarkTheme()) Color(0xFF17212B) else Color(0xFFFFFFFF)
+    // --ios-sep
+    val Border: Color @Composable get() = if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.09f) else Color(0xFF3C3C43).copy(alpha = 0.29f)
 
-    val Yellow = Color(0xFFF5B400)
-    val YellowDark = Color(0xFFC68F00)
-    val Green = Color(0xFF34D399)
-    val Red = Color(0xFFEF4444)
-    val Blue = Color(0xFF60A5FA)
+    // --ios-yellow / --ios-green / --ios-red / --ios-blue
+    val Yellow = Color(0xFFFFD600)
+    val YellowDark = Color(0xFFB8860B)
+    val Green = Color(0xFF34C759)
+    val Red = Color(0xFFFF3B30)
+    val Blue = Color(0xFF007AFF)
 
-    val TextPrimary: Color @Composable get() = if (isSystemInDarkTheme()) Color(0xFFF5F6FA) else Color(0xFF1C1C1E)
-    val TextSecondary: Color @Composable get() = if (isSystemInDarkTheme()) Color(0xFF8E99A3) else Color(0xFF6B7280)
-    val TextOnYellow = Color(0xFF1A1300)
+    // --ios-label
+    val TextPrimary: Color @Composable get() = if (isSystemInDarkTheme()) Color(0xFFFFFFFF) else Color(0xFF000000)
+    // --ios-label2
+    val TextSecondary: Color @Composable get() = if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.65f) else Color(0xFF3C3C43)
+    // .ios-btn-primary { color:#000 }
+    val TextOnYellow = Color(0xFF000000)
 
-    val BadgeNeutral: Color @Composable get() = if (isSystemInDarkTheme()) Color(0xFF232E3C) else Color(0xFFE5E5EA)
+    // --ios-fill
+    val BadgeNeutral: Color @Composable get() = if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.08f) else Color(0xFF787880).copy(alpha = 0.2f)
+
+    // .ios-glass — suzuvchi shaffof "shisha" panel (tepadagi reyting/balans
+    // chiplari, pastki navigatsiya paneli) uchun. Compose'da haqiqiy
+    // backdrop-blur yo'q, shu sabab web'dagidan sal yuqoriroq xiralik bilan
+    // taxminiy natija beriladi.
+    val Glass: Color @Composable get() = if (isSystemInDarkTheme()) Color(0xFF141416).copy(alpha = 0.85f) else Color.White.copy(alpha = 0.9f)
 }
 
 val CardRadius = 18.dp

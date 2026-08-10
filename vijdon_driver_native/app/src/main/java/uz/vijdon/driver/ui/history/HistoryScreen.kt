@@ -30,12 +30,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import uz.vijdon.driver.data.api.OrderDto
 import uz.vijdon.driver.ui.theme.CardShape
+import uz.vijdon.driver.ui.theme.CenteredLoading
 import uz.vijdon.driver.ui.theme.ChipShape
+import uz.vijdon.driver.ui.theme.ErrorBanner
 import uz.vijdon.driver.ui.theme.Pill
 import uz.vijdon.driver.ui.theme.ScreenHeader
 import uz.vijdon.driver.ui.theme.VijdonColors
@@ -98,8 +101,15 @@ fun HistoryScreen(viewModel: HistoryViewModel = hiltViewModel()) {
             StatCard(Icons.Rounded.Route, "Km", String.format("%.1f", state.totalKm), VijdonColors.Blue, Modifier.weight(1f))
         }
 
+        state.error?.let {
+            Spacer(Modifier.height(10.dp))
+            ErrorBanner(it)
+        }
+
         Spacer(Modifier.height(14.dp))
-        if (state.visibleOrders.isEmpty()) {
+        if (state.loading && state.visibleOrders.isEmpty()) {
+            CenteredLoading()
+        } else if (state.visibleOrders.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
@@ -114,7 +124,9 @@ fun HistoryScreen(viewModel: HistoryViewModel = hiltViewModel()) {
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(state.visibleOrders, key = { it.id }) { order -> HistoryRow(order) }
+                items(state.visibleOrders, key = { it.id }) { order ->
+                    Column(Modifier.animateItem()) { HistoryRow(order) }
+                }
             }
         }
     }
@@ -138,7 +150,7 @@ private fun StatCard(
             Text(label, color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
         }
         Spacer(Modifier.height(4.dp))
-        Text(value, color = valueColor, style = MaterialTheme.typography.titleMedium)
+        Text(value, color = valueColor, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
     }
 }
 
@@ -162,7 +174,7 @@ private fun HistoryRow(order: OrderDto) {
         }
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            Text(order.price?.let { "$it so'm" } ?: "—", color = VijdonColors.Green, style = MaterialTheme.typography.titleMedium)
+            Text(order.price?.let { "$it so'm" } ?: "—", color = VijdonColors.Green, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
             Text(order.client_phone, color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
         }
     }

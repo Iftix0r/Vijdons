@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import uz.vijdon.driver.data.api.AddressDto
 import uz.vijdon.driver.ui.theme.CardShape
+import uz.vijdon.driver.ui.theme.CenteredLoading
+import uz.vijdon.driver.ui.theme.ErrorBanner
 import uz.vijdon.driver.ui.theme.Pill
 import uz.vijdon.driver.ui.theme.ScreenHeader
 import uz.vijdon.driver.ui.theme.VijdonColors
@@ -45,13 +47,21 @@ fun AddressesScreen(viewModel: AddressesViewModel = hiltViewModel()) {
         ScreenHeader("Yaqin manzillar")
         Spacer(Modifier.height(12.dp))
 
-        if (state.addresses.isEmpty()) {
+        state.error?.let {
+            ErrorBanner(it, modifier = Modifier.padding(bottom = 10.dp))
+        }
+
+        if (state.loading && state.addresses.isEmpty()) {
+            CenteredLoading()
+        } else if (state.addresses.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Saqlangan manzillar yo'q", color = VijdonColors.TextSecondary)
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(state.addresses, key = { it.id }) { address -> AddressRow(address) { viewModel.openQueue(address) } }
+                items(state.addresses, key = { it.id }) { address ->
+                    Column(Modifier.animateItem()) { AddressRow(address) { viewModel.openQueue(address) } }
+                }
             }
         }
     }
@@ -90,16 +100,17 @@ private fun AddressRow(address: AddressDto, onClick: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.size(36.dp).background(VijdonColors.BadgeNeutral, CircleShape), contentAlignment = Alignment.Center) {
                 Icon(Icons.Rounded.LocationOn, contentDescription = null, tint = VijdonColors.Red, modifier = Modifier.size(18.dp))
             }
             Spacer(Modifier.width(10.dp))
-            Column {
-                Text(address.name, color = VijdonColors.TextPrimary, style = MaterialTheme.typography.titleSmall)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(address.name, color = VijdonColors.TextPrimary, style = MaterialTheme.typography.titleSmall, maxLines = 1)
                 Text("Bugun: ${address.today_orders} buyurtma", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
         }
+        Spacer(Modifier.width(8.dp))
         Pill(
             "${address.queue_count} navbatda",
             color = if (address.queue_count > 0) VijdonColors.Green else VijdonColors.TextSecondary,

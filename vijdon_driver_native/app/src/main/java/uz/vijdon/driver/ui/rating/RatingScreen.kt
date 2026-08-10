@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import uz.vijdon.driver.data.api.RatingRowDto
 import uz.vijdon.driver.ui.theme.CardShape
+import uz.vijdon.driver.ui.theme.CenteredLoading
+import uz.vijdon.driver.ui.theme.ErrorBanner
 import uz.vijdon.driver.ui.theme.ScreenHeader
 import uz.vijdon.driver.ui.theme.VijdonColors
 import uz.vijdon.driver.ui.theme.cardShadow
@@ -46,9 +48,22 @@ fun RatingScreen(viewModel: RatingViewModel = hiltViewModel()) {
         Spacer(Modifier.height(14.dp))
         RankHeroCard(myRow = state.myRow, totalDrivers = state.rows.size, gapToNext = state.gapToNext)
 
+        state.error?.let {
+            Spacer(Modifier.height(10.dp))
+            ErrorBanner(it)
+        }
+
         Spacer(Modifier.height(14.dp))
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(state.rows, key = { it.rank }) { row -> RatingRow(row) }
+        if (state.loading && state.rows.isEmpty()) {
+            CenteredLoading()
+        } else if (state.rows.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Reyting hali mavjud emas", color = VijdonColors.TextSecondary)
+            }
+        } else {
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                items(state.rows, key = { it.rank }) { row -> RatingRow(row) }
+            }
         }
     }
 }
@@ -105,7 +120,7 @@ private fun RatingRow(row: RatingRowDto) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             val emoji = medalEmoji[row.rank]
             Box(modifier = Modifier.size(28.dp), contentAlignment = Alignment.Center) {
                 if (emoji != null) {
@@ -115,15 +130,17 @@ private fun RatingRow(row: RatingRowDto) {
                 }
             }
             Spacer(Modifier.width(12.dp))
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     row.full_name + if (row.is_me) " (Siz)" else "",
                     color = if (row.is_me) VijdonColors.Yellow else VijdonColors.TextPrimary,
                     style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
                 )
                 Text("${row.earned} so'm", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
         }
+        Spacer(Modifier.width(8.dp))
         Text(row.completed.toString(), color = VijdonColors.TextPrimary, style = MaterialTheme.typography.titleMedium)
     }
     Spacer(Modifier.height(4.dp))

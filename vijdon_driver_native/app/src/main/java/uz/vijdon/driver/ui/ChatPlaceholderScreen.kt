@@ -28,11 +28,13 @@ fun ChatPlaceholderScreen() {
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // Yandex'ning o'z rang tili: ko'k — xabar/chat funksiyalari uchun
+            // (sariq faqat asosiy CTA/aksent uchun qoladi).
             Box(
-                modifier = Modifier.size(88.dp).background(VijdonColors.Yellow.copy(alpha = 0.15f), CircleShape),
+                modifier = Modifier.size(88.dp).background(VijdonColors.Blue.copy(alpha = 0.15f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Rounded.Forum, contentDescription = null, tint = VijdonColors.Yellow, modifier = Modifier.size(40.dp))
+                Icon(Icons.Rounded.Forum, contentDescription = null, tint = VijdonColors.Blue, modifier = Modifier.size(40.dp))
             }
             Spacer(Modifier.height(20.dp))
             Text(

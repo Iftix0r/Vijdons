@@ -48,8 +48,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import uz.vijdon.driver.data.api.DriverDto
@@ -139,7 +141,7 @@ fun ProfileScreen(
         Column(modifier = Modifier.fillMaxWidth().cardShadow().background(VijdonColors.Surface, CardShape).padding(16.dp)) {
             Text("JORIY BALANS", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(currentDriver.balance, color = VijdonColors.Green, style = MaterialTheme.typography.headlineMedium)
+                Text(currentDriver.balance, color = VijdonColors.Green, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold))
                 Spacer(Modifier.width(6.dp))
                 Text("so'm", color = VijdonColors.TextSecondary, modifier = Modifier.padding(bottom = 6.dp))
             }
@@ -237,14 +239,15 @@ private fun MenuRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(12.dp))
-            Text(title, color = VijdonColors.TextPrimary)
+            Text(title, color = VijdonColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        Spacer(Modifier.width(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (subtitle.isNotBlank()) {
-                Text(subtitle, color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Text(subtitle, color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall, maxLines = 1)
                 Spacer(Modifier.width(4.dp))
             }
             if (showChevron) {

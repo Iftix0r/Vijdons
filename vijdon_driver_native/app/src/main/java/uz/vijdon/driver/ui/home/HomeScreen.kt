@@ -7,6 +7,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,17 +24,23 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Message
 import androidx.compose.material.icons.rounded.CreditCard
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.LocalTaxi
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Phone
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -41,15 +48,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import uz.vijdon.driver.data.api.AddressDto
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.data.api.OrderDto
+import uz.vijdon.driver.data.api.QueueDriverDto
 import uz.vijdon.driver.ui.theme.CardShape
+import uz.vijdon.driver.ui.theme.CenteredLoading
+import uz.vijdon.driver.ui.theme.ErrorBanner
 import uz.vijdon.driver.ui.theme.Pill
 import uz.vijdon.driver.ui.theme.VijdonColors
 import uz.vijdon.driver.ui.theme.cardShadow
@@ -59,6 +76,7 @@ fun HomeScreen(
     driver: DriverDto,
     onLogout: () -> Unit,
     onOpenRating: () -> Unit,
+    onOpenBalance: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -87,6 +105,7 @@ fun HomeScreen(
         IncomingOrderOverlay(
             order = alertOrder,
             totalSec = state.alertTotalSec,
+            distanceM = state.orderDistancesM[alertOrder.id],
             onAccept = { viewModel.acceptOrder(alertOrder.id) },
             onReject = { viewModel.rejectOrder(alertOrder.id) },
         )
@@ -94,7 +113,7 @@ fun HomeScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background)) {
-        TopBar(rank = state.rank, balance = currentDriver.balance, onOpenRating = onOpenRating)
+        TopBar(rank = state.rank, balance = currentDriver.balance, onOpenRating = onOpenRating, onOpenBalance = onOpenBalance)
 
         Row(
             modifier = Modifier
@@ -126,6 +145,16 @@ fun HomeScreen(
             )
         }
 
+        val todayEarned = state.todayEarned
+        if (todayEarned != null) {
+            TodayStatsBar(
+                earned = todayEarned,
+                trips = state.todayTrips ?: 0,
+                expanded = state.todayStatsExpanded,
+                onToggle = { viewModel.toggleTodayStats() },
+            )
+        }
+
         if (state.lowBalance) {
             Row(
                 modifier = Modifier
@@ -145,10 +174,18 @@ fun HomeScreen(
             }
         }
         state.error?.let {
-            Text(it, color = VijdonColors.Red, modifier = Modifier.padding(horizontal = 16.dp))
+            ErrorBanner(it, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         }
 
-        if (state.orders.isEmpty() && state.addresses.isEmpty()) {
+        if (!currentDriver.is_on_duty) {
+            // Oflaynda haydovchiga buyurtma/manzil ro'yxati emas — chunki
+            // ular baribir unga tegishli emas — balki onlayn bo'lishga
+            // undovchi chaqiruv ko'rsatiladi. Bugungi statistika (yuqoridagi
+            // TodayStatsBar) baribir onlayn/oflaynligidan qat'i nazar ko'rinadi.
+            OfflineCallToAction(onGoOnline = { viewModel.toggleDuty() })
+        } else if (state.loading && state.orders.isEmpty() && state.addresses.isEmpty()) {
+            CenteredLoading()
+        } else if (state.orders.isEmpty() && state.addresses.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
@@ -162,12 +199,19 @@ fun HomeScreen(
                 }
             }
         } else {
+            val sortedAddresses = remember(state.addresses, state.addressDistancesM) {
+                state.addresses.sortedBy { state.addressDistancesM[it.id] ?: Double.MAX_VALUE }
+            }
+            val nearestId = sortedAddresses.firstOrNull()?.let { addr ->
+                state.addressDistancesM[addr.id]?.takeIf { it <= 1000.0 }?.let { addr.id }
+            }
             LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                 items(state.orders, key = { "order-${it.id}" }) { order ->
                     Column(Modifier.animateItem()) {
                         OrderCard(
                             order = order,
                             operatorPhone = state.operatorPhone,
+                            distanceM = state.orderDistancesM[order.id],
                             inProgress = order.id in state.actionInProgress,
                             onAccept = { viewModel.acceptOrder(order.id) },
                             onReject = { viewModel.rejectOrder(order.id) },
@@ -176,6 +220,14 @@ fun HomeScreen(
                             onComplete = { viewModel.orderComplete(order.id) },
                             onCallOperator = {
                                 context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${state.operatorPhone}")))
+                            },
+                            onCallClient = {
+                                context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${order.client_phone}")))
+                            },
+                            onQuickMessage = { message ->
+                                val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${order.client_phone}"))
+                                intent.putExtra("sms_body", message)
+                                context.startActivity(intent)
                             },
                         )
                         Spacer(Modifier.height(10.dp))
@@ -193,9 +245,18 @@ fun HomeScreen(
                             modifier = Modifier.padding(top = if (state.orders.isNotEmpty()) 4.dp else 0.dp, bottom = 8.dp),
                         )
                     }
-                    items(state.addresses, key = { "addr-${it.id}" }) { address ->
+                    items(sortedAddresses, key = { "addr-${it.id}" }) { address ->
                         Column(Modifier.animateItem()) {
-                            HomeAddressRow(address)
+                            HomeAddressRow(
+                                address = address,
+                                distanceM = state.addressDistancesM[address.id],
+                                isNearest = address.id == nearestId,
+                                expanded = state.expandedAddressId == address.id,
+                                queuePosition = state.queuePosition,
+                                queueDrivers = state.queueDrivers,
+                                queueLoading = state.queueLoading,
+                                onToggleExpand = { viewModel.toggleAddressExpand(address) },
+                            )
                             Spacer(Modifier.height(10.dp))
                         }
                     }
@@ -205,74 +266,267 @@ fun HomeScreen(
     }
 }
 
+/** Haydovchi oflaynda bo'lganda Bosh sahifaning asosiy qismi — buyurtma va
+ * manzil ro'yxati o'rniga, onlayn bo'lishga undovchi katta chaqiruv. */
 @Composable
-private fun HomeAddressRow(address: AddressDto) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .cardShadow()
-            .background(VijdonColors.Surface, CardShape)
-            .padding(14.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+private fun OfflineCallToAction(onGoOnline: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
-                modifier = Modifier.size(36.dp).background(VijdonColors.BadgeNeutral, CircleShape),
+                modifier = Modifier.size(88.dp).background(VijdonColors.BadgeNeutral, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Rounded.LocationOn, contentDescription = null, tint = VijdonColors.Red, modifier = Modifier.size(18.dp))
+                Icon(Icons.Rounded.LocalTaxi, contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(40.dp))
             }
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text(address.name, color = VijdonColors.TextPrimary, style = MaterialTheme.typography.titleSmall)
-                Text("Bugun: ${address.today_orders} buyurtma", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(20.dp))
+            Text(
+                "Siz hozir oflaynsiz",
+                color = VijdonColors.TextPrimary,
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Yangi buyurtmalar va yaqin manzillardagi navbatni ko'rish uchun onlayn bo'ling",
+                color = VijdonColors.TextSecondary,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(20.dp))
+            Button(
+                onClick = onGoOnline,
+                colors = ButtonDefaults.buttonColors(containerColor = VijdonColors.Yellow, contentColor = VijdonColors.TextOnYellow),
+                modifier = Modifier.height(48.dp),
+            ) {
+                Text("Onlayn bo'lish")
             }
         }
-        Pill(
-            "${address.queue_count} navbatda",
-            color = if (address.queue_count > 0) VijdonColors.Green else VijdonColors.TextSecondary,
-        )
     }
 }
 
 @Composable
-private fun TopBar(rank: Int?, balance: String, onOpenRating: () -> Unit) {
+private fun HomeAddressRow(
+    address: AddressDto,
+    distanceM: Double?,
+    isNearest: Boolean,
+    expanded: Boolean,
+    queuePosition: Int?,
+    queueDrivers: List<QueueDriverDto>,
+    queueLoading: Boolean,
+    onToggleExpand: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .cardShadow()
+            .let { if (isNearest) it.border(2.dp, VijdonColors.Yellow, CardShape) else it }
+            .background(VijdonColors.Surface, CardShape)
+            .padding(14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(36.dp).background(if (isNearest) VijdonColors.Yellow else VijdonColors.BadgeNeutral, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Rounded.LocationOn, contentDescription = null,
+                        tint = if (isNearest) VijdonColors.TextOnYellow else VijdonColors.Red,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(address.name, color = VijdonColors.TextPrimary, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                    Text(
+                        if (distanceM != null) formatDistanceM(distanceM) + if (isNearest) " · eng yaqin" else "" else "Masofa noma'lum",
+                        color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                if (isNearest && queuePosition != null) {
+                    Pill("Siz: $queuePosition-o'rin", color = VijdonColors.TextOnYellow, background = VijdonColors.Yellow)
+                    Spacer(Modifier.height(4.dp))
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Pill(
+                        "${address.queue_count} navbatda",
+                        color = if (address.queue_count > 0) VijdonColors.Green else VijdonColors.TextSecondary,
+                    )
+                    if (address.queue_count > 0) {
+                        IconButton(onClick = onToggleExpand, modifier = Modifier.size(28.dp)) {
+                            Icon(
+                                if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                                contentDescription = if (expanded) "Yopish" else "Navbatni ko'rish",
+                                tint = VijdonColors.TextSecondary,
+                            )
+                        }
+                    }
+                }
+                Text("${address.today_orders} ta bugun", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
+            }
+        }
+
+        if (expanded) {
+            Spacer(Modifier.height(10.dp))
+            HorizontalDivider(color = VijdonColors.Border)
+            Spacer(Modifier.height(10.dp))
+            if (queueLoading) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = VijdonColors.Yellow, strokeWidth = 2.dp)
+            } else if (queueDrivers.isEmpty()) {
+                Text("Navbatda hech kim yo'q", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+            } else {
+                queueDrivers.forEach { d -> QueueDriverRow(d) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QueueDriverRow(d: QueueDriverDto) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier.size(22.dp).background(if (d.is_me) VijdonColors.Yellow else VijdonColors.BadgeNeutral, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(d.position.toString(), color = if (d.is_me) VijdonColors.TextOnYellow else VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
+            }
+            Spacer(Modifier.width(8.dp))
+            Text(
+                d.full_name + if (d.is_me) " (Siz)" else "",
+                color = if (d.is_me) VijdonColors.Yellow else VijdonColors.TextPrimary,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+        }
+        Text(d.joined_at.takeLastWhile { it != 'T' }.take(5), color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+internal fun formatDistanceM(m: Double): String =
+    if (m < 1000) "${m.toInt()} m" else "%.1f km".format(m / 1000)
+
+/** Yandex Pro'dagi "3 km - 5 daqiqa" formatiga o'xshash — shahar ichi
+ * o'rtacha tezlik (~28 km/soat) asosida taxminiy vaqt. */
+internal fun formatDistanceEta(m: Double): String {
+    val etaMin = (m / 1000.0 / 28.0 * 60.0).toInt().coerceAtLeast(1)
+    return "${formatDistanceM(m)} · $etaMin daqiqa"
+}
+
+@Composable
+private fun TodayStatsBar(earned: Double, trips: Int, expanded: Boolean, onToggle: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .cardShadow()
+            .background(VijdonColors.Surface, CardShape)
+            .clip(CardShape)
+            .clickable(onClick = onToggle)
+            .padding(horizontal = 16.dp, vertical = if (expanded) 14.dp else 10.dp),
+    ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("Bugungi daromad", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+            Icon(
+                if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(18.dp),
+            )
+        }
+        if (expanded) {
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                Column {
+                    Text("${earned.toInt()} so'm", color = VijdonColors.Green, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold))
+                    Text("Daromad", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
+                }
+                Column {
+                    Text(trips.toString(), color = VijdonColors.Yellow, style = MaterialTheme.typography.headlineSmall)
+                    Text("Safar", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        } else {
+            Text("${earned.toInt()} so'm · $trips safar", color = VijdonColors.Green, style = MaterialTheme.typography.titleSmall)
+        }
+    }
+}
+
+/** Web'dagi rangi: 1-o'rin — oltin, 2-3-o'rin — apelsin, qolganlari — kulrang. */
+private fun rankIconColor(rank: Int?): Color = when {
+    rank == 1 -> VijdonColors.Yellow
+    rank != null && rank <= 3 -> Color(0xFFFF9500)
+    else -> Color(0xFF8E8E93)
+}
+
+@Composable
+private fun TopBar(rank: Int?, balance: String, onOpenRating: () -> Unit, onOpenBalance: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier
-                .cardShadow(shape = CircleShape, elevation = 4.dp)
-                .background(VijdonColors.BadgeNeutral.copy(alpha = 0.92f), CircleShape)
-                .clickable(onClick = onOpenRating)
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Surface(
+            shape = CircleShape,
+            color = VijdonColors.Glass,
+            shadowElevation = 4.dp,
+            onClick = onOpenRating,
         ) {
-            Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = VijdonColors.Yellow, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(if (rank != null) "$rank-o'rin" else "—", color = VijdonColors.TextPrimary, style = MaterialTheme.typography.labelLarge)
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = rankIconColor(rank), modifier = Modifier.size(15.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    if (rank != null) "$rank-o'rin" else "—",
+                    color = VijdonColors.TextPrimary,
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                )
+            }
         }
-        Row(
-            modifier = Modifier
-                .cardShadow(shape = CircleShape, elevation = 4.dp)
-                .background(VijdonColors.BadgeNeutral.copy(alpha = 0.92f), CircleShape)
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Surface(
+            shape = CircleShape,
+            color = VijdonColors.Glass,
+            shadowElevation = 4.dp,
+            onClick = onOpenBalance,
         ) {
-            Icon(Icons.Rounded.CreditCard, contentDescription = null, tint = VijdonColors.Green, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(6.dp))
-            Text("$balance so'm", color = VijdonColors.Green, style = MaterialTheme.typography.labelLarge)
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Rounded.CreditCard, contentDescription = null, tint = VijdonColors.Green, modifier = Modifier.size(15.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "$balance so'm",
+                    color = VijdonColors.TextPrimary,
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                )
+            }
         }
     }
+}
+
+/** Yandex Pro'dagi tayyor shablon xabarlar — holatga qarab mos xabar. */
+private fun quickMessageFor(order: OrderDto): String? = when {
+    order.isAccepted -> "Assalomu alaykum, men sizga yo'lga chiqdim."
+    order.isOnWay -> "Bir necha daqiqada yetib boraman."
+    order.isArrived -> "Men yetib keldim, sizni kutyapman."
+    else -> null
 }
 
 @Composable
 private fun OrderCard(
     order: OrderDto,
     operatorPhone: String,
+    distanceM: Double?,
     inProgress: Boolean,
     onAccept: () -> Unit,
     onReject: () -> Unit,
@@ -280,6 +534,8 @@ private fun OrderCard(
     onArrived: () -> Unit,
     onComplete: () -> Unit,
     onCallOperator: () -> Unit,
+    onCallClient: () -> Unit,
+    onQuickMessage: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -288,7 +544,14 @@ private fun OrderCard(
             .background(VijdonColors.Surface, CardShape)
             .padding(16.dp),
     ) {
-        Pill(order.status_label, color = VijdonColors.Green, background = VijdonColors.BadgeNeutral)
+        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Pill(order.status_label, color = VijdonColors.Green, background = VijdonColors.BadgeNeutral)
+            // Yandex Pro'dagi "Offer" ekranidagi kabi — mijozgacha bo'lgan
+            // masofa va taxminiy vaqt, faqat hali yetib borilmagan bo'lsa.
+            if (distanceM != null && (order.isPending || order.isAccepted)) {
+                Text(formatDistanceEta(distanceM), color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+            }
+        }
         Spacer(Modifier.height(8.dp))
         Text("Qayerdan: ${order.from_address}", color = VijdonColors.TextPrimary)
         if (order.to_address.isNotBlank()) {
@@ -299,7 +562,7 @@ private fun OrderCard(
             Spacer(Modifier.width(4.dp))
             Text("${order.client_name} · ${order.client_phone}", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
         }
-        order.price?.let { Text("$it so'm", color = VijdonColors.Green, style = MaterialTheme.typography.titleMedium) }
+        order.price?.let { Text("$it so'm", color = VijdonColors.Green, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold)) }
 
         Spacer(Modifier.height(12.dp))
         if (inProgress) {
@@ -326,6 +589,29 @@ private fun OrderCard(
                 }
             }
         }
+        // Mijozga tezkor aloqa — qo'ng'iroq va tayyor shablon xabar
+        // (Yandex Pro'dagi "Men yetib keldim" / "Sizni kutyapman" kabi).
+        if (order.isAccepted || order.isOnWay || order.isArrived) {
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IconTextButton(Icons.Rounded.Phone, "Qo'ng'iroq", onCallClient)
+                quickMessageFor(order)?.let { message ->
+                    IconTextButton(Icons.AutoMirrored.Rounded.Message, "Xabar") { onQuickMessage(message) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IconTextButton(icon: ImageVector, text: String, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = VijdonColors.TextSecondary),
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(text, style = MaterialTheme.typography.labelMedium)
     }
 }
 

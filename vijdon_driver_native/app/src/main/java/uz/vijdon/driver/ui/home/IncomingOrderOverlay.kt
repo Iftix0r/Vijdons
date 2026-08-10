@@ -1,6 +1,7 @@
 package uz.vijdon.driver.ui.home
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -34,10 +35,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -53,7 +57,7 @@ import uz.vijdon.driver.ui.theme.VijdonColors
  * o'zi yopiladi (HomeViewModel `alertOrder=null` qilib qo'yadi).
  */
 @Composable
-fun IncomingOrderOverlay(order: OrderDto, totalSec: Int, onAccept: () -> Unit, onReject: () -> Unit) {
+fun IncomingOrderOverlay(order: OrderDto, totalSec: Int, distanceM: Double?, onAccept: () -> Unit, onReject: () -> Unit) {
     val safeTotal = totalSec.coerceAtLeast(1)
     var remainingMs by remember(order.id) { mutableLongStateOf((order.timer_sec ?: safeTotal).toLong() * 1000L) }
 
@@ -77,8 +81,20 @@ fun IncomingOrderOverlay(order: OrderDto, totalSec: Int, onAccept: () -> Unit, o
     )
     val ringColor = if (fraction < 0.25f) VijdonColors.Red else VijdonColors.Yellow
 
+    // Yangi buyurtma keskin sakrab chiqmasin — yengil "genie" uslubidagi
+    // kirish animatsiyasi (kattalashib+ko'rinib kelish).
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+    val entranceScale by animateFloatAsState(if (visible) 1f else 0.85f, spring(dampingRatio = 0.7f), label = "entranceScale")
+    val entranceAlpha by animateFloatAsState(if (visible) 1f else 0f, tween(220), label = "entranceAlpha")
+
     Column(
-        modifier = Modifier.fillMaxSize().background(VijdonColors.Background).padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(VijdonColors.Background)
+            .scale(entranceScale)
+            .alpha(entranceAlpha)
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -124,13 +140,18 @@ fun IncomingOrderOverlay(order: OrderDto, totalSec: Int, onAccept: () -> Unit, o
 
         Spacer(Modifier.height(28.dp))
         Text("Yangi buyurtma!", style = MaterialTheme.typography.headlineSmall, color = VijdonColors.TextPrimary)
+        // Yandex Pro'dagi "Offer" ekranidagi kabi — "3 km - 5 daqiqa".
+        distanceM?.let {
+            Spacer(Modifier.height(4.dp))
+            Text(formatDistanceEta(it), color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
+        }
         Spacer(Modifier.height(16.dp))
 
         order.price?.let {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Payments, contentDescription = null, tint = VijdonColors.Green, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("$it so'm", style = MaterialTheme.typography.headlineSmall, color = VijdonColors.Green)
+                Text("$it so'm", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold), color = VijdonColors.Green)
             }
             Spacer(Modifier.height(12.dp))
         }
