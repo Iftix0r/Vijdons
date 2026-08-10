@@ -46,6 +46,8 @@ data class HomeUiState(
     val queueDrivers: List<QueueDriverDto> = emptyList(),
     val queueLoading: Boolean = false,
     val orderDistancesM: Map<Int, Double> = emptyMap(),
+    val surgeMultiplier: Double? = null,
+    val surgeReason: String? = null,
 )
 
 @HiltViewModel
@@ -78,6 +80,7 @@ class HomeViewModel @Inject constructor(
         }
         startPolling()
         startAddressPolling()
+        startSurgePolling()
         collectLocationForTaximeter()
         viewModelScope.launch {
             val result = repository.rating()
@@ -124,6 +127,27 @@ class HomeViewModel @Inject constructor(
                     recomputeAddressDistances()
                 }
                 delay(20_000)
+            }
+        }
+    }
+
+    // Talab ko'p bo'lgan paytda (masalan yomg'ir, bayram) narx ko'paytmasi
+    // haqida ogohlantirish — veb'dagi kabi Bosh sahifada banner sifatida
+    // ko'rinadi. Tez-tez o'zgarmaydi, shu sabab manzillar (20s) kabi emas,
+    // kamroq (60s) so'raladi.
+    private var surgePollJob: Job? = null
+    private fun startSurgePolling() {
+        surgePollJob?.cancel()
+        surgePollJob = viewModelScope.launch {
+            while (true) {
+                val result = repository.surge()
+                if (result is ApiResult.Success) {
+                    _uiState.value = _uiState.value.copy(
+                        surgeMultiplier = result.data.multiplier.takeIf { it > 1.0 },
+                        surgeReason = result.data.reason,
+                    )
+                }
+                delay(60_000)
             }
         }
     }
@@ -304,7 +328,7 @@ class HomeViewModel @Inject constructor(
                 activeOrderIds.forEach { orderId ->
                     ensureTaximeter(orderId)
                     val tracker = taximeters[orderId] ?: return@forEach
-                    if (tracker.addPoint(point.lat, point.lng, point.accuracy, point.timestampMs)) {
+                    if (tracker.addPoint(point.lat, point.lng, point.accuracy, point.speedMps, point.timestampMs)) {
                         flushMeter(orderId, tracker)
                     }
                 }
@@ -350,6 +374,7 @@ class HomeViewModel @Inject constructor(
     override fun onCleared() {
         pollJob?.cancel()
         addressPollJob?.cancel()
+        surgePollJob?.cancel()
         super.onCleared()
     }
 }

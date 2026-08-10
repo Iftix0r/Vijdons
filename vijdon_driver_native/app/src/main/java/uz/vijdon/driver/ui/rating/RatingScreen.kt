@@ -35,6 +35,7 @@ import uz.vijdon.driver.ui.theme.ErrorBanner
 import uz.vijdon.driver.ui.theme.ScreenHeader
 import uz.vijdon.driver.ui.theme.VijdonColors
 import uz.vijdon.driver.ui.theme.cardShadow
+import uz.vijdon.driver.util.formatMoney
 
 private val medalEmoji = mapOf(1 to "🥇", 2 to "🥈", 3 to "🥉")
 
@@ -146,7 +147,7 @@ private fun RatingRow(row: RatingRowDto) {
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1,
                 )
-                Text("${row.earned} so'm", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Text("${formatMoney(row.earned.toString())} so'm", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
         }
         Spacer(Modifier.width(8.dp))

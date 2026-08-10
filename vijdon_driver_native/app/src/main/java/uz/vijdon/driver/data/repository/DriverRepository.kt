@@ -130,13 +130,22 @@ class DriverRepository @Inject constructor(
 
     suspend fun createOrder(
         phone: String, customerName: String, toAddress: String, fromAddress: String, assignTo: String,
+        savedAddressId: Int? = null,
     ) = safeCall {
-        api.createOrder(
-            mapOf(
-                "phone_number" to phone, "customer_name" to customerName, "to_address" to toAddress,
-                "from_address" to fromAddress, "assign_to" to assignTo,
-            ),
+        val body = mutableMapOf(
+            "phone_number" to phone, "customer_name" to customerName, "to_address" to toAddress,
+            "from_address" to fromAddress, "assign_to" to assignTo,
         )
+        // Saqlangan manzil tanlangan bo'lsa — uning ID'si ham yuboriladi,
+        // shunda server aniq koordinata (lat/lng)ni ishlatadi va "Boshqa
+        // haydovchilar" tanlanganda avtomatik taqsimlashni ham ishga
+        // tushiradi (taxi/driverapp_views.py: order_create). ID'siz faqat
+        // manzil NOMI boradi, server esa koordinata sifatida buyurtma
+        // yaratayotgan haydovchining joriy joylashuvini oladi — bu
+        // "Boshqa haydovchilar" holatida noto'g'ri (buyurtma manzili u
+        // yerda emas, haydovchi turgan joyda bo'lib qolardi).
+        if (savedAddressId != null) body["saved_address_id"] = savedAddressId.toString()
+        api.createOrder(body)
     }
 
     suspend fun history(period: String): ApiResult<OrderHistoryResponse> = safeCall { api.history(period) }

@@ -64,7 +64,11 @@ class DriverLocationService : Service() {
             val location = result.lastLocation ?: return
             scope.launch {
                 LocationBus.emit(
-                    LocationPoint(location.latitude, location.longitude, location.accuracy, System.currentTimeMillis()),
+                    LocationPoint(
+                        location.latitude, location.longitude, location.accuracy,
+                        if (location.hasSpeed()) location.speed else 0f,
+                        System.currentTimeMillis(),
+                    ),
                 )
             }
             maybeReportToServer(location.latitude, location.longitude)

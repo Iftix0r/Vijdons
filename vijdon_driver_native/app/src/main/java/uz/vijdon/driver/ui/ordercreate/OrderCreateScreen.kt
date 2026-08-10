@@ -66,7 +66,7 @@ fun OrderCreateScreen(onDone: () -> Unit, onBack: () -> Unit, viewModel: OrderCr
 
         Spacer(Modifier.height(20.dp))
         SectionLabel("Qayerdan *")
-        AddressChips(state.savedAddresses, state.selectedAddressName, state.useCustomAddress, viewModel::selectAddress, viewModel::selectCustom)
+        AddressChips(state.savedAddresses, state.selectedAddress, state.useCustomAddress, viewModel::selectAddress, viewModel::selectCustom)
         if (state.useCustomAddress) {
             Spacer(Modifier.height(8.dp))
             DarkTextField(state.customFromAddress, viewModel::onCustomFromAddressChange, "Manzilni yozing")
@@ -125,14 +125,14 @@ private fun DarkTextField(value: String, onChange: (String) -> Unit, placeholder
 @Composable
 private fun AddressChips(
     addresses: List<AddressDto>,
-    selected: String?,
+    selected: AddressDto?,
     useCustom: Boolean,
-    onSelect: (String) -> Unit,
+    onSelect: (AddressDto) -> Unit,
     onCustom: () -> Unit,
 ) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         addresses.forEach { addr ->
-            AddressChip(Icons.Rounded.LocationOn, addr.name, selected == addr.name) { onSelect(addr.name) }
+            AddressChip(Icons.Rounded.LocationOn, addr.name, selected?.id == addr.id) { onSelect(addr) }
         }
         AddressChip(Icons.Rounded.Edit, "Boshqa", useCustom) { onCustom() }
     }

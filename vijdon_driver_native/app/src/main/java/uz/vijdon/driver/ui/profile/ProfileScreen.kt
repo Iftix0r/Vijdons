@@ -26,8 +26,10 @@ import androidx.compose.material.icons.rounded.AddCard
 import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.DirectionsCar
 import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.FiberManualRecord
 import androidx.compose.material.icons.rounded.Flag
+import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Receipt
@@ -77,12 +79,15 @@ fun ProfileScreen(
     onOpenContract: () -> Unit,
     onOpenAddresses: () -> Unit,
     onOpenSos: () -> Unit,
+    onOpenDestination: () -> Unit,
+    onOpenNearbyDrivers: () -> Unit,
     onLogout: () -> Unit,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     var showPasswordDialog by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
     val currentDriver = state.driver ?: driver
 
     // `driver` — sessiya boshida (kirishda) olingan bir martalik nusxa, shu
@@ -188,6 +193,14 @@ fun ProfileScreen(
         Spacer(Modifier.height(8.dp))
         MenuRow(Icons.Rounded.LocationOn, "Yaqin manzillar", "", tint = VijdonColors.Red, onClick = onOpenAddresses)
         Spacer(Modifier.height(8.dp))
+        MenuRow(
+            Icons.Rounded.Explore, "Yo'nalish rejimi",
+            if (currentDriver.destination_mode) "Yoqilgan" else "",
+            tint = VijdonColors.Green, onClick = onOpenDestination,
+        )
+        Spacer(Modifier.height(8.dp))
+        MenuRow(Icons.Rounded.Groups, "Yaqin haydovchilar", "", tint = VijdonColors.Blue, onClick = onOpenNearbyDrivers)
+        Spacer(Modifier.height(8.dp))
         MenuRow(Icons.Rounded.Sos, "SOS", "", tint = VijdonColors.Red, onClick = onOpenSos)
         Spacer(Modifier.height(8.dp))
         MenuRow(Icons.Rounded.Lock, "Parolni o'zgartirish", "", tint = Color(0xFF8E8E93)) { showPasswordDialog = true }
@@ -202,7 +215,7 @@ fun ProfileScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(VijdonColors.Surface, CardShape)
-                .clickable(onClick = onLogout)
+                .clickable { showLogoutDialog = true }
                 .padding(vertical = 16.dp),
             contentAlignment = Alignment.Center,
         ) {
@@ -217,6 +230,23 @@ fun ProfileScreen(
             passwordError = state.passwordError,
             onDismiss = { showPasswordDialog = false },
             onSubmit = viewModel::changePassword,
+        )
+    }
+
+    // Bitta noto'g'ri bosish bilan darhol chiqib ketmasin — qayta kirish
+    // uchun telefon+parol kerak bo'ladi, shu sabab tasdiqlash so'raladi.
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Tizimdan chiqasizmi?") },
+            text = { Text("Qayta kirish uchun telefon raqami va parolingiz kerak bo'ladi.") },
+            confirmButton = {
+                TextButton(onClick = { showLogoutDialog = false; onLogout() }) {
+                    Text("Chiqish", color = VijdonColors.Red)
+                }
+            },
+            dismissButton = { TextButton(onClick = { showLogoutDialog = false }) { Text("Bekor qilish") } },
+            containerColor = VijdonColors.Surface,
         )
     }
 }

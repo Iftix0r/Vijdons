@@ -36,6 +36,19 @@ class TaximeterTracker(
         private set
     var isWaiting: Boolean = false
 
+    /** Qurilma GPS chipi bergan so'nggi tezlik (km/soat) — masofa hisobidan
+     * mustaqil, shu sabab har GPS nuqtasida (4s throttle'siz) yangilanadi. */
+    var speedKmh: Double = 0.0
+        private set
+
+    /** Hali BIRORTA HAM yetarlicha aniq (<=60m) GPS nuqtasi qabul
+     * qilinmagan bo'lsa false — UI'da "0 km/soat, 0.00 km" haydovchi
+     * uchun "meter ishlamayapti" deb noto'g'ri tushunilmasligi uchun,
+     * buning o'rniga "GPS qidirilmoqda" holatini alohida ko'rsatish
+     * mumkin bo'lsin deb qo'shilgan. */
+    var hasFix: Boolean = false
+        private set
+
     private var lastLat: Double? = null
     private var lastLng: Double? = null
     private var lastAccuracy: Float = 0f
@@ -67,9 +80,14 @@ class TaximeterTracker(
         isWaiting = waiting
     }
 
-    /** Yangi GPS nuqtasini qabul qiladi; nuqta rad etilsa false qaytaradi. */
-    fun addPoint(lat: Double, lng: Double, accuracy: Float, timestampMs: Long = System.currentTimeMillis()): Boolean {
+    /** Yangi GPS nuqtasini qabul qiladi; nuqta rad etilsa false qaytaradi.
+     * `speedMps` — masofa hisobidan mustaqil, past aniqlikda ham (interval
+     * throttle'idan oldin) darhol yangilanadi, aks holda tezlik ko'rsatkichi
+     * 4 soniyada bir "sakrab" ko'rinardi. */
+    fun addPoint(lat: Double, lng: Double, accuracy: Float, speedMps: Float = 0f, timestampMs: Long = System.currentTimeMillis()): Boolean {
         if (accuracy > MAX_ACCURACY_M) return false
+        hasFix = true
+        speedKmh = (speedMps * 3.6).toDouble().coerceAtLeast(0.0)
         if (timestampMs - lastTimestampMs < MIN_INTERVAL_MS && lastTimestampMs != 0L) return false
 
         val prevLat = lastLat

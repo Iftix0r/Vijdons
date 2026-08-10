@@ -28,6 +28,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import uz.vijdon.driver.data.api.AddressDto
@@ -73,16 +74,42 @@ fun AddressesScreen(viewModel: AddressesViewModel = hiltViewModel()) {
             text = {
                 Column {
                     state.myPosition?.let {
-                        Text("Sizning o'rningiz: $it", color = VijdonColors.Yellow)
+                        Text("Sizning o'rningiz: $it", color = VijdonColors.Yellow, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
                     } ?: Text("Siz navbatda emassiz", color = VijdonColors.TextSecondary)
-                    Spacer(Modifier.height(8.dp))
-                    state.queueDrivers.forEach { d ->
-                        Text("${d.position}. ${d.full_name} — ${d.car_model} (${d.car_number})", color = VijdonColors.TextPrimary)
+                    if (state.queueDrivers.isNotEmpty()) {
+                        Spacer(Modifier.height(10.dp))
+                        state.queueDrivers.forEach { d ->
+                            AddressQueueDriverRow(d)
+                            Spacer(Modifier.height(6.dp))
+                        }
                     }
                 }
             },
             confirmButton = { TextButton(onClick = viewModel::closeQueue) { Text("Yopish", color = VijdonColors.Yellow) } },
             containerColor = VijdonColors.Surface,
+        )
+    }
+}
+
+/** Bosh sahifadagi manzil navbati bilan bir xil uslub — raqamlangan
+ * doira belgi + "Siz" bo'lsa sariq bilan ajratilgan. */
+@Composable
+private fun AddressQueueDriverRow(d: uz.vijdon.driver.data.api.QueueDriverDto) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier.size(22.dp).background(if (d.is_me) VijdonColors.Yellow else VijdonColors.BadgeNeutral, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(d.position.toString(), color = if (d.is_me) VijdonColors.TextOnYellow else VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "${d.full_name}${if (d.is_me) " (Siz)" else ""} — ${d.car_model} (${d.car_number})",
+            color = if (d.is_me) VijdonColors.Yellow else VijdonColors.TextPrimary,
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
         )
     }
 }

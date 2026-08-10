@@ -3,7 +3,10 @@ package uz.vijdon.driver.data.location
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 
-data class LocationPoint(val lat: Double, val lng: Double, val accuracy: Float, val timestampMs: Long)
+/** `speedMps` — GPS chipi to'g'ridan-to'g'ri bergan tezlik (m/s, Doppler
+ * siljishi asosida, ikkita nuqta orasidagi masofa/vaqtdan hisoblashdan
+ * ancha aniqroq); qurilma tezlik bermasa (masalan qadam sanoq rejimida) 0. */
+data class LocationPoint(val lat: Double, val lng: Double, val accuracy: Float, val speedMps: Float, val timestampMs: Long)
 
 /**
  * DriverLocationService (fon xizmati) o'qigan GPS nuqtalarini ilova ichidagi

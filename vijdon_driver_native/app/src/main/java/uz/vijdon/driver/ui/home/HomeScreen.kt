@@ -77,7 +77,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -149,6 +151,27 @@ fun HomeScreen(
     // bo'lsa ogohlantiramiz — aks holda haydovchi ilovadan chiqib ketganda
     // yangi buyurtmalarni umuman ko'rmay qolishi mumkin.
     var fullScreenIntentMissing by remember { mutableStateOf(false) }
+    // Bazaviy bildirishnoma ruxsatining o'zi (Android 13+) rad etilgan bo'lsa
+    // — yuqoridagi to'liq ekranli sozlamadan ham oldinroq muammo: HECH QANDAY
+    // (hatto oddiy) bildirishnoma chiqmaydi, aks holda soundless/sezilmasdan
+    // yo'qolib ketardi. Birinchi so'rovda "Rad etish" bosilsa, tizim qayta
+    // so'rov oynasini ko'rsatmaydi — shu sabab ekranga qaytilganda tekshirib,
+    // hali ham yo'q bo'lsa Sozlamalarga yo'naltiruvchi banner ko'rsatiladi.
+    var notificationPermissionMissing by remember { mutableStateOf(false) }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val lifecycleOwner = LocalLifecycleOwner.current
+        DisposableEffect(lifecycleOwner) {
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    notificationPermissionMissing = androidx.core.content.ContextCompat.checkSelfPermission(
+                        context, Manifest.permission.POST_NOTIFICATIONS,
+                    ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        }
+    }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
         val lifecycleOwner = LocalLifecycleOwner.current
         DisposableEffect(lifecycleOwner) {
@@ -186,7 +209,16 @@ fun HomeScreen(
     Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background)) {
         TopBar(rank = state.rank, balance = currentDriver.balance, onOpenRating = onOpenRating, onOpenBalance = onOpenBalance)
 
-        if (fullScreenIntentMissing) {
+        if (notificationPermissionMissing) {
+            NotificationPermissionBanner(
+                onEnable = {
+                    context.startActivity(
+                        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+                    )
+                },
+            )
+        } else if (fullScreenIntentMissing) {
             FullScreenIntentBanner(
                 onEnable = {
                     context.startActivity(
@@ -198,6 +230,10 @@ fun HomeScreen(
 
         if (!showListBranch) {
             DutyToggleRow(isOnDuty = currentDriver.is_on_duty, onToggle = { viewModel.toggleDuty() })
+        }
+
+        state.surgeMultiplier?.let { multiplier ->
+            SurgeBanner(multiplier = multiplier, reason = state.surgeReason)
         }
 
         if (state.lowBalance) {
@@ -267,25 +303,10 @@ fun HomeScreen(
                         Column(Modifier.animateItem()) {
                             OrderCard(
                                 order = order,
-                                operatorPhone = state.operatorPhone,
                                 distanceM = state.orderDistancesM[order.id],
                                 inProgress = order.id in state.actionInProgress,
                                 onAccept = { viewModel.acceptOrder(order.id) },
                                 onReject = { viewModel.rejectOrder(order.id) },
-                                onWay = { viewModel.orderOnWay(order.id) },
-                                onArrived = { viewModel.orderArrived(order.id) },
-                                onComplete = { viewModel.orderComplete(order.id) },
-                                onCallOperator = {
-                                    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${state.operatorPhone}")))
-                                },
-                                onCallClient = {
-                                    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${order.client_phone}")))
-                                },
-                                onQuickMessage = { message ->
-                                    val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${order.client_phone}"))
-                                    intent.putExtra("sms_body", message)
-                                    context.startActivity(intent)
-                                },
                             )
                             Spacer(Modifier.height(10.dp))
                         }
@@ -321,8 +342,23 @@ fun HomeScreen(
                     item { Spacer(Modifier.height(if (activeOrders.isNotEmpty()) 72.dp else 0.dp)) }
                 }
                 if (activeOrders.isNotEmpty()) {
+                    // Yagona faol buyurtma yo'lda/yetib kelgan bo'lsa, tugmada
+                    // ham jonli narx ko'rinadi — sheet ochilmasdan turib ham
+                    // haydovchi hozirgi taxminiy summa qanchaligini bilib turadi.
+                    val liveOrder = activeOrders.singleOrNull()?.takeIf { it.isOnWay || it.isArrived }
+                    var barTick by remember(liveOrder?.id) { mutableStateOf(System.currentTimeMillis()) }
+                    LaunchedEffect(liveOrder?.id) {
+                        if (liveOrder != null) {
+                            while (true) {
+                                barTick = System.currentTimeMillis()
+                                delay(1_000L)
+                            }
+                        }
+                    }
+                    val livePriceUzs = liveOrder?.let { viewModel.taximeterFor(it.id)?.priceUzs(barTick) }
                     ActiveOrdersBar(
                         activeOrders = activeOrders,
+                        livePriceUzs = livePriceUzs,
                         onClick = {
                             if (activeOrders.size == 1) activeOrderSheetId = activeOrders[0].id
                             else showActiveOrdersChooser = true
@@ -488,6 +524,8 @@ private fun OrderDetailSheetContent(
                 TaximeterCard(
                     distanceKm = taximeter.distanceKm,
                     elapsedMs = meterTick - taximeter.startedAtMs,
+                    speedKmh = taximeter.speedKmh,
+                    hasFix = taximeter.hasFix,
                     priceUzs = taximeter.priceUzs(meterTick),
                     isWaiting = taximeter.isWaiting,
                     waitingMs = taximeter.currentWaitingMs(meterTick),
@@ -529,19 +567,19 @@ private fun OrderDetailSheetContent(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     when {
                         order.isPending -> {
-                            YellowButton("Qabul qilish", Modifier.weight(1f), onAccept)
+                            YellowButton("Qabul qilish", Modifier.weight(1f), onClick = onAccept)
                             OutlineButton("Rad etish", Modifier.weight(1f), onReject)
                         }
                         order.isAccepted -> {
-                            YellowButton("Yo'lga chiqdim", Modifier.weight(1f), onWay)
+                            YellowButton("Yo'lga chiqdim", Modifier.weight(1f), onClick = onWay)
                             OutlineButton("Operator", Modifier.weight(1f), onCallOperator)
                         }
                         order.isOnWay -> {
-                            YellowButton("Yetib keldim", Modifier.weight(1f), onArrived)
+                            YellowButton("Yetib keldim", Modifier.weight(1f), onClick = onArrived)
                             OutlineButton("Operator", Modifier.weight(1f), onCallOperator)
                         }
                         order.isArrived -> {
-                            YellowButton("Yakunlash", Modifier.weight(1f), onComplete)
+                            YellowButton("Yakunlash", Modifier.weight(1f), onClick = onComplete)
                             OutlineButton("Operator", Modifier.weight(1f), onCallOperator)
                         }
                     }
@@ -570,6 +608,8 @@ private fun OrderDetailSheetContent(
 private fun TaximeterCard(
     distanceKm: Double,
     elapsedMs: Long,
+    speedKmh: Double,
+    hasFix: Boolean,
     priceUzs: Double,
     isWaiting: Boolean,
     waitingMs: Long,
@@ -607,12 +647,31 @@ private fun TaximeterCard(
             Spacer(Modifier.width(7.dp))
             PulsingDot(color = purple)
         }
-        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+        // GPS'dan hali yetarlicha aniq (<=60m) birorta ham nuqta kelmagan
+        // bo'lsa — pastdagi 0/0.00 raqamlari "meter ishlamayapti" deb
+        // noto'g'ri tushunilmasligi uchun buni aniq aytib qo'yamiz.
+        if (!hasFix) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(14.dp), color = orange, strokeWidth = 2.dp)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "GPS signalini qidiryapmiz — ochiq joyda biroz kuting",
+                    color = orange,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                )
+            }
+        }
+        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
                     formatMoney(priceUzs.toString()),
                     color = VijdonColors.Yellow,
                     style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
@@ -625,11 +684,15 @@ private fun TaximeterCard(
         }
         HorizontalDivider(color = Color.White.copy(alpha = 0.08f), modifier = Modifier.padding(horizontal = 14.dp))
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
         ) {
             MetricChip(Icons.Rounded.Timer, purple, formatElapsed(elapsedMs), null, "VAQT", Modifier.weight(1f))
             MetricChip(Icons.Rounded.Route, VijdonColors.Blue, String.format(Locale.US, "%.2f", distanceKm), "km", "MASOFA", Modifier.weight(1f))
+            // Faqat masofa/vaqtdan hisoblangan taxminiy emas — GPS chipining
+            // o'zi bergan haqiqiy tezlik (Doppler asosida), shu sabab
+            // haydovchi harakatsiz bo'lsa 0 km/soat ko'rsatadi.
+            MetricChip(Icons.Rounded.Speed, VijdonColors.Green, speedKmh.toInt().toString(), "km/h", "TEZLIK", Modifier.weight(1f))
         }
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
             Row(
@@ -668,32 +731,43 @@ private fun TaximeterCard(
     }
 }
 
+/**
+ * Uch ustunli qatorda (VAQT/MASOFA/TEZLIK) yon-yonma (Row) tartib tor
+ * telefon ekranida matnni siqib, "hunuk" ko'rinishga olib kelardi — shu
+ * sabab ikonka TEPADA, qiymat va yorliq pastda, hammasi markazlashtirilgan
+ * (Column) tartibga o'tkazildi — har bir chip torroq bo'lsa ham erkin nafas
+ * oladi.
+ */
 @Composable
 private fun MetricChip(icon: ImageVector, color: Color, value: String, unit: String?, label: String, modifier: Modifier = Modifier) {
-    Row(
+    Column(
         modifier = modifier
             .background(Color.White.copy(alpha = 0.05f), ChipShape)
             .border(1.dp, Color.White.copy(alpha = 0.07f), ChipShape)
-            .padding(horizontal = 10.dp, vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(vertical = 10.dp, horizontal = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
-            modifier = Modifier.size(28.dp).background(color.copy(alpha = 0.15f), CircleShape),
+            modifier = Modifier.size(24.dp).background(color.copy(alpha = 0.15f), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(13.dp))
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(12.dp))
         }
-        Spacer(Modifier.width(9.dp))
-        Column {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(value, color = Color.White, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold))
-                if (unit != null) {
-                    Spacer(Modifier.width(3.dp))
-                    Text(unit, color = Color.White.copy(alpha = 0.4f), style = MaterialTheme.typography.labelSmall)
-                }
-            }
-            Text(label, color = Color.White.copy(alpha = 0.4f), style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, letterSpacing = 0.3.sp))
-        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            if (unit != null) "$value $unit" else value,
+            color = Color.White,
+            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            label,
+            color = Color.White.copy(alpha = 0.4f),
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, letterSpacing = 0.3.sp),
+            maxLines = 1,
+        )
     }
 }
 
@@ -726,7 +800,7 @@ private fun formatElapsed(ms: Long): String {
  * tanlov ro'yxati (pastga qarang) ochiladi.
  */
 @Composable
-private fun ActiveOrdersBar(activeOrders: List<OrderDto>, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun ActiveOrdersBar(activeOrders: List<OrderDto>, livePriceUzs: Double?, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val label = if (activeOrders.size > 1) {
         "${activeOrders.size} ta faol buyurtma"
     } else {
@@ -749,14 +823,24 @@ private fun ActiveOrdersBar(activeOrders: List<OrderDto>, onClick: () -> Unit, m
             Icon(Icons.Rounded.LocalTaxi, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
         }
         Spacer(Modifier.width(12.dp))
-        Text(
-            label,
-            color = VijdonColors.TextPrimary,
-            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                label,
+                color = VijdonColors.TextPrimary,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            // Taximetr ishlab turgan bo'lsa — sheet ochmasdan turib ham joriy
+            // taxminiy summani ko'rsatadi, jonli (har soniyada yangilanadi).
+            if (livePriceUzs != null) {
+                Text(
+                    "${formatMoney(livePriceUzs.toString())} so'm",
+                    color = VijdonColors.Green,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                )
+            }
+        }
         Icon(Icons.Rounded.ExpandLess, contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(18.dp))
     }
 }
@@ -826,6 +910,32 @@ private fun DutyToggleRow(isOnDuty: Boolean, onToggle: () -> Unit, horizontalPad
     }
 }
 
+/** Bildirishnoma ruxsati (Android 13+) umuman berilmagan bo'lsa — yangi
+ * buyurtma haqida HECH QANDAY signal kelmaydi (full-screen sozlamasidan
+ * ham oldinroq muammo), shu sabab qurilma Sozlamalariga yo'naltiramiz. */
+@Composable
+private fun NotificationPermissionBanner(onEnable: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .background(VijdonColors.Red.copy(alpha = 0.12f), CardShape)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Rounded.NotificationsActive, contentDescription = null, tint = VijdonColors.Red, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "Bildirishnomalar o'chiq — yangi buyurtma haqida hech qanday xabar kelmaydi. Yoqing!",
+            color = VijdonColors.Red,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(8.dp))
+        TextButton(onClick = onEnable) { Text("Yoqish", color = VijdonColors.Red, style = MaterialTheme.typography.labelMedium) }
+    }
+}
+
 /** Android 14+ da "to'liq ekranli bildirishnoma" ruxsati o'chiq bo'lsa —
  * haydovchi ilovadan chiqib ketganda yangi buyurtmani ko'rmay qolishi mumkin,
  * shu sabab qurilma Sozlamalariga yo'naltiruvchi ogohlantirish ko'rsatiladi. */
@@ -849,6 +959,33 @@ private fun FullScreenIntentBanner(onEnable: () -> Unit) {
         )
         Spacer(Modifier.width(8.dp))
         TextButton(onClick = onEnable) { Text("Yoqish", color = VijdonColors.Blue, style = MaterialTheme.typography.labelMedium) }
+    }
+}
+
+/** Talab ko'p bo'lgan payt (masalan yomg'ir/bayram) — narx ko'paytmasi
+ * haqida ogohlantirish, veb paneldagi kabi. */
+@Composable
+private fun SurgeBanner(multiplier: Double, reason: String?) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .background(VijdonColors.Yellow.copy(alpha = 0.14f), CardShape)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("🔥", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.width(8.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "Talab yuqori — narxlar ${String.format(Locale.US, "%.1f", multiplier)}x oshirilgan",
+                color = VijdonColors.Yellow,
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+            )
+            if (!reason.isNullOrBlank()) {
+                Text(reason, color = VijdonColors.Yellow.copy(alpha = 0.8f), style = MaterialTheme.typography.labelSmall)
+            }
+        }
     }
 }
 
@@ -1078,20 +1215,21 @@ private fun quickMessageFor(order: OrderDto): String? = when {
     else -> null
 }
 
+/**
+ * Ro'yxatdagi ixcham karta — endi FAQAT "kutilmoqda" (hali qabul
+ * qilinmagan) buyurtmalar uchun ishlatiladi, chunki qabul qilingan/yo'lda/
+ * yetib kelgan buyurtmalar pastdagi suzuvchi tugma + to'liq ekranli
+ * tafsilot oynasiga ko'chirilgan (`OrderDetailSheetContent`). Shu sabab
+ * bu yerda faqat "Qabul qilish"/"Rad etish" harakati bor — boshqa
+ * holatlar (Yo'lga chiqdim va h.k.) uchun kod endi keraksiz edi.
+ */
 @Composable
 private fun OrderCard(
     order: OrderDto,
-    operatorPhone: String,
     distanceM: Double?,
     inProgress: Boolean,
     onAccept: () -> Unit,
     onReject: () -> Unit,
-    onWay: () -> Unit,
-    onArrived: () -> Unit,
-    onComplete: () -> Unit,
-    onCallOperator: () -> Unit,
-    onCallClient: () -> Unit,
-    onQuickMessage: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -1103,8 +1241,8 @@ private fun OrderCard(
         Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Pill(order.status_label, color = VijdonColors.Green, background = VijdonColors.BadgeNeutral)
             // Yandex Pro'dagi "Offer" ekranidagi kabi — mijozgacha bo'lgan
-            // masofa va taxminiy vaqt, faqat hali yetib borilmagan bo'lsa.
-            if (distanceM != null && (order.isPending || order.isAccepted)) {
+            // masofa va taxminiy vaqt.
+            if (distanceM != null) {
                 Text(formatDistanceEta(distanceM), color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
             }
         }
@@ -1126,13 +1264,11 @@ private fun OrderCard(
             order.price?.let {
                 Text("${formatMoney(it)} so'm", color = VijdonColors.Green, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold))
             } ?: Spacer(Modifier.width(1.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "${if (order.payment_type == "cash") "💵" else "💳"} ${order.car_type_display}",
-                    color = VijdonColors.TextSecondary,
-                    style = MaterialTheme.typography.labelSmall,
-                )
-            }
+            Text(
+                "${if (order.payment_type == "cash") "💵" else "💳"} ${order.car_type_display}",
+                color = VijdonColors.TextSecondary,
+                style = MaterialTheme.typography.labelSmall,
+            )
         }
 
         Spacer(Modifier.height(12.dp))
@@ -1141,35 +1277,8 @@ private fun OrderCard(
             return@Column
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            when {
-                order.isPending -> {
-                    YellowButton("Qabul qilish", onClick = onAccept)
-                    OutlineButton("Rad etish", onClick = onReject)
-                }
-                order.isAccepted -> {
-                    YellowButton("Yo'lga chiqdim", onClick = onWay)
-                    OutlineButton("Operator", onClick = onCallOperator)
-                }
-                order.isOnWay -> {
-                    YellowButton("Yetib keldim", onClick = onArrived)
-                    OutlineButton("Operator", onClick = onCallOperator)
-                }
-                order.isArrived -> {
-                    YellowButton("Yakunlash", onClick = onComplete)
-                    OutlineButton("Operator", onClick = onCallOperator)
-                }
-            }
-        }
-        // Mijozga tezkor aloqa — qo'ng'iroq va tayyor shablon xabar
-        // (Yandex Pro'dagi "Men yetib keldim" / "Sizni kutyapman" kabi).
-        if (order.isAccepted || order.isOnWay || order.isArrived) {
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconTextButton(Icons.Rounded.Phone, "Qo'ng'iroq", onClick = onCallClient)
-                quickMessageFor(order)?.let { message ->
-                    IconTextButton(Icons.AutoMirrored.Rounded.Message, "Xabar") { onQuickMessage(message) }
-                }
-            }
+            YellowButton("Qabul qilish", onClick = onAccept)
+            OutlineButton("Rad etish", onClick = onReject)
         }
     }
 }
@@ -1187,10 +1296,17 @@ private fun IconTextButton(icon: ImageVector, text: String, modifier: Modifier =
     }
 }
 
+/** Har doim asosiy ("tasdiqlovchi") harakat — Qabul qilish, Yo'lga chiqdim,
+ * Yetib keldim, Yakunlash — shu sabab bosilganda ozgina titrash bilan
+ * (haptic feedback) tasdiqlanadi, zamonaviy ilovalardagi kabi. */
 @Composable
-private fun YellowButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun YellowButton(text: String, modifier: Modifier = Modifier, haptic: Boolean = true, onClick: () -> Unit) {
+    val hapticFeedback = LocalHapticFeedback.current
     Button(
-        onClick = onClick,
+        onClick = {
+            if (haptic) hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+            onClick()
+        },
         modifier = modifier,
         colors = ButtonDefaults.buttonColors(containerColor = VijdonColors.Yellow, contentColor = VijdonColors.TextOnYellow),
     ) { Text(text) }
