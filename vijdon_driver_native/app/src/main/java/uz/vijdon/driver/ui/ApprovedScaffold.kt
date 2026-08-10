@@ -61,17 +61,19 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
 
     Scaffold(
         containerColor = uz.vijdon.driver.ui.theme.VijdonColors.Background,
-        bottomBar = {
-            if (showBottomBar) {
-                VijdonBottomBar(
-                    currentRoute = currentRoute,
-                    driver = driver,
-                    chatBadge = 0,
-                    onTabSelected = ::goToTab,
-                    onCreateOrder = { navController.navigate(SubRoutes.ORDER_CREATE) },
-                )
-            }
-        },
+        // Vaqtincha OLIB TASHLANDI — pastdagi suzuvchi panelning orqasida
+        // tizim chizadigan g'alati fon muammosini alohida (panelsiz)
+        // tekshirish uchun. Qayta yoqish uchun pastdagi izohni oching.
+        // if (showBottomBar) {
+        //     VijdonBottomBar(
+        //         currentRoute = currentRoute,
+        //         driver = driver,
+        //         chatBadge = 0,
+        //         onTabSelected = ::goToTab,
+        //         onCreateOrder = { navController.navigate(SubRoutes.ORDER_CREATE) },
+        //     )
+        // }
+        bottomBar = {},
     ) { padding ->
         NavHost(
             navController = navController,
