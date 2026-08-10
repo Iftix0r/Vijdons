@@ -10,6 +10,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,16 +38,19 @@ import androidx.compose.material.icons.rounded.Phone
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -81,6 +85,7 @@ import uz.vijdon.driver.ui.theme.VijdonColors
 import uz.vijdon.driver.ui.theme.cardShadow
 import uz.vijdon.driver.util.formatMoney
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     driver: DriverDto,
@@ -91,6 +96,13 @@ fun HomeScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    // Faol (qabul qilingan/yo'lda/yetib kelgan) buyurtma(lar) — veb'dagi
+    // "#my-orders-btn" bilan bir xil: ro'yxatda to'liq karta sifatida
+    // qotib turmasdan, tab-bar ustida suzuvchi Telegram mini-app uslubidagi
+    // tugma orqali ko'rsatiladi, bosilganda pastdan karta ochiladi/yopiladi.
+    var activeOrderSheetId by remember { mutableStateOf<Int?>(null) }
+    var showActiveOrdersChooser by remember { mutableStateOf(false) }
 
     LaunchedEffect(driver) { viewModel.setDriver(driver) }
 
@@ -217,71 +229,211 @@ fun HomeScreen(
             val nearestId = sortedAddresses.firstOrNull()?.let { addr ->
                 state.addressDistancesM[addr.id]?.takeIf { it <= 1000.0 }?.let { addr.id }
             }
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-                item {
-                    Column {
-                        Spacer(Modifier.height(4.dp))
-                        DutyToggleRow(isOnDuty = currentDriver.is_on_duty, onToggle = { viewModel.toggleDuty() }, horizontalPadding = 0.dp)
-                        Spacer(Modifier.height(10.dp))
-                    }
-                }
-                items(state.orders, key = { "order-${it.id}" }) { order ->
-                    Column(Modifier.animateItem()) {
-                        OrderCard(
-                            order = order,
-                            operatorPhone = state.operatorPhone,
-                            distanceM = state.orderDistancesM[order.id],
-                            inProgress = order.id in state.actionInProgress,
-                            onAccept = { viewModel.acceptOrder(order.id) },
-                            onReject = { viewModel.rejectOrder(order.id) },
-                            onWay = { viewModel.orderOnWay(order.id) },
-                            onArrived = { viewModel.orderArrived(order.id) },
-                            onComplete = { viewModel.orderComplete(order.id) },
-                            onCallOperator = {
-                                context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${state.operatorPhone}")))
-                            },
-                            onCallClient = {
-                                context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${order.client_phone}")))
-                            },
-                            onQuickMessage = { message ->
-                                val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${order.client_phone}"))
-                                intent.putExtra("sms_body", message)
-                                context.startActivity(intent)
-                            },
-                        )
-                        Spacer(Modifier.height(10.dp))
-                    }
-                }
-                // Veb panelda "Asosiy" sahifaning fon kontenti — qaysi
-                // manzillarda hozir talab (navbatdagi haydovchilar, bugungi
-                // buyurtmalar) borligini ko'rsatadi, buyurtma bo'lmaganda ham.
-                if (state.addresses.isNotEmpty()) {
+            // Faol buyurtmalar ro'yxatdan olib tashlanadi — ular endi pastdagi
+            // suzuvchi tugma orqali ko'rsatiladi (pastga qarang).
+            val pendingOrders = remember(state.orders) { state.orders.filter { it.isPending } }
+            val activeOrders = remember(state.orders) { state.orders.filter { it.isActive } }
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                     item {
-                        Text(
-                            "Yaqin manzillar",
-                            color = VijdonColors.TextSecondary,
-                            style = MaterialTheme.typography.labelLarge,
-                            modifier = Modifier.padding(top = if (state.orders.isNotEmpty()) 4.dp else 0.dp, bottom = 8.dp),
-                        )
+                        Column {
+                            Spacer(Modifier.height(4.dp))
+                            DutyToggleRow(isOnDuty = currentDriver.is_on_duty, onToggle = { viewModel.toggleDuty() }, horizontalPadding = 0.dp)
+                            Spacer(Modifier.height(10.dp))
+                        }
                     }
-                    items(sortedAddresses, key = { "addr-${it.id}" }) { address ->
+                    items(pendingOrders, key = { "order-${it.id}" }) { order ->
                         Column(Modifier.animateItem()) {
-                            HomeAddressRow(
-                                address = address,
-                                distanceM = state.addressDistancesM[address.id],
-                                isNearest = address.id == nearestId,
-                                expanded = state.expandedAddressId == address.id,
-                                queuePosition = state.queuePosition,
-                                queueDrivers = state.queueDrivers,
-                                queueLoading = state.queueLoading,
-                                onToggleExpand = { viewModel.toggleAddressExpand(address) },
+                            OrderCard(
+                                order = order,
+                                operatorPhone = state.operatorPhone,
+                                distanceM = state.orderDistancesM[order.id],
+                                inProgress = order.id in state.actionInProgress,
+                                onAccept = { viewModel.acceptOrder(order.id) },
+                                onReject = { viewModel.rejectOrder(order.id) },
+                                onWay = { viewModel.orderOnWay(order.id) },
+                                onArrived = { viewModel.orderArrived(order.id) },
+                                onComplete = { viewModel.orderComplete(order.id) },
+                                onCallOperator = {
+                                    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${state.operatorPhone}")))
+                                },
+                                onCallClient = {
+                                    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${order.client_phone}")))
+                                },
+                                onQuickMessage = { message ->
+                                    val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${order.client_phone}"))
+                                    intent.putExtra("sms_body", message)
+                                    context.startActivity(intent)
+                                },
                             )
                             Spacer(Modifier.height(10.dp))
                         }
                     }
+                    // Veb panelda "Asosiy" sahifaning fon kontenti — qaysi
+                    // manzillarda hozir talab (navbatdagi haydovchilar, bugungi
+                    // buyurtmalar) borligini ko'rsatadi, buyurtma bo'lmaganda ham.
+                    if (state.addresses.isNotEmpty()) {
+                        item {
+                            Text(
+                                "Yaqin manzillar",
+                                color = VijdonColors.TextSecondary,
+                                style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier.padding(top = if (pendingOrders.isNotEmpty()) 4.dp else 0.dp, bottom = 8.dp),
+                            )
+                        }
+                        items(sortedAddresses, key = { "addr-${it.id}" }) { address ->
+                            Column(Modifier.animateItem()) {
+                                HomeAddressRow(
+                                    address = address,
+                                    distanceM = state.addressDistancesM[address.id],
+                                    isNearest = address.id == nearestId,
+                                    expanded = state.expandedAddressId == address.id,
+                                    queuePosition = state.queuePosition,
+                                    queueDrivers = state.queueDrivers,
+                                    queueLoading = state.queueLoading,
+                                    onToggleExpand = { viewModel.toggleAddressExpand(address) },
+                                )
+                                Spacer(Modifier.height(10.dp))
+                            }
+                        }
+                    }
+                    item { Spacer(Modifier.height(if (activeOrders.isNotEmpty()) 72.dp else 0.dp)) }
+                }
+                if (activeOrders.isNotEmpty()) {
+                    ActiveOrdersBar(
+                        activeOrders = activeOrders,
+                        onClick = {
+                            if (activeOrders.size == 1) activeOrderSheetId = activeOrders[0].id
+                            else showActiveOrdersChooser = true
+                        },
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
                 }
             }
         }
+    }
+
+    if (showActiveOrdersChooser) {
+        val chooserSheetState = rememberModalBottomSheetState()
+        ModalBottomSheet(onDismissRequest = { showActiveOrdersChooser = false }, sheetState = chooserSheetState) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
+                Text(
+                    "Faol buyurtmalar",
+                    color = VijdonColors.TextPrimary,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                )
+                Spacer(Modifier.height(12.dp))
+                state.orders.filter { it.isActive }.forEach { order ->
+                    ActiveOrderChooserRow(order) {
+                        showActiveOrdersChooser = false
+                        activeOrderSheetId = order.id
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+            }
+        }
+    }
+
+    val sheetOrder = state.orders.firstOrNull { it.id == activeOrderSheetId }
+    if (sheetOrder != null) {
+        val orderSheetState = rememberModalBottomSheetState()
+        ModalBottomSheet(onDismissRequest = { activeOrderSheetId = null }, sheetState = orderSheetState) {
+            Box(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
+                OrderCard(
+                    order = sheetOrder,
+                    operatorPhone = state.operatorPhone,
+                    distanceM = state.orderDistancesM[sheetOrder.id],
+                    inProgress = sheetOrder.id in state.actionInProgress,
+                    onAccept = { viewModel.acceptOrder(sheetOrder.id) },
+                    onReject = { viewModel.rejectOrder(sheetOrder.id) },
+                    onWay = { viewModel.orderOnWay(sheetOrder.id) },
+                    onArrived = { viewModel.orderArrived(sheetOrder.id) },
+                    onComplete = {
+                        viewModel.orderComplete(sheetOrder.id)
+                        activeOrderSheetId = null
+                    },
+                    onCallOperator = {
+                        context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${state.operatorPhone}")))
+                    },
+                    onCallClient = {
+                        context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${sheetOrder.client_phone}")))
+                    },
+                    onQuickMessage = { message ->
+                        val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${sheetOrder.client_phone}"))
+                        intent.putExtra("sms_body", message)
+                        context.startActivity(intent)
+                    },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Veb'dagi "#my-orders-btn" bilan bir xil — Telegram mini-app'idagi
+ * "asosiy tugma" uslubida, tab-bar ustida suzib turadi. Faqat 1 ta faol
+ * buyurtma bo'lsa to'g'ridan-to'g'ri o'sha ochiladi, bir nechtasi bo'lsa
+ * tanlov ro'yxati (pastga qarang) ochiladi.
+ */
+@Composable
+private fun ActiveOrdersBar(activeOrders: List<OrderDto>, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val label = if (activeOrders.size > 1) {
+        "${activeOrders.size} ta faol buyurtma"
+    } else {
+        "${activeOrders.first().status_label} — buyurtma #${activeOrders.first().id}"
+    }
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .cardShadow()
+            .background(VijdonColors.Surface, CardShape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier.size(36.dp).background(VijdonColors.Blue, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Rounded.LocalTaxi, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+        }
+        Spacer(Modifier.width(12.dp))
+        Text(
+            label,
+            color = VijdonColors.TextPrimary,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(Icons.Rounded.ExpandLess, contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(18.dp))
+    }
+}
+
+@Composable
+private fun ActiveOrderChooserRow(order: OrderDto, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(VijdonColors.BadgeNeutral, CardShape)
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Pill(order.status_label, color = VijdonColors.Blue, background = VijdonColors.Blue.copy(alpha = 0.15f))
+        Spacer(Modifier.width(10.dp))
+        Text(
+            order.from_address,
+            color = VijdonColors.TextPrimary,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text("#${order.id}", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
     }
 }
 
