@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -49,6 +50,12 @@ fun VijdonBottomBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            // Endi MainActivity edge-to-edge (enableEdgeToEdge()) rejimida
+            // ishlagani uchun ilova o'z foni bilan ekran chetigacha (tizim
+            // gesture-navigatsiya zonasi ostigacha) chiziladi — shu sabab
+            // panel gesture belgisi bilan ustma-ust tushib qolmasligi uchun
+            // shu joyda aniq navigatsiya-bar bo'shlig'i qo'shiladi.
+            .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 10.dp)
             .clip(CircleShape)
             .background(VijdonColors.Glass)

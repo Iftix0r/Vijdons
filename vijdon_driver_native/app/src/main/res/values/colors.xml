@@ -7,5 +7,5 @@
     <color name="status_ok">#1E8E3E</color>
     <color name="status_off">#8A8A8A</color>
     <color name="status_error">#D93025</color>
-    <color name="ic_launcher_background">#1A1A1A</color>
+    <color name="ic_launcher_background">#F5B400</color>
 </resources>

@@ -5,6 +5,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.activity.compose.setContent
@@ -32,12 +33,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.data.push.OpenOrderBus
 import uz.vijdon.driver.data.push.TestAlertBus
-import uz.vijdon.driver.data.push.sendTestNewOrderNotification
 import uz.vijdon.driver.ui.ApprovedScaffold
 import uz.vijdon.driver.ui.SessionState
 import uz.vijdon.driver.ui.SessionViewModel
@@ -71,19 +70,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Tizim tomonidan pastki navigatsiya (gesture/3-tugma) zonasiga
+        // avtomatik chizib qo'yiladigan alohida fon rangi (qora/kulrang
+        // "yashirin panel") olib tashlanadi — shu tufayli pastdagi suzuvchi
+        // dumaloq panelning ORQASIDA yana bir "panel" bordek ko'rinardi.
+        // Endi ilovaning o'z foni ekran chetigacha uzluksiz davom etadi.
+        enableEdgeToEdge()
         showOverLockscreenIfNeeded(intent)
         handleTestAlertIfNeeded(intent)
         handleOpenOrderIfNeeded(intent)
-        // Bildirishnoma quvuri (kanal/ruxsat/to'liq ekranli intent) haqiqatan
-        // ishlayaptimi tekshirish uchun — real buyurtma kutmasdan, ilova har
-        // ochilganda bir marta SINOV bildirishnomasi yuboriladi. Kechikish —
-        // POST_NOTIFICATIONS ruxsati so'rovi (Bosh sahifada) javob olguncha
-        // biroz vaqt berish uchun, aks holda ruxsat hali berilmagan bo'lsa
-        // sinov ham sezilmasdan o'tib ketardi.
-        lifecycleScope.launch {
-            delay(4_000L)
-            sendTestNewOrderNotification(this@MainActivity)
-        }
         setContent {
             VijdonDriverTheme {
                 // Status-bar/navigatsiya-bar ikonkalari — tizim yorug' rejimda
