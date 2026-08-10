@@ -223,6 +223,10 @@ fun HomeScreen(
         // (Reyting/Balans tugmalari bilan bog'liq) alohida tekshirish uchun.
         // Qayta yoqish uchun quyidagi qatorni oching.
         // TopBar(rank = state.rank, balance = currentDriver.balance, onOpenRating = onOpenRating, onOpenBalance = onOpenBalance)
+        // TopBar olib tashlangach, uning bo'shlig'i ham yo'qolib, kontent
+        // to'g'ridan-to'g'ri status-bar tagiga yopishib qolgan edi — shu
+        // sabab kichik bo'shliq alohida qaytarildi.
+        Spacer(Modifier.height(12.dp))
 
         if (notificationPermissionMissing) {
             NotificationPermissionBanner(
