@@ -128,6 +128,22 @@
                         {% endif %}
                     </p></div>
                 </div>
+                {% if driver.device_model %}
+                <div class="flex items-center gap-3 px-5 py-3">
+                    <i class="fas fa-mobile-screen-button text-blue-400 w-4 text-center text-sm"></i>
+                    <div><p class="text-[10px] text-gray-400 uppercase font-bold">Qurilma</p>
+                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ driver.device_model }}</p></div>
+                </div>
+                {% endif %}
+                {% if driver.battery_level is not None %}
+                <div class="flex items-center gap-3 px-5 py-3">
+                    <i class="fas {% if driver.battery_level <= 20 %}fa-battery-quarter text-red-500{% elif driver.battery_level <= 50 %}fa-battery-half text-amber-500{% else %}fa-battery-full text-emerald-500{% endif %} w-4 text-center text-sm"></i>
+                    <div><p class="text-[10px] text-gray-400 uppercase font-bold">Batareya</p>
+                    <p class="text-sm font-semibold {% if driver.battery_level <= 20 %}text-red-500{% elif driver.battery_level <= 50 %}text-amber-600{% else %}text-gray-700 dark:text-gray-200{% endif %}">
+                        {{ driver.battery_level }}%{% if driver.battery_level <= 20 %} <span class="text-[10px] font-bold">— kam qolgan!</span>{% endif %}
+                    </p></div>
+                </div>
+                {% endif %}
             </div>
         </div>
 

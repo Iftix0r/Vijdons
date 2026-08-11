@@ -33,6 +33,7 @@ import uz.vijdon.driver.data.push.DriverSoundPlayer
 import uz.vijdon.driver.data.push.OrderActionReceiver
 import uz.vijdon.driver.data.repository.ApiResult
 import uz.vijdon.driver.data.repository.DriverRepository
+import uz.vijdon.driver.util.DeviceInfo
 import javax.inject.Inject
 import kotlin.math.sqrt
 
@@ -51,6 +52,7 @@ class DriverLocationService : Service() {
     private val scope = CoroutineScope(SupervisorJob())
     private var lastReportedLat: Double? = null
     private var lastReportedLng: Double? = null
+    private var lastReportedAtMs: Long = 0L
 
     // FCM hali sozlanmagan (Firebase loyihasi ulanmagan) — shu sabab
     // "shaxsan menga yuborilgan" yangi buyurtmani ilova fonda/boshqa ilova
@@ -138,15 +140,25 @@ class DriverLocationService : Service() {
         fusedClient.requestLocationUpdates(request, locationCallback, mainLooper)
     }
 
-    /** Har bir nuqtada emas — >=30m harakatda yoki 60s dan ko'p vaqt o'tganda serverga yuboradi. */
+    /** Har bir nuqtada emas — >=30m harakatda YOKI 2 daqiqadan ko'p vaqt
+     * o'tganda serverga yuboradi. Diqqat: avval FAQAT harakat mezoni bo'lgan
+     * (>=30m) — bu haydovchi to'xtab turganda (masalan svetofor/navbatda)
+     * `last_seen` yangilanmay qolishiga olib kelardi, ko'p joyda ishlatiladigan
+     * "oxirgi 120s ichida ko'ringan = onlayn" tekshiruvi uni noto'g'ri
+     * "oflayn" deb hisoblab qolishi mumkin edi. Vaqt mezoni shu muammoni
+     * bartaraf qiladi — haydovchi harakatsiz bo'lsa ham holati yangi turadi. */
     private fun maybeReportToServer(lat: Double, lng: Double) {
         val prevLat = lastReportedLat
         val prevLng = lastReportedLng
+        val now = System.currentTimeMillis()
         val movedEnough = prevLat == null || prevLng == null || distanceMeters(prevLat, prevLng, lat, lng) >= 30.0
-        if (!movedEnough) return
+        val staleByTime = now - lastReportedAtMs >= 120_000L
+        if (!movedEnough && !staleByTime) return
         lastReportedLat = lat
         lastReportedLng = lng
-        scope.launch { repository.sendLocation(lat, lng) }
+        lastReportedAtMs = now
+        val battery = DeviceInfo.batteryPercent(this)
+        scope.launch { repository.sendLocation(lat, lng, battery) }
     }
 
     private fun distanceMeters(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {

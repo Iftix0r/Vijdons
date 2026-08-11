@@ -29,6 +29,7 @@ import uz.vijdon.driver.data.api.QueuePositionResponse
 import uz.vijdon.driver.data.api.RatingResponse
 import uz.vijdon.driver.data.api.SosResponse
 import uz.vijdon.driver.data.api.SurgeResponse
+import uz.vijdon.driver.util.DeviceInfo
 import java.io.File
 import java.io.IOException
 import javax.inject.Inject
@@ -79,7 +80,11 @@ class DriverRepository @Inject constructor(
     }
 
     suspend fun login(phone: String, password: String): ApiResult<DriverDto> {
-        val result = safeCall { api.login(mapOf("phone_number" to phone, "password" to password)) }
+        // Qaysi qurilmadan kirganini serverga bildirib qo'yamiz — operator
+        // paneli haydovchi tafsilotida shuni ko'rsatadi.
+        val result = safeCall {
+            api.login(mapOf("phone_number" to phone, "password" to password, "device_model" to DeviceInfo.model))
+        }
         return when (result) {
             is ApiResult.Success -> {
                 tokenStore.save(result.data.token)
@@ -97,8 +102,16 @@ class DriverRepository @Inject constructor(
 
     suspend fun toggleDuty(): ApiResult<DutyToggleResponse> = safeCall { api.toggleDuty() }
 
-    suspend fun sendLocation(lat: Double, lng: Double) = safeCall {
-        api.sendLocation(mapOf("lat" to lat, "lng" to lng))
+    // `battery` — real qurilma batareya foizi (server real vaqtda kuzatib
+    // borishi uchun); joylashuv bilan bir qatorda, alohida so'rovsiz yuboriladi.
+    suspend fun sendLocation(lat: Double, lng: Double, battery: Int? = null) = safeCall {
+        api.sendLocation(
+            buildMap {
+                put("lat", lat)
+                put("lng", lng)
+                battery?.let { put("battery", it.toDouble()) }
+            },
+        )
     }
 
     suspend fun syncFcmToken(token: String) = safeCall { api.syncFcmToken(mapOf("fcm_token" to token)) }

@@ -109,6 +109,13 @@ def login(request):
     if driver.approval_status == Driver.APPROVAL_REJECTED:
         return Response({'detail': 'Hisobingiz rad etilgan.', 'code': 'rejected'}, status=403)
     token, _ = Token.objects.get_or_create(user=user)
+    # Qaysi qurilmadan kirganini serverda saqlab qo'yamiz — operator paneli
+    # (haydovchi tafsiloti) shundan ko'rsatadi. Har kirishda yangilanadi,
+    # shu sabab qurilma almashtirilsa ham holat doim yangi.
+    device_model = str(request.data.get('device_model', '')).strip()[:120]
+    if device_model and device_model != driver.device_model:
+        driver.device_model = device_model
+        driver.save(update_fields=['device_model'])
     _log_activity(driver, DriverActivityLog.ACTION_LOGIN, 'Android ilovadan kirdi', request)
     tg_driver_login(driver, ip=_get_ip(request))
     return Response({
@@ -183,6 +190,17 @@ def location_update(request, driver):
     if driver.freeze_warning_sent_at:
         driver.freeze_warning_sent_at = None
         update_fields.append('freeze_warning_sent_at')
+    # Batareya foizi — ixtiyoriy, ilova joylashuv yuborgan har safar birga
+    # keladi (real qurilma holatini kuzatib turish uchun, operator panelida
+    # ko'rsatiladi — masalan batareyasi kamayib qolgan haydovchini bilish).
+    battery = request.data.get('battery')
+    if battery is not None:
+        try:
+            battery_int = max(0, min(100, int(battery)))
+            driver.battery_level = battery_int
+            update_fields.append('battery_level')
+        except (TypeError, ValueError):
+            pass
     driver.save(update_fields=update_fields)
 
     update_address_queue_membership(driver, lat, lng, was_stale=was_stale)

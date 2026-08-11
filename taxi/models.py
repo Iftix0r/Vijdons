@@ -55,6 +55,8 @@ class Driver(models.Model):
     last_group_read_at    = models.DateTimeField(default=timezone.now, blank=True, verbose_name="Guruh chatini oxirgi o'qigan vaqt")
     last_ping_ms          = models.IntegerField(null=True, blank=True, verbose_name="Oxirgi ping (ms)")
     last_ping_at          = models.DateTimeField(null=True, blank=True, verbose_name="Ping o'lchangan vaqt")
+    device_model          = models.CharField(max_length=120, blank=True, default='', verbose_name="Qurilma modeli", help_text="Native ilovaga kirganda avtomatik yoziladi (masalan 'Samsung SM-A125F')")
+    battery_level         = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name="Batareya foizi", help_text="Native ilova joylashuv yuborganda birga keladi")
 
     LEVEL_THRESHOLDS = (
         (500, "Usta haydovchi"),
