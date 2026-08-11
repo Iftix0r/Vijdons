@@ -32,9 +32,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import uz.vijdon.driver.ui.theme.VijdonColors
 
 /**
@@ -47,6 +49,7 @@ import uz.vijdon.driver.ui.theme.VijdonColors
 fun VijdonBottomBar(
     currentRoute: String?,
     chatBadge: Int,
+    profilePhotoUrl: String?,
     onTabSelected: (String) -> Unit,
     onCreateOrder: () -> Unit,
 ) {
@@ -64,7 +67,7 @@ fun VijdonBottomBar(
             BottomTab(Icons.Rounded.History, "Tarix", selected = currentRoute == Tabs.HISTORY) { onTabSelected(Tabs.HISTORY) }
             FabButton(onClick = onCreateOrder)
             BottomTab(Icons.AutoMirrored.Rounded.Chat, "Chat", selected = currentRoute == Tabs.CHAT, badge = chatBadge) { onTabSelected(Tabs.CHAT) }
-            BottomTab(Icons.Rounded.AccountCircle, "Profil", selected = currentRoute == Tabs.PROFILE) { onTabSelected(Tabs.PROFILE) }
+            ProfileBottomTab(photoUrl = profilePhotoUrl, selected = currentRoute == Tabs.PROFILE) { onTabSelected(Tabs.PROFILE) }
         }
     }
 }
@@ -91,6 +94,36 @@ private fun BottomTab(icon: ImageVector, label: String, selected: Boolean, badge
             ) {
                 Text(badge.toString(), color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Bold)
             }
+        }
+    }
+}
+
+/** "Profil" tugmasi — boshqa tab'lardan farqli, ikonka o'rniga (bo'lsa)
+ * haydovchining o'z profil surati dumaloq qilib ko'rsatiladi, tanlangan
+ * holatda sariq halqa bilan ajratiladi. Surat yo'q/yuklanmagan bo'lsa
+ * oddiy odam ikonkasiga qaytadi (boshqa tab'lar bilan bir xil uslub). */
+@Composable
+private fun ProfileBottomTab(photoUrl: String?, selected: Boolean, onClick: () -> Unit) {
+    val tint by animateColorAsState(
+        if (selected) VijdonColors.Yellow else VijdonColors.TextSecondary,
+        label = "profileTabTint",
+    )
+    Box(
+        modifier = Modifier.clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (photoUrl.isNullOrBlank()) {
+            Icon(Icons.Rounded.AccountCircle, contentDescription = "Profil", tint = tint, modifier = Modifier.size(27.dp))
+        } else {
+            AsyncImage(
+                model = photoUrl,
+                contentDescription = "Profil",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(27.dp)
+                    .clip(CircleShape)
+                    .border(1.5.dp, if (selected) VijdonColors.Yellow else Color.Transparent, CircleShape),
+            )
         }
     }
 }

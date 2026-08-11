@@ -96,6 +96,7 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
                 VijdonBottomBar(
                     currentRoute = tabForPage(pagerState.currentPage),
                     chatBadge = chatUnread,
+                    profilePhotoUrl = driver.photo_url,
                     onTabSelected = ::goToTab,
                     onCreateOrder = { navController.navigate(SubRoutes.ORDER_CREATE) },
                 )

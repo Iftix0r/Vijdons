@@ -138,6 +138,10 @@ dependencies {
     // Joylashuv (foreground service)
     implementation("com.google.android.gms:play-services-location:21.4.0")
 
+    // Rasm yuklash (haydovchi profil surati — pastki tab-bar/Profil ekrani)
+    implementation("io.coil-kt.coil3:coil-compose:3.2.0")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.2.0")
+
     // Push (FCM) — google-services.json qo'shilgach ishlaydi
     implementation(platform("com.google.firebase:firebase-bom:34.17.0"))
     implementation("com.google.firebase:firebase-messaging")
