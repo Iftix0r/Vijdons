@@ -2,6 +2,7 @@ package uz.vijdon.driver.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -9,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import uz.vijdon.driver.BuildConfig
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.data.repository.ApiResult
 import uz.vijdon.driver.data.repository.DriverRepository
@@ -83,6 +85,7 @@ class SessionViewModel @Inject constructor(
     fun logout() {
         viewModelScope.launch {
             repository.logout()
+            if (BuildConfig.HAS_FCM) FirebaseCrashlytics.getInstance().setUserId("")
             applyState(SessionState.LoggedOut)
         }
     }
@@ -103,9 +106,16 @@ class SessionViewModel @Inject constructor(
         }
     }
 
-    private fun toState(driver: DriverDto): SessionState = when {
-        driver.is_frozen -> SessionState.Frozen(driver)
-        driver.isApproved -> SessionState.Approved(driver)
-        else -> SessionState.Pending(driver)
+    private fun toState(driver: DriverDto): SessionState {
+        // Crash hisobotida qaysi haydovchida xato chiqqanini bilish uchun —
+        // shaxsiy ma'lumot (ism/telefon) emas, faqat ID yoziladi.
+        if (BuildConfig.HAS_FCM) {
+            FirebaseCrashlytics.getInstance().setUserId(driver.id.toString())
+        }
+        return when {
+            driver.is_frozen -> SessionState.Frozen(driver)
+            driver.isApproved -> SessionState.Approved(driver)
+            else -> SessionState.Pending(driver)
+        }
     }
 }

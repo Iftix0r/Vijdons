@@ -9,13 +9,9 @@
             📍 Manzillar
         </h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            Xaritadan tanlab, nom berib saqlangan tezkor manzillar — yangi buyurtma oynasida bir bosishda tanlanadi.
+            Haydovchi biror joyda 4+ daqiqa kutib tursa, tizim shu manzilni AVTOMATIK yaratadi — qo'lda qo'shish shart emas. Nomini istasangiz shu yerdan tahrirlashingiz mumkin.
         </p>
     </div>
-    <button onclick="openModal('newAddressModal')"
-            class="flex items-center gap-2 px-4 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold rounded-xl shadow-sm shadow-yellow-200 dark:shadow-none transition-all hover:-translate-y-0.5">
-        <i class="fas fa-map-pin"></i> Yangi manzil
-    </button>
 </div>
 
 <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
@@ -48,6 +44,11 @@
                         <span class="font-semibold text-gray-800 dark:text-white text-xs">
                             <i class="fas fa-map-pin text-yellow-500 mr-1"></i>{{ addr.name }}
                         </span>
+                        {% if addr.auto_created %}
+                        <span class="inline-flex items-center gap-1 ml-1.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400" title="Tizim tomonidan avtomatik yaratilgan">
+                            <i class="fas fa-robot"></i> auto
+                        </span>
+                        {% endif %}
                     </td>
                     <td class="px-5 py-3.5 text-xs text-gray-600 dark:text-gray-300">{{ addr.address|default:"—" }}</td>
                     <td class="px-5 py-3.5 text-[11px] text-gray-400 font-mono">{{ addr.lat|floatformat:"5u" }}, {{ addr.lng|floatformat:"5u" }}</td>
@@ -101,7 +102,7 @@
                             <i class="fas fa-map-pin"></i>
                         </div>
                         <p class="font-semibold text-gray-700 dark:text-gray-300">Hali manzil saqlanmagan</p>
-                        <p class="text-xs text-gray-400 mt-1">"Yangi manzil" tugmasi orqali xaritadan nuqta tanlab qo'shing.</p>
+                        <p class="text-xs text-gray-400 mt-1">Haydovchi biror joyda bir necha daqiqa kutib tursa, manzil shu yerda avtomatik paydo bo'ladi.</p>
                     </td>
                 </tr>
                 {% endfor %}
@@ -110,19 +111,22 @@
     </div>
 </div>
 
-<!-- ══════════ Yangi manzil modal ══════════ -->
+<!-- ══════════ Manzilni tahrirlash modal ══════════ -->
 <div id="newAddressModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
     <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-lg shadow-2xl border border-gray-100 dark:border-gray-800 max-h-[95vh] flex flex-col">
         <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
             <h2 id="sa_modal_title" class="text-lg font-bold text-gray-900 dark:text-white">
-                <i class="fas fa-map-pin text-yellow-500 mr-2"></i>Yangi manzil
+                <i class="fas fa-pen text-yellow-500 mr-2"></i>Manzilni tahrirlash
             </h2>
             <button onclick="closeModal('newAddressModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
                 <i class="fas fa-times text-sm"></i>
             </button>
         </div>
         <div class="overflow-y-auto flex-1">
-        <form id="sa_form" method="POST" action="{% url 'taxi:saved_address_create' %}" class="px-6 py-5 space-y-4">
+        <!-- Diqqat: bu modal endi FAQAT tahrirlash uchun (yangi manzil qo'lda
+             qo'shilmaydi, avtomatik yaratiladi) — action JS orqali
+             openEditAddressModal()da to'ldiriladi. -->
+        <form id="sa_form" method="POST" action="" class="px-6 py-5 space-y-4">
             {% csrf_token %}
             <input type="hidden" name="lat" id="sa_lat">
             <input type="hidden" name="lng" id="sa_lng">
@@ -155,7 +159,7 @@
                 </button>
                 <button type="submit" id="sa_submit" disabled
                         class="flex-1 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold shadow-md shadow-green-200 dark:shadow-none transition">
-                    <i id="sa_submit_icon" class="fas fa-floppy-disk mr-1.5"></i><span id="sa_submit_text">Saqlash</span>
+                    <i class="fas fa-floppy-disk mr-1.5"></i>Yangilash
                 </button>
             </div>
         </form>
@@ -340,25 +344,20 @@
     openModal = function (id) {
         _origOpenSA(id);
         if (id === 'newAddressModal') {
-            // openEditAddressModal() shu yerga qo'ygan bo'lsa — tahrirlash
-            // rejimi, aks holda oddiy "Yangi manzil" tugmasi bosilgan.
+            // Bu modal endi FAQAT openEditAddressModal() orqali ochiladi
+            // (yangi manzil qo'lda qo'shilmaydi), shu sabab _saPendingEdit
+            // shu yerda doim to'ldirilgan bo'ladi.
             var editing = _saPendingEdit;
+            if (!editing) return;
 
-            document.getElementById('sa_lat').value = editing ? editing.lat : '';
-            document.getElementById('sa_lng').value = editing ? editing.lng : '';
-            document.getElementById('sa_name').value = editing ? editing.name : '';
-            document.getElementById('sa_address').value = editing ? editing.address : '';
-            document.getElementById('sa_submit').disabled = !editing;
-            document.getElementById('sa_map_hint').innerHTML = editing
-                ? '<i class="fas fa-check text-green-500"></i> Joriy nuqta — o\'zgartirish uchun xaritani qayta bosing'
-                : '<i class="fas fa-hand-pointer"></i> Xaritada nuqtani bosing';
-            document.getElementById('sa_modal_title').innerHTML = editing
-                ? '<i class="fas fa-pen text-yellow-500 mr-2"></i>Manzilni tahrirlash'
-                : '<i class="fas fa-map-pin text-yellow-500 mr-2"></i>Yangi manzil';
-            document.getElementById('sa_form').action = editing
-                ? '/panel/manzillar/' + editing.pk + '/edit/'
-                : '{% url "taxi:saved_address_create" %}';
-            document.getElementById('sa_submit_text').textContent = editing ? 'Yangilash' : 'Saqlash';
+            document.getElementById('sa_lat').value = editing.lat;
+            document.getElementById('sa_lng').value = editing.lng;
+            document.getElementById('sa_name').value = editing.name;
+            document.getElementById('sa_address').value = editing.address;
+            document.getElementById('sa_submit').disabled = false;
+            document.getElementById('sa_map_hint').innerHTML =
+                '<i class="fas fa-check text-green-500"></i> Joriy nuqta — o\'zgartirish uchun xaritani qayta bosing';
+            document.getElementById('sa_form').action = '/panel/manzillar/' + editing.pk + '/edit/';
 
             _saPM = null;
             setTimeout(function () {

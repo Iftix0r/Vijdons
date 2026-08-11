@@ -182,8 +182,8 @@ VAPID_CLAIMS      = {'sub': 'mailto:admin@vijdontaxi.uz'}
 # xabar yuborish uchun. Firebase konsolida loyiha yaratib, Project settings →
 # Service accounts → "Generate new private key" orqali JSON faylni oling va
 # yo'lini shu yerga yozing (masalan BASE_DIR / 'fcm-service-account.json').
-FCM_PROJECT_ID            = ''  # masalan: 'vijdon-taxi'
-FCM_SERVICE_ACCOUNT_FILE  = ''  # xizmat hisobi JSON fayli yo'li
+FCM_PROJECT_ID            = 'project-6372066560182110588'
+FCM_SERVICE_ACCOUNT_FILE  = BASE_DIR / 'fcm-service-account.json'
 
 # DRF
 REST_FRAMEWORK = {

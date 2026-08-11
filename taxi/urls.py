@@ -76,7 +76,6 @@ urlpatterns = [
     path('hodimlar/<int:pk>/attendance/manual/', views.employee_attendance_manual, name='employee_attendance_manual'),
 
     path('manzillar/', views.saved_addresses_list, name='saved_addresses_list'),
-    path('manzillar/add/', views.saved_address_create, name='saved_address_create'),
     path('manzillar/<int:pk>/edit/', views.saved_address_update, name='saved_address_update'),
     path('manzillar/<int:pk>/delete/', views.saved_address_delete, name='saved_address_delete'),
     path('manzillar/<int:pk>/use/', views.saved_address_use, name='saved_address_use'),

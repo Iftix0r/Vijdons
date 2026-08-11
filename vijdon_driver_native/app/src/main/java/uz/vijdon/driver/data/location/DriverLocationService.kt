@@ -54,13 +54,13 @@ class DriverLocationService : Service() {
     private var lastReportedLng: Double? = null
     private var lastReportedAtMs: Long = 0L
 
-    // FCM hali sozlanmagan (Firebase loyihasi ulanmagan) — shu sabab
-    // "shaxsan menga yuborilgan" yangi buyurtmani ilova fonda/boshqa ilova
-    // ustida ochiq bo'lganda ham bilish uchun push'ga tayanib bo'lmaydi.
-    // Shu foreground service (haydovchi onlayn bo'lgan vaqt davomida ishlaydi)
-    // GPS bilan bir qatorda buyurtmalarni ham davriy so'raydi va topilsa
-    // xuddi FCM push kelgandagi kabi to'liq ekranli bildirishnoma chiqaradi
-    // (VijdonFirebaseMessagingService.onMessageReceived bilan bir xil uslubda).
+    // FCM endi ulangan — "shaxsan menga yuborilgan" yangi buyurtma haqida
+    // asosiy signal endi VijdonFirebaseMessagingService.onMessageReceived()
+    // orqali (deyarli bir zumda, ilova fonda/o'chirilgan bo'lsa ham) keladi.
+    // Shu polling endi faqat ZAXIRA — ba'zi qurilmalarda (masalan agressiv
+    // "battery saver"li Xiaomi/Huawei kabi OEM'lar) FCM push kechikishi yoki
+    // butunlay yetib bormasligi mumkin, shu holat uchun tarmoq/serverga
+    // ancha kamroq yuk beradigan oraliqda davom etadi.
     private var alertedOrderId: Int? = null
 
     private val fusedClient by lazy { LocationServices.getFusedLocationProviderClient(this) }
@@ -169,19 +169,17 @@ class DriverLocationService : Service() {
 
     /** "Menga shaxsan yuborilgan" mezoni (is_dispatched + hali tugamagan
      * timer_sec) — ekrandagi HomeViewModel.refreshOrders() bilan bir xil.
-     * Diqqat: operator sozlamasidagi `TariffSettings.dispatch_timeout`
-     * SUKUT BO'YICHA atigi 10 soniya — avval bu yerda 6s oralig'da so'ralar
-     * edi, ya'ni haydovchi ilovadan tashqarida bo'lsa, dispetcherlik
-     * navbatning aksariyat holatlarida BOR-YO'G'I 1 marta (ba'zan
-     * umuman ulgurmasdan) so'rov yuborilardi — vaqt tugab, buyurtma
-     * "javob bermadi" deb boshqa haydovchiga o'tib ketishi mumkin edi,
-     * hatto bildirishnoma hali ko'rsatilmasdan turib. Endi 3 soniyada bir
-     * so'raladi — 10 soniyalik oynada kamida 2-3 marta urinish bo'ladi. */
+     * Diqqat: FCM ulanmasdan oldin bu yerda 3s oralig'da so'ralar edi (o'sha
+     * paytda YAGONA signal manbai shu edi, operatordagi `dispatch_timeout`
+     * SUKUT BO'YICHA atigi 10 soniya bo'lgani uchun tez-tez so'rash shart
+     * edi). Endi FCM push tezkor asosiy kanal bo'lgani sabab bu — faqat
+     * zaxira tarmoq: FCM chindan yetib bormagan kamdan-kam holatda ham
+     * haydovchi butunlay bexabar qolmasin degan "xavfsizlik to'ri". */
     private fun startOrderAlertPolling() {
         scope.launch {
             while (true) {
                 pollForDispatchedOrder()
-                delay(3_000L)
+                delay(15_000L)
             }
         }
     }

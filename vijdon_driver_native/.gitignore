@@ -9,3 +9,8 @@ build/
 .externalNativeBuild
 .cxx
 app/google-services.json
+
+# Release imzolash kaliti — maxfiy, hech qachon commit qilinmasin. Yo'qolsa
+# ilovani xuddi shu imzo bilan ENDI HECH QACHON yangilab bo'lmaydi.
+/release.keystore.jks
+/keystore.properties

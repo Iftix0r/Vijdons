@@ -6,12 +6,23 @@ import android.app.NotificationManager
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
 class VijdonDriverApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        // google-services.json qo'shilmagan muhitda (masalan boshqa
+        // dasturchi mashinasida) Firebase umuman ishga tushmaydi — shu
+        // sabab BuildConfig.HAS_FCM bilan tekshiriladi. Debug build'da esa
+        // ataylab O'CHIRIB qo'yiladi — aks holda dasturchining o'zi
+        // sinovdan o'tkazayotganda chiqqan xatoliklar ham productiondagi
+        // haqiqiy haydovchilar bilan bir xil Crashlytics panelida aralashib
+        // ketardi.
+        if (BuildConfig.HAS_FCM) {
+            FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(NotificationManager::class.java)
             // Yangi buyurtma — haydovchi boshqa ilova ochiq yoki ekran

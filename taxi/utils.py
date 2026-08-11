@@ -1830,6 +1830,17 @@ ADDRESS_QUEUE_STALE_MINUTES = 1      # shuncha daqiqa faollik (Driver.last_seen)
                                       # (garchi joyidan jilmagan bo'lsa ham) abadiy eski o'rnini
                                       # saqlab qolaverar edi.
 
+# Yaqin atrofda (ADDRESS_QUEUE_RADIUS_KM ichida) hech qanday SavedAddress
+# topilmasa — operator O'ZI oldindan qo'lda manzil qo'shishi shart emas.
+# Haydovchi shu AUTO_ADDRESS_DWELL_RADIUS_KM ichida AUTO_ADDRESS_DWELL_MINUTES
+# davomida "turib qolsa" (haqiqatan navbatga tushgandek), tizim o'sha nuqtada
+# yangi SavedAddress'ni AVTOMATIK yaratadi (nomi reverse-geocode orqali).
+# Shunchaki yo'lda o'tib ketayotgan yoki svetoforda to'xtagan haydovchi uchun
+# manzil yaratilib qolmasligi uchun ikkalasi ham ataylab "qattiqroq" (torroq
+# radius, bir necha daqiqa) qilib tanlangan.
+AUTO_ADDRESS_DWELL_RADIUS_KM = 0.1    # ~100 metr (GPS tebranishiga bir oz zахira bilan)
+AUTO_ADDRESS_DWELL_MINUTES = 4
+
 
 def find_matching_saved_address(lat, lng):
     """Berilgan koordinata biror SavedAddress (Manzillar) radiusida
@@ -1853,6 +1864,12 @@ def update_address_queue_membership(driver, lat, lng, was_stale=False):
     (`joined_at`) saqlanib boradi — shu orqali dispatch_order() "kim
     birinchi kelgan" tartibida taklif qila oladi (taksi bekati navbati
     kabi).
+
+    Diqqat: agar yaqin atrofda operator oldindan qo'shgan manzil bo'lmasa,
+    funksiya shu yerda TO'XTAB QOLMAYDI — pastda (AUTO_ADDRESS_DWELL_*)
+    haydovchi shu nuqtada bir necha daqiqa turib qolsa, yangi SavedAddress
+    AVTOMATIK yaratiladi. Shu sabab operator endi HAR bir manzilni oldindan
+    qo'lda kiritishi shart emas.
 
     Diqqat: allaqachon navbatda bo'lsa, uni chiqarish uchun QO'SHILISH
     radiusidan (300m) KATTAROQ chegara (ADDRESS_QUEUE_LEAVE_RADIUS_KM,
@@ -1925,6 +1942,50 @@ def update_address_queue_membership(driver, lat, lng, was_stale=False):
 
         if nearest_addr:
             AddressQueueEntry.objects.create(address=nearest_addr, driver=driver)
+            if driver.pending_stand_lat is not None:
+                driver.pending_stand_lat = None
+                driver.pending_stand_lng = None
+                driver.pending_stand_since = None
+                driver.save(update_fields=['pending_stand_lat', 'pending_stand_lng', 'pending_stand_since'])
+            return
+
+        # Bu yerga faqat yaqin atrofda HECH QANDAY SavedAddress topilmaganda
+        # kelinadi. Operator oldindan manzil kiritmagan bo'lsa ham tizim
+        # o'zi ishlayversin deb — haydovchi shu nuqtada yetarlicha uzoq
+        # (AUTO_ADDRESS_DWELL_MINUTES) turib qolsa, YANGI SavedAddress
+        # avtomatik yaratiladi. Faqat ish holatidagi (is_on_duty) haydovchilar
+        # uchun — aks holda oddiy uydan/ko'chadan o'tayotgan onlaynsiz
+        # haydovchi ham manzil "yaratib" yurardi.
+        if not driver.is_on_duty:
+            return
+
+        anchor_dist = None
+        if driver.pending_stand_lat is not None and driver.pending_stand_lng is not None:
+            anchor_dist = haversine(lat, lng, driver.pending_stand_lat, driver.pending_stand_lng)
+
+        if anchor_dist is None or anchor_dist > AUTO_ADDRESS_DWELL_RADIUS_KM:
+            # Yangi "nomzod" nuqta — hisoblash shu yerdan qayta boshlanadi
+            # (haydovchi harakatlanmoqda yoki bu birinchi urinish).
+            driver.pending_stand_lat = lat
+            driver.pending_stand_lng = lng
+            driver.pending_stand_since = timezone.now()
+            driver.save(update_fields=['pending_stand_lat', 'pending_stand_lng', 'pending_stand_since'])
+            return
+
+        dwell_minutes = (timezone.now() - driver.pending_stand_since).total_seconds() / 60
+        if dwell_minutes < AUTO_ADDRESS_DWELL_MINUTES:
+            return  # hali yetarlicha turmadi
+
+        from taxi.models import SavedAddress
+        name = reverse_geocode_address(lat, lng) or f'Nomsiz manzil ({lat:.4f}, {lng:.4f})'
+        new_addr = SavedAddress.objects.create(
+            name=name[:100], address=name[:255], lat=lat, lng=lng, auto_created=True,
+        )
+        AddressQueueEntry.objects.create(address=new_addr, driver=driver)
+        driver.pending_stand_lat = None
+        driver.pending_stand_lng = None
+        driver.pending_stand_since = None
+        driver.save(update_fields=['pending_stand_lat', 'pending_stand_lng', 'pending_stand_since'])
 
 
 def _requeue_driver_to_back(driver_id, order):

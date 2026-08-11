@@ -4150,24 +4150,6 @@ def saved_addresses_list(request):
 
 
 @panel_login_required
-def saved_address_create(request):
-    if request.method == 'POST':
-        name = request.POST.get('name', '').strip()
-        address = request.POST.get('address', '').strip()
-        lat = request.POST.get('lat')
-        lng = request.POST.get('lng')
-        if name and lat and lng:
-            SavedAddress.objects.create(
-                name=name, address=address, lat=float(lat), lng=float(lng),
-                created_by=request.user,
-            )
-            messages.success(request, f"«{name}» manzil sifatida saqlandi.")
-        else:
-            messages.error(request, "Nomi va xaritadan nuqta tanlanishi shart.")
-    return redirect('taxi:saved_addresses_list')
-
-
-@panel_login_required
 def saved_address_update(request, pk):
     address = get_object_or_404(SavedAddress, pk=pk)
     if request.method == 'POST':

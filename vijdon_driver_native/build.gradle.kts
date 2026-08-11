@@ -8,4 +8,7 @@ plugins {
     // google-services.json fayli qo'shilmaguncha shartli qo'llaniladi (app/build.gradle.kts) —
     // aks holda plugin konfiguratsiya bosqichida xato beradi (0.3-band, FCM sozlash kerak).
     id("com.google.gms.google-services") version "4.5.0" apply false
+    // Crashlytics ham xuddi shu google-services.json fayliga bog'liq — shu
+    // sabab u ham shartli qo'llaniladi (app/build.gradle.kts).
+    id("com.google.firebase.crashlytics") version "3.0.7" apply false
 }

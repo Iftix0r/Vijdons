@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -14,6 +16,17 @@ plugins {
 val hasGoogleServices = file("google-services.json").exists()
 if (hasGoogleServices) {
     apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
+}
+
+// Release imzolash kaliti — repoga qo'shilmagan (`keystore.properties` va
+// `release.keystore.jks`, ikkalasi ham .gitignore'da). Fayl bo'lmasa
+// (masalan boshqa dasturchi mashinasida yoki CI'da) release build shunchaki
+// imzosiz yig'iladi — konfiguratsiya bosqichida xato bermaydi.
+val keystorePropsFile = rootProject.file("keystore.properties")
+val hasKeystore = keystorePropsFile.exists()
+val keystoreProps = Properties().apply {
+    if (hasKeystore) keystorePropsFile.inputStream().use { load(it) }
 }
 
 android {
@@ -40,9 +53,23 @@ android {
         buildConfigField("String", "CHALLENGE_ORIGIN", "\"https://vijdontaxi.uz/\"")
     }
 
+    signingConfigs {
+        if (hasKeystore) {
+            create("release") {
+                storeFile = file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (hasKeystore) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
@@ -114,6 +141,9 @@ dependencies {
     // Push (FCM) — google-services.json qo'shilgach ishlaydi
     implementation(platform("com.google.firebase:firebase-bom:34.17.0"))
     implementation("com.google.firebase:firebase-messaging")
+    // Xatoliklarni kuzatish — real qurilmalardagi ushlanmagan
+    // istisnolar (crash) haqida avtomatik hisobot beradi.
+    implementation("com.google.firebase:firebase-crashlytics")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")

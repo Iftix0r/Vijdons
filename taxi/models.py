@@ -57,6 +57,12 @@ class Driver(models.Model):
     last_ping_at          = models.DateTimeField(null=True, blank=True, verbose_name="Ping o'lchangan vaqt")
     device_model          = models.CharField(max_length=120, blank=True, default='', verbose_name="Qurilma modeli", help_text="Native ilovaga kirganda avtomatik yoziladi (masalan 'Samsung SM-A125F')")
     battery_level         = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name="Batareya foizi", help_text="Native ilova joylashuv yuborganda birga keladi")
+    # Yaqin atrofida hech qanday SavedAddress topilmagan holatda, haydovchi
+    # shu nuqtada qancha vaqtdan beri turganini kuzatish uchun (yangi manzil
+    # AVTOMATIK yaratilishidan oldin) — util.py, update_address_queue_membership().
+    pending_stand_lat     = models.FloatField(null=True, blank=True, verbose_name="Kutilayotgan yangi manzil (kenglik)")
+    pending_stand_lng     = models.FloatField(null=True, blank=True, verbose_name="Kutilayotgan yangi manzil (uzunlik)")
+    pending_stand_since   = models.DateTimeField(null=True, blank=True, verbose_name="Shu nuqtada turgan vaqtdan beri")
 
     LEVEL_THRESHOLDS = (
         (500, "Usta haydovchi"),
@@ -1164,6 +1170,7 @@ class SavedAddress(models.Model):
     usage_count = models.PositiveIntegerField(default=0, verbose_name='Ishlatilgan soni')
     created_by  = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, verbose_name="Qo'shgan")
     created_at  = models.DateTimeField(auto_now_add=True)
+    auto_created = models.BooleanField(default=False, verbose_name="Avtomatik yaratilgan", help_text="Operator qo'lda emas, haydovchi shu nuqtada turgani sababli tizim tomonidan avtomatik yaratilgan")
 
     def __str__(self):
         return self.name

@@ -1,5 +1,6 @@
 package uz.vijdon.driver.data.repository
 
+import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -44,28 +45,47 @@ class DriverRepository @Inject constructor(
     private val tokenStore: TokenStore,
     private val json: Json,
 ) {
-    private suspend fun <T> safeCall(block: suspend () -> T): ApiResult<T> = try {
-        ApiResult.Success(block())
-    } catch (e: HttpException) {
-        val bodyString = e.response()?.errorBody()?.string()
-        val parsed = bodyString?.let { runCatching { json.decodeFromString<ErrorBody>(it) }.getOrNull() }
-        ApiResult.Error(
-            message = parsed?.detail ?: bodyString ?: e.message() ?: "Xatolik yuz berdi",
-            code = parsed?.code,
-            httpCode = e.code(),
-        )
-    } catch (e: IOException) {
-        ApiResult.Error("Internet aloqasi yo'q. Qayta urinib ko'ring.")
-    } catch (e: kotlinx.coroutines.CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        // Server JSON o'rniga kutilmagan javob qaytarsa (masalan Cloudflare
-        // HTML tekshiruv sahifasi — 0.1-band hali bajarilmagan bo'lsa),
-        // kotlinx.serialization SerializationException tashlaydi — bu
-        // HttpException/IOException EMAS, shu sabab alohida tutiladi.
-        // Aks holda tutilmagan xato butun ilovani (yoki hech bo'lmasa joriy
-        // ekranni) buzib qo'yardi.
-        ApiResult.Error("Kutilmagan javob. Server sozlamalarini tekshiring.")
+    // Signal vaqtincha uzilib qolishi (metro, tunnel, tog' hududi, liftda
+    // qolib ketish) — haydovchi uchun eng xavfli payt aynan shu, chunki
+    // "Qabul qilish" kabi vaqtga bog'liq amal bajarilsa, operator sozlamasidagi
+    // dispatch_timeout atigi 10s bo'lgani uchun buyurtma boshqa haydovchiga
+    // o'tib ketishi mumkin. Shu sabab SOF tarmoq xatosida (IOException —
+    // so'rov serverga umuman yetib bormagan holat) darhol xato ko'rsatish
+    // o'rniga, qisqa kutish bilan bir necha marta avtomatik qayta uriniladi.
+    // Server javob qaytargan holatlarda (HttpException — masalan 400/403)
+    // qayta urinish ma'nosiz, chunki natija o'zgarmaydi.
+    private suspend fun <T> safeCall(block: suspend () -> T): ApiResult<T> {
+        repeat(NETWORK_RETRY_ATTEMPTS) { attempt ->
+            try {
+                return ApiResult.Success(block())
+            } catch (e: HttpException) {
+                val bodyString = e.response()?.errorBody()?.string()
+                val parsed = bodyString?.let { runCatching { json.decodeFromString<ErrorBody>(it) }.getOrNull() }
+                return ApiResult.Error(
+                    message = parsed?.detail ?: bodyString ?: e.message() ?: "Xatolik yuz berdi",
+                    code = parsed?.code,
+                    httpCode = e.code(),
+                )
+            } catch (e: IOException) {
+                if (attempt < NETWORK_RETRY_ATTEMPTS - 1) delay(NETWORK_RETRY_BACKOFF_MS * (attempt + 1))
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Server JSON o'rniga kutilmagan javob qaytarsa (masalan Cloudflare
+                // HTML tekshiruv sahifasi — 0.1-band hali bajarilmagan bo'lsa),
+                // kotlinx.serialization SerializationException tashlaydi — bu
+                // HttpException/IOException EMAS, shu sabab alohida tutiladi.
+                // Aks holda tutilmagan xato butun ilovani (yoki hech bo'lmasa joriy
+                // ekranni) buzib qo'yardi.
+                return ApiResult.Error("Kutilmagan javob. Server sozlamalarini tekshiring.")
+            }
+        }
+        return ApiResult.Error("Internet aloqasi yo'q. Qayta urinib ko'ring.")
+    }
+
+    private companion object {
+        const val NETWORK_RETRY_ATTEMPTS = 3
+        const val NETWORK_RETRY_BACKOFF_MS = 400L
     }
 
     suspend fun register(
