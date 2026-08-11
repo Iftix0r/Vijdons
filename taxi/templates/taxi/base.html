@@ -257,10 +257,6 @@
            class="nav-link {% if request.resolver_match.url_name == 'regions_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-map w-5 text-center"></i> Viloyatlar
         </a>
-        <a href="{% url 'taxi:intercity_list' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'intercity_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-bus w-5 text-center"></i> Shahrlararo
-        </a>
         <a href="{% url 'taxi:topup_list' %}"
            class="nav-link {% if request.resolver_match.url_name == 'topup_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-money-bill-transfer w-5 text-center"></i>

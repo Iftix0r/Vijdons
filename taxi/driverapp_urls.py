@@ -53,10 +53,4 @@ urlpatterns = [
     path('chat/group/',        v.chat_group_list,   name='chat_group_list'),
     path('chat/group/send/',   v.chat_group_send,   name='chat_group_send'),
     path('chat/group/unread/', v.chat_group_unread, name='chat_group_unread'),
-
-    path('intercity/routes/',   v.intercity_routes,  name='intercity_routes'),
-    path('intercity/my-trip/',  v.intercity_my_trip, name='intercity_my_trip'),
-    path('intercity/join/',     v.intercity_join,    name='intercity_join'),
-    path('intercity/depart/',   v.intercity_depart,  name='intercity_depart'),
-    path('intercity/cancel/',   v.intercity_cancel,  name='intercity_cancel'),
 ]

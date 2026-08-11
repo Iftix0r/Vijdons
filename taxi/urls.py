@@ -87,15 +87,6 @@ urlpatterns = [
     path('viloyatlar/tuman/add/', views.district_create, name='district_create'),
     path('viloyatlar/tuman/<int:pk>/delete/', views.district_delete, name='district_delete'),
 
-    path('shaharlararo/', views.intercity_list, name='intercity_list'),
-    path('shaharlararo/yonalish/add/', views.intercity_route_create, name='intercity_route_create'),
-    path('shaharlararo/yonalish/<int:pk>/edit/', views.intercity_route_update, name='intercity_route_update'),
-    path('shaharlararo/yonalish/<int:pk>/delete/', views.intercity_route_delete, name='intercity_route_delete'),
-    path('shaharlararo/joy-band/', views.intercity_booking_create, name='intercity_booking_create'),
-    path('shaharlararo/joy-band/<int:pk>/bekor/', views.intercity_booking_cancel, name='intercity_booking_cancel'),
-    path('shaharlararo/safar/<int:pk>/jonat/', views.intercity_trip_depart, name='intercity_trip_depart'),
-    path('shaharlararo/safar/<int:pk>/bekor/', views.intercity_trip_cancel, name='intercity_trip_cancel'),
-
     path('voice/join/',      views.panel_voice_join,      name='panel_voice_join'),
     path('voice/leave/',     views.panel_voice_leave,     name='panel_voice_leave'),
     path('voice/heartbeat/', views.panel_voice_heartbeat, name='panel_voice_heartbeat'),

@@ -24,7 +24,6 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.AddCard
 import androidx.compose.material.icons.rounded.CameraAlt
-import androidx.compose.material.icons.rounded.DirectionsBus
 import androidx.compose.material.icons.rounded.DirectionsCar
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Explore
@@ -82,7 +81,6 @@ fun ProfileScreen(
     onOpenSos: () -> Unit,
     onOpenDestination: () -> Unit,
     onOpenNearbyDrivers: () -> Unit,
-    onOpenIntercity: () -> Unit,
     onLogout: () -> Unit,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
@@ -202,8 +200,6 @@ fun ProfileScreen(
         )
         Spacer(Modifier.height(8.dp))
         MenuRow(Icons.Rounded.Groups, "Yaqin haydovchilar", "", tint = VijdonColors.Blue, onClick = onOpenNearbyDrivers)
-        Spacer(Modifier.height(8.dp))
-        MenuRow(Icons.Rounded.DirectionsBus, "Shahrlararo", "", tint = VijdonColors.Yellow, onClick = onOpenIntercity)
         Spacer(Modifier.height(8.dp))
         MenuRow(Icons.Rounded.Sos, "SOS", "", tint = VijdonColors.Red, onClick = onOpenSos)
         Spacer(Modifier.height(8.dp))
