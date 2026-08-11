@@ -49,6 +49,10 @@ class VijdonFirebaseMessagingService : FirebaseMessagingService() {
         val builder = NotificationCompat.Builder(this, channelId)
             .setContentTitle(title)
             .setContentText(body)
+            // `body` bir necha qatorli bo'lishi mumkin (manzil + izoh) —
+            // BigTextStyle bo'lmasa, tizim standart bildirishnomani
+            // BITTA qatorga qisqartirib qo'yardi, izoh ko'rinmay qolardi.
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
@@ -66,8 +70,28 @@ class VijdonFirebaseMessagingService : FirebaseMessagingService() {
             if (canUseFullScreen) {
                 builder.setFullScreenIntent(pendingIntent, true)
             }
+
+            // Ilovani ochmasdan, to'g'ridan-to'g'ri bildirishnoma panelidan
+            // qabul qilish/rad etish — DriverLocationService'dagi zaxira
+            // (polling) bildirishnomasi bilan bir xil OrderActionReceiver
+            // mexanizmi orqali.
+            val orderId = message.data["order_id"]?.toIntOrNull()
+            if (orderId != null) {
+                builder.addAction(0, "✅ Qabul qilish", orderActionPendingIntent(orderId, notificationId, OrderActionReceiver.ACTION_ACCEPT))
+                builder.addAction(0, "❌ Rad etish", orderActionPendingIntent(orderId, notificationId, OrderActionReceiver.ACTION_REJECT))
+            }
         }
 
         NotificationManagerCompat.from(this).notify(notificationId, builder.build())
+    }
+
+    private fun orderActionPendingIntent(orderId: Int, notificationId: Int, actionName: String): PendingIntent {
+        val intent = Intent(this, OrderActionReceiver::class.java).apply {
+            action = actionName
+            putExtra(OrderActionReceiver.EXTRA_ORDER_ID, orderId)
+            putExtra(OrderActionReceiver.EXTRA_NOTIFICATION_ID, notificationId)
+        }
+        val requestCode = orderId * 10 + (if (actionName == OrderActionReceiver.ACTION_ACCEPT) 1 else 2)
+        return PendingIntent.getBroadcast(this, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 }

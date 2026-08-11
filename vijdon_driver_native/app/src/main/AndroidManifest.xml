@@ -10,6 +10,12 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- Batareya optimizatsiyasidan chiqarishni SO'RASH uchun (o'zi avtomatik
+         bermaydi, faqat Sozlamalar oynasini ochish imkonini beradi) — ba'zi
+         OEM'larning (Xiaomi/Huawei/Samsung) agressiv "battery saver"i fon
+         xizmatini (GPS/FCM) o'chirib qo'yib, ilova "qotib qolgandek" yoki
+         yangi buyurtmalarni sezmayotgandek ko'rinishiga sabab bo'lardi. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:name=".VijdonDriverApp"

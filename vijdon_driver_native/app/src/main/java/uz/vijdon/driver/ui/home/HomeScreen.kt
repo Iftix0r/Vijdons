@@ -205,6 +205,26 @@ fun HomeScreen(
         }
     }
 
+    // Batareya optimizatsiyasi FAOL bo'lsa — tizim (ayniqsa Xiaomi/Huawei/
+    // Samsung kabi OEM'larda) fon xizmatini (joylashuv, FCM) istalgan payt
+    // "uyquga" olib ketishi mumkin, natijada haydovchi ilova "qotib
+    // qolgandek" yoki yangi buyurtmalarni o'z vaqtida ko'rmayotgandek
+    // bo'ladi — aslida ilova emas, tizim uni fonda to'xtatib qo'ygan bo'ladi.
+    var batteryOptimizationMissing by remember { mutableStateOf(false) }
+    run {
+        val lifecycleOwner = LocalLifecycleOwner.current
+        DisposableEffect(lifecycleOwner) {
+            val powerManager = context.getSystemService(android.os.PowerManager::class.java)
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    batteryOptimizationMissing = !powerManager.isIgnoringBatteryOptimizations(context.packageName)
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        }
+    }
+
     val currentDriver = state.driver ?: driver
 
     val alertOrder = state.alertOrder
@@ -247,6 +267,23 @@ fun HomeScreen(
                     context.startActivity(
                         Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:${context.packageName}")),
                     )
+                },
+            )
+        } else if (batteryOptimizationMissing) {
+            BatteryOptimizationBanner(
+                onEnable = {
+                    try {
+                        context.startActivity(
+                            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}")),
+                        )
+                    } catch (_: Exception) {
+                        // Ba'zi OEM'larda (ayniqsa MIUI) bu intent yo'q/bloklangan
+                        // bo'lishi mumkin — o'sha holda umumiy ilova sozlamalariga
+                        // yo'naltiramiz, hech narsa bo'lmagandan ko'ra yaxshiroq.
+                        context.startActivity(
+                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")),
+                        )
+                    }
                 },
             )
         }
@@ -1090,6 +1127,32 @@ private fun FullScreenIntentBanner(onEnable: () -> Unit) {
         )
         Spacer(Modifier.width(8.dp))
         TextButton(onClick = onEnable) { Text("Yoqish", color = VijdonColors.Blue, style = MaterialTheme.typography.labelMedium) }
+    }
+}
+
+/** Batareya optimizatsiyasi FAOL bo'lsa — tizim fon xizmatini (joylashuv,
+ * push) istalgan payt to'xtatib qo'yishi mumkin, shu sabab ilova
+ * "qotib qolgandek" yoki yangi buyurtmani sezmayotgandek bo'lib qoladi. */
+@Composable
+private fun BatteryOptimizationBanner(onEnable: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .background(VijdonColors.Yellow.copy(alpha = 0.14f), CardShape)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Rounded.LocalTaxi, contentDescription = null, tint = VijdonColors.YellowDark, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "Ilova qotib qolmasligi va buyurtmalarni o'z vaqtida ko'rsatishi uchun batareya tejash cheklovidan chiqaring",
+            color = VijdonColors.YellowDark,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(8.dp))
+        TextButton(onClick = onEnable) { Text("Sozlash", color = VijdonColors.YellowDark, style = MaterialTheme.typography.labelMedium) }
     }
 }
 

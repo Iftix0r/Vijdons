@@ -2280,15 +2280,19 @@ def notify_driver_new_order(order, driver):
     """Buyurtma biror haydovchiga tayinlanganda (avtomatik dispatch_order()
     orqali yoki operator tomonidan qo'lda) unga FCM push, Web Push va
     Telegram orqali xabar yuborish — ikkala holatda ham bir xil ishlaydi."""
+    body = f"📍 {order.from_address}" + (f" → {order.to_address}" if order.to_address else "")
+    if order.note:
+        body += f"\n📝 {order.note}"
     send_fcm(
         driver.fcm_token,
         title='🚖 Yangi buyurtma!',
-        body=f"📍 {order.from_address}" + (f" → {order.to_address}" if order.to_address else ""),
+        body=body,
         data={
             'type':       'new_order',
             'order_id':   str(order.id),
             'from_addr':  order.from_address,
             'to_addr':    order.to_address or '',
+            'note':       order.note or '',
             'price':      str(order.price or ''),
             'client_phone': order.client.phone_number,
         },
