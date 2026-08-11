@@ -107,6 +107,7 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
                         onLogout = onLogout,
                         onOpenRating = { navController.navigate(SubRoutes.RATING) },
                         onOpenBalance = { navController.navigate(SubRoutes.BALANCE_HISTORY) },
+                        onOpenAddresses = { navController.navigate(SubRoutes.ADDRESSES) },
                     )
                 }
                 composable(Tabs.HISTORY) { HistoryScreen() }

@@ -52,6 +52,7 @@ import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.Phone
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Route
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.Button
@@ -121,6 +122,7 @@ fun HomeScreen(
     onLogout: () -> Unit,
     onOpenRating: () -> Unit,
     onOpenBalance: () -> Unit,
+    onOpenAddresses: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -353,25 +355,37 @@ fun HomeScreen(
                     // Veb panelda "Asosiy" sahifaning fon kontenti — qaysi
                     // manzillarda hozir talab (navbatdagi haydovchilar, bugungi
                     // buyurtmalar) borligini ko'rsatadi, buyurtma bo'lmaganda ham.
-                    if (state.addresses.isNotEmpty()) {
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(top = if (pendingOrders.isNotEmpty()) 4.dp else 0.dp, bottom = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    "Yo'nalishlar & Stoyankalar",
-                                    color = VijdonColors.TextPrimary,
-                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                )
-                                Text(
-                                    "Jami: ${sortedAddresses.size} ta",
-                                    color = VijdonColors.TextSecondary,
-                                    style = MaterialTheme.typography.labelMedium,
-                                )
+                    // Sarlavha (qidiruv tugmasi bilan) yaqin atrofda manzil
+                    // bo'lmasa ham ko'rinadi — O'zbekiston bo'ylab boshqa
+                    // hududdagi manzillarni qidirish doim shu yerdan bir bosishda
+                    // ochilishi kerak (Profil ichiga kirish shart emas).
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(top = if (pendingOrders.isNotEmpty()) 4.dp else 0.dp, bottom = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                "Yo'nalishlar & Stoyankalar",
+                                color = VijdonColors.TextPrimary,
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (state.addresses.isNotEmpty()) {
+                                    Text(
+                                        "Jami: ${sortedAddresses.size} ta",
+                                        color = VijdonColors.TextSecondary,
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                }
+                                IconButton(onClick = onOpenAddresses, modifier = Modifier.size(28.dp)) {
+                                    Icon(Icons.Rounded.Search, contentDescription = "Manzil qidirish", tint = VijdonColors.TextSecondary, modifier = Modifier.size(18.dp))
+                                }
                             }
                         }
+                    }
+                    if (state.addresses.isNotEmpty()) {
                         items(sortedAddresses, key = { "addr-${it.id}" }) { address ->
                             Column(Modifier.animateItem()) {
                                 HomeAddressRow(
