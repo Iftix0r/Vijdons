@@ -728,17 +728,56 @@ def addresses_list(request, driver):
             counts[addr.id] = counts.get(addr.id, 0) + 1
 
     online_cutoff = timezone.now() - timezone.timedelta(seconds=120)
-    addresses = SavedAddress.objects.annotate(
+    addresses = SavedAddress.objects.select_related('district', 'district__region').annotate(
         queue_count=Count('queue_entries', filter=DQ(
             queue_entries__left_at__isnull=True, queue_entries__driver__is_active=True,
             queue_entries__driver__is_on_duty=True, queue_entries__driver__approval_status='approved',
             queue_entries__driver__last_seen__gte=online_cutoff,
         )),
     )
+
+    # Haydovchi ilovasidagi qidiruv/hudud filtri — ATAYIN ixtiyoriy, hech
+    # narsa berilmasa avvalgidek TO'LIQ ro'yxat qaytadi (masofa bo'yicha
+    # saralash ekranning o'zida bo'ladi). O'zbekiston bo'ylab manzillar
+    # ko'payishi bilan haydovchi "boshqa hududda talab bormi" deb qarab
+    # chiqishi uchun.
+    region_id = request.query_params.get('region', '').strip()
+    district_id = request.query_params.get('district', '').strip()
+    q = request.query_params.get('q', '').strip()
+    if district_id:
+        addresses = addresses.filter(district_id=district_id)
+    elif region_id:
+        addresses = addresses.filter(district__region_id=region_id)
+    if q:
+        addresses = addresses.filter(DQ(name__icontains=q) | DQ(address__icontains=q))
+
     return Response([
-        {'id': a.id, 'name': a.name, 'address': a.address, 'lat': a.lat, 'lng': a.lng,
-         'today_orders': counts.get(a.id, 0), 'queue_count': a.queue_count}
+        {
+            'id': a.id, 'name': a.name, 'address': a.address, 'lat': a.lat, 'lng': a.lng,
+            'today_orders': counts.get(a.id, 0), 'queue_count': a.queue_count,
+            'district_id': a.district_id, 'district_name': a.district.name if a.district else None,
+            'region_id': a.district.region_id if a.district else None,
+            'region_name': a.district.region.name if a.district else None,
+        }
         for a in addresses
+    ])
+
+
+@api_view(['GET'])
+@driver_required
+def regions_list(request, driver):
+    """Viloyat→tuman ro'yxati — haydovchi ilovasidagi manzil qidiruv/filtr
+    oynasida ishlatiladi (taxi/views.py'dagi operator panel bilan bir xil
+    ma'lumot, faqat token-autentifikatsiyali JSON ko'rinishida)."""
+    from .models import Region
+
+    regions = Region.objects.prefetch_related('districts').all()
+    return Response([
+        {
+            'id': r.id, 'name': r.name,
+            'districts': [{'id': d.id, 'name': d.name} for d in r.districts.all()],
+        }
+        for r in regions
     ])
 
 

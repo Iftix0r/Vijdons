@@ -149,7 +149,18 @@ data class AddressDto(
     val lng: Double,
     val today_orders: Int,
     val queue_count: Int,
+    val district_id: Int? = null,
+    val district_name: String? = null,
+    val region_id: Int? = null,
+    val region_name: String? = null,
 )
+
+/** Viloyat→tuman qidiruv/filtr oynasi uchun (Manzillar ekrani). */
+@Serializable
+data class DistrictDto(val id: Int, val name: String)
+
+@Serializable
+data class RegionDto(val id: Int, val name: String, val districts: List<DistrictDto> = emptyList())
 
 @Serializable
 data class QueuePositionResponse(val position: Int? = null, val total: Int = 0)

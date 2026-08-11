@@ -91,7 +91,14 @@ interface DriverApiService {
     ): DetailResponse
 
     @GET("addresses/")
-    suspend fun addresses(): List<AddressDto>
+    suspend fun addresses(
+        @Query("region") region: Int? = null,
+        @Query("district") district: Int? = null,
+        @Query("q") q: String? = null,
+    ): List<AddressDto>
+
+    @GET("regions/")
+    suspend fun regions(): List<RegionDto>
 
     @GET("addresses/{id}/queue/")
     suspend fun addressQueuePosition(

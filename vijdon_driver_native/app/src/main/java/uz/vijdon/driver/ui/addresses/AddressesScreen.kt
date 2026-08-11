@@ -2,6 +2,7 @@ package uz.vijdon.driver.ui.addresses
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,12 +16,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -29,23 +36,74 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import uz.vijdon.driver.data.api.AddressDto
+import uz.vijdon.driver.data.api.RegionDto
 import uz.vijdon.driver.ui.theme.CardShape
 import uz.vijdon.driver.ui.theme.CenteredLoading
+import uz.vijdon.driver.ui.theme.ChipShape
 import uz.vijdon.driver.ui.theme.ErrorBanner
 import uz.vijdon.driver.ui.theme.Pill
 import uz.vijdon.driver.ui.theme.ScreenHeader
 import uz.vijdon.driver.ui.theme.VijdonColors
 import uz.vijdon.driver.ui.theme.cardShadow
 
+/**
+ * Manzillar — endi faqat "yaqin atrofdagi"lar emas, O'zbekiston bo'ylab
+ * BARCHA manzillarni qidirish/hudud (viloyat→tuman) bo'yicha filtrlash
+ * imkoniyati bilan. Haydovchi shu orqali boshqa hududda talab (navbat)
+ * qanday ekanini oldindan ko'rib chiqishi mumkin — buyurtma esa, albatta,
+ * faqat haydovchi HAQIQATDA o'sha manzil radiusiga yetib borgandagina
+ * (GPS orqali) unga tegishli bo'ladi, xuddi hozirgi navbat tizimidagidek.
+ */
 @Composable
 fun AddressesScreen(viewModel: AddressesViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background).padding(16.dp)) {
-        ScreenHeader("Yaqin manzillar")
+        ScreenHeader("Manzillar", subtitle = "Qidiring yoki hudud bo'yicha ajrating")
+        Spacer(Modifier.height(12.dp))
+
+        OutlinedTextField(
+            value = state.searchQuery,
+            onValueChange = viewModel::onSearchQueryChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Manzil nomi bo'yicha qidirish...") },
+            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = VijdonColors.TextSecondary) },
+            trailingIcon = {
+                if (state.hasActiveFilter) {
+                    IconButton(onClick = viewModel::clearFilters) {
+                        Icon(Icons.Rounded.Close, contentDescription = "Filtrni tozalash", tint = VijdonColors.TextSecondary)
+                    }
+                }
+            },
+            singleLine = true,
+            shape = ChipShape,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = VijdonColors.Surface, unfocusedContainerColor = VijdonColors.Surface,
+                focusedTextColor = VijdonColors.TextPrimary, unfocusedTextColor = VijdonColors.TextPrimary,
+            ),
+        )
+
+        if (state.regions.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            RegionChipsRow(
+                regions = state.regions,
+                selectedRegionId = state.selectedRegionId,
+                onRegionClick = { viewModel.onRegionSelected(if (it == state.selectedRegionId) null else it) },
+            )
+            state.selectedRegion?.districts?.takeIf { it.isNotEmpty() }?.let { districts ->
+                Spacer(Modifier.height(6.dp))
+                DistrictChipsRow(
+                    districts = districts,
+                    selectedDistrictId = state.selectedDistrictId,
+                    onDistrictClick = { viewModel.onDistrictSelected(if (it == state.selectedDistrictId) null else it) },
+                )
+            }
+        }
+
         Spacer(Modifier.height(12.dp))
 
         state.error?.let {
@@ -56,7 +114,10 @@ fun AddressesScreen(viewModel: AddressesViewModel = hiltViewModel()) {
             CenteredLoading()
         } else if (state.addresses.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Saqlangan manzillar yo'q", color = VijdonColors.TextSecondary)
+                Text(
+                    if (state.hasActiveFilter) "Shu qidiruv bo'yicha manzil topilmadi" else "Saqlangan manzillar yo'q",
+                    color = VijdonColors.TextSecondary,
+                )
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -91,6 +152,50 @@ fun AddressesScreen(viewModel: AddressesViewModel = hiltViewModel()) {
     }
 }
 
+@Composable
+private fun RegionChipsRow(regions: List<RegionDto>, selectedRegionId: Int?, onRegionClick: (Int) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        regions.forEach { region ->
+            val selected = region.id == selectedRegionId
+            Text(
+                region.name,
+                color = if (selected) VijdonColors.TextOnYellow else VijdonColors.TextPrimary,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                modifier = Modifier
+                    .background(if (selected) VijdonColors.Yellow else VijdonColors.Surface, ChipShape)
+                    .clickable { onRegionClick(region.id) }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun DistrictChipsRow(districts: List<uz.vijdon.driver.data.api.DistrictDto>, selectedDistrictId: Int?, onDistrictClick: (Int) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        districts.forEach { district ->
+            val selected = district.id == selectedDistrictId
+            Text(
+                district.name,
+                color = if (selected) VijdonColors.TextOnYellow else VijdonColors.TextSecondary,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                modifier = Modifier
+                    .background(if (selected) VijdonColors.Yellow else VijdonColors.BadgeNeutral, ChipShape)
+                    .clickable { onDistrictClick(district.id) }
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+            )
+        }
+    }
+}
+
 /** Bosh sahifadagi manzil navbati bilan bir xil uslub — raqamlangan
  * doira belgi + "Siz" bo'lsa sariq bilan ajratilgan. */
 @Composable
@@ -111,7 +216,7 @@ private fun AddressQueueDriverRow(d: uz.vijdon.driver.data.api.QueueDriverDto) {
             color = if (d.is_me) VijdonColors.YellowDark else VijdonColors.TextPrimary,
             style = MaterialTheme.typography.bodySmall,
             maxLines = 1,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
     }
@@ -136,8 +241,15 @@ private fun AddressRow(address: AddressDto, onClick: () -> Unit) {
             }
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(address.name, color = VijdonColors.TextPrimary, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                Text("Bugun: ${address.today_orders} buyurtma", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Text(address.name, color = VijdonColors.TextPrimary, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    // Hudud ma'lum bo'lsa ko'rsatiladi (masalan "Chilonzor
+                    // tumani") — yo'q bo'lsa (hali tayinlanmagan avtomatik
+                    // manzil) bugungi buyurtmalar soni bilan almashtiriladi.
+                    address.district_name?.let { "$it · Bugun: ${address.today_orders}" } ?: "Bugun: ${address.today_orders} buyurtma",
+                    color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
             }
         }
         Spacer(Modifier.width(8.dp))

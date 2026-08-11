@@ -28,6 +28,7 @@ import uz.vijdon.driver.data.api.PhotoResponse
 import uz.vijdon.driver.data.api.QueueDriverDto
 import uz.vijdon.driver.data.api.QueuePositionResponse
 import uz.vijdon.driver.data.api.RatingResponse
+import uz.vijdon.driver.data.api.RegionDto
 import uz.vijdon.driver.data.api.SosResponse
 import uz.vijdon.driver.data.api.SurgeResponse
 import uz.vijdon.driver.util.DeviceInfo
@@ -213,7 +214,10 @@ class DriverRepository @Inject constructor(
         api.signContract(MultipartBody.Part.createFormData("signature", signatureFile.name, signatureBody), agreeBody)
     }
 
-    suspend fun addresses(): ApiResult<List<AddressDto>> = safeCall { api.addresses() }
+    suspend fun addresses(region: Int? = null, district: Int? = null, q: String? = null): ApiResult<List<AddressDto>> =
+        safeCall { api.addresses(region, district, q) }
+
+    suspend fun regions(): ApiResult<List<RegionDto>> = safeCall { api.regions() }
 
     suspend fun addressQueuePosition(id: Int, lat: Double?, lng: Double?): ApiResult<QueuePositionResponse> = safeCall {
         api.addressQueuePosition(id, lat, lng)

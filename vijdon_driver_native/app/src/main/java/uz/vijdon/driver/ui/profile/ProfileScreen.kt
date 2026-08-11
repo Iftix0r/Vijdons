@@ -191,7 +191,7 @@ fun ProfileScreen(
         Spacer(Modifier.height(8.dp))
         MenuRow(Icons.Rounded.Description, "Shartnoma", "", tint = VijdonColors.Blue, onClick = onOpenContract)
         Spacer(Modifier.height(8.dp))
-        MenuRow(Icons.Rounded.LocationOn, "Yaqin manzillar", "", tint = VijdonColors.Red, onClick = onOpenAddresses)
+        MenuRow(Icons.Rounded.LocationOn, "Manzillar", "", tint = VijdonColors.Red, onClick = onOpenAddresses)
         Spacer(Modifier.height(8.dp))
         MenuRow(
             Icons.Rounded.Explore, "Yo'nalish rejimi",
