@@ -2,6 +2,7 @@ package uz.vijdon.driver.ui.home
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -337,7 +338,29 @@ class HomeViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(alertOrder = null)
             return
         }
-        runAction(id, onSuccess = { DriverSoundPlayer.play(DriverSoundEvent.ACCEPT) }) { repository.acceptOrder(id) }
+        runAction<OrderDto>(id, onSuccess = { accepted ->
+            DriverSoundPlayer.play(DriverSoundEvent.ACCEPT)
+            openClientDialer(accepted.client_phone)
+        }) { repository.acceptOrder(id) }
+    }
+
+    /** Buyurtma qabul qilingandan so'ng — mijozga qo'ng'iroq qilish uchun
+     * telefon terish ekranini avtomatik ochadi (qo'lda "Qo'ng'iroq"
+     * tugmasini qidirib o'tirmasin, chunki odatda birinchi ish — mijozga
+     * yo'lga chiqqanini xabar qilish). Faqat TERADI, o'zi qo'ng'iroq
+     * QILMAYDI — haydovchi hali ham "Qo'ng'iroq" tugmasini bosishi kerak.
+     * Diqqat: raqam `acceptOrder()` javobining O'ZIDAN olinadi, `state.
+     * orders`dan emas — u hali eski ('pending') holatdagi, niqoblangan
+     * ("+998 90 *** ** 67") raqamni saqlab turishi mumkin edi. */
+    private fun openClientDialer(phone: String) {
+        if (phone.isBlank()) return
+        try {
+            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (_: Exception) {
+        }
     }
 
     fun rejectOrder(id: Int) {
@@ -378,13 +401,13 @@ class HomeViewModel @Inject constructor(
         taximeters[id] = TaximeterTracker(cfg.base_price, cfg.price_per_km, cfg.waiting_price_per_minute)
     }
 
-    private fun runAction(orderId: Int, onSuccess: () -> Unit = {}, block: suspend () -> ApiResult<*>) {
+    private fun <T> runAction(orderId: Int, onSuccess: (T) -> Unit = {}, block: suspend () -> ApiResult<T>) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(actionInProgress = _uiState.value.actionInProgress + orderId)
             when (val result = block()) {
                 is ApiResult.Success -> {
                     refreshOrders()
-                    onSuccess()
+                    onSuccess(result.data)
                 }
                 is ApiResult.Error -> _uiState.value = _uiState.value.copy(error = result.message)
             }

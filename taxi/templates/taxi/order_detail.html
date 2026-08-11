@@ -390,19 +390,83 @@ ymaps.ready(function() {
         controls: ['zoomControl']
     });
 
+    // Marshrut nuqtalari — mavjud bo'lganlari ketma-ket ulanadi
+    // (boshlanish -> yo'lga chiqqan -> yetib kelgan/kutish -> tugash).
+    // Yakunlangan buyurtmalarda bu haydovchi bosgan yo'lni ko'rgazmali
+    // qiladi.
+    var routePoints = [];
+
     map.geoObjects.add(new ymaps.Placemark(
         [{{ order.from_lat|unlocalize }}, {{ order.from_lng|unlocalize }}],
-        { balloonContent: '{{ order.from_address|escapejs }}' },
+        { balloonContent: "Boshlanish (mijoz manzili): {{ order.from_address|escapejs }}" },
         { preset: 'islands#greenDotIcon' }
     ));
+    routePoints.push([{{ order.from_lat|unlocalize }}, {{ order.from_lng|unlocalize }}]);
+
+    {% if order.on_way_lat and order.on_way_lng %}
+    map.geoObjects.add(new ymaps.Placemark(
+        [{{ order.on_way_lat|unlocalize }}, {{ order.on_way_lng|unlocalize }}],
+        { balloonContent: "Yo'lga chiqqan joyi: {{ order.on_way_address|default:''|escapejs }}" },
+        { preset: 'islands#violetDotIcon' }
+    ));
+    routePoints.push([{{ order.on_way_lat|unlocalize }}, {{ order.on_way_lng|unlocalize }}]);
+    {% endif %}
+
+    {% if order.arrived_lat and order.arrived_lng %}
+    map.geoObjects.add(new ymaps.Placemark(
+        [{{ order.arrived_lat|unlocalize }}, {{ order.arrived_lng|unlocalize }}],
+        { balloonContent: "Yetib kelgan / kutish boshlangan joyi: {{ order.arrived_address|default:''|escapejs }}" },
+        { preset: 'islands#blueDotIcon' }
+    ));
+    routePoints.push([{{ order.arrived_lat|unlocalize }}, {{ order.arrived_lng|unlocalize }}]);
+    {% endif %}
 
     {% if order.to_lat and order.to_lng %}
     map.geoObjects.add(new ymaps.Placemark(
         [{{ order.to_lat|unlocalize }}, {{ order.to_lng|unlocalize }}],
-        { balloonContent: '{{ order.to_address|escapejs }}' },
+        { balloonContent: "Tugash nuqtasi: {{ order.to_address|escapejs }}" },
         { preset: 'islands#redDotIcon' }
     ));
+    routePoints.push([{{ order.to_lat|unlocalize }}, {{ order.to_lng|unlocalize }}]);
+    {% endif %}
+
+    if (routePoints.length > 1) {
+        map.geoObjects.add(new ymaps.Polyline(routePoints, {}, {
+            strokeColor: '#94a3b8',
+            strokeWidth: 3,
+            strokeStyle: 'shortdash'
+        }));
+    }
+
     map.setBounds(map.geoObjects.getBounds(), { checkZoomRange: true, zoomMargin: 40 });
+
+    {% if order.status == 'accepted' or order.status == 'on_way' or order.status == 'arrived' %}
+    // Haydovchining JONLI joylashuvi — buyurtma hali faol bo'lgani uchun
+    // sahifa ochiq turgan payt har 5 soniyada bir yangilanadi.
+    var driverMark = null;
+    function refreshDriverLocation() {
+        fetch('{% url "taxi:order_driver_location" order.pk %}', { cache: 'no-store' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (!d.available) return;
+                var coords = [d.lat, d.lng];
+                if (!driverMark) {
+                    driverMark = new ymaps.Placemark(coords, {
+                        balloonContent: "Haydovchining joriy joylashuvi"
+                    }, {
+                        preset: 'islands#darkOrangeDotIconWithCaption',
+                        iconCaption: "Haydovchi"
+                    });
+                    map.geoObjects.add(driverMark);
+                } else {
+                    driverMark.geometry.setCoordinates(coords);
+                }
+            })
+            .catch(function() {});
+    }
+    refreshDriverLocation();
+    var driverLocInterval = setInterval(refreshDriverLocation, 5000);
+    window.addEventListener('beforeunload', function() { clearInterval(driverLocInterval); });
     {% endif %}
 });
 </script>

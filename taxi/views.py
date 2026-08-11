@@ -80,6 +80,27 @@ def order_detail(request, pk):
 
 
 @panel_login_required
+def order_driver_location(request, pk):
+    """Buyurtma tafsiloti sahifasidagi xaritada haydovchining JONLI
+    joylashuvini ko'rsatish uchun — faol (accepted/on_way/arrived)
+    buyurtmalar sahifasi ochiq turgan payt bir necha soniyada bir
+    so'raladi (driverapp_views.location_update haydovchi ilovasidan
+    yozib turadigan Driver.latitude/longitude'ni o'qiydi)."""
+    order = get_object_or_404(Order, pk=pk)
+    driver = order.driver
+    if not driver or driver.latitude is None or driver.longitude is None:
+        return JsonResponse({'available': False})
+    from django.utils import timezone
+    stale_seconds = (timezone.now() - driver.last_seen).total_seconds() if driver.last_seen else None
+    return JsonResponse({
+        'available': True,
+        'lat': driver.latitude,
+        'lng': driver.longitude,
+        'stale_seconds': stale_seconds,
+    })
+
+
+@panel_login_required
 def client_detail(request, pk):
     from django.db.models import Sum, Count
     client = get_object_or_404(Client, pk=pk)

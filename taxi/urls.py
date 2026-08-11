@@ -19,6 +19,7 @@ urlpatterns = [
     path('orders/notify-creating/', views.order_notify_creating, name='order_notify_creating'),
     path('orders/transcribe/', views.order_field_transcribe, name='order_field_transcribe'),
     path('orders/<int:pk>/', views.order_detail, name='order_detail'),
+    path('orders/<int:pk>/driver-location/', views.order_driver_location, name='order_driver_location'),
     path('orders/<int:pk>/status/', views.order_update_status, name='order_update_status'),
     path('orders/<int:pk>/cancel-reassign/', views.order_cancel_reassign, name='order_cancel_reassign'),
     path('orders/<int:pk>/delete/', views.order_delete, name='order_delete'),

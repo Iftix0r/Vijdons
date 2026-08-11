@@ -8,17 +8,18 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -29,7 +30,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,8 +39,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Message
 import androidx.compose.material.icons.rounded.AddCircle
-import androidx.compose.material.icons.rounded.ChevronLeft
-import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CreditCard
 import androidx.compose.material.icons.rounded.EmojiEvents
@@ -67,6 +65,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -77,8 +77,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,10 +84,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontFamily
@@ -97,15 +92,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.data.api.OrderDto
 import uz.vijdon.driver.data.api.QueueDriverDto
@@ -296,14 +288,9 @@ fun HomeScreen(
         } else if (state.orders.isEmpty() && state.addresses.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(
-                        modifier = Modifier.size(72.dp).background(VijdonColors.BadgeNeutral, CircleShape),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Rounded.LocalTaxi, contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(32.dp))
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    Text("Hozircha buyurtma yo'q", color = VijdonColors.TextSecondary)
+                    SearchingForOrdersIndicator()
+                    Spacer(Modifier.height(16.dp))
+                    Text("Yangi buyurtmalar qidirilmoqda...", color = VijdonColors.TextSecondary)
                 }
             }
         } else {
@@ -385,17 +372,12 @@ fun HomeScreen(
                     if (pendingOrders.isEmpty()) {
                         item {
                             Column(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 56.dp),
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
-                                Box(
-                                    modifier = Modifier.size(64.dp).background(VijdonColors.BadgeNeutral, CircleShape),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(Icons.Rounded.LocalTaxi, contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(28.dp))
-                                }
-                                Spacer(Modifier.height(12.dp))
-                                Text("Hozircha yangi buyurtma yo'q", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                                SearchingForOrdersIndicator()
+                                Spacer(Modifier.height(16.dp))
+                                Text("Yangi buyurtmalar qidirilmoqda...", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
@@ -442,9 +424,8 @@ fun HomeScreen(
                     },
                 )
             }
-            SwipeDutyBar(
+            DutyBar(
                 isOnDuty = currentDriver.is_on_duty,
-                errorSignal = state.error,
                 onToggle = { viewModel.toggleDuty() },
                 modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp, top = if (activeOrders.isNotEmpty()) 0.dp else 16.dp),
             )
@@ -884,6 +865,43 @@ private fun PulsingDot(color: Color) {
     Box(modifier = Modifier.size(6.dp).background(color.copy(alpha = alpha), CircleShape))
 }
 
+/** Yangi buyurtma kutilayotganda ko'rsatiladigan "radar" animatsiyasi —
+ * ikkita halqa navbat bilan (900ms farq bilan) kattalashib, so'nib
+ * chiqadi, markazda taksi ikonkasi qotib turadi. Statik "Hozircha
+ * buyurtma yo'q" matni o'rniga — haydovchiga ilova FAOL qidirayotganini
+ * ko'rgazmali qilib ko'rsatish uchun. */
+@Composable
+private fun SearchingForOrdersIndicator(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "searchRadar")
+    val ringProgress1 by transition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(animation = tween(1800, easing = LinearEasing)),
+        label = "radarRing1",
+    )
+    val ringProgress2 by transition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(animation = tween(1800, delayMillis = 900, easing = LinearEasing)),
+        label = "radarRing2",
+    )
+    Box(modifier = modifier.size(72.dp), contentAlignment = Alignment.Center) {
+        listOf(ringProgress1, ringProgress2).forEach { progress ->
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .scale(0.4f + progress * 0.6f)
+                    .alpha((1f - progress) * 0.45f)
+                    .background(VijdonColors.Yellow, CircleShape),
+            )
+        }
+        Box(
+            modifier = Modifier.size(56.dp).background(VijdonColors.BadgeNeutral, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Rounded.LocalTaxi, contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(24.dp))
+        }
+    }
+}
+
 /** "125000" ms -> "2:05" (soatlik bo'lsa "1:02:05"). */
 private fun formatElapsed(ms: Long): String {
     val totalSec = (ms / 1000).coerceAtLeast(0)
@@ -971,121 +989,55 @@ private fun ActiveOrderChooserRow(order: OrderDto, onClick: () -> Unit) {
 }
 
 /**
- * Onlayn/oflayn almashtirgichi — oddiy tugma/Switch o'rniga ATAYIN
- * "suring" (swipe) tugmasi: cho'ntakda yoki qo'l tegib ketib tasodifan
- * bosilib qolmasin uchun, holatni o'zgartirish uchun chekkadan-chekkagacha
- * ANIQ SURISH kerak. Ekranning pastida, tab bar ustida doim suzib turadi
- * (faol buyurtma bo'lsa shu joyni ActiveOrdersBar egallaydi, ikkalasi bir
+ * Onlayn/oflayn almashtirgichi — oddiy bosiladigan Switch (avvalgi
+ * "suring" (swipe) mexanizmi olib tashlandi, foydalanuvchi so'rovi
+ * bo'yicha). Ekranning pastida, tab bar ustida doim suzib turadi (faol
+ * buyurtma bo'lsa shu joyni ActiveOrdersBar egallaydi, ikkalasi bir
  * vaqtda ko'rinmaydi).
  */
 @Composable
-private fun SwipeDutyBar(isOnDuty: Boolean, errorSignal: String?, onToggle: () -> Unit, modifier: Modifier = Modifier) {
-    val density = LocalDensity.current
-    val scope = rememberCoroutineScope()
-    val haptic = LocalHapticFeedback.current
-    // pointerInput ichidagi callback'lar pastda faqat `maxOffsetPx`
-    // o'zgarganda qayta o'rnatiladi — shu orada `isOnDuty` eskirib
-    // qolmasin (masalan tugma bosilgandan keyin darhol yana bosilsa)
-    // uchun har doim ENG SO'NGGI qiymatni o'qiydigan holatga bog'laymiz.
-    val latestIsOnDuty by rememberUpdatedState(isOnDuty)
-
-    val thumbSizeDp = 52.dp
-    val thumbSizePx = with(density) { thumbSizeDp.toPx() }
-    var trackWidthPx by remember { mutableStateOf(0f) }
-    val maxOffsetPx = (trackWidthPx - thumbSizePx).coerceAtLeast(0f)
-
-    // Piksel o'rniga 0f (oflayn/chap) .. 1f (onlayn/o'ng) NISBIY qiymat
-    // sifatida saqlanadi — shu sabab birinchi chizilishda (trackWidthPx
-    // hali o'lchanmagan, ya'ni maxOffsetPx=0 bo'lganda) thumb keyinroq
-    // "sakrab" joyiga tushib qolmaydi.
-    val fraction = remember { Animatable(if (isOnDuty) 1f else 0f) }
-    // Surish davomida SINXRON (coroutine'siz) yangilanadi — har bir GPS/
-    // barmoq harakati uchun alohida coroutine ochish (avvalgi versiyada
-    // shunday edi) tez-tez kelayotgan hodisalar orasida poyga holati
-    // (race condition) yaratib, thumb'ni "sapchib-sapchib" harakatlantirar
-    // edi — aynan shu asosiy xatolik edi.
-    var dragFraction by remember { mutableStateOf<Float?>(null) }
-
-    // Haqiqiy holat (isOnDuty) o'zgarganda YOKI xatolik yuz berganda
-    // (masalan toggleDuty so'rovi tarmoq xatosi bilan muvaffaqiyatsiz
-    // tugasa — bu holda isOnDuty o'zgarmay qoladi, lekin `errorSignal`
-    // o'zgaradi) thumb HAQIQIY holatga qaytarib to'g'irlanadi — aks holda
-    // muvaffaqiyatsiz urinishdan keyin tugma "yolg'on" holatda abadiy
-    // qotib qolar edi (ikkinchi asosiy xatolik).
-    LaunchedEffect(isOnDuty, errorSignal) {
-        if (dragFraction == null) {
-            fraction.animateTo(if (isOnDuty) 1f else 0f, tween(220))
-        }
-    }
-
-    val visibleFraction = dragFraction ?: fraction.value
-    val offsetPx = visibleFraction * maxOffsetPx
-
-    Box(
+private fun DutyBar(isOnDuty: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
         modifier = modifier
             .fillMaxWidth()
             .height(68.dp)
-            .onSizeChanged { trackWidthPx = it.width.toFloat() }
             .cardShadow()
-            .background(VijdonColors.Surface, CircleShape)
-            .border(1.dp, if (isOnDuty) VijdonColors.Green.copy(alpha = 0.4f) else VijdonColors.Border, CircleShape),
-        contentAlignment = Alignment.Center,
+            .background(VijdonColors.Surface, CardShape)
+            .border(1.dp, if (isOnDuty) VijdonColors.Green.copy(alpha = 0.4f) else VijdonColors.Border, CardShape)
+            .padding(horizontal = 18.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            if (isOnDuty) "Chiqish uchun chapga suring" else "Onlayn bo'lish uchun o'ngga suring",
-            color = if (isOnDuty) VijdonColors.Green else VijdonColors.TextSecondary,
-            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(8.dp)
-                .offset { IntOffset(offsetPx.roundToInt(), 0) }
-                .size(thumbSizeDp)
-                .background(if (isOnDuty) VijdonColors.Green else VijdonColors.Yellow, CircleShape)
-                .pointerInput(maxOffsetPx) {
-                    if (maxOffsetPx <= 0f) return@pointerInput
-                    detectHorizontalDragGestures(
-                        onDragStart = { dragFraction = fraction.value },
-                        onDragEnd = {
-                            val current = dragFraction ?: fraction.value
-                            val crossedToOn = current >= 0.5f
-                            val shouldToggle = crossedToOn != latestIsOnDuty
-                            dragFraction = null
-                            // E'tibor: bu yerda YANGI holatga optimistik
-                            // sakrab o'tilmaydi — har doim HOZIRGI haqiqiy
-                            // (tasdiqlangan) holatga qaytadi. onToggle()
-                            // so'rovi muvaffaqiyatli bo'lsa, yuqoridagi
-                            // LaunchedEffect(isOnDuty,...) isOnDuty
-                            // yangilangach thumb'ni to'g'ri tomonga
-                            // o'zi olib o'tadi.
-                            scope.launch { fraction.animateTo(if (latestIsOnDuty) 1f else 0f, tween(200)) }
-                            if (shouldToggle) {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onToggle()
-                            }
-                        },
-                        onDragCancel = {
-                            dragFraction = null
-                            scope.launch { fraction.animateTo(if (latestIsOnDuty) 1f else 0f, tween(200)) }
-                        },
-                    ) { change, dragAmount ->
-                        change.consume()
-                        val deltaFraction = dragAmount / maxOffsetPx
-                        dragFraction = ((dragFraction ?: fraction.value) + deltaFraction).coerceIn(0f, 1f)
-                    }
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                if (isOnDuty) Icons.Rounded.ChevronLeft else Icons.Rounded.ChevronRight,
-                contentDescription = if (isOnDuty) "Oflayn bo'lish uchun chapga suring" else "Onlayn bo'lish uchun o'ngga suring",
-                tint = if (isOnDuty) Color.White else VijdonColors.TextOnYellow,
-                modifier = Modifier.size(24.dp),
-            )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier.size(36.dp).background(if (isOnDuty) VijdonColors.Green.copy(alpha = 0.18f) else VijdonColors.BadgeNeutral, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isOnDuty) {
+                    PulsingDot(color = VijdonColors.Green)
+                } else {
+                    Box(modifier = Modifier.size(8.dp).background(VijdonColors.TextSecondary, CircleShape))
+                }
+            }
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text(
+                    if (isOnDuty) "Onlayn" else "Oflayn",
+                    color = if (isOnDuty) VijdonColors.Green else VijdonColors.TextPrimary,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                )
+                Text(
+                    if (isOnDuty) "Buyurtmalar qabul qilinmoqda" else "Buyurtma olish uchun yoqing",
+                    color = VijdonColors.TextSecondary,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
         }
+        Switch(
+            checked = isOnDuty,
+            onCheckedChange = { onToggle() },
+            colors = SwitchDefaults.colors(checkedTrackColor = VijdonColors.Green, checkedThumbColor = VijdonColors.TextPrimary),
+        )
     }
 }
 

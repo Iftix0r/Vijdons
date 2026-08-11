@@ -70,6 +70,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Haydovchi mashinada telefonni ushlab turmaydi (ko'pincha
+        // panel/derjatelda) — ilova ochiq turgan payt ekran o'z-o'zidan
+        // o'chib, buyurtma kelganda ko'rmay qolmasligi uchun doim yonib
+        // turadi. Diqqat: bu FAQAT ilova ekranda (foreground) turgan
+        // paytga tegishli — ilovadan chiqilsa yoki qurilma qo'lda
+        // qulflansa, oddiy ekran o'chish vaqti darhol qayta ishlay boshlaydi.
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         // Tizim tomonidan pastki navigatsiya (gesture/3-tugma) zonasiga
         // avtomatik chizib qo'yiladigan alohida fon rangi (qora/kulrang
         // "yashirin panel") olib tashlanadi — shu tufayli pastdagi suzuvchi
