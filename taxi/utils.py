@@ -39,6 +39,83 @@ def reverse_geocode_address(lat, lng):
         return ''
 
 
+def reverse_geocode_admin_area(lat, lng):
+    """Koordinatadan (viloyat nomi, tuman nomi) juftligini olishga urinadi —
+    `reverse_geocode_address` bilan bir xil geocoder javobidan, lekin
+    to'liq manzil matni o'rniga hududiy ierarxiya (Yandex `Components`/
+    Nominatim `state`+`county`) o'qiladi. SavedAddress avtomatik
+    yaratilganda Region/District'ga avtomatik biriktirish uchun ishlatiladi.
+    Aniqlab bo'lmasa (ikkalasi ham yoki bittasi) — mos qiymat o'rniga
+    `None` qaytaradi, xato emas: chaqiruvchi shu holda manzilni tumansiz
+    qoldiradi (operator keyin qo'lda biriktirishi mumkin)."""
+    try:
+        from taxi.models import MapsSettings
+        maps = MapsSettings.get()
+        if maps.provider == MapsSettings.PROVIDER_YANDEX and maps.api_key:
+            url = (f'https://geocode-maps.yandex.ru/1.x/?apikey={maps.api_key}'
+                   f'&geocode={lng},{lat}&format=json&lang=uz_UZ&results=1')
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode())
+            members = data['response']['GeoObjectCollection']['featureMember']
+            if not members:
+                return None, None
+            components = (
+                members[0]['GeoObject']['metaDataProperty']['GeocoderMetaData']
+                .get('Address', {}).get('Components', [])
+            )
+            region_name = next((c.get('name') for c in components if c.get('kind') in ('region', 'province')), None)
+            district_name = next((c.get('name') for c in components if c.get('kind') == 'area'), None)
+            return region_name, district_name
+        else:
+            url = (f'https://nominatim.openstreetmap.org/reverse'
+                   f'?lat={lat}&lon={lng}&format=json&accept-language=uz,ru&zoom=10')
+            req = urllib.request.Request(url, headers={'User-Agent': 'VijdonTaxiDriverApp/1.0'})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode())
+            addr = data.get('address', {})
+            return addr.get('state'), (addr.get('county') or addr.get('state_district'))
+    except Exception:
+        return None, None
+
+
+def _match_region(name):
+    """Geocoder qaytargan viloyat nomini bazadagi Region'ga moslashtiradi.
+    Avval aniq (case-insensitive) moslik, topilmasa "viloyati"/"shahri"/
+    "respublikasi" so'zlarisiz asosiy nom bo'yicha qidiriladi — geocoder
+    ba'zan shu qo'shimchalarsiz qaytarishi mumkin (masalan "Andijon"
+    "Andijon viloyati" o'rniga)."""
+    from taxi.models import Region
+    name = (name or '').strip()
+    if not name:
+        return None
+    exact = Region.objects.filter(name__iexact=name).first()
+    if exact:
+        return exact
+    core = name.lower()
+    for suffix in ('viloyati', 'shahri', 'respublikasi'):
+        core = core.replace(suffix, '')
+    core = core.strip()
+    if not core:
+        return None
+    return Region.objects.filter(name__icontains=core).first()
+
+
+def _resolve_district(region, name):
+    """Berilgan Region ostida shu nomli District'ni topadi, topilmasa
+    YANGI yaratadi (operator "Manzillar" bo'limida avtomatik yaratilgan
+    manzilni ko'rib, kerak bo'lsa nomini tuzatishi/birlashtirishi mumkin —
+    xuddi avtomatik manzillarning o'zi kabi)."""
+    from taxi.models import District
+    name = (name or '').strip()
+    if not name:
+        return None
+    existing = District.objects.filter(region=region, name__iexact=name).first()
+    if existing:
+        return existing
+    return District.objects.create(region=region, name=name)
+
+
 def haversine(lat1, lon1, lat2, lon2):
     if lat1 is None or lon1 is None or lat2 is None or lon2 is None:
         return None
@@ -1985,8 +2062,16 @@ def update_address_queue_membership(driver, lat, lng, was_stale=False):
 
         from taxi.models import SavedAddress
         name = reverse_geocode_address(lat, lng) or f'Nomsiz manzil ({lat:.4f}, {lng:.4f})'
+        # Tuman ham avtomatik biriktiriladi — operator har bir avtomatik
+        # manzilga qo'lda tuman tanlab o'tirmasin. Aniqlab bo'lmasa (masalan
+        # geocoder javob bermasa) — district=None qoladi, keyin qo'lda
+        # to'g'irlash mumkin, bu xato emas.
+        region_name, district_name = reverse_geocode_admin_area(lat, lng)
+        region_obj = _match_region(region_name) if region_name else None
+        district_obj = _resolve_district(region_obj, district_name) if region_obj and district_name else None
         new_addr = SavedAddress.objects.create(
-            name=name[:100], address=name[:255], lat=lat, lng=lng, auto_created=True,
+            name=name[:100], address=name[:255], lat=lat, lng=lng,
+            district=district_obj, auto_created=True,
         )
         AddressQueueEntry.objects.create(address=new_addr, driver=driver)
         driver.pending_stand_lat = None
