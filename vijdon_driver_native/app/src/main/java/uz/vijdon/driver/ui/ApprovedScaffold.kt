@@ -8,16 +8,20 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.launch
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.ui.addresses.AddressesScreen
 import uz.vijdon.driver.ui.balance.BalanceHistoryScreen
@@ -35,7 +39,17 @@ import uz.vijdon.driver.ui.rating.RatingScreen
 import uz.vijdon.driver.ui.sos.SosScreen
 import uz.vijdon.driver.ui.theme.VijdonColors
 
-private val bottomBarRoutes = setOf(Tabs.HOME, Tabs.HISTORY, Tabs.CHAT, Tabs.PROFILE)
+// Diqqat: avval Bosh/Tarix/Chat/Profil har biri ALOHIDA NavHost destination
+// edi (tugma bosilganda navController.navigate() bilan almashtirilardi).
+// Endi Telegram'dagi kabi ENGARMA (chapga/o'ngga surish) bilan ham
+// almashtiriladi — shu sabab bu to'rttasi endi BITTA NavHost destination
+// (Tabs.HOME) ichidagi HorizontalPager'ning sahifalari. Pastki tab-bar
+// tugmasi bosilganda ham pager shu sahifaga siljiydi (navigate emas).
+private val tabPages = listOf(Tabs.HOME, Tabs.HISTORY, Tabs.CHAT, Tabs.PROFILE)
+private fun tabForPage(page: Int) = tabPages.getOrElse(page) { Tabs.HOME }
+private fun pageForTab(route: String) = tabPages.indexOf(route).takeIf { it >= 0 } ?: 0
+
+private val bottomBarRoutes = setOf(Tabs.HOME)
 
 // Pastki tab-bar bo'limlari orasida — iOS/Telegram'dagi kabi yumshoq
 // crossfade (chetdan surilib kirish emas, chunki bular teng darajadagi
@@ -58,12 +72,15 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
     val currentRoute = backStackEntry?.destination?.route
     val showBottomBar = currentRoute == null || currentRoute in bottomBarRoutes
 
+    // To'rtta asosiy bo'lim (Bosh/Tarix/Chat/Profil) endi ALOHIDA NavHost
+    // destination emas — Telegram'dagi kabi bitta HorizontalPager'ning
+    // sahifalari, shu sabab tab-bar bosilganda HAM, ekranni chapga/o'ngga
+    // surganda HAM shu YAGONA `pagerState` orqali almashadi.
+    val pagerState = rememberPagerState(pageCount = { tabPages.size })
+    val pagerScope = rememberCoroutineScope()
+
     fun goToTab(route: String) {
-        navController.navigate(route) {
-            popUpTo(Tabs.HOME) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
-        }
+        pagerScope.launch { pagerState.animateScrollToPage(pageForTab(route)) }
     }
 
     // Chat bo'limi ochiq-yopiqligidan qat'i nazar (masalan Asosiy sahifada
@@ -77,7 +94,7 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
         bottomBar = {
             if (showBottomBar) {
                 VijdonBottomBar(
-                    currentRoute = currentRoute,
+                    currentRoute = tabForPage(pagerState.currentPage),
                     chatBadge = chatUnread,
                     onTabSelected = ::goToTab,
                     onCreateOrder = { navController.navigate(SubRoutes.ORDER_CREATE) },
@@ -102,28 +119,30 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
                 popExitTransition = { tabExit },
             ) {
                 composable(Tabs.HOME) {
-                    HomeScreen(
-                        driver = driver,
-                        onLogout = onLogout,
-                        onOpenRating = { navController.navigate(SubRoutes.RATING) },
-                        onOpenBalance = { navController.navigate(SubRoutes.BALANCE_HISTORY) },
-                        onOpenAddresses = { navController.navigate(SubRoutes.ADDRESSES) },
-                    )
-                }
-                composable(Tabs.HISTORY) { HistoryScreen() }
-                composable(Tabs.CHAT) { ChatScreen() }
-                composable(Tabs.PROFILE) {
-                    ProfileScreen(
-                        driver = driver,
-                        onOpenBalanceHistory = { navController.navigate(SubRoutes.BALANCE_HISTORY) },
-                        onOpenTopup = { navController.navigate(SubRoutes.TOPUP) },
-                        onOpenContract = { navController.navigate(SubRoutes.CONTRACT) },
-                        onOpenAddresses = { navController.navigate(SubRoutes.ADDRESSES) },
-                        onOpenSos = { navController.navigate(SubRoutes.SOS) },
-                        onOpenDestination = { navController.navigate(SubRoutes.DESTINATION) },
-                        onOpenNearbyDrivers = { navController.navigate(SubRoutes.NEARBY_DRIVERS) },
-                        onLogout = onLogout,
-                    )
+                    HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+                        when (tabForPage(page)) {
+                            Tabs.HISTORY -> HistoryScreen()
+                            Tabs.CHAT -> ChatScreen()
+                            Tabs.PROFILE -> ProfileScreen(
+                                driver = driver,
+                                onOpenBalanceHistory = { navController.navigate(SubRoutes.BALANCE_HISTORY) },
+                                onOpenTopup = { navController.navigate(SubRoutes.TOPUP) },
+                                onOpenContract = { navController.navigate(SubRoutes.CONTRACT) },
+                                onOpenAddresses = { navController.navigate(SubRoutes.ADDRESSES) },
+                                onOpenSos = { navController.navigate(SubRoutes.SOS) },
+                                onOpenDestination = { navController.navigate(SubRoutes.DESTINATION) },
+                                onOpenNearbyDrivers = { navController.navigate(SubRoutes.NEARBY_DRIVERS) },
+                                onLogout = onLogout,
+                            )
+                            else -> HomeScreen(
+                                driver = driver,
+                                onLogout = onLogout,
+                                onOpenRating = { navController.navigate(SubRoutes.RATING) },
+                                onOpenBalance = { navController.navigate(SubRoutes.BALANCE_HISTORY) },
+                                onOpenAddresses = { navController.navigate(SubRoutes.ADDRESSES) },
+                            )
+                        }
+                    }
                 }
                 composable(
                     SubRoutes.BALANCE_HISTORY,
