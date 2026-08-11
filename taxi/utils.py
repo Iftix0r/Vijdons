@@ -1925,17 +1925,34 @@ ADDRESS_QUEUE_STALE_MINUTES = 1      # shuncha daqiqa faollik (Driver.last_seen)
 AUTO_ADDRESS_DWELL_RADIUS_KM = 0.1    # ~100 metr (GPS tebranishiga bir oz zахira bilan)
 AUTO_ADDRESS_DWELL_MINUTES = 2
 
+# Yangi manzil YARATISHDAN OLDIN — yaqin atrofda (kengroq radiusda) shu
+# nomdagi/hududdagi manzil ALLAQACHON bor-yo'qligini tekshirish uchun.
+# Diqqat: bu ADDRESS_QUEUE_RADIUS_KM (1km, jonli navbat aniqligi) dan
+# ATAYIN kattaroq — bitta qishloq/mahalla (masalan "Tepaqo'rg'on") odatda
+# 1km dan kengroq maydonni qamrab oladi, lekin undagi HAR QANDAY nuqta
+# reverse-geocode orqali bir xil nomga chiqadi. Avval bu tekshiruv
+# yo'q edi — shu sabab bir necha yuz metr farq bilan bir-biriga juda
+# yaqin, bir xil nomli "duplikat" manzillar yaratilib qolayotgan edi.
+AUTO_ADDRESS_DEDUPE_RADIUS_KM = 3.0
 
-def find_matching_saved_address(lat, lng):
+
+def find_matching_saved_address(lat, lng, radius_km=None):
     """Berilgan koordinata biror SavedAddress (Manzillar) radiusida
     bo'lsa — o'sha manzilni qaytaradi (eng yaqinini, bir nechtasi mos
     kelsa), aks holda None. dispatch_order() shu orqali "oddiy taqsimlash"
-    bilan "manzil navbati"ni ajratadi."""
+    bilan "manzil navbati"ni ajratadi.
+
+    `radius_km` berilmasa sukut bo'yicha ADDRESS_QUEUE_RADIUS_KM (jonli
+    navbat qo'shilish aniqligi) ishlatiladi — bu qat'iy qolishi kerak,
+    aks holda dispetcherlik xato joyga "yaqin" deb hisoblab qolishi mumkin.
+    Kengroq radius faqat AVTOMATIK MANZIL YARATISHDAN OLDIN, "bu joy
+    allaqachon bor-yo'qligini" tekshirish uchun beriladi (pastga qarang)."""
     from taxi.models import SavedAddress
+    radius = radius_km if radius_km is not None else ADDRESS_QUEUE_RADIUS_KM
     nearest_addr, nearest_dist = None, float('inf')
     for a in SavedAddress.objects.all():
         d = haversine(lat, lng, a.lat, a.lng)
-        if d is not None and d <= ADDRESS_QUEUE_RADIUS_KM and d < nearest_dist:
+        if d is not None and d <= radius and d < nearest_dist:
             nearest_dist = d
             nearest_addr = a
     return nearest_addr
@@ -2061,6 +2078,20 @@ def update_address_queue_membership(driver, lat, lng, was_stale=False):
             return  # hali yetarlicha turmadi
 
         from taxi.models import SavedAddress
+
+        # Yaratishdan OLDIN — kengroq radiusda "bu joy allaqachon bormi"
+        # tekshiriladi (duplikat manzillarning oldini olish uchun). Topilsa,
+        # YANGISINI yaratmasdan o'sha mavjud manzilga qo'shiladi — xuddi
+        # oddiy (1km) moslik topilgandagi kabi.
+        wider_match = find_matching_saved_address(lat, lng, radius_km=AUTO_ADDRESS_DEDUPE_RADIUS_KM)
+        if wider_match:
+            AddressQueueEntry.objects.create(address=wider_match, driver=driver)
+            driver.pending_stand_lat = None
+            driver.pending_stand_lng = None
+            driver.pending_stand_since = None
+            driver.save(update_fields=['pending_stand_lat', 'pending_stand_lng', 'pending_stand_since'])
+            return
+
         name = reverse_geocode_address(lat, lng) or f'Nomsiz manzil ({lat:.4f}, {lng:.4f})'
         # Tuman ham avtomatik biriktiriladi — operator har bir avtomatik
         # manzilga qo'lda tuman tanlab o'tirmasin. Aniqlab bo'lmasa (masalan
