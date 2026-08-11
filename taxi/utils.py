@@ -1914,7 +1914,12 @@ def auto_reject_timeout(order_id, driver_id, timeout_seconds):
                 order.dispatched_to = None
                 order.save(update_fields=['dispatched_to'])
                 _resolve_dispatch_attempt(order, driver_id, DispatchAttempt.RESULT_TIMEOUT)
-                _requeue_driver_to_back(driver_id, order)
+                # Diqqat: avval bu yerda javob bermagan haydovchi manzil
+                # navbatining OXIRIGA tushirilardi (_requeue_driver_to_back).
+                # Foydalanuvchi so'rovi bo'yicha olib tashlandi — endi
+                # haydovchi navbatdagi o'rnini FAQAT oflaynga chiqqanda
+                # yoki biror buyurtmani qabul qilganda yo'qotadi (duty_toggle
+                # va order_accept'dagi AddressQueueEntry.left_at yozuvlari).
             else:
                 return
 
@@ -2142,40 +2147,6 @@ def update_address_queue_membership(driver, lat, lng, was_stale=False):
         driver.pending_stand_lng = None
         driver.pending_stand_since = None
         driver.save(update_fields=['pending_stand_lat', 'pending_stand_lng', 'pending_stand_since'])
-
-
-def _requeue_driver_to_back(driver_id, order):
-    """Haydovchi biror buyurtmani (manzil navbati orqali taklif qilingan
-    bo'lsa) rad etsa yoki javob bermasa — o'sha manzil navbatida ORQAGA
-    (oxiriga) suriladi: joriy AddressQueueEntry yopiladi va yangisi
-    (yangi joined_at bilan) ochiladi. Aks holda haydovchi doim 1-o'rinda
-    qolib, boshqalarga hech qachon navbat yetmasdi — bu funksiya yo'q
-    edi, endi rad etish/javobsizlik "navbat oxiriga o'tish" bilan bir
-    xil ma'noni bildiradi.
-
-    update_address_queue_membership bilan bir xil sababga ko'ra (GPS
-    sync so'rovi bilan bir vaqtga to'g'ri kelib, ikkita ochiq yozuv
-    yaratib qo'ymasligi uchun) Driver qatori select_for_update bilan
-    qulflanadi."""
-    from taxi.models import AddressQueueEntry, Driver
-    from django.db import transaction
-    from django.utils import timezone
-
-    if not order.from_lat or not order.from_lng:
-        return
-    address = find_matching_saved_address(order.from_lat, order.from_lng)
-    if not address:
-        return
-    with transaction.atomic():
-        Driver.objects.select_for_update().get(pk=driver_id)
-        entry = AddressQueueEntry.objects.filter(
-            driver_id=driver_id, address=address, left_at__isnull=True,
-        ).first()
-        if not entry:
-            return
-        entry.left_at = timezone.now()
-        entry.save(update_fields=['left_at'])
-        AddressQueueEntry.objects.create(address=address, driver_id=driver_id)
 
 
 def _next_address_queue_driver(address, rejected_ids):

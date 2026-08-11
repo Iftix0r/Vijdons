@@ -299,14 +299,13 @@ def order_reject(request, driver, pk):
                 locked.dispatched_to = None
                 locked.save(update_fields=['dispatched_to'])
                 _resolve_dispatch_attempt(locked, driver.id, DispatchAttempt.RESULT_REJECTED)
-                # Diqqat: avval bu yerda _requeue_driver_to_back() ham
-                # chaqirilib, haydovchi rad etganda manzil navbatining
-                # OXIRIGA tushirilardi. Foydalanuvchi so'rovi bo'yicha olib
-                # tashlandi — endi "Rad etish" navbat o'rniga TA'SIR
-                # qilmaydi (haydovchi 1-o'rinda bo'lsa, o'sha o'rinda
-                # qolaveradi). Javobsizlik (timeout) holatida esa
-                # auto_reject_timeout() ichida bu xatti-harakat hali ham
-                # ishlaydi — bu alohida, ataylab so'ralmagan holat.
+                # Diqqat: avval bu yerda haydovchi rad etganda manzil
+                # navbatining OXIRIGA tushirilardi (endi javobsizlik/timeout
+                # holatida ham xuddi shunday tushirilmaydi — utils.py
+                # auto_reject_timeout()ga qarang). Endi "Rad etish" (yoki
+                # javob bermaslik) navbat o'rniga umuman TA'SIR qilmaydi —
+                # haydovchi navbatdagi o'rnini FAQAT oflaynga chiqqanda yoki
+                # biror buyurtmani qabul qilganda yo'qotadi.
     if should_redispatch:
         tg_order_rejected(locked, driver)
         dispatch_order(locked)

@@ -475,13 +475,14 @@ def driver_order_action(request, driver, pk, action):
                     from .utils import _resolve_dispatch_attempt
                     from .models import DispatchAttempt
                     _resolve_dispatch_attempt(locked, driver.id, DispatchAttempt.RESULT_REJECTED)
-                    # Diqqat: avval bu yerda _requeue_driver_to_back() ham
-                    # chaqirilib, haydovchi rad etganda manzil navbatining
-                    # OXIRIGA tushirilardi. Foydalanuvchi so'rovi bo'yicha
-                    # olib tashlandi — endi "Rad etish" navbat o'rniga
-                    # TA'SIR qilmaydi. Javobsizlik (timeout) holatida esa
-                    # auto_reject_timeout() ichida bu xatti-harakat hali
-                    # ham ishlaydi — bu alohida, ataylab so'ralmagan holat.
+                    # Diqqat: avval bu yerda haydovchi rad etganda manzil
+                    # navbatining OXIRIGA tushirilardi (endi javobsizlik/
+                    # timeout holatida ham xuddi shunday tushirilmaydi —
+                    # utils.py auto_reject_timeout()ga qarang). Endi "Rad
+                    # etish" (yoki javob bermaslik) navbat o'rniga umuman
+                    # TA'SIR qilmaydi — haydovchi navbatdagi o'rnini FAQAT
+                    # oflaynga chiqqanda yoki buyurtma qabul qilganda
+                    # yo'qotadi.
         if should_redispatch:
             from .utils import dispatch_order
             tg_order_rejected(order, driver)
