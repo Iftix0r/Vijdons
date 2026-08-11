@@ -40,6 +40,7 @@ urlpatterns = [
     path('contract/sign/', v.contract_sign,   name='contract_sign'),
 
     path('addresses/',                        v.addresses_list,     name='addresses_list'),
+    path('addresses/current-area/',           v.current_area,       name='current_area'),
     path('regions/',                          v.regions_list,       name='regions_list'),
     path('addresses/<int:pk>/queue/',         v.address_queue_position, name='address_queue_position'),
     path('addresses/<int:pk>/queue/drivers/', v.address_queue_drivers,  name='address_queue_drivers'),

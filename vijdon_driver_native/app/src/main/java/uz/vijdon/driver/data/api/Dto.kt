@@ -164,6 +164,11 @@ data class DistrictDto(val id: Int, val name: String)
 @Serializable
 data class RegionDto(val id: Int, val name: String, val districts: List<DistrictDto> = emptyList())
 
+/** Manzillar ekrani ochilganda GPS bo'yicha "hozir qaysi viloyat/tumanda
+ * turibman" javobi — filtrni oldindan tanlash uchun. */
+@Serializable
+data class CurrentAreaResponse(val region_id: Int? = null, val district_id: Int? = null)
+
 @Serializable
 data class QueuePositionResponse(val position: Int? = null, val total: Int = 0)
 

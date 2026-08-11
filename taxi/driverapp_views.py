@@ -796,6 +796,34 @@ def regions_list(request, driver):
 
 @api_view(['GET'])
 @driver_required
+def current_area(request, driver):
+    """Haydovchi ilovasidagi "Manzillar" ekrani ochilganda — GPS
+    koordinatasi bo'yicha qaysi viloyat/tumanda ekanini aniqlab, filtrni
+    shu bo'yicha oldindan tanlash uchun. Avtomatik manzil yaratishda
+    ishlatiladigan bilan bir xil reverse-geocode mexanizmi, lekin bu yerda
+    YANGI District YARATILMAYDI — faqat mavjudi topiladi (topilmasa
+    district_id null, region_id esa bo'lishi mumkin)."""
+    from .utils import reverse_geocode_admin_area, _match_region
+    from .models import District
+
+    try:
+        lat = float(request.query_params.get('lat'))
+        lng = float(request.query_params.get('lng'))
+    except (TypeError, ValueError):
+        return Response({'region_id': None, 'district_id': None})
+
+    region_name, district_name = reverse_geocode_admin_area(lat, lng)
+    region = _match_region(region_name)
+    if not region:
+        return Response({'region_id': None, 'district_id': None})
+    district = None
+    if district_name:
+        district = District.objects.filter(region=region, name__iexact=district_name.strip()).first()
+    return Response({'region_id': region.id, 'district_id': district.id if district else None})
+
+
+@api_view(['GET'])
+@driver_required
 def address_queue_position(request, driver, pk):
     from django.utils import timezone
     import datetime

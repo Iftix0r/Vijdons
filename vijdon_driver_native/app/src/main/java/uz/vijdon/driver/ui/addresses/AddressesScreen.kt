@@ -111,7 +111,7 @@ fun AddressesScreen(viewModel: AddressesViewModel = hiltViewModel()) {
             ErrorBanner(it, modifier = Modifier.padding(bottom = 10.dp))
         }
 
-        if (state.loading && state.addresses.isEmpty()) {
+        if ((state.loading || state.detectingArea) && state.addresses.isEmpty()) {
             CenteredLoading()
         } else if (state.addresses.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

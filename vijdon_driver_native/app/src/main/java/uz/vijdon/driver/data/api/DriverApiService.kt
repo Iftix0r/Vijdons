@@ -100,6 +100,9 @@ interface DriverApiService {
     @GET("regions/")
     suspend fun regions(): List<RegionDto>
 
+    @GET("addresses/current-area/")
+    suspend fun currentArea(@Query("lat") lat: Double, @Query("lng") lng: Double): CurrentAreaResponse
+
     @GET("addresses/{id}/queue/")
     suspend fun addressQueuePosition(
         @Path("id") id: Int,

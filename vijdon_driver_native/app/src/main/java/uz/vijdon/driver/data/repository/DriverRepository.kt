@@ -13,6 +13,7 @@ import uz.vijdon.driver.data.api.AvailableOrdersResponse
 import uz.vijdon.driver.data.api.BalanceHistoryResponse
 import uz.vijdon.driver.data.api.ConfigDto
 import uz.vijdon.driver.data.api.ContractDto
+import uz.vijdon.driver.data.api.CurrentAreaResponse
 import uz.vijdon.driver.data.api.DestinationRequest
 import uz.vijdon.driver.data.api.DestinationResponse
 import uz.vijdon.driver.data.api.DetailResponse
@@ -232,6 +233,8 @@ class DriverRepository @Inject constructor(
         safeCall { api.addresses(region, district, q) }
 
     suspend fun regions(): ApiResult<List<RegionDto>> = safeCall { api.regions() }
+
+    suspend fun currentArea(lat: Double, lng: Double): ApiResult<CurrentAreaResponse> = safeCall { api.currentArea(lat, lng) }
 
     suspend fun addressQueuePosition(id: Int, lat: Double?, lng: Double?): ApiResult<QueuePositionResponse> = safeCall {
         api.addressQueuePosition(id, lat, lng)

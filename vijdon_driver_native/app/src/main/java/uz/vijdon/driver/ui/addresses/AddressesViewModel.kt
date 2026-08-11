@@ -8,10 +8,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import uz.vijdon.driver.data.api.AddressDto
 import uz.vijdon.driver.data.api.QueueDriverDto
 import uz.vijdon.driver.data.api.RegionDto
+import uz.vijdon.driver.data.location.LocationBus
 import uz.vijdon.driver.data.repository.ApiResult
 import uz.vijdon.driver.data.repository.DriverRepository
 import javax.inject.Inject
@@ -26,6 +29,7 @@ data class AddressesUiState(
     val queueDrivers: List<QueueDriverDto> = emptyList(),
     val myPosition: Int? = null,
     val loading: Boolean = false,
+    val detectingArea: Boolean = false,
     val error: String? = null,
 ) {
     // O'zbekiston bo'ylab manzillar ko'payishi bilan — bu ekran endi
@@ -49,9 +53,37 @@ class AddressesViewModel @Inject constructor(private val repository: DriverRepos
     // "boshqa" manzillarni topish uchun — haydovchi o'zi so'ramaguncha
     // (matn yozmaguncha yoki hudud tanlamaguncha) hech narsa yuklanmaydi
     // (bosh sahifadagi "Joriy navbatingiz" kartasi haydovchining o'zi
-    // turgan joyini alohida, shu ro'yxatsiz ko'rsatadi).
+    // turgan joyini alohida, shu ro'yxatsiz ko'rsatadi). O'RNIGA — ekran
+    // ochilganda GPS orqali haydovchi HOZIR qaysi viloyat/tumanda
+    // ekani avtomatik aniqlanib, filtr shu bo'yicha oldindan tanlanadi
+    // (haydovchi darhol o'z hududidagi manzillarni ko'radi, lekin baribir
+    // BUTUN O'zbekiston ro'yxati emas — faqat aniqlangan hudud bo'yicha).
     init {
         loadRegions()
+        detectCurrentArea()
+    }
+
+    /** GPS nuqtasi kelishini (eng ko'pi 5s) kutadi, keyin serverdan "hozir
+     * qaysi viloyat/tumandaman" javobini so'rab, filtrni shunga o'rnatadi
+     * — faqat haydovchi shu orada o'zi allaqachon biror narsa
+     * tanlamagan/yozmagan bo'lsa (uning tanlovini bosib o'tmaslik uchun). */
+    private fun detectCurrentArea() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(detectingArea = true)
+            val point = withTimeoutOrNull(5_000) { LocationBus.points.firstOrNull() }
+            if (point != null) {
+                val result = repository.currentArea(point.lat, point.lng)
+                val current = _uiState.value
+                if (result is ApiResult.Success && !current.hasActiveFilter) {
+                    val data = result.data
+                    if (data.region_id != null) {
+                        _uiState.value = current.copy(selectedRegionId = data.region_id, selectedDistrictId = data.district_id)
+                        load()
+                    }
+                }
+            }
+            _uiState.value = _uiState.value.copy(detectingArea = false)
+        }
     }
 
     /** Faqat filtr (qidiruv matni yoki hudud) faol bo'lganda so'raladi —
