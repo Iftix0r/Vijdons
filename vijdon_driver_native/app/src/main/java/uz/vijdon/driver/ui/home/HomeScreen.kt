@@ -8,6 +8,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -17,6 +18,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -27,6 +29,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,6 +39,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Message
 import androidx.compose.material.icons.rounded.AddCircle
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CreditCard
 import androidx.compose.material.icons.rounded.EmojiEvents
@@ -62,8 +67,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -74,6 +77,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,7 +85,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontFamily
@@ -89,12 +96,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.data.api.OrderDto
 import uz.vijdon.driver.data.api.QueueDriverDto
@@ -216,11 +226,12 @@ fun HomeScreen(
         return
     }
 
-    // Ro'yxat ko'rinadigan holatda ("else" tarmog'i) navbat almashtirgichi
-    // endi tepada QOTIB QOLMAYDI — ro'yxat bilan birga LazyColumn ichida
-    // birinchi element sifatida suriladi. Boshqa holatlarda (yuklanmoqda,
-    // bo'sh, oflayn) suriladigan hech narsa yo'q, shu sabab tepada qoladi.
-    val showListBranch = currentDriver.is_on_duty && (state.orders.isNotEmpty() || state.addresses.isNotEmpty())
+    // Faol (qabul qilingan/yo'lda/yetib kelgan) buyurtma(lar) — bo'lsa
+    // pastda suzuvchi ActiveOrdersBar, bo'lmasa o'sha JOYNING o'zida
+    // onlayn/oflayn SURISH (swipe) tugmasi ko'rsatiladi — ikkalasi bir
+    // vaqtda ko'rinmaydi, ekranning barcha holatlarida (yuklanmoqda,
+    // bo'sh, oflayn, ro'yxat) doim pastda turadi.
+    val activeOrders = remember(state.orders) { state.orders.filter { it.isActive } }
 
     Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background)) {
         // Hamburger tugmasi yuqori CHAP burchakda (ApprovedScaffold, alohida
@@ -245,10 +256,6 @@ fun HomeScreen(
                     )
                 },
             )
-        }
-
-        if (!showListBranch) {
-            DutyToggleRow(isOnDuty = currentDriver.is_on_duty, onToggle = { viewModel.toggleDuty() })
         }
 
         state.surgeMultiplier?.let { multiplier ->
@@ -277,11 +284,12 @@ fun HomeScreen(
             ErrorBanner(it, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         }
 
+        Box(modifier = Modifier.fillMaxSize()) {
         if (!currentDriver.is_on_duty) {
             // Oflaynda haydovchiga buyurtma/manzil ro'yxati emas — chunki
             // ular baribir unga tegishli emas — balki onlayn bo'lishga
-            // undovchi chaqiruv ko'rsatiladi.
-            OfflineCallToAction(onGoOnline = { viewModel.toggleDuty() })
+            // undovchi chaqiruv ko'rsatiladi (pastdagi SURISH tugmasi orqali).
+            OfflineCallToAction()
         } else if (state.loading && state.orders.isEmpty() && state.addresses.isEmpty()) {
             CenteredLoading()
         } else if (state.orders.isEmpty() && state.addresses.isEmpty()) {
@@ -307,17 +315,9 @@ fun HomeScreen(
             // Faol buyurtmalar ro'yxatdan olib tashlanadi — ular endi pastdagi
             // suzuvchi tugma orqali ko'rsatiladi (pastga qarang).
             val pendingOrders = remember(state.orders) { state.orders.filter { it.isPending } }
-            val activeOrders = remember(state.orders) { state.orders.filter { it.isActive } }
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-                    item {
-                        Column {
-                            Spacer(Modifier.height(4.dp))
-                            DutyToggleRow(isOnDuty = currentDriver.is_on_duty, onToggle = { viewModel.toggleDuty() }, horizontalPadding = 0.dp)
-                            Spacer(Modifier.height(10.dp))
-                        }
-                    }
+            LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+                    item { Spacer(Modifier.height(4.dp)) }
                     items(pendingOrders, key = { "order-${it.id}" }) { order ->
                         Column(Modifier.animateItem()) {
                             OrderCard(
@@ -347,12 +347,13 @@ fun HomeScreen(
                             }
                         }
                     }
-                    // Diqqat: avval shu yerda BARCHA manzillar (butun
-                    // O'zbekiston bo'ylab) ro'yxat sifatida ko'rsatilardi —
-                    // endi bosh sahifada faqat haydovchining O'ZI TURGAN
-                    // joyi va navbati (yuqoridagi "Joriy navbatingiz"
-                    // kartasi) ko'rinadi. Boshqa (uzoqdagi) manzillar faqat
-                    // qidiruv tugmasi bosilgach, alohida ekranda (Manzillar)
+                    // Diqqat: avval shu yerda "Yo'nalishlar & Stoyankalar"
+                    // sarlavhasi ostida BARCHA manzillar ro'yxat sifatida
+                    // ko'rsatilardi — endi bosh sahifada faqat haydovchining
+                    // O'ZI TURGAN joyi nomi (yuqoridagi "Joriy navbatingiz"
+                    // kartasi bilan bir xil manzil) ko'rinadi. Boshqa
+                    // (uzoqdagi) manzillar faqat o'ng tarafdagi qidiruv
+                    // tugmasi bosilgach, alohida ekranda (Manzillar)
                     // ko'rsatiladi.
                     item {
                         Row(
@@ -361,51 +362,81 @@ fun HomeScreen(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                "Yo'nalishlar & Stoyankalar",
+                                nearestAddress?.name ?: "Joriy manzil",
                                 color = VijdonColors.TextPrimary,
                                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
                             )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    "Boshqa manzil qidirish",
-                                    color = VijdonColors.TextSecondary,
-                                    style = MaterialTheme.typography.labelMedium,
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                IconButton(onClick = onOpenAddresses, modifier = Modifier.size(28.dp)) {
-                                    Icon(Icons.Rounded.Search, contentDescription = "Manzil qidirish", tint = VijdonColors.TextSecondary, modifier = Modifier.size(18.dp))
+                            IconButton(onClick = onOpenAddresses, modifier = Modifier.size(28.dp)) {
+                                Icon(Icons.Rounded.Search, contentDescription = "Manzil qidirish", tint = VijdonColors.TextSecondary, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                    // Manzillar ro'yxati olib tashlangandan keyin qolgan
+                    // sahifa faol/kutilayotgan buyurtma bo'lmasa bo'sh
+                    // qolib ketmasin uchun — kutish holatini bildiruvchi
+                    // markazlashtirilgan belgi.
+                    if (pendingOrders.isEmpty() && activeOrders.isEmpty()) {
+                        item {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 56.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Box(
+                                    modifier = Modifier.size(64.dp).background(VijdonColors.BadgeNeutral, CircleShape),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(Icons.Rounded.LocalTaxi, contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(28.dp))
                                 }
+                                Spacer(Modifier.height(12.dp))
+                                Text("Hozircha yangi buyurtma yo'q", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
-                    item { Spacer(Modifier.height(if (activeOrders.isNotEmpty()) 72.dp else 0.dp)) }
+                    // Pastda doim (yoki ActiveOrdersBar yoki SwipeDutyBar)
+                    // biror suzuvchi panel turadi — kontent shu ostida
+                    // yashirinib qolmasin uchun joy qoldiramiz.
+                    item { Spacer(Modifier.height(96.dp)) }
                 }
-                if (activeOrders.isNotEmpty()) {
-                    // Yagona faol buyurtma yo'lda/yetib kelgan bo'lsa, tugmada
-                    // ham jonli narx ko'rinadi — sheet ochilmasdan turib ham
-                    // haydovchi hozirgi taxminiy summa qanchaligini bilib turadi.
-                    val liveOrder = activeOrders.singleOrNull()?.takeIf { it.isOnWay || it.isArrived }
-                    var barTick by remember(liveOrder?.id) { mutableStateOf(System.currentTimeMillis()) }
-                    LaunchedEffect(liveOrder?.id) {
-                        if (liveOrder != null) {
-                            while (true) {
-                                barTick = System.currentTimeMillis()
-                                delay(1_000L)
-                            }
-                        }
+        }
+
+        // Pastda doim suzib turadigan yagona panel: faol buyurtma bo'lsa
+        // ActiveOrdersBar, bo'lmasa o'sha joyning o'zida onlayn/oflayn
+        // SURISH tugmasi (SwipeDutyBar) — ikkalasi bir vaqtda ko'rinmaydi,
+        // va bu barcha holatlarda (yuklanmoqda/bo'sh/oflayn/ro'yxat) ishlaydi.
+        if (activeOrders.isNotEmpty()) {
+            // Yagona faol buyurtma yo'lda/yetib kelgan bo'lsa, tugmada
+            // ham jonli narx ko'rinadi — sheet ochilmasdan turib ham
+            // haydovchi hozirgi taxminiy summa qanchaligini bilib turadi.
+            val liveOrder = activeOrders.singleOrNull()?.takeIf { it.isOnWay || it.isArrived }
+            var barTick by remember(liveOrder?.id) { mutableStateOf(System.currentTimeMillis()) }
+            LaunchedEffect(liveOrder?.id) {
+                if (liveOrder != null) {
+                    while (true) {
+                        barTick = System.currentTimeMillis()
+                        delay(1_000L)
                     }
-                    val livePriceUzs = liveOrder?.let { viewModel.taximeterFor(it.id)?.priceUzs(barTick) }
-                    ActiveOrdersBar(
-                        activeOrders = activeOrders,
-                        livePriceUzs = livePriceUzs,
-                        onClick = {
-                            if (activeOrders.size == 1) activeOrderSheetId = activeOrders[0].id
-                            else showActiveOrdersChooser = true
-                        },
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                    )
                 }
             }
+            val livePriceUzs = liveOrder?.let { viewModel.taximeterFor(it.id)?.priceUzs(barTick) }
+            ActiveOrdersBar(
+                activeOrders = activeOrders,
+                livePriceUzs = livePriceUzs,
+                onClick = {
+                    if (activeOrders.size == 1) activeOrderSheetId = activeOrders[0].id
+                    else showActiveOrdersChooser = true
+                },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        } else {
+            SwipeDutyBar(
+                isOnDuty = currentDriver.is_on_duty,
+                onToggle = { viewModel.toggleDuty() },
+                modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+            )
+        }
         }
     }
 
@@ -928,42 +959,89 @@ private fun ActiveOrderChooserRow(order: OrderDto, onClick: () -> Unit) {
 }
 
 /**
- * Onlayn/oflayn almashtirgichi. Ro'yxat bo'lganda LazyColumn ichiga birinchi
- * element sifatida qo'yiladi — shu sabab ro'yxatni yuqoriga surganda bu ham
- * QOTIB QOLMASDAN boshqa qatorlar bilan birga suriladi (avval doim tepada
- * qattiq turardi). Ro'yxat yo'q (yuklanmoqda/bo'sh/oflayn) holatlarda esa
- * suriladigan hech narsa yo'q, shu sabab tepada oddiy sarlavha sifatida qoladi.
+ * Onlayn/oflayn almashtirgichi — oddiy tugma/Switch o'rniga ATAYIN
+ * "suring" (swipe) tugmasi: cho'ntakda yoki qo'l tegib ketib tasodifan
+ * bosilib qolmasin uchun, holatni o'zgartirish uchun chekkadan-chekkagacha
+ * ANIQ SURISH kerak. Ekranning pastida, tab bar ustida doim suzib turadi
+ * (faol buyurtma bo'lsa shu joyni ActiveOrdersBar egallaydi, ikkalasi bir
+ * vaqtda ko'rinmaydi).
  */
 @Composable
-private fun DutyToggleRow(isOnDuty: Boolean, onToggle: () -> Unit, horizontalPadding: androidx.compose.ui.unit.Dp = 16.dp) {
-    Row(
-        modifier = Modifier
+private fun SwipeDutyBar(isOnDuty: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
+    val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+    val thumbSizeDp = 52.dp
+    val thumbSizePx = with(density) { thumbSizeDp.toPx() }
+    var trackWidthPx by remember { mutableStateOf(0f) }
+    val maxOffset = (trackWidthPx - thumbSizePx).coerceAtLeast(0f)
+    val offsetX = remember { Animatable(0f) }
+
+    // Tashqi holat o'zgarganda (masalan boshqa qurilma/serverdan) thumb
+    // tegishli chekkaga o'zi suriladi.
+    LaunchedEffect(isOnDuty, maxOffset) {
+        val target = if (isOnDuty) maxOffset else 0f
+        if (kotlin.math.abs(offsetX.value - target) > 1f) offsetX.animateTo(target, tween(220))
+    }
+
+    Box(
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = horizontalPadding, vertical = 4.dp)
+            .height(64.dp)
+            .onSizeChanged { trackWidthPx = it.width.toFloat() }
             .cardShadow()
-            .background(VijdonColors.Surface, CardShape)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .background(if (isOnDuty) VijdonColors.Green else VijdonColors.TextSecondary, CircleShape),
+            .background(
+                if (isOnDuty) {
+                    Brush.horizontalGradient(listOf(VijdonColors.Green.copy(alpha = 0.20f), VijdonColors.Green.copy(alpha = 0.08f)))
+                } else {
+                    Brush.horizontalGradient(listOf(VijdonColors.Surface, VijdonColors.Surface))
+                },
+                CircleShape,
             )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                if (isOnDuty) "Onlayn" else "Oflayn",
-                color = if (isOnDuty) VijdonColors.Green else VijdonColors.TextSecondary,
-                style = MaterialTheme.typography.titleSmall,
+            .border(1.dp, if (isOnDuty) VijdonColors.Green.copy(alpha = 0.4f) else VijdonColors.Border, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            if (isOnDuty) "Chiqish uchun suring" else "Onlayn bo'lish uchun suring",
+            color = if (isOnDuty) VijdonColors.Green else VijdonColors.TextSecondary,
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(6.dp)
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .size(thumbSizeDp)
+                .background(if (isOnDuty) VijdonColors.Green else VijdonColors.Yellow, CircleShape)
+                .pointerInput(maxOffset) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            val shouldBeOn = offsetX.value > maxOffset / 2f
+                            scope.launch { offsetX.animateTo(if (shouldBeOn) maxOffset else 0f, tween(200)) }
+                            if (shouldBeOn != isOnDuty) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onToggle()
+                            }
+                        },
+                        onDragCancel = {
+                            scope.launch { offsetX.animateTo(if (isOnDuty) maxOffset else 0f, tween(200)) }
+                        },
+                    ) { change, dragAmount ->
+                        change.consume()
+                        scope.launch { offsetX.snapTo((offsetX.value + dragAmount).coerceIn(0f, maxOffset)) }
+                    }
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                if (isOnDuty) Icons.Rounded.Check else Icons.Rounded.ChevronRight,
+                contentDescription = if (isOnDuty) "Oflayn bo'lish uchun suring" else "Onlayn bo'lish uchun suring",
+                tint = if (isOnDuty) Color.White else VijdonColors.TextOnYellow,
+                modifier = Modifier.size(22.dp),
             )
         }
-        Switch(
-            checked = isOnDuty,
-            onCheckedChange = { onToggle() },
-            colors = SwitchDefaults.colors(checkedTrackColor = VijdonColors.Green, checkedThumbColor = VijdonColors.TextPrimary),
-        )
     }
 }
 
@@ -1050,9 +1128,12 @@ private fun SurgeBanner(multiplier: Double, reason: String?) {
 }
 
 /** Haydovchi oflaynda bo'lganda Bosh sahifaning asosiy qismi — buyurtma va
- * manzil ro'yxati o'rniga, onlayn bo'lishga undovchi katta chaqiruv. */
+ * manzil ro'yxati o'rniga, onlayn bo'lishga undovchi katta chaqiruv.
+ * Diqqat: bu yerda o'zining alohida tugmasi yo'q — onlayn bo'lish endi
+ * FAQAT pastdagi SwipeDutyBar orqali (ataylab, tasodifan bosilib
+ * ketmasligi uchun), shu sabab pastga ishora qilib qo'yiladi. */
 @Composable
-private fun OfflineCallToAction(onGoOnline: () -> Unit) {
+private fun OfflineCallToAction() {
     Box(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
@@ -1070,19 +1151,11 @@ private fun OfflineCallToAction(onGoOnline: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Yangi buyurtmalar va yaqin manzillardagi navbatni ko'rish uchun onlayn bo'ling",
+                "Yangi buyurtmalar va yaqin manzillardagi navbatni ko'rish uchun pastdagi tugmani suring",
                 color = VijdonColors.TextSecondary,
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(20.dp))
-            Button(
-                onClick = onGoOnline,
-                colors = ButtonDefaults.buttonColors(containerColor = VijdonColors.Yellow, contentColor = VijdonColors.TextOnYellow),
-                modifier = Modifier.height(48.dp),
-            ) {
-                Text("Onlayn bo'lish")
-            }
         }
     }
 }
