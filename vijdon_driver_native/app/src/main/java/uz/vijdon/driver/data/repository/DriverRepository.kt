@@ -15,12 +15,15 @@ import uz.vijdon.driver.data.api.ConfigDto
 import uz.vijdon.driver.data.api.ContractDto
 import uz.vijdon.driver.data.api.DestinationRequest
 import uz.vijdon.driver.data.api.DestinationResponse
+import uz.vijdon.driver.data.api.DetailResponse
 import uz.vijdon.driver.data.api.DriverApiService
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.data.api.DutyToggleResponse
 import uz.vijdon.driver.data.api.ChatUnreadResponse
 import uz.vijdon.driver.data.api.DriverSoundDto
 import uz.vijdon.driver.data.api.GroupMessageDto
+import uz.vijdon.driver.data.api.IntercityRouteDto
+import uz.vijdon.driver.data.api.IntercityTripDto
 import uz.vijdon.driver.data.api.NearbyDriverDto
 import uz.vijdon.driver.data.api.OrderDto
 import uz.vijdon.driver.data.api.OrderHistoryResponse
@@ -256,4 +259,16 @@ class DriverRepository @Inject constructor(
     }
 
     suspend fun chatGroupUnread(): ApiResult<ChatUnreadResponse> = safeCall { api.chatGroupUnread() }
+
+    suspend fun intercityRoutes(): ApiResult<List<IntercityRouteDto>> = safeCall { api.intercityRoutes() }
+
+    suspend fun intercityMyTrip(): ApiResult<IntercityTripDto?> = safeCall { api.intercityMyTrip() }
+
+    suspend fun intercityJoin(routeId: Int): ApiResult<IntercityTripDto> = safeCall {
+        api.intercityJoin(mapOf("route_id" to routeId))
+    }
+
+    suspend fun intercityDepart(): ApiResult<DetailResponse> = safeCall { api.intercityDepart() }
+
+    suspend fun intercityCancel(): ApiResult<DetailResponse> = safeCall { api.intercityCancel() }
 }

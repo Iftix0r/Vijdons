@@ -1,0 +1,277 @@
+{% extends 'taxi/base.html' %}
+{% load l10n %}
+{% block title %}Shahrlararo — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-center gap-4 mb-5">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+            🚌 Shahrlararo (viloyatlararo)
+        </h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            Yo'lovchi tashish — haydovchi yo'nalishga qo'shiladi, mijozlar joy-joy band qiladi, mashina to'lgach jo'naydi.
+        </p>
+    </div>
+    <button onclick="openModal('newRouteModal')"
+            class="flex items-center gap-2 px-4 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold rounded-xl shadow-sm shadow-yellow-200 dark:shadow-none transition-all hover:-translate-y-0.5">
+        <i class="fas fa-plus"></i> Yo'nalish qo'shish
+    </button>
+</div>
+
+<!-- ══════════ Yo'nalishlar ══════════ -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden mb-6">
+    <div class="px-5 py-4 border-b border-gray-50 dark:border-gray-800">
+        <p class="text-xs font-bold text-gray-400 uppercase tracking-wide">Yo'nalishlar</p>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                    <th class="px-5 py-3">Yo'nalish</th>
+                    <th class="px-5 py-3">Joy narxi</th>
+                    <th class="px-5 py-3">O'rinlar</th>
+                    <th class="px-5 py-3">Holati</th>
+                    <th class="px-5 py-3 text-right">Amal</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
+                {% for route in routes %}
+                <tr class="hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-colors">
+                    <td class="px-5 py-3 font-semibold text-gray-800 dark:text-white text-xs">
+                        {{ route.from_region.name }} <i class="fas fa-arrow-right text-gray-300 mx-1"></i> {{ route.to_region.name }}
+                    </td>
+                    <td class="px-5 py-3 text-xs font-mono">{{ route.seat_price|floatformat:0 }} so'm</td>
+                    <td class="px-5 py-3 text-xs">{{ route.seat_capacity }} ta</td>
+                    <td class="px-5 py-3">
+                        {% if route.is_active %}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">Faol</span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500">O'chirilgan</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-3 text-right">
+                        <div class="flex items-center justify-end gap-1.5">
+                            <button type="button"
+                                    onclick="openEditRouteModal({{ route.pk }}, '{{ route.from_region.name|escapejs }} → {{ route.to_region.name|escapejs }}', {{ route.seat_price|unlocalize }}, {{ route.seat_capacity }}, {{ route.is_active|yesno:'true,false' }})"
+                                    class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-500 hover:bg-yellow-100 hover:text-yellow-600 transition-colors" title="Tahrirlash">
+                                <i class="fas fa-pen text-xs"></i>
+                            </button>
+                            <form method="POST" action="{% url 'taxi:intercity_route_delete' route.pk %}" onsubmit="return confirm('«{{ route.from_region.name }} → {{ route.to_region.name }}» yo\'nalishini o\'chirishga ishonchingiz komilmi?')">
+                                {% csrf_token %}
+                                <button type="submit" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 hover:text-red-700 transition-colors" title="O'chirish">
+                                    <i class="fas fa-trash text-xs"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center py-10 text-gray-400 text-sm">Hali yo'nalish qo'shilmagan.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ══════════ Faol safarlar ══════════ -->
+<div class="flex items-center justify-between mb-3">
+    <p class="text-xs font-bold text-gray-400 uppercase tracking-wide">Hozir to'ldirilayotgan safarlar</p>
+    <button onclick="openModal('newBookingModal')"
+            class="flex items-center gap-2 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded-xl transition">
+        <i class="fas fa-user-plus"></i> Joy band qilish (telefon orqali)
+    </button>
+</div>
+
+<div class="space-y-3 mb-6">
+    {% for trip in active_trips %}
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <div>
+                <p class="font-bold text-gray-800 dark:text-white text-sm">
+                    {{ trip.route.from_region.name }} <i class="fas fa-arrow-right text-gray-300 mx-1"></i> {{ trip.route.to_region.name }}
+                </p>
+                <p class="text-[11px] text-gray-400 mt-0.5">
+                    {% if trip.driver %}<i class="fas fa-user"></i> {{ trip.driver.full_name }} · {{ trip.driver.car_model }} ({{ trip.driver.car_number }}){% else %}<i class="fas fa-user-slash"></i> Hali haydovchisiz{% endif %}
+                    · {{ trip.created_at|date:"d.m H:i" }} dan beri
+                </p>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold {% if trip.seats_left == 0 %}bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400{% else %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400{% endif %}">
+                    <i class="fas fa-chair"></i> {{ trip.seats_booked }}/{{ trip.route.seat_capacity }} joy
+                </span>
+                <form method="POST" action="{% url 'taxi:intercity_trip_depart' trip.pk %}" onsubmit="return confirm('Bu safar jo\'natildi deb belgilansinmi?')">
+                    {% csrf_token %}
+                    <button type="submit" class="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition">
+                        <i class="fas fa-flag-checkered mr-1"></i>Jo'natish
+                    </button>
+                </form>
+                <form method="POST" action="{% url 'taxi:intercity_trip_cancel' trip.pk %}" onsubmit="return confirm('Bu safar bekor qilinsinmi?')">
+                    {% csrf_token %}
+                    <button type="submit" class="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-red-50 hover:text-red-500 text-xs font-bold transition">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% if trip.bookings.all %}
+        <div class="space-y-1.5">
+            {% for b in trip.bookings.all %}
+            {% if b.status == 'confirmed' %}
+            <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-xl px-3.5 py-2">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold flex items-center justify-center">{{ b.seats }}</span>
+                    <p class="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate">{{ b.passenger_name }}</p>
+                    <p class="text-[11px] text-gray-400 font-mono">{{ b.phone_number }}</p>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <span class="text-xs font-bold text-emerald-600">{{ b.price|floatformat:0 }} so'm</span>
+                    <form method="POST" action="{% url 'taxi:intercity_booking_cancel' b.pk %}" onsubmit="return confirm('Bu bandlik bekor qilinsinmi?')">
+                        {% csrf_token %}
+                        <button type="submit" class="text-gray-300 hover:text-red-500 transition-colors"><i class="fas fa-xmark text-xs"></i></button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-xs text-gray-400">Hali yo'lovchi yo'q.</p>
+        {% endif %}
+    </div>
+    {% empty %}
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-10 text-center">
+        <p class="text-sm text-gray-400">Hozir to'ldirilayotgan safar yo'q.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ══════════ Yangi yo'nalish / Tahrirlash modal ══════════ -->
+<div id="newRouteModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 id="ir_modal_title" class="text-lg font-bold text-gray-900 dark:text-white"><i class="fas fa-route text-yellow-500 mr-2"></i>Yangi yo'nalish</h2>
+            <button onclick="closeModal('newRouteModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form id="ir_form" method="POST" action="{% url 'taxi:intercity_route_create' %}" class="px-6 py-5 space-y-4">
+            {% csrf_token %}
+            <div id="ir_create_fields" class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Qayerdan</label>
+                    <select name="from_region" required class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white">
+                        {% for r in regions %}<option value="{{ r.pk }}">{{ r.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Qayerga</label>
+                    <select name="to_region" required class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white">
+                        {% for r in regions %}<option value="{{ r.pk }}">{{ r.name }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+            <p id="ir_route_label" class="hidden text-sm font-semibold text-gray-700 dark:text-gray-200"></p>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Joy narxi (so'm)</label>
+                    <input type="number" name="seat_price" id="ir_seat_price" required min="0" step="1000"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">O'rinlar soni</label>
+                    <input type="number" name="seat_capacity" id="ir_seat_capacity" required min="1" max="20" value="4"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white">
+                </div>
+            </div>
+            <label id="ir_active_row" class="hidden items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                <input type="checkbox" name="is_active" id="ir_is_active" checked class="rounded"> Faol (mijozlarga ko'rinadi)
+            </label>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('newRouteModal')" class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">Bekor qilish</button>
+                <button type="submit" class="flex-1 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-bold shadow-md shadow-green-200 dark:shadow-none transition"><i class="fas fa-floppy-disk mr-1.5"></i>Saqlash</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ══════════ Joy band qilish modal ══════════ -->
+<div id="newBookingModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white"><i class="fas fa-user-plus text-blue-500 mr-2"></i>Joy band qilish</h2>
+            <button onclick="closeModal('newBookingModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form method="POST" action="{% url 'taxi:intercity_booking_create' %}" class="px-6 py-5 space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Yo'nalish</label>
+                <select name="route" required class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white">
+                    {% for route in routes %}{% if route.is_active %}
+                    <option value="{{ route.pk }}">{{ route.from_region.name }} → {{ route.to_region.name }} ({{ route.seat_price|floatformat:0 }} so'm/joy)</option>
+                    {% endif %}{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Yo'lovchi ismi</label>
+                <input type="text" name="passenger_name" required class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Telefon</label>
+                    <input type="text" name="phone_number" required placeholder="+998..." class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Joylar soni</label>
+                    <input type="number" name="seats" min="1" max="10" value="1" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white">
+                </div>
+            </div>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('newBookingModal')" class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">Bekor qilish</button>
+                <button type="submit" class="flex-1 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold transition"><i class="fas fa-check mr-1.5"></i>Band qilish</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // "Yangi yo'nalish" va "Tahrirlash" bitta modalni ishlatadi — tahrirlash
+    // rejimida viloyat tanlovlari (ular o'zgarmas) matn bilan almashtiriladi,
+    // faqat narx/o'rin/faollik o'zgartiriladi.
+    function openEditRouteModal(pk, label, price, capacity, isActive) {
+        document.getElementById('ir_modal_title').innerHTML = '<i class="fas fa-pen text-yellow-500 mr-2"></i>Yo\'nalishni tahrirlash';
+        document.getElementById('ir_create_fields').classList.add('hidden');
+        document.getElementById('ir_route_label').classList.remove('hidden');
+        document.getElementById('ir_route_label').textContent = label;
+        document.getElementById('ir_seat_price').value = price;
+        document.getElementById('ir_seat_capacity').value = capacity;
+        document.getElementById('ir_active_row').classList.remove('hidden');
+        document.getElementById('ir_active_row').classList.add('flex');
+        document.getElementById('ir_is_active').checked = isActive;
+        document.getElementById('ir_form').action = '/panel/shaharlararo/yonalish/' + pk + '/edit/';
+        openModal('newRouteModal');
+    }
+
+    const _origOpenIR = openModal;
+    openModal = function (id) {
+        _origOpenIR(id);
+        if (id === 'newRouteModal') return; // openEditRouteModal o'zi to'ldiradi, "Yangi" tugmasi esa sukut holatni ishlatadi
+    };
+
+    // "Yo'nalish qo'shish" tugmasi (yuqorida) har doim "yaratish" rejimida
+    // ochsin — agar avvalgi safar "tahrirlash" rejimida qolib ketgan bo'lsa.
+    document.querySelector('[onclick="openModal(\'newRouteModal\')"]').addEventListener('click', function () {
+        document.getElementById('ir_modal_title').innerHTML = '<i class="fas fa-route text-yellow-500 mr-2"></i>Yangi yo\'nalish';
+        document.getElementById('ir_create_fields').classList.remove('hidden');
+        document.getElementById('ir_route_label').classList.add('hidden');
+        document.getElementById('ir_active_row').classList.add('hidden');
+        document.getElementById('ir_active_row').classList.remove('flex');
+        document.getElementById('ir_form').action = '{% url "taxi:intercity_route_create" %}';
+        document.getElementById('ir_seat_capacity').value = 4;
+        document.getElementById('ir_seat_price').value = '';
+    });
+</script>
+{% endblock %}

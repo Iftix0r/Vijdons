@@ -133,4 +133,19 @@ interface DriverApiService {
 
     @GET("chat/group/unread/")
     suspend fun chatGroupUnread(): ChatUnreadResponse
+
+    @GET("intercity/routes/")
+    suspend fun intercityRoutes(): List<IntercityRouteDto>
+
+    @GET("intercity/my-trip/")
+    suspend fun intercityMyTrip(): IntercityTripDto?
+
+    @POST("intercity/join/")
+    suspend fun intercityJoin(@Body body: Map<String, Int>): IntercityTripDto
+
+    @POST("intercity/depart/")
+    suspend fun intercityDepart(): DetailResponse
+
+    @POST("intercity/cancel/")
+    suspend fun intercityCancel(): DetailResponse
 }

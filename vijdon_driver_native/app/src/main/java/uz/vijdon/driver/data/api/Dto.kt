@@ -228,3 +228,34 @@ data class GroupMessageDto(
 
 @Serializable
 data class ChatUnreadResponse(val count: Int)
+
+/** Shahrlararo yo'nalish — operator sozlagan (masalan "Samarqand → Toshkent"). */
+@Serializable
+data class IntercityRouteDto(
+    val id: Int,
+    val from_region_id: Int,
+    val from_region: String,
+    val to_region_id: Int,
+    val to_region: String,
+    val seat_price: String,
+    val seat_capacity: Int,
+)
+
+@Serializable
+data class IntercityPassengerDto(val name: String, val phone: String, val seats: Int)
+
+/** Haydovchining hozirgi (to'ldirilayotgan yoki jo'nagan) shahrlararo safari. */
+@Serializable
+data class IntercityTripDto(
+    val id: Int,
+    val route_id: Int,
+    val from_region: String,
+    val to_region: String,
+    val seat_price: String,
+    val seat_capacity: Int,
+    val seats_booked: Int,
+    val seats_left: Int,
+    val status: String,
+    val created_at: String,
+    val passengers: List<IntercityPassengerDto> = emptyList(),
+)

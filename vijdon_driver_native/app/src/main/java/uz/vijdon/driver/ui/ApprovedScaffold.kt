@@ -25,6 +25,7 @@ import uz.vijdon.driver.ui.balance.TopupScreen
 import uz.vijdon.driver.ui.chat.ChatBadgeViewModel
 import uz.vijdon.driver.ui.chat.ChatScreen
 import uz.vijdon.driver.ui.contract.ContractScreen
+import uz.vijdon.driver.ui.intercity.IntercityScreen
 import uz.vijdon.driver.ui.destination.DestinationScreen
 import uz.vijdon.driver.ui.history.HistoryScreen
 import uz.vijdon.driver.ui.home.HomeScreen
@@ -122,6 +123,7 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
                         onOpenSos = { navController.navigate(SubRoutes.SOS) },
                         onOpenDestination = { navController.navigate(SubRoutes.DESTINATION) },
                         onOpenNearbyDrivers = { navController.navigate(SubRoutes.NEARBY_DRIVERS) },
+                        onOpenIntercity = { navController.navigate(SubRoutes.INTERCITY) },
                         onLogout = onLogout,
                     )
                 }
@@ -175,6 +177,11 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
                     enterTransition = { pushEnter }, exitTransition = { pushExit },
                     popEnterTransition = { popEnter }, popExitTransition = { popExit },
                 ) { NearbyDriversScreen(onBack = { navController.popBackStack() }) }
+                composable(
+                    SubRoutes.INTERCITY,
+                    enterTransition = { pushEnter }, exitTransition = { pushExit },
+                    popEnterTransition = { popEnter }, popExitTransition = { popExit },
+                ) { IntercityScreen(onBack = { navController.popBackStack() }) }
             }
         }
     }

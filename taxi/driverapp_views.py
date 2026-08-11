@@ -996,3 +996,111 @@ def chat_group_unread(request, driver):
 
     count = GroupMessage.objects.exclude(driver=driver).filter(created_at__gt=driver.last_group_read_at).count()
     return Response({'count': count})
+
+
+# ── Shahrlararo (viloyatlararo) yo'lovchi tashish ───────────────────────────────
+# taxi/views.py (operator paneli)dagi bilan bir xil modellar — bu yerda faqat
+# haydovchi tomonidan: mavjud yo'nalishlarni ko'rish, biriga "qo'shilish"
+# (safar boshlash yoki haydovchisiz mavjudiga ega chiqish), joriy safarini
+# kuzatish, jo'natish/bekor qilish.
+
+def _intercity_trip_dict(trip):
+    return {
+        'id': trip.id,
+        'route_id': trip.route_id,
+        'from_region': trip.route.from_region.name,
+        'to_region': trip.route.to_region.name,
+        'seat_price': str(trip.route.seat_price),
+        'seat_capacity': trip.route.seat_capacity,
+        'seats_booked': trip.seats_booked,
+        'seats_left': trip.seats_left,
+        'status': trip.status,
+        'created_at': trip.created_at.isoformat(),
+        'passengers': [
+            {'name': b.passenger_name, 'phone': b.phone_number, 'seats': b.seats}
+            for b in trip.bookings.filter(status='confirmed')
+        ],
+    }
+
+
+@api_view(['GET'])
+@driver_required
+def intercity_routes(request, driver):
+    from .models import IntercityRoute
+
+    routes = IntercityRoute.objects.filter(is_active=True).select_related('from_region', 'to_region')
+    return Response([
+        {
+            'id': r.id, 'from_region_id': r.from_region_id, 'from_region': r.from_region.name,
+            'to_region_id': r.to_region_id, 'to_region': r.to_region.name,
+            'seat_price': str(r.seat_price), 'seat_capacity': r.seat_capacity,
+        }
+        for r in routes
+    ])
+
+
+@api_view(['GET'])
+@driver_required
+def intercity_my_trip(request, driver):
+    from .models import IntercityTrip
+
+    trip = (
+        IntercityTrip.objects.select_related('route', 'route__from_region', 'route__to_region')
+        .prefetch_related('bookings')
+        .filter(driver=driver, status=IntercityTrip.STATUS_FILLING)
+        .first()
+    )
+    if not trip:
+        return Response(None)
+    return Response(_intercity_trip_dict(trip))
+
+
+@api_view(['POST'])
+@driver_required
+def intercity_join(request, driver):
+    from django.db import transaction
+    from .models import IntercityRoute, IntercityTrip
+
+    if IntercityTrip.objects.filter(driver=driver, status=IntercityTrip.STATUS_FILLING).exists():
+        return Response({'detail': 'Sizda allaqachon faol shahrlararo safar bor.'}, status=400)
+    route = get_object_or_404(IntercityRoute, pk=request.data.get('route_id'), is_active=True)
+    with transaction.atomic():
+        # Haydovchisiz (masalan operator tomonidan telefon orqali ochilgan)
+        # safar bo'lsa, o'shanga "ega chiqiladi" — bir xil yo'nalish uchun
+        # ikkita alohida navbat hosil bo'lib qolmasin.
+        trip = (
+            IntercityTrip.objects.select_for_update()
+            .filter(route=route, status=IntercityTrip.STATUS_FILLING, driver__isnull=True)
+            .order_by('created_at')
+            .first()
+        )
+        if trip:
+            trip.driver = driver
+            trip.save(update_fields=['driver'])
+        else:
+            trip = IntercityTrip.objects.create(route=route, driver=driver)
+    return Response(_intercity_trip_dict(trip), status=201)
+
+
+@api_view(['POST'])
+@driver_required
+def intercity_depart(request, driver):
+    from django.utils import timezone
+    from .models import IntercityTrip
+
+    trip = get_object_or_404(IntercityTrip, driver=driver, status=IntercityTrip.STATUS_FILLING)
+    trip.status = IntercityTrip.STATUS_DEPARTED
+    trip.departed_at = timezone.now()
+    trip.save(update_fields=['status', 'departed_at'])
+    return Response({'detail': "Safar jo'natildi."})
+
+
+@api_view(['POST'])
+@driver_required
+def intercity_cancel(request, driver):
+    from .models import IntercityTrip
+
+    trip = get_object_or_404(IntercityTrip, driver=driver, status=IntercityTrip.STATUS_FILLING)
+    trip.status = IntercityTrip.STATUS_CANCELLED
+    trip.save(update_fields=['status'])
+    return Response({'detail': 'Safar bekor qilindi.'})
