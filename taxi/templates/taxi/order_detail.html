@@ -94,6 +94,45 @@
             {% endif %}
         </div>
 
+        {% if order.on_way_address or order.arrived_address %}
+        <!-- Haydovchi holati (Yo'lga chiqdim / Yetib keldim bosilgan ondagi haqiqiy GPS joylashuvi) -->
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">
+                <i class="fas fa-location-crosshairs mr-1.5"></i>Haydovchi holati
+            </h2>
+            <div class="flex flex-col gap-3">
+                {% if order.on_way_address %}
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <i class="fas fa-car text-purple-500 text-xs"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Yo'lga chiqqan joyi</p>
+                        <p class="font-semibold text-gray-800 dark:text-white text-sm mt-0.5">{{ order.on_way_address }}</p>
+                        {% if order.on_way_lat and order.on_way_lng %}
+                        <p class="text-[11px] text-gray-400 font-mono mt-0.5">{{ order.on_way_lat|floatformat:5 }}, {{ order.on_way_lng|floatformat:5 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                {% if order.arrived_address %}
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <i class="fas fa-flag-checkered text-indigo-500 text-xs"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Yetib kelgan joyi</p>
+                        <p class="font-semibold text-gray-800 dark:text-white text-sm mt-0.5">{{ order.arrived_address }}</p>
+                        {% if order.arrived_lat and order.arrived_lng %}
+                        <p class="text-[11px] text-gray-400 font-mono mt-0.5">{{ order.arrived_lat|floatformat:5 }}, {{ order.arrived_lng|floatformat:5 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Narx va to'lov -->
         <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
             <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">

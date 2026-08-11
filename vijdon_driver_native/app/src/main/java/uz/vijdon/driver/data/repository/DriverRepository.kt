@@ -144,9 +144,22 @@ class DriverRepository @Inject constructor(
 
     suspend fun rejectOrder(id: Int) = safeCall { api.rejectOrder(id) }
 
-    suspend fun orderOnWay(id: Int): ApiResult<OrderDto> = safeCall { api.orderOnWay(id) }
+    suspend fun orderOnWay(id: Int, lat: Double? = null, lng: Double? = null): ApiResult<OrderDto> = safeCall {
+        api.orderOnWay(id, locationBody(lat, lng))
+    }
 
-    suspend fun orderArrived(id: Int): ApiResult<OrderDto> = safeCall { api.orderArrived(id) }
+    suspend fun orderArrived(id: Int, lat: Double? = null, lng: Double? = null): ApiResult<OrderDto> = safeCall {
+        api.orderArrived(id, locationBody(lat, lng))
+    }
+
+    /** "Yo'lga chiqdim"/"Yetib keldim" bosilgan ondagi haqiqiy GPS
+     * joylashuvi — operator panelida va taximetr vidjetida ko'rsatish
+     * uchun serverga saqlanadi (backenddagi capture_order_action_location
+     * bilan bir xil g'oya). */
+    private fun locationBody(lat: Double?, lng: Double?): Map<String, String> = buildMap {
+        lat?.let { put("lat", it.toString()) }
+        lng?.let { put("lng", it.toString()) }
+    }
 
     suspend fun orderComplete(id: Int, distKm: Double?, price: Double?): ApiResult<OrderDto> = safeCall {
         val body = buildMap {

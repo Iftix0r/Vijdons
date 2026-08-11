@@ -60,6 +60,7 @@ class DriverAppOrderSerializer(serializers.ModelSerializer):
             'id', 'status', 'status_label',
             'from_address', 'from_lat', 'from_lng',
             'to_address', 'to_lat', 'to_lng',
+            'on_way_address', 'arrived_address',
             'client_name', 'client_phone', 'client_rating', 'client_trips_count',
             'price', 'commission', 'distance_km',
             'payment_type', 'payment_type_display', 'car_type', 'car_type_display',

@@ -39,6 +39,39 @@ def reverse_geocode_address(lat, lng):
         return ''
 
 
+def capture_order_action_location(order, new_status, original_status, lat, lng):
+    """Haydovchi "Yo'lga chiqdim"/"Yetib keldim" tugmasini bosgan paytdagi
+    haqiqiy GPS joylashuvini `order`ga yozadi (mutatsiya qiladi, saqlamaydi
+    — chaqiruvchi `order.save(update_fields=...)` qiladi). Operator
+    panelida va taximetr vidjetida "qaysi manzilda yo'lga chiqilgani/yetib
+    kelingani" ko'rsatish uchun.
+
+    `original_status` — DB'ga yozishdan OLDINGI holat: veb ilova ba'zan
+    alohida 'arrived' bosqichisiz to'g'ridan-to'g'ri 'on_way' -> 'completed'
+    o'tkazadi ("Yetib keldim" tugmasi shu yerda 'complete' amalini
+    chaqiradi) — bunday holda ham bosilgan ondagi joylashuv "yetib kelingan
+    joy" sifatida saqlanadi.
+
+    Qaytaradi: yangilangan maydon nomlari ro'yxati (bo'sh bo'lishi mumkin)."""
+    if lat is None or lng is None:
+        return []
+    try:
+        lat, lng = float(lat), float(lng)
+    except (TypeError, ValueError):
+        return []
+    if new_status == 'on_way':
+        order.on_way_lat = lat
+        order.on_way_lng = lng
+        order.on_way_address = reverse_geocode_address(lat, lng) or ''
+        return ['on_way_lat', 'on_way_lng', 'on_way_address']
+    if new_status == 'arrived' or (new_status == 'completed' and original_status == 'on_way' and order.arrived_lat is None):
+        order.arrived_lat = lat
+        order.arrived_lng = lng
+        order.arrived_address = reverse_geocode_address(lat, lng) or ''
+        return ['arrived_lat', 'arrived_lng', 'arrived_address']
+    return []
+
+
 def reverse_geocode_admin_area(lat, lng):
     """Koordinatadan (viloyat nomi, tuman nomi) juftligini olishga urinadi —
     `reverse_geocode_address` bilan bir xil geocoder javobidan, lekin

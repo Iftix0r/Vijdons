@@ -137,6 +137,16 @@ class Order(models.Model):
     to_address   = models.CharField(max_length=255, blank=True, default='', verbose_name="Qayerga (ixtiyoriy)")
     to_lat       = models.FloatField(null=True, blank=True, verbose_name="Qayerga Kenglik (Lat)")
     to_lng       = models.FloatField(null=True, blank=True, verbose_name="Qayerga Uzunlik (Lng)")
+    # Haydovchi "Yo'lga chiqdim"/"Yetib keldim" tugmasini bosgan paytdagi
+    # haqiqiy GPS joylashuvi — mijoz kiritgan from_address'dan farqli, bu
+    # haydovchining o'sha ondagi haqiqiy holatini qayd etadi (operator
+    # panelida va taximetr vidjetida ko'rsatish uchun).
+    on_way_lat      = models.FloatField(null=True, blank=True, verbose_name="Yo'lga chiqqan joy (Lat)")
+    on_way_lng      = models.FloatField(null=True, blank=True, verbose_name="Yo'lga chiqqan joy (Lng)")
+    on_way_address  = models.CharField(max_length=255, blank=True, default='', verbose_name="Yo'lga chiqqan manzil")
+    arrived_lat     = models.FloatField(null=True, blank=True, verbose_name="Yetib kelgan joy (Lat)")
+    arrived_lng     = models.FloatField(null=True, blank=True, verbose_name="Yetib kelgan joy (Lng)")
+    arrived_address = models.CharField(max_length=255, blank=True, default='', verbose_name="Yetib kelgan manzil")
     distance_km    = models.FloatField(null=True, blank=True, verbose_name="Masofa (km)")
     tmx_dist_km    = models.FloatField(default=0, verbose_name="Taximetr masofa (km)")
     tmx_paused     = models.BooleanField(default=False, verbose_name="Taximetr pauza")

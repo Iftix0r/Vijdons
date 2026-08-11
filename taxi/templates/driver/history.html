@@ -61,6 +61,7 @@
        data-id="{{ order.id }}"
        data-from="{{ order.from_address|escapejs }}"
        data-to="{{ order.to_address|escapejs }}"
+       data-on-way-address="{{ order.on_way_address|default:''|escapejs }}"
        data-client="{{ order.client.full_name|default:'Mijoz'|escapejs }}"
        data-phone="{{ order.client.phone_number|escapejs }}"
        data-payment="{{ order.payment_type }}"
@@ -312,6 +313,7 @@ function openDetail(el) {
     waiting: _tmxWaiting,
     waitInfoHTML: (isThisRunning && _tmxTotalWaitMs()>500)?`⏱ ${_fmtWaitTime(_tmxTotalWaitMs())} (+${Math.round((_tmxTotalWaitMs()/60000)*TMX_WAITING_PER_MIN).toLocaleString('uz-UZ')} so'm)`:'',
     totalPrice: (d.status==='completed'&&price>0) ? Math.round(price).toLocaleString() : null,
+    onWayAddress: d.onWayAddress || '',
   }) : '';
 
   document.getElementById('sheet-body').innerHTML = `
@@ -394,6 +396,21 @@ function openDetail(el) {
   requestAnimationFrame(() => { sh.style.transform = 'translateY(0)'; });
 }
 
+// "Yo'lga chiqdim"/"Yetib keldim" bosilgan ondagi haqiqiy GPS joylashuvini
+// (qisqa muddatli, 3s timeout bilan — sekin/yo'q bo'lsa shunchaki lat/lng'siz
+// davom etamiz) olish uchun — bu sahifada home.html'dagi doimiy
+// window._driverLat/_driverLng kuzatuvchisi yo'q.
+function _getCurrentCoordsQuick() {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) { resolve(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 3000, maximumAge: 10000 }
+    );
+  });
+}
+
 async function doHistoryAction(id, action, extra) {
   closeDetail();
   try {
@@ -406,6 +423,10 @@ async function doHistoryAction(id, action, extra) {
       fd.append('tmx_dist_km', _tmxDistKm || 0);
       fd.append('tmx_price', parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,'')) || 0);
       fd.append('tmx_time', _tmxTimeStr || '0:00');
+    }
+    if (action === 'on_way' || action === 'arrived' || action === 'complete') {
+      const coords = await _getCurrentCoordsQuick();
+      if (coords) { fd.append('lat', coords.lat); fd.append('lng', coords.lng); }
     }
     if (extra) { for (const k in extra) fd.append(k, extra[k]); }
     const r = await fetch(`/driver/orders/${id}/${action}/`, {

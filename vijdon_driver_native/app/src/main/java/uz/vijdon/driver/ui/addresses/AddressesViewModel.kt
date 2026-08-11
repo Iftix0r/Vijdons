@@ -25,7 +25,7 @@ data class AddressesUiState(
     val selectedAddress: AddressDto? = null,
     val queueDrivers: List<QueueDriverDto> = emptyList(),
     val myPosition: Int? = null,
-    val loading: Boolean = true,
+    val loading: Boolean = false,
     val error: String? = null,
 ) {
     // O'zbekiston bo'ylab manzillar ko'payishi bilan — bu ekran endi
@@ -43,20 +43,36 @@ class AddressesViewModel @Inject constructor(private val repository: DriverRepos
 
     private var searchDebounceJob: Job? = null
 
+    // Diqqat: bu yerda avval init'da darhol load() chaqirilib, ekran
+    // ochilgan zahoti O'ZBEKISTON BO'YLAB BARCHA manzillar ro'yxati
+    // ko'rsatilardi. Endi bu ekran FAQAT qidiruv/hudud filtri orqali
+    // "boshqa" manzillarni topish uchun — haydovchi o'zi so'ramaguncha
+    // (matn yozmaguncha yoki hudud tanlamaguncha) hech narsa yuklanmaydi
+    // (bosh sahifadagi "Joriy navbatingiz" kartasi haydovchining o'zi
+    // turgan joyini alohida, shu ro'yxatsiz ko'rsatadi).
     init {
-        load()
         loadRegions()
     }
 
+    /** Faqat filtr (qidiruv matni yoki hudud) faol bo'lganda so'raladi —
+     * aks holda O'ZBEKISTON BO'YLAB BARCHA manzillar qaytib, aynan
+     * oldini olishga harakat qilgan "haddan tashqari ko'p ro'yxat"
+     * holatiga qaytib ketardi. Filtr bo'sh bo'lsa shunchaki ro'yxatni
+     * tozalab qo'yamiz (boshlang'ich, "hech narsa ko'rsatilmagan" holat). */
     fun load() {
+        val state = _uiState.value
+        if (!state.hasActiveFilter) {
+            _uiState.value = state.copy(addresses = emptyList(), loading = false, error = null)
+            return
+        }
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(loading = true)
-            val state = _uiState.value
+            val current = _uiState.value
             when (
                 val result = repository.addresses(
-                    region = state.selectedRegionId,
-                    district = state.selectedDistrictId,
-                    q = state.searchQuery.trim().ifBlank { null },
+                    region = current.selectedRegionId,
+                    district = current.selectedDistrictId,
+                    q = current.searchQuery.trim().ifBlank { null },
                 )
             ) {
                 is ApiResult.Success -> _uiState.value = _uiState.value.copy(addresses = result.data, loading = false, error = null)
@@ -97,8 +113,10 @@ class AddressesViewModel @Inject constructor(private val repository: DriverRepos
 
     fun clearFilters() {
         searchDebounceJob?.cancel()
-        _uiState.value = _uiState.value.copy(selectedRegionId = null, selectedDistrictId = null, searchQuery = "")
-        load()
+        _uiState.value = _uiState.value.copy(
+            selectedRegionId = null, selectedDistrictId = null, searchQuery = "",
+            addresses = emptyList(), loading = false, error = null,
+        )
     }
 
     fun openQueue(address: AddressDto) {

@@ -191,8 +191,11 @@ class HomeViewModel @Inject constructor(
     /** Masofa haydovchining joriy GPS'iga bog'liq bo'lgani uchun server
      * bermaydi (veb versiyada ham xuddi shunday — JS'da hisoblanadi),
      * shu sabab mahalliy so'nggi joylashuv asosida hisoblanadi. Eng yaqin
-     * (<=1000m) manzil bo'lsa va navbatda odam bo'lsa, veb'dagi kabi
-     * avtomatik ochiladi — haydovchi darhol kim navbatda ekanini ko'rsin. */
+     * (<=1000m) manzil bo'lsa — bosh sahifada FAQAT shu (haydovchining o'zi
+     * turgan joyi) va uning navbati ko'rsatiladi (boshqa barcha manzillar
+     * ro'yxati endi faqat qidiruv orqali, alohida ekranda). Navbat bo'sh
+     * bo'lsa ham ochiladi — "Navbatda hech kim yo'q" ko'rinsin, aks holda
+     * haydovchi o'zi turgan joyi haqida umuman hech narsa ko'rmas edi. */
     private fun recomputeAddressDistances() {
         val lat = driverLat
         val lng = driverLng
@@ -204,7 +207,7 @@ class HomeViewModel @Inject constructor(
         if (!autoExpandedOnce) {
             val nearest = addresses.minByOrNull { distances[it.id] ?: Double.MAX_VALUE }
             val nearestDist = nearest?.let { distances[it.id] }
-            if (nearest != null && nearestDist != null && nearestDist <= 1000.0 && nearest.queue_count > 0) {
+            if (nearest != null && nearestDist != null && nearestDist <= 1000.0) {
                 autoExpandedOnce = true
                 toggleAddressExpand(nearest, forceExpand = true)
             }
@@ -351,10 +354,10 @@ class HomeViewModel @Inject constructor(
         // bosilgan zahoti taximetr vidjeti (VAQT sekundomeri) shu ondan
         // boshlab ishga tushishi kerak, tarmoq javobi kelguncha emas.
         ensureTaximeter(id)
-        runAction(id) { repository.orderOnWay(id) }
+        runAction(id) { repository.orderOnWay(id, driverLat, driverLng) }
     }
 
-    fun orderArrived(id: Int) = runAction(id) { repository.orderArrived(id) }
+    fun orderArrived(id: Int) = runAction(id) { repository.orderArrived(id, driverLat, driverLng) }
 
     fun orderComplete(id: Int) {
         val tracker = taximeters[id]

@@ -327,6 +327,8 @@ def driver_home(request, driver):
             'tmx_start_time': o.tmx_start_time.isoformat() if o.tmx_start_time else None,
             'tmx_paused':    o.tmx_paused,
             'tmx_paused_ms': o.tmx_paused_ms or 0,
+            'on_way_address': o.on_way_address or '',
+            'arrived_address': o.arrived_address or '',
         })
 
     # Bugungi statistika
@@ -430,6 +432,8 @@ def driver_orders_json(request, driver):
             'tmx_start_time': o.tmx_start_time.isoformat() if o.tmx_start_time else None,
             'tmx_paused':    o.tmx_paused,
             'tmx_paused_ms': o.tmx_paused_ms or 0,
+            'on_way_address': o.on_way_address or '',
+            'arrived_address': o.arrived_address or '',
         })
 
     ids = [o['id'] for o in orders_data]
@@ -548,8 +552,14 @@ def driver_order_action(request, driver, pk, action):
     if order.driver_id and order.driver_id != driver.id:
         return JsonResponse({'ok': False, 'error': 'Bu buyurtma sizga tegishli emas'}, status=403)
 
+    original_status = order.status
     order.status = new_status
     update_fields = ['status', 'updated_at']
+
+    from .utils import capture_order_action_location
+    update_fields += capture_order_action_location(
+        order, new_status, original_status, request.POST.get('lat'), request.POST.get('lng'),
+    )
 
     # Taximetr boshlangan haqiqiy vaqtini saqlaymiz — ilova qayta ochilganda ham
     # o'tgan vaqt to'g'ri hisoblansin (frontendda Date.now() qayta boshlanib ketmasin)

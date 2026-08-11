@@ -2067,6 +2067,7 @@ function _tmxWidgetHTML(o){
     waiting: _tmxWaiting,
     waitInfoHTML: _tmxTotalWaitMs()>500?`⏱ ${_fmtWaitTime(_tmxTotalWaitMs())} (+${Math.round((_tmxTotalWaitMs()/60000)*TMX_WAITING_PER_MIN).toLocaleString('uz-UZ')} so'm)`:'',
     totalPrice: (completed&&o.price) ? parseInt(o.price).toLocaleString() : null,
+    onWayAddress: o.on_way_address || '',
   });
 }
 
@@ -2498,6 +2499,12 @@ async function doAction(id,action,extra){
       fd.append('tmx_dist_km', _tmxDistKm || 0);
       fd.append('tmx_price', parseFloat((_tmxPriceStr||'0').replace(/[^\d.]/g,'')) || 0);
       fd.append('tmx_time', _tmxTimeStr || '0:00');
+    }
+    // "Yo'lga chiqdim"/"Yetib keldim" bosilgan ondagi haqiqiy GPS joylashuvi —
+    // operator panelida va taximetr vidjetida ko'rsatish uchun serverga saqlanadi.
+    if ((action === 'on_way' || action === 'arrived' || action === 'complete') && window._driverLat && window._driverLng) {
+      fd.append('lat', window._driverLat);
+      fd.append('lng', window._driverLng);
     }
     if (extra) { for (const k in extra) fd.append(k, extra[k]); }
     const ctrl = new AbortController();

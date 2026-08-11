@@ -77,6 +77,8 @@ data class OrderDto(
     val to_address: String,
     val to_lat: Double? = null,
     val to_lng: Double? = null,
+    val on_way_address: String? = null,
+    val arrived_address: String? = null,
     val client_name: String,
     val client_phone: String,
     val client_rating: Double? = null,

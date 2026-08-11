@@ -36,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -115,8 +116,10 @@ fun AddressesScreen(viewModel: AddressesViewModel = hiltViewModel()) {
         } else if (state.addresses.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
-                    if (state.hasActiveFilter) "Shu qidiruv bo'yicha manzil topilmadi" else "Saqlangan manzillar yo'q",
+                    if (state.hasActiveFilter) "Shu qidiruv bo'yicha manzil topilmadi" else "Boshqa manzillarni topish uchun nomini yozing yoki hudud tanlang",
                     color = VijdonColors.TextSecondary,
+                    modifier = Modifier.padding(horizontal = 32.dp),
+                    textAlign = TextAlign.Center,
                 )
             }
         } else {

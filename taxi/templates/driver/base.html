@@ -1513,6 +1513,11 @@ function _tmxRenderWidget(cfg) {
       </div>
       <span style="font-size:11px;font-weight:700;color:${cfg.statusColor}">${cfg.statusText}</span>
     </div>
+    ${cfg.onWayAddress?`
+    <div style="padding:6px 16px 0;display:flex;align-items:center;gap:5px;overflow:hidden">
+      <i class="fas fa-map-pin" style="font-size:9px;color:#AF52DE;flex-shrink:0"></i>
+      <span style="font-size:11px;color:${labelDim};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cfg.onWayAddress}</span>
+    </div>`:''}
     <div style="position:relative;text-align:center;padding:8px 16px 14px">
       <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:190px;height:74px;background:radial-gradient(ellipse at center,rgba(255,214,0,.14),transparent 72%);pointer-events:none"></div>
       <div style="position:relative;font-size:37px;font-weight:800;color:#FFD600;letter-spacing:-.6px;line-height:1.1;font-variant-numeric:tabular-nums">

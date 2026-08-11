@@ -345,7 +345,10 @@ def order_accept(request, driver, pk):
 
 
 def _transition(request, driver, pk, allowed_statuses, new_status):
-    from .utils import tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, sms_order_status, haversine
+    from .utils import (
+        tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled,
+        sms_order_status, haversine, capture_order_action_location,
+    )
 
     order = get_object_or_404(Order, pk=pk)
     if order.driver_id != driver.id:
@@ -353,8 +356,12 @@ def _transition(request, driver, pk, allowed_statuses, new_status):
     if order.status not in allowed_statuses:
         return Response({'detail': f"'{order.get_status_display()}' holatida bu amal mumkin emas."}, status=400)
 
+    original_status = order.status
     order.status = new_status
     update_fields = ['status', 'updated_at']
+    update_fields += capture_order_action_location(
+        order, new_status, original_status, request.data.get('lat'), request.data.get('lng'),
+    )
 
     if new_status == 'on_way' and not order.tmx_start_time:
         from django.utils import timezone
