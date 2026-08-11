@@ -253,6 +253,10 @@
            class="nav-link {% if request.resolver_match.url_name == 'saved_addresses_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-map-pin w-5 text-center"></i> Manzillar
         </a>
+        <a href="{% url 'taxi:regions_list' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'regions_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-map w-5 text-center"></i> Viloyatlar
+        </a>
         <a href="{% url 'taxi:topup_list' %}"
            class="nav-link {% if request.resolver_match.url_name == 'topup_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-money-bill-transfer w-5 text-center"></i>

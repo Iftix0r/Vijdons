@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
-from django.db.models import Q, Count, F
+from django.db.models import Q, Count, F, Max
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import user_passes_test
@@ -4127,12 +4127,13 @@ def employee_attendance_manual(request, pk):
 @panel_login_required
 def saved_addresses_list(request):
     from django.utils import timezone
+    from .models import District, Region
     # Faqat online (last_seen yangi) haydovchilar navbatda "ko'rsatiladi" —
     # eski (masalan bir soat oldin GPS yuborgan) haydovchi navbatda hali ham
     # turgandek chiqmasin. Dispatch tomonida (_next_address_queue_driver,
     # utils.py) alohida, tigroq staleness mantig'i bor — u yerga tegilmadi.
     online_cutoff = timezone.now() - timezone.timedelta(seconds=ONLINE_THRESHOLD_SECONDS)
-    addresses = SavedAddress.objects.annotate(
+    addresses = SavedAddress.objects.select_related('district', 'district__region').annotate(
         queue_count=Count(
             'queue_entries',
             filter=Q(
@@ -4144,8 +4145,30 @@ def saved_addresses_list(request):
             ),
         )
     )
+
+    # O'zbekiston bo'ylab manzillar ko'payishi bilan ro'yxatni viloyat/tuman
+    # bo'yicha ajratib ko'rish uchun — ikkalasi ham ixtiyoriy filtr.
+    region_id = request.GET.get('region', '').strip()
+    district_id = request.GET.get('district', '').strip()
+    if district_id:
+        addresses = addresses.filter(district_id=district_id)
+    elif region_id:
+        addresses = addresses.filter(district__region_id=region_id)
+
+    regions = Region.objects.prefetch_related('districts').all()
+    # Tahrirlash oynasidagi viloyat→tuman kaskadli tanlovi uchun — server
+    # tomonda JSON qilib beriladi, JS'da qayta so'rov yubormasdan filtrlanadi
+    # (viloyatlar/tumanlar soni кam, bir martalik yuklash yetarli).
+    regions_json = json.dumps([
+        {'id': r.pk, 'name': r.name, 'districts': [{'id': d.pk, 'name': d.name} for d in r.districts.all()]}
+        for r in regions
+    ])
     return render(request, 'taxi/saved_addresses.html', {
         'addresses': addresses,
+        'regions': regions,
+        'regions_json': regions_json,
+        'selected_region': region_id,
+        'selected_district': district_id,
     })
 
 
@@ -4153,16 +4176,19 @@ def saved_addresses_list(request):
 def saved_address_update(request, pk):
     address = get_object_or_404(SavedAddress, pk=pk)
     if request.method == 'POST':
+        from .models import District
         name = request.POST.get('name', '').strip()
         addr_text = request.POST.get('address', '').strip()
         lat = request.POST.get('lat')
         lng = request.POST.get('lng')
+        district_id = request.POST.get('district', '').strip()
         if name and lat and lng:
             address.name = name
             address.address = addr_text
             address.lat = float(lat)
             address.lng = float(lng)
-            address.save(update_fields=['name', 'address', 'lat', 'lng'])
+            address.district = District.objects.filter(pk=district_id).first() if district_id else None
+            address.save(update_fields=['name', 'address', 'lat', 'lng', 'district'])
             messages.success(request, f"«{name}» manzili yangilandi.")
         else:
             messages.error(request, "Nomi va xaritadan nuqta tanlanishi shart.")
@@ -4220,6 +4246,75 @@ def saved_address_use(request, pk):
     eng ko'p ishlatilganlar ro'yxat boshida chiqishi uchun hisoblagich."""
     SavedAddress.objects.filter(pk=pk).update(usage_count=F('usage_count') + 1)
     return JsonResponse({'ok': True})
+
+
+# ── Viloyatlar va tumanlar (manzillarni ajratish/filtrlash uchun) ──────────────
+# 14 ta viloyat bir martalik data-migratsiya orqali oldindan to'ldirilgan
+# (taxi/migrations/0094_seed_regions.py) — bu yerda faqat TUMANLAR qo'lda
+# qo'shiladi, chunki ularning to'liq ro'yxati (200 dan ortiq) xotiradan
+# xato-kam bo'lmasdan sanab bo'lmaydi.
+
+@panel_login_required
+def regions_list(request):
+    from .models import Region
+    regions = Region.objects.prefetch_related('districts').annotate(
+        address_count=Count('districts__addresses', distinct=True),
+    )
+    return render(request, 'taxi/regions.html', {'regions': regions})
+
+
+@panel_login_required
+@require_POST
+def region_create(request):
+    from .models import Region
+    name = request.POST.get('name', '').strip()
+    if not name:
+        messages.error(request, "Viloyat nomi kiritilishi shart.")
+    elif Region.objects.filter(name__iexact=name).exists():
+        messages.error(request, f"«{name}» allaqachon mavjud.")
+    else:
+        max_order = Region.objects.aggregate(m=Max('order'))['m'] or 0
+        Region.objects.create(name=name, order=max_order + 1)
+        messages.success(request, f"«{name}» viloyat sifatida qo'shildi.")
+    return redirect('taxi:regions_list')
+
+
+@panel_login_required
+@require_POST
+def region_delete(request, pk):
+    from .models import Region
+    region = get_object_or_404(Region, pk=pk)
+    name = region.name
+    region.delete()
+    messages.success(request, f"«{name}» va unga tegishli barcha tumanlar o'chirildi.")
+    return redirect('taxi:regions_list')
+
+
+@panel_login_required
+@require_POST
+def district_create(request):
+    from .models import District, Region
+    region = get_object_or_404(Region, pk=request.POST.get('region'))
+    name = request.POST.get('name', '').strip()
+    if not name:
+        messages.error(request, "Tuman nomi kiritilishi shart.")
+    elif District.objects.filter(region=region, name__iexact=name).exists():
+        messages.error(request, f"«{name}» {region.name}da allaqachon mavjud.")
+    else:
+        District.objects.create(region=region, name=name)
+        messages.success(request, f"«{name}» ({region.name}) qo'shildi.")
+    return redirect('taxi:regions_list')
+
+
+@panel_login_required
+@require_POST
+def district_delete(request, pk):
+    from .models import District
+    district = get_object_or_404(District, pk=pk)
+    name = district.name
+    district.delete()
+    messages.success(request, f"«{name}» o'chirildi.")
+    return redirect('taxi:regions_list')
 
 
 # ── Guruh jonli ovozli aloqa ("efir") — operator paneli tomoni, ratsiya uslubi ─

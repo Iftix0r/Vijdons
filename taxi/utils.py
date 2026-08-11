@@ -1838,8 +1838,15 @@ ADDRESS_QUEUE_STALE_MINUTES = 1      # shuncha daqiqa faollik (Driver.last_seen)
 # Shunchaki yo'lda o'tib ketayotgan yoki svetoforda to'xtagan haydovchi uchun
 # manzil yaratilib qolmasligi uchun ikkalasi ham ataylab "qattiqroq" (torroq
 # radius, bir necha daqiqa) qilib tanlangan.
+#
+# Diqqat: native ilova harakatsiz turgan haydovchining joylashuvini
+# serverga eng tez ~2 daqiqada bir marta yuboradi (batareya tejash uchun,
+# DriverLocationService.kt) — shu sabab bu qiymatni 2 daqiqadan PASTGA
+# tushirish amalda hech narsani tezlashtirmaydi (ikkinchi so'rov baribir
+# ~2 daqiqadan keyin keladi). 2 daqiqa — birinchi va ikkinchi so'rov
+# orasidagi "tabiiy" oraliqqa mos, shu bilan birga eng qisqa amaliy kutish.
 AUTO_ADDRESS_DWELL_RADIUS_KM = 0.1    # ~100 metr (GPS tebranishiga bir oz zахira bilan)
-AUTO_ADDRESS_DWELL_MINUTES = 4
+AUTO_ADDRESS_DWELL_MINUTES = 2
 
 
 def find_matching_saved_address(lat, lng):

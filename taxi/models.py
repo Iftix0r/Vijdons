@@ -1158,6 +1158,43 @@ class SecurityIncident(models.Model):
         ordering = ['-created_at']
 
 
+class Region(models.Model):
+    """Viloyat (yoki Qoraqalpog'iston Respublikasi / Toshkent shahri) —
+    O'zbekiston bo'ylab manzillarni ajratish/filtrlash uchun eng yuqori
+    daraja. Ro'yxat barqaror bo'lgani uchun bir martalik data-migratsiya
+    orqali 14 tasi oldindan to'ldiriladi (Manzillar bo'limida operator
+    qo'lda kiritmasin degan g'oyaning davomi)."""
+    name  = models.CharField(max_length=100, unique=True, verbose_name='Nomi')
+    order = models.PositiveSmallIntegerField(default=0, verbose_name='Tartib raqami')
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Viloyat'
+        verbose_name_plural = 'Viloyatlar'
+        ordering = ['order', 'name']
+
+
+class District(models.Model):
+    """Tuman/shahar — bitta Region'ga tegishli. Diqqat: bu ro'yxat
+    OLDINDAN TO'LDIRILMAYDI (viloyatlardan farqli) — O'zbekiston bo'ylab
+    200 dan ortiq tuman bor va ularni xotiradan aniq sanab chiqish xato
+    ehtimolini oshiradi; operator o'z hududidagi tumanlarni "Viloyatlar"
+    bo'limidan bir martalik qo'shib qo'yadi."""
+    region = models.ForeignKey(Region, on_delete=models.CASCADE, related_name='districts', verbose_name='Viloyat')
+    name   = models.CharField(max_length=100, verbose_name='Nomi')
+
+    def __str__(self):
+        return f'{self.name} ({self.region.name})'
+
+    class Meta:
+        verbose_name = 'Tuman'
+        verbose_name_plural = 'Tumanlar'
+        unique_together = [('region', 'name')]
+        ordering = ['region__order', 'name']
+
+
 class SavedAddress(models.Model):
     """Tez-tez ishlatiladigan manzillar — admin xaritadan nuqta tanlab, nom
     berib saqlaydi (Manzillar bo'limi). Yangi buyurtma oynasida tezkor
@@ -1167,6 +1204,7 @@ class SavedAddress(models.Model):
     address     = models.CharField(max_length=255, blank=True, default='', verbose_name='Manzil matni')
     lat         = models.FloatField(verbose_name='Kenglik')
     lng         = models.FloatField(verbose_name='Uzunlik')
+    district    = models.ForeignKey(District, null=True, blank=True, on_delete=models.SET_NULL, related_name='addresses', verbose_name='Tuman')
     usage_count = models.PositiveIntegerField(default=0, verbose_name='Ishlatilgan soni')
     created_by  = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, verbose_name="Qo'shgan")
     created_at  = models.DateTimeField(auto_now_add=True)

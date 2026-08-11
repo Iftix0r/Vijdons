@@ -1,0 +1,106 @@
+{% extends 'taxi/base.html' %}
+{% block title %}Viloyatlar va tumanlar — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-center gap-4 mb-5">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+            🗺️ Viloyatlar va tumanlar
+        </h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            Manzillarni hudud bo'yicha ajratish/filtrlash uchun. 14 ta viloyat oldindan to'ldirilgan — o'z tumanlaringizni shu yerdan bir martalik qo'shing.
+        </p>
+    </div>
+    <button onclick="openModal('newRegionModal')"
+            class="flex items-center gap-2 px-4 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold rounded-xl shadow-sm shadow-yellow-200 dark:shadow-none transition-all hover:-translate-y-0.5">
+        <i class="fas fa-plus"></i> Viloyat qo'shish
+    </button>
+</div>
+
+<div class="space-y-3">
+    {% for region in regions %}
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors" onclick="toggleRegion({{ region.pk }})">
+            <div class="flex items-center gap-3 min-w-0">
+                <i id="region_icon_{{ region.pk }}" class="fas fa-chevron-down text-xs text-gray-400 transition-transform"></i>
+                <span class="font-bold text-gray-800 dark:text-white text-sm truncate">{{ region.name }}</span>
+                <span class="text-xs text-gray-400 flex-shrink-0">{{ region.districts.count }} tuman · {{ region.address_count }} manzil</span>
+            </div>
+            <form method="POST" action="{% url 'taxi:region_delete' region.pk %}" onsubmit="return confirm('«{{ region.name }}» va unga tegishli barcha tumanlarni o\'chirishga ishonchingiz komilmi?')" onclick="event.stopPropagation()">
+                {% csrf_token %}
+                <button type="submit" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 hover:text-red-700 transition-colors flex-shrink-0" title="Viloyatni o'chirish">
+                    <i class="fas fa-trash text-xs"></i>
+                </button>
+            </form>
+        </div>
+        <div id="region_body_{{ region.pk }}" class="hidden px-5 pb-4 border-t border-gray-50 dark:border-gray-800">
+            <div class="flex flex-wrap gap-2 my-3">
+                {% for d in region.districts.all %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
+                    {{ d.name }}
+                    <form method="POST" action="{% url 'taxi:district_delete' d.pk %}" onsubmit="return confirm('«{{ d.name }}» o\'chirilsinmi?')" class="inline-flex">
+                        {% csrf_token %}
+                        <button type="submit" class="text-blue-400 hover:text-red-500 transition-colors"><i class="fas fa-xmark text-[10px]"></i></button>
+                    </form>
+                </span>
+                {% empty %}
+                <span class="text-xs text-gray-400">Hali tuman qo'shilmagan.</span>
+                {% endfor %}
+            </div>
+            <form method="POST" action="{% url 'taxi:district_create' %}" class="flex gap-2 max-w-sm">
+                {% csrf_token %}
+                <input type="hidden" name="region" value="{{ region.pk }}">
+                <input type="text" name="name" placeholder="Yangi tuman nomi..." required
+                       class="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                <button type="submit" class="px-3 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold transition">
+                    <i class="fas fa-plus mr-1"></i>Qo'shish
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ══════════ Yangi viloyat modal ══════════ -->
+<div id="newRegionModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white"><i class="fas fa-plus text-yellow-500 mr-2"></i>Yangi viloyat</h2>
+            <button onclick="closeModal('newRegionModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form method="POST" action="{% url 'taxi:region_create' %}" class="px-6 py-5 space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Nomi</label>
+                <input type="text" name="name" required placeholder="Masalan: Farg'ona viloyati"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+            </div>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('newRegionModal')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-bold shadow-md shadow-green-200 dark:shadow-none transition">
+                    <i class="fas fa-floppy-disk mr-1.5"></i>Saqlash
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function toggleRegion(pk) {
+        const body = document.getElementById('region_body_' + pk);
+        const icon = document.getElementById('region_icon_' + pk);
+        if (!body) return;
+        const isOpen = body.classList.contains('hidden');
+        body.classList.toggle('hidden');
+        if (icon) icon.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+</script>
+{% endblock %}

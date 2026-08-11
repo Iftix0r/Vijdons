@@ -9,10 +9,41 @@
             📍 Manzillar
         </h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            Haydovchi biror joyda 4+ daqiqa kutib tursa, tizim shu manzilni AVTOMATIK yaratadi — qo'lda qo'shish shart emas. Nomini istasangiz shu yerdan tahrirlashingiz mumkin.
+            Haydovchi biror joyda 2+ daqiqa kutib tursa, tizim shu manzilni AVTOMATIK yaratadi — qo'lda qo'shish shart emas. Nomini istasangiz shu yerdan tahrirlashingiz mumkin.
         </p>
     </div>
+    <a href="{% url 'taxi:regions_list' %}"
+       class="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 text-sm font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+        <i class="fas fa-map"></i> Viloyatlar va tumanlar
+    </a>
 </div>
+
+<!-- O'zbekiston bo'ylab manzillar ko'payishi bilan hudud bo'yicha ajratish uchun. -->
+<form method="GET" class="flex flex-wrap items-center gap-2 mb-4">
+    <select name="region" onchange="this.form.submit()"
+            class="px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+        <option value="">Barcha viloyatlar</option>
+        {% for r in regions %}
+        <option value="{{ r.pk }}" {% if selected_region == r.pk|stringformat:"s" %}selected{% endif %}>{{ r.name }}</option>
+        {% endfor %}
+    </select>
+    {% if selected_region %}
+    <select name="district" onchange="this.form.submit()"
+            class="px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+        <option value="">Barcha tumanlar</option>
+        {% for r in regions %}
+            {% if r.pk|stringformat:"s" == selected_region %}
+                {% for d in r.districts.all %}
+                <option value="{{ d.pk }}" {% if selected_district == d.pk|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+                {% endfor %}
+            {% endif %}
+        {% endfor %}
+    </select>
+    <a href="{% url 'taxi:saved_addresses_list' %}" class="text-xs text-gray-400 hover:text-red-500 transition-colors">
+        <i class="fas fa-xmark"></i> Filtrni tozalash
+    </a>
+    {% endif %}
+</form>
 
 <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
@@ -21,6 +52,7 @@
                 <tr class="text-left text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
                     <th class="px-5 py-3.5 w-8"></th>
                     <th class="px-5 py-3.5">Nomi</th>
+                    <th class="px-5 py-3.5">Hudud</th>
                     <th class="px-5 py-3.5">Manzil</th>
                     <th class="px-5 py-3.5">Koordinata</th>
                     <th class="px-5 py-3.5">Navbatda</th>
@@ -50,6 +82,13 @@
                         </span>
                         {% endif %}
                     </td>
+                    <td class="px-5 py-3.5 text-xs text-gray-500 dark:text-gray-400">
+                        {% if addr.district %}
+                            {{ addr.district.name }}<span class="text-gray-300 dark:text-gray-600"> · {{ addr.district.region.name }}</span>
+                        {% else %}
+                            <span class="text-gray-300 dark:text-gray-600">—</span>
+                        {% endif %}
+                    </td>
                     <td class="px-5 py-3.5 text-xs text-gray-600 dark:text-gray-300">{{ addr.address|default:"—" }}</td>
                     <td class="px-5 py-3.5 text-[11px] text-gray-400 font-mono">{{ addr.lat|floatformat:"5u" }}, {{ addr.lng|floatformat:"5u" }}</td>
                     <td class="px-5 py-3.5">
@@ -71,7 +110,7 @@
                     <td class="px-5 py-3.5 text-right">
                         <div class="flex items-center justify-end gap-1.5">
                             <button type="button"
-                                    onclick="openEditAddressModal({{ addr.pk }}, '{{ addr.name|escapejs }}', '{{ addr.address|escapejs }}', {{ addr.lat|unlocalize }}, {{ addr.lng|unlocalize }})"
+                                    onclick="openEditAddressModal({{ addr.pk }}, '{{ addr.name|escapejs }}', '{{ addr.address|escapejs }}', {{ addr.lat|unlocalize }}, {{ addr.lng|unlocalize }}, {{ addr.district.region.pk|default:'null' }}, {{ addr.district.pk|default:'null' }})"
                                     class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-500 hover:bg-yellow-100 hover:text-yellow-600 transition-colors" title="Tahrirlash">
                                 <i class="fas fa-pen text-xs"></i>
                             </button>
@@ -86,7 +125,7 @@
                 </tr>
                 {% if addr.queue_count > 0 %}
                 <tr id="sa_queue_row_{{ addr.pk }}" class="hidden">
-                    <td colspan="7" class="px-0 py-0 bg-gray-50/70 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800">
+                    <td colspan="8" class="px-0 py-0 bg-gray-50/70 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800">
                         <div id="sa_queue_body_{{ addr.pk }}" class="px-5 py-4">
                             <div class="flex items-center gap-2 text-xs text-gray-400">
                                 <i class="fas fa-circle-notch fa-spin"></i> Yuklanmoqda...
@@ -97,7 +136,7 @@
                 {% endif %}
                 {% empty %}
                 <tr>
-                    <td colspan="7" class="text-center py-14">
+                    <td colspan="8" class="text-center py-14">
                         <div class="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-300 dark:text-gray-600 text-2xl mx-auto mb-3">
                             <i class="fas fa-map-pin"></i>
                         </div>
@@ -152,6 +191,27 @@
                        class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
             </div>
 
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">
+                        <i class="fas fa-map text-blue-500 mr-1"></i>Viloyat
+                    </label>
+                    <select id="sa_region" onchange="_saFillDistricts()"
+                            class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                        <option value="">—</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">
+                        <i class="fas fa-location-dot text-blue-500 mr-1"></i>Tuman
+                    </label>
+                    <select name="district" id="sa_district"
+                            class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                        <option value="">—</option>
+                    </select>
+                </div>
+            </div>
+
             <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
                 <button type="button" onclick="closeModal('newAddressModal')"
                         class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
@@ -171,6 +231,36 @@
 
 {% block extra_js %}
 <script>
+    // Viloyat→tuman kaskadli tanlovi (tahrirlash oynasida) — bir martalik
+    // yuklangan, so'rovsiz JS ichida filtrlanadi.
+    const _saRegions = {{ regions_json|safe }};
+
+    function _saFillRegionOptions() {
+        const sel = document.getElementById('sa_region');
+        sel.innerHTML = '<option value="">—</option>';
+        _saRegions.forEach(function (r) {
+            const opt = document.createElement('option');
+            opt.value = r.id;
+            opt.textContent = r.name;
+            sel.appendChild(opt);
+        });
+    }
+
+    function _saFillDistricts(selectedDistrictId) {
+        const regionSel = document.getElementById('sa_region');
+        const districtSel = document.getElementById('sa_district');
+        districtSel.innerHTML = '<option value="">—</option>';
+        const region = _saRegions.find(function (r) { return String(r.id) === String(regionSel.value); });
+        if (!region) return;
+        region.districts.forEach(function (d) {
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.textContent = d.name;
+            if (selectedDistrictId && String(d.id) === String(selectedDistrictId)) opt.selected = true;
+            districtSel.appendChild(opt);
+        });
+    }
+
     // Manzil qatoridagi strelka bosilganda o'sha manzil navbatidagi
     // haydovchilar ro'yxatini ochib/yopib turadi (ma'lumot har safar
     // yangi so'rov bilan olinadi — navbat tez-tez o'zgarib turadi).
@@ -335,8 +425,8 @@
     // "Tahrirlash" tugmasi bosilganda chaqiriladi — mavjud manzil
     // ma'lumotlarini formaga joylab, "Yangi manzil" bilan bir xil modalni
     // tahrirlash rejimida ochadi (alohida modal yaratmasdan).
-    function openEditAddressModal(pk, name, address, lat, lng) {
-        _saPendingEdit = { pk: pk, name: name, address: address, lat: lat, lng: lng };
+    function openEditAddressModal(pk, name, address, lat, lng, regionId, districtId) {
+        _saPendingEdit = { pk: pk, name: name, address: address, lat: lat, lng: lng, regionId: regionId, districtId: districtId };
         openModal('newAddressModal');
     }
 
@@ -355,6 +445,9 @@
             document.getElementById('sa_name').value = editing.name;
             document.getElementById('sa_address').value = editing.address;
             document.getElementById('sa_submit').disabled = false;
+            _saFillRegionOptions();
+            document.getElementById('sa_region').value = editing.regionId || '';
+            _saFillDistricts(editing.districtId);
             document.getElementById('sa_map_hint').innerHTML =
                 '<i class="fas fa-check text-green-500"></i> Joriy nuqta — o\'zgartirish uchun xaritani qayta bosing';
             document.getElementById('sa_form').action = '/panel/manzillar/' + editing.pk + '/edit/';
