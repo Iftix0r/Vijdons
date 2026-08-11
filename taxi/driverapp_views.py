@@ -883,3 +883,59 @@ def driver_sounds(request, driver):
             'url': request.build_absolute_uri(url) if url else None,
         }
     return Response(data)
+
+
+# ── Guruh chati ─────────────────────────────────────────────────────────────
+# Veb haydovchi panelidagi `driver_group_chat_list`/`driver_group_chat_send`
+# (taxi/driver_views.py) bilan AYNAN bir xil mantiq/JSON shakli — faqat
+# session emas, token autentifikatsiyasi bilan. Audio xabar/"efir" (ratsiya)
+# bu yerda YO'Q — native ilovaning birinchi versiyasi faqat matnli xabar
+# bilan cheklangan.
+
+def _group_message_dict(msg, driver):
+    return {
+        'id': msg.id,
+        'driver_id': msg.driver_id,
+        'driver_name': msg.display_name,
+        'car_number': msg.display_sub,
+        'text': msg.text,
+        'created_at': msg.created_at.isoformat(),
+        'is_me': msg.driver_id == driver.id,
+    }
+
+
+@api_view(['GET'])
+@driver_required
+def chat_group_list(request, driver):
+    from django.utils import timezone
+    from .models import GroupMessage
+
+    since_id = int(request.query_params.get('since_id', 0) or 0)
+    msgs = GroupMessage.objects.select_related('driver').filter(id__gt=since_id).order_by('created_at')[:100]
+    # Veb versiyasi bilan bir xil — har bir so'rov "o'qilgan" deb belgilaydi,
+    # shu orqali navbar/bottom-bar dagi o'qilmagan xabarlar belgisi (badge)
+    # haydovchi shu bo'limni ochib turgan paytda tezda nolga tushadi.
+    driver.last_group_read_at = timezone.now()
+    driver.save(update_fields=['last_group_read_at'])
+    return Response([_group_message_dict(m, driver) for m in msgs])
+
+
+@api_view(['POST'])
+@driver_required
+def chat_group_send(request, driver):
+    from .models import GroupMessage
+
+    text = str(request.data.get('text', '')).strip()
+    if not text:
+        return Response({'detail': "Xabar matni bo'sh bo'lishi mumkin emas."}, status=400)
+    msg = GroupMessage.objects.create(driver=driver, text=text)
+    return Response(_group_message_dict(msg, driver), status=201)
+
+
+@api_view(['GET'])
+@driver_required
+def chat_group_unread(request, driver):
+    from .models import GroupMessage
+
+    count = GroupMessage.objects.exclude(driver=driver).filter(created_at__gt=driver.last_group_read_at).count()
+    return Response({'count': count})

@@ -201,3 +201,19 @@ data class NearbyDriverDto(
  * o'sha hodisa uchun ovoz yo'q (chalinmaydi). */
 @Serializable
 data class DriverSoundDto(val enabled: Boolean, val url: String? = null)
+
+/** Guruh chatidagi bitta xabar. `driver_id` operator yozgan xabarda `null`
+ * bo'ladi (`car_number` ham bo'sh qatorga aylanadi). */
+@Serializable
+data class GroupMessageDto(
+    val id: Int,
+    val driver_id: Int? = null,
+    val driver_name: String,
+    val car_number: String,
+    val text: String,
+    val created_at: String,
+    val is_me: Boolean,
+)
+
+@Serializable
+data class ChatUnreadResponse(val count: Int)

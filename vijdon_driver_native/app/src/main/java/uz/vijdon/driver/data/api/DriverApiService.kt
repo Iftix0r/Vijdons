@@ -117,4 +117,13 @@ interface DriverApiService {
 
     @GET("sounds/")
     suspend fun driverSounds(): Map<String, DriverSoundDto>
+
+    @GET("chat/group/")
+    suspend fun chatGroupList(@Query("since_id") sinceId: Int): List<GroupMessageDto>
+
+    @POST("chat/group/send/")
+    suspend fun chatGroupSend(@Body body: Map<String, String>): GroupMessageDto
+
+    @GET("chat/group/unread/")
+    suspend fun chatGroupUnread(): ChatUnreadResponse
 }

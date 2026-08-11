@@ -8,11 +8,12 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -21,6 +22,8 @@ import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.ui.addresses.AddressesScreen
 import uz.vijdon.driver.ui.balance.BalanceHistoryScreen
 import uz.vijdon.driver.ui.balance.TopupScreen
+import uz.vijdon.driver.ui.chat.ChatBadgeViewModel
+import uz.vijdon.driver.ui.chat.ChatScreen
 import uz.vijdon.driver.ui.contract.ContractScreen
 import uz.vijdon.driver.ui.destination.DestinationScreen
 import uz.vijdon.driver.ui.history.HistoryScreen
@@ -63,13 +66,19 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
         }
     }
 
+    // Chat bo'limi ochiq-yopiqligidan qat'i nazar (masalan Asosiy sahifada
+    // turgan payt ham) o'qilmagan xabarlar soni ko'rinishi kerak, shu sabab
+    // bu ViewModel ApprovedScaffold darajasida — butun sessiya davomida.
+    val chatBadgeViewModel: ChatBadgeViewModel = hiltViewModel()
+    val chatUnread by chatBadgeViewModel.unread.collectAsState()
+
     Scaffold(
         containerColor = VijdonColors.Background,
         bottomBar = {
             if (showBottomBar) {
                 VijdonBottomBar(
                     currentRoute = currentRoute,
-                    chatBadge = 0,
+                    chatBadge = chatUnread,
                     onTabSelected = ::goToTab,
                     onCreateOrder = { navController.navigate(SubRoutes.ORDER_CREATE) },
                 )
@@ -80,12 +89,13 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
             NavHost(
                 navController = navController,
                 startDestination = Tabs.HOME,
-                // Edge-to-edge (enableEdgeToEdge()) yoqilgach, Scaffold'ning
-                // o'zi bergan `padding` status-bar zonasini yetarlicha hisobga
-                // olmadi — TopBar (reyting/balans) status-bar bilan ustma-ust
-                // tushib qolgan edi. Shu sabab bu yerda ANIQ ravishda ham
-                // qo'shiladi.
-                modifier = Modifier.padding(padding).statusBarsPadding(),
+                // Diqqat: `Scaffold`ning o'zi (topBar yo'qligi sabab)
+                // `padding`ning ICHIDA status-bar balandligini ALLAQACHON
+                // hisobga oladi (`contentWindowInsets` sukut bo'yicha
+                // systemBars) — shu ustiga yana `.statusBarsPadding()`
+                // qo'shish bo'shliqni IKKI MARTA qo'shib, "Xush kelibsiz"
+                // sarlavhasini keraksiz pastga tushirib yuborardi.
+                modifier = Modifier.padding(padding),
                 enterTransition = { tabEnter },
                 exitTransition = { tabExit },
                 popEnterTransition = { tabEnter },
@@ -100,7 +110,7 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
                     )
                 }
                 composable(Tabs.HISTORY) { HistoryScreen() }
-                composable(Tabs.CHAT) { ChatPlaceholderScreen() }
+                composable(Tabs.CHAT) { ChatScreen() }
                 composable(Tabs.PROFILE) {
                     ProfileScreen(
                         driver = driver,
