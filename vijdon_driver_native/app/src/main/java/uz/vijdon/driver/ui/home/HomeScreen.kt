@@ -39,7 +39,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Message
 import androidx.compose.material.icons.rounded.AddCircle
-import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CreditCard
@@ -78,6 +78,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -375,10 +376,13 @@ fun HomeScreen(
                         }
                     }
                     // Manzillar ro'yxati olib tashlangandan keyin qolgan
-                    // sahifa faol/kutilayotgan buyurtma bo'lmasa bo'sh
+                    // sahifa yangi (kutilayotgan) buyurtma bo'lmasa bo'sh
                     // qolib ketmasin uchun — kutish holatini bildiruvchi
-                    // markazlashtirilgan belgi.
-                    if (pendingOrders.isEmpty() && activeOrders.isEmpty()) {
+                    // markazlashtirilgan belgi. Diqqat: activeOrders bilan
+                    // shartlanmagan — faol safar bo'lsa ham (pastdagi
+                    // suzuvchi panelda ko'rinadi), o'rtada hali "yangi"
+                    // buyurtma yo'qligini bildirish foydali.
+                    if (pendingOrders.isEmpty()) {
                         item {
                             Column(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 56.dp),
@@ -398,43 +402,51 @@ fun HomeScreen(
                     // Pastda doim (yoki ActiveOrdersBar yoki SwipeDutyBar)
                     // biror suzuvchi panel turadi — kontent shu ostida
                     // yashirinib qolmasin uchun joy qoldiramiz.
-                    item { Spacer(Modifier.height(96.dp)) }
+                    item { Spacer(Modifier.height(if (activeOrders.isNotEmpty()) 160.dp else 96.dp)) }
                 }
         }
 
-        // Pastda doim suzib turadigan yagona panel: faol buyurtma bo'lsa
-        // ActiveOrdersBar, bo'lmasa o'sha joyning o'zida onlayn/oflayn
-        // SURISH tugmasi (SwipeDutyBar) — ikkalasi bir vaqtda ko'rinmaydi,
-        // va bu barcha holatlarda (yuklanmoqda/bo'sh/oflayn/ro'yxat) ishlaydi.
-        if (activeOrders.isNotEmpty()) {
-            // Yagona faol buyurtma yo'lda/yetib kelgan bo'lsa, tugmada
-            // ham jonli narx ko'rinadi — sheet ochilmasdan turib ham
-            // haydovchi hozirgi taxminiy summa qanchaligini bilib turadi.
-            val liveOrder = activeOrders.singleOrNull()?.takeIf { it.isOnWay || it.isArrived }
-            var barTick by remember(liveOrder?.id) { mutableStateOf(System.currentTimeMillis()) }
-            LaunchedEffect(liveOrder?.id) {
-                if (liveOrder != null) {
-                    while (true) {
-                        barTick = System.currentTimeMillis()
-                        delay(1_000L)
+        // Pastda doim suzib turadigan panel(lar) — Telegramning pastki
+        // tab-bar + ustiga qo'shimcha bildirishnoma "tabletka"sini bir
+        // vaqtda ko'rsatishi kabi: faol buyurtma bo'lsa ActiveOrdersBar
+        // TEPADA, undan pastroqda esa SwipeDutyBar HAR DOIM ko'rinadi.
+        // Diqqat: avval faol buyurtma bo'lganda SwipeDutyBar butunlay
+        // yashiringan edi — bu xato edi, chunki haydovchi joriy safarini
+        // yakunlamasdan ham "yangi buyurtma qabul qilishni to'xtatish"
+        // (oflaynga chiqish) huquqiga ega bo'lishi kerak.
+        Column(
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            if (activeOrders.isNotEmpty()) {
+                // Yagona faol buyurtma yo'lda/yetib kelgan bo'lsa, tugmada
+                // ham jonli narx ko'rinadi — sheet ochilmasdan turib ham
+                // haydovchi hozirgi taxminiy summa qanchaligini bilib turadi.
+                val liveOrder = activeOrders.singleOrNull()?.takeIf { it.isOnWay || it.isArrived }
+                var barTick by remember(liveOrder?.id) { mutableStateOf(System.currentTimeMillis()) }
+                LaunchedEffect(liveOrder?.id) {
+                    if (liveOrder != null) {
+                        while (true) {
+                            barTick = System.currentTimeMillis()
+                            delay(1_000L)
+                        }
                     }
                 }
+                val livePriceUzs = liveOrder?.let { viewModel.taximeterFor(it.id)?.priceUzs(barTick) }
+                ActiveOrdersBar(
+                    activeOrders = activeOrders,
+                    livePriceUzs = livePriceUzs,
+                    onClick = {
+                        if (activeOrders.size == 1) activeOrderSheetId = activeOrders[0].id
+                        else showActiveOrdersChooser = true
+                    },
+                )
             }
-            val livePriceUzs = liveOrder?.let { viewModel.taximeterFor(it.id)?.priceUzs(barTick) }
-            ActiveOrdersBar(
-                activeOrders = activeOrders,
-                livePriceUzs = livePriceUzs,
-                onClick = {
-                    if (activeOrders.size == 1) activeOrderSheetId = activeOrders[0].id
-                    else showActiveOrdersChooser = true
-                },
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
-        } else {
             SwipeDutyBar(
                 isOnDuty = currentDriver.is_on_duty,
+                errorSignal = state.error,
                 onToggle = { viewModel.toggleDuty() },
-                modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+                modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp, top = if (activeOrders.isNotEmpty()) 0.dp else 16.dp),
             )
         }
         }
@@ -967,42 +979,60 @@ private fun ActiveOrderChooserRow(order: OrderDto, onClick: () -> Unit) {
  * vaqtda ko'rinmaydi).
  */
 @Composable
-private fun SwipeDutyBar(isOnDuty: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
+private fun SwipeDutyBar(isOnDuty: Boolean, errorSignal: String?, onToggle: () -> Unit, modifier: Modifier = Modifier) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
+    // pointerInput ichidagi callback'lar pastda faqat `maxOffsetPx`
+    // o'zgarganda qayta o'rnatiladi — shu orada `isOnDuty` eskirib
+    // qolmasin (masalan tugma bosilgandan keyin darhol yana bosilsa)
+    // uchun har doim ENG SO'NGGI qiymatni o'qiydigan holatga bog'laymiz.
+    val latestIsOnDuty by rememberUpdatedState(isOnDuty)
+
     val thumbSizeDp = 52.dp
     val thumbSizePx = with(density) { thumbSizeDp.toPx() }
     var trackWidthPx by remember { mutableStateOf(0f) }
-    val maxOffset = (trackWidthPx - thumbSizePx).coerceAtLeast(0f)
-    val offsetX = remember { Animatable(0f) }
+    val maxOffsetPx = (trackWidthPx - thumbSizePx).coerceAtLeast(0f)
 
-    // Tashqi holat o'zgarganda (masalan boshqa qurilma/serverdan) thumb
-    // tegishli chekkaga o'zi suriladi.
-    LaunchedEffect(isOnDuty, maxOffset) {
-        val target = if (isOnDuty) maxOffset else 0f
-        if (kotlin.math.abs(offsetX.value - target) > 1f) offsetX.animateTo(target, tween(220))
+    // Piksel o'rniga 0f (oflayn/chap) .. 1f (onlayn/o'ng) NISBIY qiymat
+    // sifatida saqlanadi — shu sabab birinchi chizilishda (trackWidthPx
+    // hali o'lchanmagan, ya'ni maxOffsetPx=0 bo'lganda) thumb keyinroq
+    // "sakrab" joyiga tushib qolmaydi.
+    val fraction = remember { Animatable(if (isOnDuty) 1f else 0f) }
+    // Surish davomida SINXRON (coroutine'siz) yangilanadi — har bir GPS/
+    // barmoq harakati uchun alohida coroutine ochish (avvalgi versiyada
+    // shunday edi) tez-tez kelayotgan hodisalar orasida poyga holati
+    // (race condition) yaratib, thumb'ni "sapchib-sapchib" harakatlantirar
+    // edi — aynan shu asosiy xatolik edi.
+    var dragFraction by remember { mutableStateOf<Float?>(null) }
+
+    // Haqiqiy holat (isOnDuty) o'zgarganda YOKI xatolik yuz berganda
+    // (masalan toggleDuty so'rovi tarmoq xatosi bilan muvaffaqiyatsiz
+    // tugasa — bu holda isOnDuty o'zgarmay qoladi, lekin `errorSignal`
+    // o'zgaradi) thumb HAQIQIY holatga qaytarib to'g'irlanadi — aks holda
+    // muvaffaqiyatsiz urinishdan keyin tugma "yolg'on" holatda abadiy
+    // qotib qolar edi (ikkinchi asosiy xatolik).
+    LaunchedEffect(isOnDuty, errorSignal) {
+        if (dragFraction == null) {
+            fraction.animateTo(if (isOnDuty) 1f else 0f, tween(220))
+        }
     }
+
+    val visibleFraction = dragFraction ?: fraction.value
+    val offsetPx = visibleFraction * maxOffsetPx
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(64.dp)
+            .height(68.dp)
             .onSizeChanged { trackWidthPx = it.width.toFloat() }
             .cardShadow()
-            .background(
-                if (isOnDuty) {
-                    Brush.horizontalGradient(listOf(VijdonColors.Green.copy(alpha = 0.20f), VijdonColors.Green.copy(alpha = 0.08f)))
-                } else {
-                    Brush.horizontalGradient(listOf(VijdonColors.Surface, VijdonColors.Surface))
-                },
-                CircleShape,
-            )
+            .background(VijdonColors.Surface, CircleShape)
             .border(1.dp, if (isOnDuty) VijdonColors.Green.copy(alpha = 0.4f) else VijdonColors.Border, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            if (isOnDuty) "Chiqish uchun suring" else "Onlayn bo'lish uchun suring",
+            if (isOnDuty) "Chiqish uchun chapga suring" else "Onlayn bo'lish uchun o'ngga suring",
             color = if (isOnDuty) VijdonColors.Green else VijdonColors.TextSecondary,
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
             textAlign = TextAlign.Center,
@@ -1011,35 +1041,49 @@ private fun SwipeDutyBar(isOnDuty: Boolean, onToggle: () -> Unit, modifier: Modi
         Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .padding(6.dp)
-                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .padding(8.dp)
+                .offset { IntOffset(offsetPx.roundToInt(), 0) }
                 .size(thumbSizeDp)
                 .background(if (isOnDuty) VijdonColors.Green else VijdonColors.Yellow, CircleShape)
-                .pointerInput(maxOffset) {
+                .pointerInput(maxOffsetPx) {
+                    if (maxOffsetPx <= 0f) return@pointerInput
                     detectHorizontalDragGestures(
+                        onDragStart = { dragFraction = fraction.value },
                         onDragEnd = {
-                            val shouldBeOn = offsetX.value > maxOffset / 2f
-                            scope.launch { offsetX.animateTo(if (shouldBeOn) maxOffset else 0f, tween(200)) }
-                            if (shouldBeOn != isOnDuty) {
+                            val current = dragFraction ?: fraction.value
+                            val crossedToOn = current >= 0.5f
+                            val shouldToggle = crossedToOn != latestIsOnDuty
+                            dragFraction = null
+                            // E'tibor: bu yerda YANGI holatga optimistik
+                            // sakrab o'tilmaydi — har doim HOZIRGI haqiqiy
+                            // (tasdiqlangan) holatga qaytadi. onToggle()
+                            // so'rovi muvaffaqiyatli bo'lsa, yuqoridagi
+                            // LaunchedEffect(isOnDuty,...) isOnDuty
+                            // yangilangach thumb'ni to'g'ri tomonga
+                            // o'zi olib o'tadi.
+                            scope.launch { fraction.animateTo(if (latestIsOnDuty) 1f else 0f, tween(200)) }
+                            if (shouldToggle) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onToggle()
                             }
                         },
                         onDragCancel = {
-                            scope.launch { offsetX.animateTo(if (isOnDuty) maxOffset else 0f, tween(200)) }
+                            dragFraction = null
+                            scope.launch { fraction.animateTo(if (latestIsOnDuty) 1f else 0f, tween(200)) }
                         },
                     ) { change, dragAmount ->
                         change.consume()
-                        scope.launch { offsetX.snapTo((offsetX.value + dragAmount).coerceIn(0f, maxOffset)) }
+                        val deltaFraction = dragAmount / maxOffsetPx
+                        dragFraction = ((dragFraction ?: fraction.value) + deltaFraction).coerceIn(0f, 1f)
                     }
                 },
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                if (isOnDuty) Icons.Rounded.Check else Icons.Rounded.ChevronRight,
-                contentDescription = if (isOnDuty) "Oflayn bo'lish uchun suring" else "Onlayn bo'lish uchun suring",
+                if (isOnDuty) Icons.Rounded.ChevronLeft else Icons.Rounded.ChevronRight,
+                contentDescription = if (isOnDuty) "Oflayn bo'lish uchun chapga suring" else "Onlayn bo'lish uchun o'ngga suring",
                 tint = if (isOnDuty) Color.White else VijdonColors.TextOnYellow,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(24.dp),
             )
         }
     }
