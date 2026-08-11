@@ -45,9 +45,24 @@ import uz.vijdon.driver.ui.theme.VijdonColors
 // almashtiriladi — shu sabab bu to'rttasi endi BITTA NavHost destination
 // (Tabs.HOME) ichidagi HorizontalPager'ning sahifalari. Pastki tab-bar
 // tugmasi bosilganda ham pager shu sahifaga siljiydi (navigate emas).
-private val tabPages = listOf(Tabs.HOME, Tabs.HISTORY, Tabs.CHAT, Tabs.PROFILE)
-private fun tabForPage(page: Int) = tabPages.getOrElse(page) { Tabs.HOME }
-private fun pageForTab(route: String) = tabPages.indexOf(route).takeIf { it >= 0 } ?: 0
+//
+// Reyting va SOS ham ATAYLAB shu YAGONA pager'ga, eng CHETLARIGA qo'shilgan
+// (Reyting — Bosh'dan OLDIN, SOS — Profil'dan KEYIN): shu orqali "Bosh
+// sahifadan o'ngga surish -> Reyting" va "Profildan chapga surish -> SOS"
+// XUDDI tab-bar svaypi bilan bir xil, haqiqiy HorizontalPager mexanizmi
+// orqali ishlaydi — alohida (nested) surish detektori kerak emas, shu
+// sabab pastki tab-bar svaypi bilan HECH QACHON to'qnashmaydi.
+private val pagerPages = listOf(SubRoutes.RATING, Tabs.HOME, Tabs.HISTORY, Tabs.CHAT, Tabs.PROFILE, SubRoutes.SOS)
+
+// Reyting/SOS sahifalarida ham pastki tab-bar o'zining "uy" bo'limini
+// (mos ravishda Bosh/Profil) yoritib turishi uchun.
+private fun tabForPage(page: Int) = when (pagerPages.getOrNull(page)) {
+    Tabs.HISTORY -> Tabs.HISTORY
+    Tabs.CHAT -> Tabs.CHAT
+    Tabs.PROFILE, SubRoutes.SOS -> Tabs.PROFILE
+    else -> Tabs.HOME
+}
+private fun pageForTab(route: String) = pagerPages.indexOf(route).takeIf { it >= 0 } ?: 1
 
 private val bottomBarRoutes = setOf(Tabs.HOME)
 
@@ -72,15 +87,19 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
     val currentRoute = backStackEntry?.destination?.route
     val showBottomBar = currentRoute == null || currentRoute in bottomBarRoutes
 
-    // To'rtta asosiy bo'lim (Bosh/Tarix/Chat/Profil) endi ALOHIDA NavHost
-    // destination emas — Telegram'dagi kabi bitta HorizontalPager'ning
-    // sahifalari, shu sabab tab-bar bosilganda HAM, ekranni chapga/o'ngga
-    // surganda HAM shu YAGONA `pagerState` orqali almashadi.
-    val pagerState = rememberPagerState(pageCount = { tabPages.size })
+    // To'rtta asosiy bo'lim (Bosh/Tarix/Chat/Profil) + Reyting/SOS (eng
+    // chetlarida) — barchasi ALOHIDA NavHost destination emas, Telegram'dagi
+    // kabi bitta HorizontalPager'ning sahifalari, shu sabab tab-bar
+    // bosilganda HAM, ekranni chapga/o'ngga surganda HAM shu YAGONA
+    // `pagerState` orqali almashadi. Bosh sahifa (indeks 1) — boshlang'ich.
+    val pagerState = rememberPagerState(initialPage = 1, pageCount = { pagerPages.size })
     val pagerScope = rememberCoroutineScope()
 
     fun goToTab(route: String) {
         pagerScope.launch { pagerState.animateScrollToPage(pageForTab(route)) }
+    }
+    fun goToPage(page: Int) {
+        pagerScope.launch { pagerState.animateScrollToPage(page) }
     }
 
     // Chat bo'limi ochiq-yopiqligidan qat'i nazar (masalan Asosiy sahifada
@@ -121,7 +140,8 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
             ) {
                 composable(Tabs.HOME) {
                     HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-                        when (tabForPage(page)) {
+                        when (pagerPages.getOrNull(page)) {
+                            SubRoutes.RATING -> RatingScreen()
                             Tabs.HISTORY -> HistoryScreen()
                             Tabs.CHAT -> ChatScreen()
                             Tabs.PROFILE -> ProfileScreen(
@@ -130,15 +150,16 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
                                 onOpenTopup = { navController.navigate(SubRoutes.TOPUP) },
                                 onOpenContract = { navController.navigate(SubRoutes.CONTRACT) },
                                 onOpenAddresses = { navController.navigate(SubRoutes.ADDRESSES) },
-                                onOpenSos = { navController.navigate(SubRoutes.SOS) },
+                                onOpenSos = { goToPage(pagerPages.indexOf(SubRoutes.SOS)) },
                                 onOpenDestination = { navController.navigate(SubRoutes.DESTINATION) },
                                 onOpenNearbyDrivers = { navController.navigate(SubRoutes.NEARBY_DRIVERS) },
                                 onLogout = onLogout,
                             )
+                            SubRoutes.SOS -> SosScreen()
                             else -> HomeScreen(
                                 driver = driver,
                                 onLogout = onLogout,
-                                onOpenRating = { navController.navigate(SubRoutes.RATING) },
+                                onOpenRating = { goToPage(pagerPages.indexOf(SubRoutes.RATING)) },
                                 onOpenBalance = { navController.navigate(SubRoutes.BALANCE_HISTORY) },
                                 onOpenAddresses = { navController.navigate(SubRoutes.ADDRESSES) },
                             )
@@ -165,16 +186,6 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
                     enterTransition = { pushEnter }, exitTransition = { pushExit },
                     popEnterTransition = { popEnter }, popExitTransition = { popExit },
                 ) { AddressesScreen() }
-                composable(
-                    SubRoutes.SOS,
-                    enterTransition = { pushEnter }, exitTransition = { pushExit },
-                    popEnterTransition = { popEnter }, popExitTransition = { popExit },
-                ) { SosScreen() }
-                composable(
-                    SubRoutes.RATING,
-                    enterTransition = { pushEnter }, exitTransition = { pushExit },
-                    popEnterTransition = { popEnter }, popExitTransition = { popExit },
-                ) { RatingScreen() }
                 composable(
                     SubRoutes.ORDER_CREATE,
                     enterTransition = { pushEnter }, exitTransition = { pushExit },
