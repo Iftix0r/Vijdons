@@ -9,17 +9,28 @@
         </h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Qo'lda "Qarzdor" deb belgilangan haydovchilar ro'yxati</p>
     </div>
-    <form method="get" class="flex gap-2">
-        <div class="flex items-center bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 w-64 focus-within:ring-2 focus-within:ring-rose-400 focus-within:border-transparent transition-all">
-            <i class="fas fa-search text-gray-400 text-xs"></i>
-            <input type="text" name="q" value="{{ q }}" placeholder="Ism, telefon, mashina..."
-                   class="bg-transparent border-none outline-none ml-2 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 w-full">
-            {% if q %}<button type="button" onclick="window.location='{% url 'taxi:qarzdorlar_list' %}'" class="text-gray-400 hover:text-red-500 ml-1"><i class="fas fa-times text-xs"></i></button>{% endif %}
-        </div>
-        <button type="submit" class="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-xl transition-colors">
-            <i class="fas fa-search"></i>
-        </button>
-    </form>
+    <div class="flex flex-wrap gap-2">
+        <form method="get" class="flex gap-2">
+            <div class="flex items-center bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 w-56 focus-within:ring-2 focus-within:ring-rose-400 focus-within:border-transparent transition-all">
+                <i class="fas fa-search text-gray-400 text-xs"></i>
+                <input type="text" name="q" value="{{ q }}" placeholder="Ism, telefon, mashina..."
+                       class="bg-transparent border-none outline-none ml-2 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 w-full">
+                {% if q %}<button type="button" onclick="window.location='{% url 'taxi:qarzdorlar_list' %}?sort={{ sort }}'" class="text-gray-400 hover:text-red-500 ml-1"><i class="fas fa-times text-xs"></i></button>{% endif %}
+            </div>
+            <select name="sort" onchange="this.form.submit()" class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-400">
+                <option value="recent" {% if sort == 'recent' %}selected{% endif %}>🆕 Yangi belgilangan</option>
+                <option value="debt" {% if sort == 'debt' %}selected{% endif %}>💰 Eng ko'p qarz</option>
+                <option value="days" {% if sort == 'days' %}selected{% endif %}>⏳ Eng uzoq muddat</option>
+            </select>
+            <button type="submit" class="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-xl transition-colors">
+                <i class="fas fa-search"></i>
+            </button>
+        </form>
+        <a href="{% url 'taxi:qarzdorlar_export_csv' %}?q={{ q|urlencode }}&sort={{ sort }}"
+           class="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 text-sm font-semibold rounded-xl shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+            <i class="fas fa-file-csv text-emerald-500"></i> CSV
+        </a>
+    </div>
 </div>
 
 <!-- KPI kartalar -->
@@ -47,7 +58,7 @@
                     <th class="px-5 py-3.5">Mashina</th>
                     <th class="px-5 py-3.5">Balans</th>
                     <th class="px-5 py-3.5">Izoh</th>
-                    <th class="px-5 py-3.5">Belgilangan sana</th>
+                    <th class="px-5 py-3.5">Muddat</th>
                     <th class="px-5 py-3.5 text-right">Amal</th>
                 </tr>
             </thead>
@@ -81,15 +92,38 @@
                     <td class="px-5 py-3.5 text-gray-500 dark:text-gray-400 text-xs max-w-[220px] truncate" title="{{ driver.qarz_note }}">
                         {{ driver.qarz_note|default:"—" }}
                     </td>
-                    <td class="px-5 py-3.5 text-gray-400 text-xs whitespace-nowrap">
-                        {{ driver.qarz_marked_at|date:"d.m.Y H:i"|default:"—" }}
+                    <td class="px-5 py-3.5 text-xs whitespace-nowrap">
+                        {% if driver.qarz_days is not None %}
+                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full font-bold
+                            {% if driver.qarz_days >= 30 %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400
+                            {% elif driver.qarz_days >= 7 %}bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400
+                            {% else %}bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300{% endif %}">
+                            {% if driver.qarz_days >= 30 %}<i class="fas fa-triangle-exclamation text-[10px]"></i>{% endif %}
+                            {{ driver.qarz_days }} kun
+                        </span>
+                        <span class="block text-[10px] text-gray-400 mt-1">{{ driver.qarz_marked_at|date:"d.m.Y H:i" }}</span>
+                        {% else %}
+                        <span class="text-gray-400">—</span>
+                        {% endif %}
                     </td>
                     <td class="px-5 py-3.5">
                         <div class="flex items-center justify-end gap-1.5">
+                            <button type="button"
+                                    onclick="openQarzPayModal({{ driver.pk }}, '{{ driver.full_name|escapejs }}')"
+                                    class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                                    title="Tezkor to'lov">
+                                <i class="fas fa-money-bill-wave text-xs"></i>
+                            </button>
+                            <button type="button"
+                                    onclick="openQarzNoteModal({{ driver.pk }}, '{{ driver.full_name|escapejs }}', '{{ driver.qarz_note|escapejs }}')"
+                                    class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                    title="Izohni tahrirlash">
+                                <i class="fas fa-pen text-xs"></i>
+                            </button>
                             <a href="{% url 'taxi:driver_detail' driver.pk %}"
                                class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
-                               title="To'lov qilish / ko'rish">
-                                <i class="fas fa-wallet text-xs"></i>
+                               title="Haydovchi profili">
+                                <i class="fas fa-user text-xs"></i>
                             </a>
                             <form action="{% url 'taxi:driver_toggle_qarz' driver.pk %}" method="POST"
                                   onsubmit="return confirm('{{ driver.full_name|escapejs }} qarzdorlar ro\'yxatidan chiqarilsinmi?');">
@@ -121,4 +155,67 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Tezkor to'lov modali -->
+<div id="qarzPayModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white"><i class="fas fa-money-bill-wave text-amber-500 mr-2"></i>To'lov — <span id="qarzPayDriverName"></span></h2>
+            <button type="button" onclick="closeModal('qarzPayModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form id="qarzPayForm" method="POST" class="px-6 py-5 space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Summa (UZS)</label>
+                <input type="number" name="amount" required min="1" placeholder="Masalan: 50000"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <button type="submit" name="action" value="add" class="py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold transition">
+                    <i class="fas fa-plus mr-1"></i>Qo'shish
+                </button>
+                <button type="submit" name="action" value="deduct" class="py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold transition">
+                    <i class="fas fa-minus mr-1"></i>Ayirish
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Izohni tahrirlash modali -->
+<div id="qarzNoteModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white"><i class="fas fa-pen text-gray-500 mr-2"></i>Izoh — <span id="qarzNoteDriverName"></span></h2>
+            <button type="button" onclick="closeModal('qarzNoteModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form id="qarzNoteForm" method="POST" class="px-6 py-5 space-y-4">
+            {% csrf_token %}
+            <textarea name="note" id="qarzNoteInput" rows="3" maxlength="255" placeholder="Masalan: kelishuv bo'yicha 2 haftaga qarzga ruxsat berildi"
+                      class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 dark:text-white transition resize-none"></textarea>
+            <button type="submit" class="w-full py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold transition">
+                Saqlash
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+function openQarzPayModal(id, name) {
+    document.getElementById('qarzPayForm').action = `/panel/drivers/${id}/recharge/`;
+    document.getElementById('qarzPayDriverName').textContent = name;
+    document.getElementById('qarzPayForm').reset();
+    openModal('qarzPayModal');
+}
+function openQarzNoteModal(id, name, note) {
+    document.getElementById('qarzNoteForm').action = `/panel/drivers/${id}/qarz-note/`;
+    document.getElementById('qarzNoteDriverName').textContent = name;
+    document.getElementById('qarzNoteInput').value = note;
+    openModal('qarzNoteModal');
+}
+</script>
 {% endblock %}

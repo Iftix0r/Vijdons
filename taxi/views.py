@@ -571,34 +571,109 @@ def driver_toggle_qarz(request, pk):
     return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
 
 
+QARZDORLAR_SORT_CHOICES = ('recent', 'debt', 'days')
+
+
+def _qarzdorlar_queryset(request):
+    """`qarzdorlar_list` va `qarzdorlar_export_csv` bitta xil filtr/saralash
+    mantig'ini ishlatishi uchun — ikkalasida alohida-alohida yozilsa,
+    ekrandagi va CSV'dagi ro'yxat vaqti-vaqti bilan bir-biridan farq qilib
+    qolishi mumkin edi (masalan biriga yangi saralash qo'shilib, ikkinchisi
+    unutilsa)."""
+    q = request.GET.get('q', '').strip()
+    sort = request.GET.get('sort', 'recent')
+    if sort not in QARZDORLAR_SORT_CHOICES:
+        sort = 'recent'
+
+    debtors = Driver.objects.filter(is_qarzdor=True)
+    if q:
+        debtors = debtors.filter(
+            Q(full_name__icontains=q) | Q(phone_number__icontains=q) | Q(car_number__icontains=q)
+        )
+
+    # Diqqat: `qarz_marked_at` NULL bo'lishi mumkin (masalan Django admin
+    # orqali `is_qarzdor` to'g'ridan-to'g'ri belgilansa) — PostgreSQL'da
+    # oddiy saralashda NULL'lar chetga chiqib ketardi, shu sabab har doim
+    # `nulls_last` bilan.
+    if sort == 'debt':
+        # Eng katta qarz (eng manfiy balans) birinchi.
+        debtors = debtors.order_by('balance')
+    elif sort == 'days':
+        # Eng uzoq muddatdan beri qarzdor (eng ESKI belgilangan) birinchi.
+        debtors = debtors.order_by(F('qarz_marked_at').asc(nulls_last=True))
+    else:
+        debtors = debtors.order_by(F('qarz_marked_at').desc(nulls_last=True))
+
+    return debtors, q, sort
+
+
 @panel_login_required
 def qarzdorlar_list(request):
     """Qo'lda "Qarzdor" deb belgilangan haydovchilar — `driver_toggle_qarz`
     orqali qo'shiladi/chiqariladi. To'lovlar bo'limidagi kunlik ishning
     davomi sifatida (operatorlarga ham ochiq, faqat adminlarga emas)."""
-    from django.db.models import Sum, F
+    from django.db.models import Sum
+    from django.utils import timezone
 
-    q = request.GET.get('q', '').strip()
-    # Diqqat: `qarz_marked_at` NULL bo'lishi mumkin (masalan Django admin
-    # orqali `is_qarzdor` to'g'ridan-to'g'ri belgilansa) — PostgreSQL'da
-    # oddiy `-qarz_marked_at` bo'yicha saralashda NULL'lar RO'YXAT BOSHIGA
-    # chiqib ketardi (NULLS FIRST — DESC uchun standart), garchi ular eng
-    # "yangi" bo'lmasa ham.
-    debtors = Driver.objects.filter(is_qarzdor=True).order_by(F('qarz_marked_at').desc(nulls_last=True))
-    if q:
-        debtors = debtors.filter(
-            Q(full_name__icontains=q) | Q(phone_number__icontains=q) | Q(car_number__icontains=q)
-        )
+    qs, q, sort = _qarzdorlar_queryset(request)
     # Diqqat: faqat MANFIY balansli qarzdorlar qo'shiladi — operator
     # (kamdan-kam) ijobiy balansli haydovchini ham qarzdor deb belgilagan
     # bo'lsa, u umumiy summani "kamaytirib" yubormasligi uchun.
-    negative_sum = debtors.filter(balance__lt=0).aggregate(s=Sum('balance'))['s'] or 0
+    negative_sum = qs.filter(balance__lt=0).aggregate(s=Sum('balance'))['s'] or 0
+    debtor_count = qs.count()
+
+    # `qarz_days` — shablonda "X kun" belgisi va 30+ kunlik qarzlarni qizil
+    # rangda ajratish uchun. DB darajasida hisoblash (annotate) turli
+    # PostgreSQL versiyalarida duration/interval bilan ishlashni
+    # murakkablashtirardi — oddiy Python hisobi ancha aniq va tushunarli.
+    now = timezone.now()
+    debtors = list(qs)
+    for d in debtors:
+        d.qarz_days = (now - d.qarz_marked_at).days if d.qarz_marked_at else None
+
     return render(request, 'taxi/qarzdorlar.html', {
         'debtors': debtors,
         'q': q,
-        'debtor_count': debtors.count(),
+        'sort': sort,
+        'debtor_count': debtor_count,
         'total_debt': -negative_sum,
     })
+
+
+@panel_login_required
+def qarzdorlar_export_csv(request):
+    from django.utils import timezone
+
+    debtors, _q, _sort = _qarzdorlar_queryset(request)
+
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="qarzdorlar_{timezone.now():%Y-%m-%d}.csv"'
+    response.write('﻿')
+    writer = csv.writer(response)
+    writer.writerow(['Ism', 'Telefon', 'Mashina', 'Balans (UZS)', 'Izoh', 'Belgilangan sana'])
+    for d in debtors:
+        writer.writerow([
+            d.full_name, d.phone_number, f"{d.car_model} {d.car_number}", d.balance, d.qarz_note,
+            d.qarz_marked_at.strftime('%d.%m.%Y %H:%M') if d.qarz_marked_at else '',
+        ])
+    return response
+
+
+@panel_login_required
+def driver_qarz_update_note(request, pk):
+    """Qarzdorlar ro'yxatidagi izohni ANIQ TAHRIRLASH — `driver_toggle_qarz`
+    kabi ro'yxatdan chiqarib-qayta kiritish shart emas."""
+    driver = get_object_or_404(Driver, pk=pk, is_qarzdor=True)
+    if request.method == 'POST':
+        driver.qarz_note = request.POST.get('note', '').strip()[:255]
+        driver.save(update_fields=['qarz_note'])
+        DriverActivityLog.objects.create(
+            driver=driver, action=DriverActivityLog.ACTION_QARZ_ON,
+            detail=f"Qarz izohi tahrirlandi — {driver.qarz_note}" if driver.qarz_note else "Qarz izohi tozalandi",
+            ip_address=_get_client_ip(request), user_agent=request.META.get('HTTP_USER_AGENT', ''),
+        )
+        messages.success(request, f"Izoh yangilandi ({driver.full_name}).")
+    return redirect(request.META.get('HTTP_REFERER', 'taxi:qarzdorlar_list'))
 
 
 @panel_login_required
