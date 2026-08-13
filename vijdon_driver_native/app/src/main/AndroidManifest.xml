@@ -17,6 +17,18 @@
          yangi buyurtmalarni sezmayotgandek ko'rinishiga sabab bo'lardi. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
+    <!-- Android 11+ "package visibility" cheklovi — bu bo'lmasa, ba'zi
+         qurilmalarda (ayniqsa targetSdk 30+) tashqi havolani (masalan
+         Profildagi "Powered by ifcoder" -> t.me) ACTION_VIEW orqali ochish
+         hech qanday xato bermay, shunchaki HECH NARSA qilmasligi mumkin. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+
     <application
         android:name=".VijdonDriverApp"
         android:allowBackup="false"

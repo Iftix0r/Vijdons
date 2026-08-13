@@ -29,10 +29,8 @@ import uz.vijdon.driver.ui.balance.TopupScreen
 import uz.vijdon.driver.ui.chat.ChatBadgeViewModel
 import uz.vijdon.driver.ui.chat.ChatScreen
 import uz.vijdon.driver.ui.contract.ContractScreen
-import uz.vijdon.driver.ui.destination.DestinationScreen
 import uz.vijdon.driver.ui.history.HistoryScreen
 import uz.vijdon.driver.ui.home.HomeScreen
-import uz.vijdon.driver.ui.nearbydrivers.NearbyDriversScreen
 import uz.vijdon.driver.ui.ordercreate.OrderCreateScreen
 import uz.vijdon.driver.ui.profile.ProfileScreen
 import uz.vijdon.driver.ui.rating.RatingScreen
@@ -149,10 +147,6 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
                                 onOpenBalanceHistory = { navController.navigate(SubRoutes.BALANCE_HISTORY) },
                                 onOpenTopup = { navController.navigate(SubRoutes.TOPUP) },
                                 onOpenContract = { navController.navigate(SubRoutes.CONTRACT) },
-                                onOpenAddresses = { navController.navigate(SubRoutes.ADDRESSES) },
-                                onOpenSos = { goToPage(pagerPages.indexOf(SubRoutes.SOS)) },
-                                onOpenDestination = { navController.navigate(SubRoutes.DESTINATION) },
-                                onOpenNearbyDrivers = { navController.navigate(SubRoutes.NEARBY_DRIVERS) },
                                 onLogout = onLogout,
                             )
                             SubRoutes.SOS -> SosScreen()
@@ -196,16 +190,6 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
                         onBack = { navController.popBackStack() },
                     )
                 }
-                composable(
-                    SubRoutes.DESTINATION,
-                    enterTransition = { pushEnter }, exitTransition = { pushExit },
-                    popEnterTransition = { popEnter }, popExitTransition = { popExit },
-                ) { DestinationScreen(onBack = { navController.popBackStack() }) }
-                composable(
-                    SubRoutes.NEARBY_DRIVERS,
-                    enterTransition = { pushEnter }, exitTransition = { pushExit },
-                    popEnterTransition = { popEnter }, popExitTransition = { popExit },
-                ) { NearbyDriversScreen(onBack = { navController.popBackStack() }) }
             }
         }
     }

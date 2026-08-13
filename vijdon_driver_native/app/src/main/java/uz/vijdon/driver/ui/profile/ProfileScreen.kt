@@ -28,14 +28,10 @@ import androidx.compose.material.icons.rounded.AddCard
 import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.DirectionsCar
 import androidx.compose.material.icons.rounded.Description
-import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.FiberManualRecord
 import androidx.compose.material.icons.rounded.Flag
-import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Receipt
-import androidx.compose.material.icons.rounded.Sos
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -80,10 +76,6 @@ fun ProfileScreen(
     onOpenBalanceHistory: () -> Unit,
     onOpenTopup: () -> Unit,
     onOpenContract: () -> Unit,
-    onOpenAddresses: () -> Unit,
-    onOpenSos: () -> Unit,
-    onOpenDestination: () -> Unit,
-    onOpenNearbyDrivers: () -> Unit,
     onLogout: () -> Unit,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
@@ -193,18 +185,6 @@ fun ProfileScreen(
         MenuRow(Icons.Rounded.AddCard, "Balans to'ldirish", "", tint = VijdonColors.Green, onClick = onOpenTopup)
         Spacer(Modifier.height(8.dp))
         MenuRow(Icons.Rounded.Description, "Shartnoma", "", tint = VijdonColors.Blue, onClick = onOpenContract)
-        Spacer(Modifier.height(8.dp))
-        MenuRow(Icons.Rounded.LocationOn, "Manzillar", "", tint = VijdonColors.Red, onClick = onOpenAddresses)
-        Spacer(Modifier.height(8.dp))
-        MenuRow(
-            Icons.Rounded.Explore, "Yo'nalish rejimi",
-            if (currentDriver.destination_mode) "Yoqilgan" else "",
-            tint = VijdonColors.Green, onClick = onOpenDestination,
-        )
-        Spacer(Modifier.height(8.dp))
-        MenuRow(Icons.Rounded.Groups, "Yaqin haydovchilar", "", tint = VijdonColors.Blue, onClick = onOpenNearbyDrivers)
-        Spacer(Modifier.height(8.dp))
-        MenuRow(Icons.Rounded.Sos, "SOS", "", tint = VijdonColors.Red, onClick = onOpenSos)
         Spacer(Modifier.height(8.dp))
         MenuRow(Icons.Rounded.Lock, "Parolni o'zgartirish", "", tint = Color(0xFF8E8E93)) { showPasswordDialog = true }
 
@@ -354,9 +334,14 @@ private fun AppFooter() {
                 color = VijdonColors.Blue,
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                 modifier = Modifier.clickable {
-                    // Dasturchi bilan bog'lanish uchun Telegram profili.
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/iftix0r"))
-                    context.startActivity(intent)
+                    // Dasturchi bilan bog'lanish uchun Telegram profili. Hech
+                    // qanday brauzer/Telegram topilmasa (masalan sinov
+                    // qurilmasida) `ActivityNotFoundException` ilovani
+                    // qulatib qo'ymasligi uchun tutiladi.
+                    try {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/iftix0r")))
+                    } catch (_: Exception) {
+                    }
                 },
             )
         }

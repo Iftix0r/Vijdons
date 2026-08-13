@@ -15,6 +15,4 @@ object SubRoutes {
     const val SOS = "sos"
     const val RATING = "rating"
     const val ORDER_CREATE = "order_create"
-    const val DESTINATION = "destination"
-    const val NEARBY_DRIVERS = "nearby_drivers"
 }
