@@ -25,7 +25,6 @@ import kotlinx.coroutines.launch
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.ui.addresses.AddressesScreen
 import uz.vijdon.driver.ui.balance.BalanceHistoryScreen
-import uz.vijdon.driver.ui.balance.TopupScreen
 import uz.vijdon.driver.ui.chat.ChatBadgeViewModel
 import uz.vijdon.driver.ui.chat.ChatScreen
 import uz.vijdon.driver.ui.contract.ContractScreen
@@ -145,7 +144,6 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
                             Tabs.PROFILE -> ProfileScreen(
                                 driver = driver,
                                 onOpenBalanceHistory = { navController.navigate(SubRoutes.BALANCE_HISTORY) },
-                                onOpenTopup = { navController.navigate(SubRoutes.TOPUP) },
                                 onOpenContract = { navController.navigate(SubRoutes.CONTRACT) },
                                 onLogout = onLogout,
                             )
@@ -165,11 +163,6 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
                     enterTransition = { pushEnter }, exitTransition = { pushExit },
                     popEnterTransition = { popEnter }, popExitTransition = { popExit },
                 ) { BalanceHistoryScreen() }
-                composable(
-                    SubRoutes.TOPUP,
-                    enterTransition = { pushEnter }, exitTransition = { pushExit },
-                    popEnterTransition = { popEnter }, popExitTransition = { popExit },
-                ) { TopupScreen(onDone = { navController.popBackStack() }) }
                 composable(
                     SubRoutes.CONTRACT,
                     enterTransition = { pushEnter }, exitTransition = { pushExit },

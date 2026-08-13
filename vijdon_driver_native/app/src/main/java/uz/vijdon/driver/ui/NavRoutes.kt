@@ -9,7 +9,6 @@ object Tabs {
 
 object SubRoutes {
     const val BALANCE_HISTORY = "balance_history"
-    const val TOPUP = "topup"
     const val CONTRACT = "contract"
     const val ADDRESSES = "addresses"
     const val SOS = "sos"

@@ -1,5 +1,6 @@
 package uz.vijdon.driver.ui.profile
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -70,11 +71,15 @@ import uz.vijdon.driver.ui.theme.cardShadow
 import uz.vijdon.driver.util.copyUriToCacheFile
 import uz.vijdon.driver.util.formatMoney
 
+// Dasturchi bilan bog'lanish (pastki "Powered by") HAM, balans to'ldirish
+// so'rovi (chek yuklash orqali ichki oqim o'rniga) HAM — buyurtma bo'yicha —
+// aynan shu Telegram akkauntiga yo'naltiriladi.
+private const val CONTACT_TELEGRAM_USERNAME = "iftix0r"
+
 @Composable
 fun ProfileScreen(
     driver: DriverDto,
     onOpenBalanceHistory: () -> Unit,
-    onOpenTopup: () -> Unit,
     onOpenContract: () -> Unit,
     onLogout: () -> Unit,
     viewModel: ProfileViewModel = hiltViewModel(),
@@ -182,7 +187,7 @@ fun ProfileScreen(
         Spacer(Modifier.height(6.dp))
         MenuRow(Icons.Rounded.Receipt, "Balans tarixi", "", tint = VijdonColors.Yellow, onClick = onOpenBalanceHistory)
         Spacer(Modifier.height(8.dp))
-        MenuRow(Icons.Rounded.AddCard, "Balans to'ldirish", "", tint = VijdonColors.Green, onClick = onOpenTopup)
+        MenuRow(Icons.Rounded.AddCard, "Balans to'ldirish", "", tint = VijdonColors.Green, onClick = { openTelegram(context, CONTACT_TELEGRAM_USERNAME) })
         Spacer(Modifier.height(8.dp))
         MenuRow(Icons.Rounded.Description, "Shartnoma", "", tint = VijdonColors.Blue, onClick = onOpenContract)
         Spacer(Modifier.height(8.dp))
@@ -333,18 +338,20 @@ private fun AppFooter() {
                 "ifcoder",
                 color = VijdonColors.Blue,
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                modifier = Modifier.clickable {
-                    // Dasturchi bilan bog'lanish uchun Telegram profili. Hech
-                    // qanday brauzer/Telegram topilmasa (masalan sinov
-                    // qurilmasida) `ActivityNotFoundException` ilovani
-                    // qulatib qo'ymasligi uchun tutiladi.
-                    try {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/iftix0r")))
-                    } catch (_: Exception) {
-                    }
-                },
+                modifier = Modifier.clickable { openTelegram(context, CONTACT_TELEGRAM_USERNAME) },
             )
         }
+    }
+}
+
+/** Berilgan foydalanuvchi nomining Telegram profilini ochadi (masalan
+ * dasturchi yoki balans to'ldirish uchun operator bilan bog'lanish). Hech
+ * qanday brauzer/Telegram topilmasa (masalan sinov qurilmasida)
+ * `ActivityNotFoundException` ilovani qulatib qo'ymasligi uchun tutiladi. */
+private fun openTelegram(context: Context, username: String) {
+    try {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/$username")))
+    } catch (_: Exception) {
     }
 }
 

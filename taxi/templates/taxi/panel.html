@@ -326,6 +326,7 @@
         </a>
     </div>
     {% endif %}
+    {% if request.user.is_superuser %}
     {% if expiring_document_count > 0 %}
     <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-2xl p-4 flex items-center justify-between gap-3">
         <div class="flex items-center gap-3 min-w-0">
@@ -362,6 +363,7 @@
             Ko'rish <i class="fas fa-arrow-right text-[10px]"></i>
         </a>
     </div>
+    {% endif %}
     {% endif %}
 </div>
 {% endif %}

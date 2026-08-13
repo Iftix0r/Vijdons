@@ -10,6 +10,7 @@ from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSett
 from .utils import haversine, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, tg_order_deleted, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed, build_balance_receipt_pdf, build_flyer_business_card_pdf, voice_prune_stale, voice_participants_list, voice_target_kwargs, voice_signal_sender_info, voice_broadcast_audio
 import csv
 import json
+from functools import wraps
 
 ONLINE_THRESHOLD_SECONDS = 120  # last_seen shundan yangi bo'lsa — online (yashil)
 PENDING_ORDER_AGING_SECONDS = 120  # buyurtma shuncha vaqt haydovchisiz tursa — operator e'tiboriga chiqadi
@@ -36,6 +37,23 @@ panel_login_required = user_passes_test(
 # qaytariladi.
 system_login_required = user_passes_test(
     lambda u: u.is_authenticated and u.is_staff and u.is_superuser, login_url='system:system_login')
+
+# Diqqat: yuqoridagi ikkitasidan farqli — bu safar bo'lim /system/ga emas,
+# xuddi shu /panel/ ichida qoladi (masalan Moliya, Xavfsizlik, Hodimlar),
+# faqat oddiy operator (is_staff, lekin is_superuser EMAS) uni ko'ra/kira
+# olmasligi kerak. Foydalanuvchi ALLAQACHON panelga kirgan bo'lgani uchun
+# `system_login_required`dagi kabi login sahifasiga emas — asosiy panelga
+# tushuntirish xabari bilan qaytariladi. Har doim `@panel_login_required`
+# BILAN BIRGA (undan KEYIN, pastroqda) yoziladi — avval autentifikatsiya,
+# keyin ushbu qo'shimcha huquq tekshiruvi.
+def panel_admin_required(view_func):
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_superuser:
+            messages.error(request, "Bu bo'limga faqat administrator kira oladi.")
+            return redirect('taxi:panel_dashboard')
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
 # ── DB backup (Tizim holati sahifasi) ───────────────────────────────────────
 # Diqqat (xavfsizlik): backup fayl nomlari HAR DOIM shu qat'iy formatga mos
@@ -850,6 +868,7 @@ def order_list(request):
 
 
 @panel_login_required
+@panel_admin_required
 def call_recordings_list(request):
     from django.core.paginator import Paginator
     from .models import CallRecording
@@ -940,6 +959,7 @@ PING_BAD_MS  = 700        # shundan yuqori — sekin (qizil)
 
 
 @panel_login_required
+@panel_admin_required
 def ping_dashboard(request):
     """Hozir navbatda turgan haydovchilarning internet ulanish sifati
     (ping) ro'yxati — aloqasi yomon/noma'lum haydovchilar yuqorida
@@ -3723,6 +3743,7 @@ def _finance_breakdown(completed_qs, field, choices):
 
 
 @panel_login_required
+@panel_admin_required
 def finance_dashboard(request):
     from django.db.models import Sum, Count
     from datetime import timedelta
@@ -3788,6 +3809,7 @@ def finance_dashboard(request):
 
 
 @panel_login_required
+@panel_admin_required
 def finance_export_csv(request):
     from django.db.models import Sum, Count
 
@@ -3824,6 +3846,7 @@ DOCUMENT_EXPIRY_WARNING_DAYS = 30  # hujjat muddati shuncha kun qolganda ogohlan
 
 
 @panel_login_required
+@panel_admin_required
 def security_dashboard(request):
     from datetime import timedelta
     from django.utils import timezone
@@ -3858,6 +3881,7 @@ def security_dashboard(request):
 
 
 @panel_login_required
+@panel_admin_required
 def security_incident_create(request):
     if request.method == 'POST':
         SecurityIncident.objects.create(
@@ -3874,6 +3898,7 @@ def security_incident_create(request):
 
 
 @panel_login_required
+@panel_admin_required
 def security_incident_update(request, pk):
     incident = get_object_or_404(SecurityIncident, pk=pk)
     if request.method == 'POST':
@@ -3890,6 +3915,7 @@ def security_incident_update(request, pk):
 
 
 @panel_login_required
+@panel_admin_required
 def security_document_upload(request):
     if request.method == 'POST' and request.FILES.get('file'):
         LegalDocument.objects.create(
@@ -3907,6 +3933,7 @@ def security_document_upload(request):
 
 
 @panel_login_required
+@panel_admin_required
 def security_document_delete(request, pk):
     document = get_object_or_404(LegalDocument, pk=pk)
     if request.method == 'POST':
@@ -3918,6 +3945,7 @@ def security_document_delete(request, pk):
 # ── Hodimlar (kompaniya xodimlari: profil, vazifalar, smena, davomat) ──────────
 
 @panel_login_required
+@panel_admin_required
 def employee_list(request):
     from django.utils import timezone
     today = timezone.now().date()
@@ -3954,6 +3982,7 @@ def employee_list(request):
 
 
 @panel_login_required
+@panel_admin_required
 def employee_create(request):
     from django.utils import timezone
     if request.method == 'POST':
@@ -3975,6 +4004,7 @@ def employee_create(request):
 
 
 @panel_login_required
+@panel_admin_required
 def employee_edit(request, pk):
     employee = get_object_or_404(Employee, pk=pk)
     if request.method == 'POST':
@@ -3993,6 +4023,7 @@ def employee_edit(request, pk):
 
 
 @panel_login_required
+@panel_admin_required
 def employee_delete(request, pk):
     employee = get_object_or_404(Employee, pk=pk)
     if request.method == 'POST':
@@ -4002,6 +4033,7 @@ def employee_delete(request, pk):
 
 
 @panel_login_required
+@panel_admin_required
 def employee_toggle_active(request, pk):
     employee = get_object_or_404(Employee, pk=pk)
     if request.method == 'POST':
@@ -4011,6 +4043,7 @@ def employee_toggle_active(request, pk):
 
 
 @panel_login_required
+@panel_admin_required
 def employee_detail(request, pk):
     from datetime import timedelta
     from django.utils import timezone
@@ -4037,6 +4070,7 @@ def employee_detail(request, pk):
 
 
 @panel_login_required
+@panel_admin_required
 def employee_task_create(request, pk):
     employee = get_object_or_404(Employee, pk=pk)
     if request.method == 'POST':
@@ -4054,6 +4088,7 @@ def employee_task_create(request, pk):
 
 
 @panel_login_required
+@panel_admin_required
 def employee_task_set_status(request, task_id):
     from django.utils import timezone
     task = get_object_or_404(EmployeeTask, pk=task_id)
@@ -4067,6 +4102,7 @@ def employee_task_set_status(request, task_id):
 
 
 @panel_login_required
+@panel_admin_required
 def employee_task_delete(request, task_id):
     task = get_object_or_404(EmployeeTask, pk=task_id)
     employee_pk = task.employee_id
@@ -4077,6 +4113,7 @@ def employee_task_delete(request, task_id):
 
 
 @panel_login_required
+@panel_admin_required
 def employee_shift_save(request, pk):
     employee = get_object_or_404(Employee, pk=pk)
     if request.method == 'POST':
@@ -4095,6 +4132,7 @@ def employee_shift_save(request, pk):
 
 
 @panel_login_required
+@panel_admin_required
 def employee_attendance_checkin(request, pk):
     from django.utils import timezone
     employee = get_object_or_404(Employee, pk=pk)
@@ -4108,6 +4146,7 @@ def employee_attendance_checkin(request, pk):
 
 
 @panel_login_required
+@panel_admin_required
 def employee_attendance_checkout(request, pk):
     from django.utils import timezone
     employee = get_object_or_404(Employee, pk=pk)
@@ -4120,6 +4159,7 @@ def employee_attendance_checkout(request, pk):
 
 
 @panel_login_required
+@panel_admin_required
 def employee_attendance_manual(request, pk):
     from datetime import datetime as _dt
     from django.utils import timezone
@@ -4146,6 +4186,7 @@ def employee_attendance_manual(request, pk):
 # ── Tezkor manzillar (xaritadan tanlab saqlanadigan, nomli manzillar) ───────────
 
 @panel_login_required
+@panel_admin_required
 def saved_addresses_list(request):
     from django.utils import timezone
     from .models import District, Region
@@ -4194,6 +4235,7 @@ def saved_addresses_list(request):
 
 
 @panel_login_required
+@panel_admin_required
 def saved_address_update(request, pk):
     address = get_object_or_404(SavedAddress, pk=pk)
     if request.method == 'POST':
@@ -4217,6 +4259,7 @@ def saved_address_update(request, pk):
 
 
 @panel_login_required
+@panel_admin_required
 def saved_address_delete(request, pk):
     address = get_object_or_404(SavedAddress, pk=pk)
     if request.method == 'POST':
@@ -4226,6 +4269,7 @@ def saved_address_delete(request, pk):
 
 
 @panel_login_required
+@panel_admin_required
 def saved_address_queue_drivers(request, pk):
     """Manzillar ro'yxatida qator ochilganda (strelka) shu manzil navbatidagi
     haydovchilarni tartib bilan qaytaradi — saved_addresses_list'dagi
@@ -4276,6 +4320,7 @@ def saved_address_use(request, pk):
 # xato-kam bo'lmasdan sanab bo'lmaydi.
 
 @panel_login_required
+@panel_admin_required
 def regions_list(request):
     from .models import Region
     regions = Region.objects.prefetch_related('districts').annotate(
@@ -4285,6 +4330,7 @@ def regions_list(request):
 
 
 @panel_login_required
+@panel_admin_required
 @require_POST
 def region_create(request):
     from .models import Region
@@ -4301,6 +4347,7 @@ def region_create(request):
 
 
 @panel_login_required
+@panel_admin_required
 @require_POST
 def region_delete(request, pk):
     from .models import Region
@@ -4312,6 +4359,7 @@ def region_delete(request, pk):
 
 
 @panel_login_required
+@panel_admin_required
 @require_POST
 def district_create(request):
     from .models import District, Region
@@ -4328,6 +4376,7 @@ def district_create(request):
 
 
 @panel_login_required
+@panel_admin_required
 @require_POST
 def district_delete(request, pk):
     from .models import District
