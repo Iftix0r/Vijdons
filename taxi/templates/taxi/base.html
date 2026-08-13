@@ -5,6 +5,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Diqqat: bu skript ATAYLAB Tailwind/uslublar yuklanishidan OLDIN,
+         <head>ning eng boshida turadi — aks holda "tungi rejim" tanlangan
+         bo'lsa ham, sahifa BIRINCHI safar oqarib (hali `.dark` klassi
+         qo'yilmagan holatda) chizilib, keyin qorayib qolardi (FOUC — Flash
+         of Unstyled Content, chunki avvalgi tema-aniqlash skripti
+         </body>dan OLDIN, ya'ni butun sahifa yuklanib bo'lgandan keyin
+         ishlar edi). Pastdagi asosiy skript hamon kerak — u tugma
+         bosilganda almashtiradi va oy/quyosh ikonkasini ko'rsatadi. -->
+    <script>
+        (function () {
+            try {
+                var saved = localStorage.getItem('theme');
+                var dark = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                if (dark) document.documentElement.classList.add('dark');
+            } catch (_) {}
+        })();
+    </script>
     <title>{% block title %}Vijdon Taxi - Boshqaruv Paneli{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>

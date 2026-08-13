@@ -4,6 +4,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Tema klassi Tailwind yuklanishidan OLDIN qo'yiladi — aks holda
+         tungi rejimda sahifa birinchi oqarib, keyin qorayib qolardi
+         (batafsili: taxi/templates/taxi/base.html). -->
+    <script>
+        (function () {
+            try {
+                var saved = localStorage.getItem('theme');
+                var dark = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                if (dark) document.documentElement.classList.add('dark');
+            } catch (_) {}
+        })();
+    </script>
     <title>{% block title %}Tizim — Vijdon Taxi{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
