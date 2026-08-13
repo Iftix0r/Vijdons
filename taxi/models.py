@@ -560,8 +560,9 @@ class DriverActivityLog(models.Model):
     ACTION_ORDER    = 'order'
     ACTION_FREEZE   = 'freeze'
     ACTION_UNFREEZE = 'unfreeze'
-    ACTION_QARZ_ON  = 'qarz_on'
-    ACTION_QARZ_OFF = 'qarz_off'
+    ACTION_QARZ_ON   = 'qarz_on'
+    ACTION_QARZ_OFF  = 'qarz_off'
+    ACTION_QARZ_NOTE = 'qarz_note'
     ACTION_CHOICES  = (
         (ACTION_LOGIN,    'Kirish'),
         (ACTION_LOGOUT,   'Chiqish'),
@@ -573,8 +574,9 @@ class DriverActivityLog(models.Model):
         (ACTION_ORDER,    'Buyurtma'),
         (ACTION_FREEZE,   'Muzlatildi'),
         (ACTION_UNFREEZE, 'Muzlash bekor qilindi'),
-        (ACTION_QARZ_ON,  'Qarzdorlar ro\'yxatiga qo\'shildi'),
-        (ACTION_QARZ_OFF, 'Qarzdorlar ro\'yxatidan chiqarildi'),
+        (ACTION_QARZ_ON,   'Qarzdorlar ro\'yxatiga qo\'shildi'),
+        (ACTION_QARZ_OFF,  'Qarzdorlar ro\'yxatidan chiqarildi'),
+        (ACTION_QARZ_NOTE, 'Qarz izohi tahrirlandi'),
     )
 
     driver     = models.ForeignKey('Driver', on_delete=models.CASCADE, related_name='activity_logs', verbose_name='Haydovchi')
@@ -592,7 +594,7 @@ class DriverActivityLog(models.Model):
         ACTION_UNBLOCK: '🔓', ACTION_BALANCE: '💰', ACTION_DUTY_ON: '🟢',
         ACTION_DUTY_OFF: '🔴', ACTION_ORDER: '🚕',
         ACTION_FREEZE: '🥶', ACTION_UNFREEZE: '🔥',
-        ACTION_QARZ_ON: '📌', ACTION_QARZ_OFF: '✅',
+        ACTION_QARZ_ON: '📌', ACTION_QARZ_OFF: '✅', ACTION_QARZ_NOTE: '✏️',
     }
 
     @staticmethod

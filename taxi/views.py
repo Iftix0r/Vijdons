@@ -668,7 +668,7 @@ def driver_qarz_update_note(request, pk):
         driver.qarz_note = request.POST.get('note', '').strip()[:255]
         driver.save(update_fields=['qarz_note'])
         DriverActivityLog.objects.create(
-            driver=driver, action=DriverActivityLog.ACTION_QARZ_ON,
+            driver=driver, action=DriverActivityLog.ACTION_QARZ_NOTE,
             detail=f"Qarz izohi tahrirlandi — {driver.qarz_note}" if driver.qarz_note else "Qarz izohi tozalandi",
             ip_address=_get_client_ip(request), user_agent=request.META.get('HTTP_USER_AGENT', ''),
         )
