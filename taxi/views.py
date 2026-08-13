@@ -542,6 +542,66 @@ def driver_toggle_frozen(request, pk):
 
 
 @panel_login_required
+def driver_toggle_qarz(request, pk):
+    """Haydovchini qarzdorlar ro'yxatiga qo'lda qo'shish/undan chiqarish —
+    `driver_recharge` (to'lov/balans) ekranidagi "Qarzdor" tugmasi orqali.
+    Balans manfiy bo'lishining o'zi buni avtomatik qilmaydi (yuqoridagi
+    model izohiga qarang) — operator ANIQ shu qarorni qabul qilishi kerak."""
+    driver = get_object_or_404(Driver, pk=pk)
+    if request.method == 'POST':
+        from django.utils import timezone
+        driver.is_qarzdor = not driver.is_qarzdor
+        if driver.is_qarzdor:
+            driver.qarz_note = request.POST.get('note', '').strip()[:255]
+            driver.qarz_marked_at = timezone.now()
+            detail = "Qarzdorlar ro'yxatiga qo'shildi"
+            if driver.qarz_note:
+                detail += f" — {driver.qarz_note}"
+        else:
+            driver.qarz_note = ''
+            driver.qarz_marked_at = None
+            detail = "Qarzdorlar ro'yxatidan chiqarildi"
+        driver.save(update_fields=['is_qarzdor', 'qarz_note', 'qarz_marked_at'])
+        action = DriverActivityLog.ACTION_QARZ_ON if driver.is_qarzdor else DriverActivityLog.ACTION_QARZ_OFF
+        DriverActivityLog.objects.create(
+            driver=driver, action=action, detail=detail,
+            ip_address=_get_client_ip(request), user_agent=request.META.get('HTTP_USER_AGENT', ''),
+        )
+        messages.success(request, detail + f" ({driver.full_name}).")
+    return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
+
+
+@panel_login_required
+def qarzdorlar_list(request):
+    """Qo'lda "Qarzdor" deb belgilangan haydovchilar — `driver_toggle_qarz`
+    orqali qo'shiladi/chiqariladi. To'lovlar bo'limidagi kunlik ishning
+    davomi sifatida (operatorlarga ham ochiq, faqat adminlarga emas)."""
+    from django.db.models import Sum, F
+
+    q = request.GET.get('q', '').strip()
+    # Diqqat: `qarz_marked_at` NULL bo'lishi mumkin (masalan Django admin
+    # orqali `is_qarzdor` to'g'ridan-to'g'ri belgilansa) — PostgreSQL'da
+    # oddiy `-qarz_marked_at` bo'yicha saralashda NULL'lar RO'YXAT BOSHIGA
+    # chiqib ketardi (NULLS FIRST — DESC uchun standart), garchi ular eng
+    # "yangi" bo'lmasa ham.
+    debtors = Driver.objects.filter(is_qarzdor=True).order_by(F('qarz_marked_at').desc(nulls_last=True))
+    if q:
+        debtors = debtors.filter(
+            Q(full_name__icontains=q) | Q(phone_number__icontains=q) | Q(car_number__icontains=q)
+        )
+    # Diqqat: faqat MANFIY balansli qarzdorlar qo'shiladi — operator
+    # (kamdan-kam) ijobiy balansli haydovchini ham qarzdor deb belgilagan
+    # bo'lsa, u umumiy summani "kamaytirib" yubormasligi uchun.
+    negative_sum = debtors.filter(balance__lt=0).aggregate(s=Sum('balance'))['s'] or 0
+    return render(request, 'taxi/qarzdorlar.html', {
+        'debtors': debtors,
+        'q': q,
+        'debtor_count': debtors.count(),
+        'total_debt': -negative_sum,
+    })
+
+
+@panel_login_required
 def driver_approve(request, pk):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == 'POST':

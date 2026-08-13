@@ -70,6 +70,7 @@ def active_drivers(request):
         'open_employee_task_count': EmployeeTask.objects.exclude(
             status=EmployeeTask.STATUS_DONE
         ).count(),
+        'qarzdor_count': Driver.objects.filter(is_qarzdor=True).count(),
         'VAPID_PUBLIC_KEY': getattr(settings, 'VAPID_PUBLIC_KEY', ''),
         'YANDEX_MAPKIT_KEY': maps.yandex_mapkit_key or '',
         # Haydovchi paneli taxi metri barcha sahifalarda (base.html) ishlashi uchun

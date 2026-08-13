@@ -271,6 +271,14 @@
             <span class="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center pulse-dot">{{ pending_topup_count }}</span>
             {% endif %}
         </a>
+        <a href="{% url 'taxi:qarzdorlar_list' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'qarzdorlar_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-hand-holding-dollar w-5 text-center"></i>
+            <span class="flex-1">Qarzdorlar</span>
+            {% if qarzdor_count > 0 %}
+            <span class="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center pulse-dot">{{ qarzdor_count }}</span>
+            {% endif %}
+        </a>
         {% if request.user.is_superuser %}
         <a href="{% url 'taxi:finance_dashboard' %}"
            class="nav-link {% if request.resolver_match.url_name == 'finance_dashboard' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">

@@ -1,0 +1,124 @@
+{% extends 'taxi/base.html' %}
+{% block title %}Qarzdorlar — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-center gap-4 mb-5">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+            💸 Qarzdorlar
+        </h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Qo'lda "Qarzdor" deb belgilangan haydovchilar ro'yxati</p>
+    </div>
+    <form method="get" class="flex gap-2">
+        <div class="flex items-center bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 w-64 focus-within:ring-2 focus-within:ring-rose-400 focus-within:border-transparent transition-all">
+            <i class="fas fa-search text-gray-400 text-xs"></i>
+            <input type="text" name="q" value="{{ q }}" placeholder="Ism, telefon, mashina..."
+                   class="bg-transparent border-none outline-none ml-2 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 w-full">
+            {% if q %}<button type="button" onclick="window.location='{% url 'taxi:qarzdorlar_list' %}'" class="text-gray-400 hover:text-red-500 ml-1"><i class="fas fa-times text-xs"></i></button>{% endif %}
+        </div>
+        <button type="submit" class="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-xl transition-colors">
+            <i class="fas fa-search"></i>
+        </button>
+    </form>
+</div>
+
+<!-- KPI kartalar -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+        <p class="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1">Jami qarzdorlar</p>
+        <h3 class="text-xl font-extrabold text-rose-500">{{ debtor_count }}</h3>
+        <p class="text-[11px] text-gray-400 mt-0.5">haydovchi</p>
+    </div>
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+        <p class="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1">Umumiy qarz summasi</p>
+        <h3 class="text-xl font-extrabold text-rose-500">{{ total_debt|floatformat:0 }}</h3>
+        <p class="text-[11px] text-gray-400 mt-0.5">UZS (manfiy balanslar yig'indisi)</p>
+    </div>
+</div>
+
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+    {% if debtors %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-[11px] uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
+                    <th class="px-5 py-3.5">Haydovchi</th>
+                    <th class="px-5 py-3.5">Telefon</th>
+                    <th class="px-5 py-3.5">Mashina</th>
+                    <th class="px-5 py-3.5">Balans</th>
+                    <th class="px-5 py-3.5">Izoh</th>
+                    <th class="px-5 py-3.5">Belgilangan sana</th>
+                    <th class="px-5 py-3.5 text-right">Amal</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50 dark:divide-gray-800">
+                {% for driver in debtors %}
+                <tr class="hover:bg-gray-50/60 dark:hover:bg-gray-800/30 transition-colors">
+                    <td class="px-5 py-3.5">
+                        <a href="{% url 'taxi:driver_detail' driver.pk %}" class="flex items-center gap-3 min-w-0 group">
+                            <div class="w-9 h-9 rounded-xl flex-shrink-0 overflow-hidden shadow-sm">
+                                {% if driver.photo %}
+                                <img src="{{ driver.photo.url }}" alt="{{ driver.full_name }}" class="w-full h-full object-cover">
+                                {% else %}
+                                <div class="w-full h-full bg-gradient-to-br from-rose-400 to-rose-500 flex items-center justify-center text-sm font-black text-white">
+                                    {{ driver.full_name|slice:":1"|upper }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <span class="font-semibold text-gray-800 dark:text-white truncate group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">{{ driver.full_name }}</span>
+                        </a>
+                    </td>
+                    <td class="px-5 py-3.5 text-gray-500 dark:text-gray-400 font-mono text-xs">{{ driver.phone_number }}</td>
+                    <td class="px-5 py-3.5 text-gray-500 dark:text-gray-400">
+                        <span class="font-mono text-xs">{{ driver.car_number }}</span>
+                        <span class="block text-[11px] text-gray-400">{{ driver.car_model }}</span>
+                    </td>
+                    <td class="px-5 py-3.5">
+                        <span class="font-bold {% if driver.balance < 0 %}text-red-500{% else %}text-emerald-500{% endif %}">
+                            {{ driver.balance }} <span class="text-[10px] text-gray-400 font-normal">UZS</span>
+                        </span>
+                    </td>
+                    <td class="px-5 py-3.5 text-gray-500 dark:text-gray-400 text-xs max-w-[220px] truncate" title="{{ driver.qarz_note }}">
+                        {{ driver.qarz_note|default:"—" }}
+                    </td>
+                    <td class="px-5 py-3.5 text-gray-400 text-xs whitespace-nowrap">
+                        {{ driver.qarz_marked_at|date:"d.m.Y H:i"|default:"—" }}
+                    </td>
+                    <td class="px-5 py-3.5">
+                        <div class="flex items-center justify-end gap-1.5">
+                            <a href="{% url 'taxi:driver_detail' driver.pk %}"
+                               class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                               title="To'lov qilish / ko'rish">
+                                <i class="fas fa-wallet text-xs"></i>
+                            </a>
+                            <form action="{% url 'taxi:driver_toggle_qarz' driver.pk %}" method="POST"
+                                  onsubmit="return confirm('{{ driver.full_name|escapejs }} qarzdorlar ro\'yxatidan chiqarilsinmi?');">
+                                {% csrf_token %}
+                                <button type="submit"
+                                        class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                                        title="Qarzni yopish">
+                                    <i class="fas fa-check text-xs"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="py-20 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-400 text-3xl mx-auto mb-4">
+            <i class="fas fa-champagne-glasses"></i>
+        </div>
+        <p class="font-bold text-gray-700 dark:text-gray-300 text-lg">
+            {% if q %}Hech narsa topilmadi{% else %}Qarzdorlar yo'q{% endif %}
+        </p>
+        <p class="text-sm text-gray-400 mt-1">
+            {% if q %}Boshqa nom/telefon bilan qidirib ko'ring.{% else %}Haydovchi profilidagi "Balans" bo'limida "Qarzdor deb belgilash" tugmasi orqali qo'shishingiz mumkin.{% endif %}
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

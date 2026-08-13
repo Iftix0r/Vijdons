@@ -53,6 +53,23 @@
 </div>
 {% endif %}
 
+{% if driver.is_qarzdor %}
+<div class="mb-5 flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800/40">
+    <i class="fas fa-hand-holding-dollar text-rose-500"></i>
+    <div class="flex-1 min-w-0">
+        <p class="text-sm text-rose-700 dark:text-rose-300 font-medium">
+            Bu haydovchi qarzdorlar ro'yxatida{% if driver.qarz_marked_at %} — {{ driver.qarz_marked_at|date:"d.m.Y H:i" }} dan beri{% endif %}.
+        </p>
+        {% if driver.qarz_note %}
+        <p class="text-xs text-rose-500 dark:text-rose-400 mt-0.5 truncate">"{{ driver.qarz_note }}"</p>
+        {% endif %}
+    </div>
+    <a href="{% url 'taxi:qarzdorlar_list' %}" class="flex-shrink-0 text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline whitespace-nowrap">
+        Ro'yxatni ko'rish
+    </a>
+</div>
+{% endif %}
+
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
     <!-- LEFT: Info + Balance -->
@@ -179,6 +196,19 @@
                class="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
                 <i class="fas fa-clock-rotate-left"></i> Balans tarixini ko'rish
             </a>
+            {% if driver.is_qarzdor %}
+            <form action="{% url 'taxi:driver_toggle_qarz' driver.pk %}" method="POST" class="mt-2">
+                {% csrf_token %}
+                <button type="submit" class="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition">
+                    <i class="fas fa-check"></i> Qarzni yopish (ro'yxatdan chiqarish)
+                </button>
+            </form>
+            {% else %}
+            <button type="button" onclick="openModal('qarzModal')"
+                    class="mt-2 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-xs font-bold hover:bg-rose-100 dark:hover:bg-rose-900/40 transition">
+                <i class="fas fa-hand-holding-dollar"></i> Qarzdor deb belgilash
+            </button>
+            {% endif %}
         </div>
 
         <!-- Contract status -->
@@ -314,6 +344,37 @@
             </div>
             {% endif %}
         </div>
+    </div>
+</div>
+
+<!-- Qarzdor deb belgilash modali -->
+<div id="qarzModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white"><i class="fas fa-hand-holding-dollar text-rose-500 mr-2"></i>Qarzdor deb belgilash</h2>
+            <button type="button" onclick="closeModal('qarzModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form action="{% url 'taxi:driver_toggle_qarz' driver.pk %}" method="POST" class="px-6 py-5 space-y-4">
+            {% csrf_token %}
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+                {{ driver.full_name }} "Qarzdorlar" bo'limiga qo'shiladi — u yerda barcha qarzdor haydovchilarni bitta joyda kuzatib borishingiz mumkin.
+            </p>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Izoh (ixtiyoriy)</label>
+                <textarea name="note" rows="2" maxlength="255" placeholder="Masalan: kelishuv bo'yicha 2 haftaga qarzga ruxsat berildi"
+                          class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 dark:text-white transition resize-none"></textarea>
+            </div>
+            <div class="flex gap-2 pt-1">
+                <button type="button" onclick="closeModal('qarzModal')" class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit" class="flex-1 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold transition">
+                    Belgilash
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}

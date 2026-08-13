@@ -33,6 +33,15 @@ class Driver(models.Model):
     is_active       = models.BooleanField(default=True, verbose_name="Faol")
     approval_status = models.CharField(max_length=20, choices=APPROVAL_CHOICES, default=APPROVAL_PENDING, verbose_name="Tasdiqlash holati")
     is_frozen       = models.BooleanField(default=False, verbose_name="Muzlatilgan", help_text="3+ kun onlayn bo'lmagani uchun avtomatik muzlatilgan — qayta ishga tushirish uchun admin blokni ochishi kerak")
+    # Diqqat: balans manfiy bo'lishining o'zi "qarzdor" degani emas — bu
+    # ATAYLAB qo'lda belgilanadigan bayroq (To'lov ekranidagi "Qarzdor" tugmasi
+    # orqali), operator haydovchini haqiqatan ham qarzdorlar sifatida kuzatib
+    # borishga qaror qilganda ishlatiladi. Shu orqali "Qarzdorlar" bo'limi
+    # (`qarzdorlar_list`) faqat operator ATAYLAB belgilagan haydovchilarnigina
+    # ko'rsatadi — vaqtinchalik manfiy balansli barcha haydovchilarni emas.
+    is_qarzdor      = models.BooleanField(default=False, verbose_name="Qarzdor")
+    qarz_note       = models.CharField(max_length=255, blank=True, default='', verbose_name="Qarz izohi")
+    qarz_marked_at  = models.DateTimeField(null=True, blank=True, verbose_name="Qarzdor deb belgilangan vaqt")
     fcm_token       = models.TextField(blank=True, null=True, verbose_name="FCM Token")
     is_on_duty      = models.BooleanField(default=False, verbose_name="Ish navbatida")
     latitude        = models.FloatField(null=True, blank=True, verbose_name="Kenglik (Latitude)")
@@ -551,6 +560,8 @@ class DriverActivityLog(models.Model):
     ACTION_ORDER    = 'order'
     ACTION_FREEZE   = 'freeze'
     ACTION_UNFREEZE = 'unfreeze'
+    ACTION_QARZ_ON  = 'qarz_on'
+    ACTION_QARZ_OFF = 'qarz_off'
     ACTION_CHOICES  = (
         (ACTION_LOGIN,    'Kirish'),
         (ACTION_LOGOUT,   'Chiqish'),
@@ -562,6 +573,8 @@ class DriverActivityLog(models.Model):
         (ACTION_ORDER,    'Buyurtma'),
         (ACTION_FREEZE,   'Muzlatildi'),
         (ACTION_UNFREEZE, 'Muzlash bekor qilindi'),
+        (ACTION_QARZ_ON,  'Qarzdorlar ro\'yxatiga qo\'shildi'),
+        (ACTION_QARZ_OFF, 'Qarzdorlar ro\'yxatidan chiqarildi'),
     )
 
     driver     = models.ForeignKey('Driver', on_delete=models.CASCADE, related_name='activity_logs', verbose_name='Haydovchi')
@@ -579,6 +592,7 @@ class DriverActivityLog(models.Model):
         ACTION_UNBLOCK: '🔓', ACTION_BALANCE: '💰', ACTION_DUTY_ON: '🟢',
         ACTION_DUTY_OFF: '🔴', ACTION_ORDER: '🚕',
         ACTION_FREEZE: '🥶', ACTION_UNFREEZE: '🔥',
+        ACTION_QARZ_ON: '📌', ACTION_QARZ_OFF: '✅',
     }
 
     @staticmethod
