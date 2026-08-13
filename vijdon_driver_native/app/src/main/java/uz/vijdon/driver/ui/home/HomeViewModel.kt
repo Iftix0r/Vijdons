@@ -142,8 +142,17 @@ class HomeViewModel @Inject constructor(
      * `is_on_duty` ENG SO'NGGI holatdan (await'dan OLDIN emas, KEYIN)
      * olinadi — aks holda shu oraliqda bo'lgan onlayn/oflayn o'zgarishi
      * yangi balans bilan birga bekorga tashlab yuborilardi. */
+    // Diqqat: bir nechta balans o'zgarishi (masalan admin ketma-ket ikki
+    // marta to'ldirsa) yaqin vaqt ichida ikkita mustaqil push yuborishi
+    // mumkin — FCM va tarmoq TARTIBNI kafolatlamaydi, shu sabab ESKI
+    // so'rovning javobi YANGISIDAN keyin kelib qolsa, eskirgan balans
+    // bilan bosib yozib qo'yishi mumkin edi. Faqat ENG SO'NGGI chaqiruv
+    // natijasi qo'llanishi uchun oldingisi bekor qilinadi.
+    private var balanceRefreshJob: Job? = null
+
     private fun refreshBalance() {
-        viewModelScope.launch {
+        balanceRefreshJob?.cancel()
+        balanceRefreshJob = viewModelScope.launch {
             if (_uiState.value.driver == null) return@launch
             val result = repository.me()
             val latest = _uiState.value.driver
@@ -690,6 +699,7 @@ class HomeViewModel @Inject constructor(
         surgePollJob?.cancel()
         dutySyncPollJob?.cancel()
         queuePollJob?.cancel()
+        balanceRefreshJob?.cancel()
         super.onCleared()
     }
 }

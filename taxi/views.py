@@ -633,6 +633,14 @@ def driver_recharge(request, pk):
         from decimal import Decimal
         try:
             amount = Decimal(amount)
+            # Diqqat: HTML formadagi `min="1"` faqat mijoz tarafida —
+            # to'g'ridan-to'g'ri so'rov yuborilsa (masalan curl bilan)
+            # manfiy summa yuborib, "ayirish" aslida balansni OSHIRIB
+            # yuborishi mumkin edi (`balance -= manfiy_son`). Shu sabab
+            # bu yerda ham aniq tekshiriladi.
+            if amount <= 0:
+                messages.error(request, "Summa musbat bo'lishi kerak.")
+                return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
             if action == 'deduct':
                 driver.balance -= amount
                 detail = f"-{amount} UZS (admin ayirdi)"
@@ -653,16 +661,21 @@ def driver_recharge(request, pk):
             # darhol o'z balansini qayta so'raydi (`VijdonFirebaseMessagingService`
             # -> `BalanceChangedBus`), yopiq bo'lsa esa oddiy bildirishnoma
             # sifatida ko'rinadi.
+            # Diqqat: `amount` manfiy qiymat bilan ham yuborilishi mumkin
+            # (masalan formaga emas, to'g'ridan-to'g'ri so'rov yuborilsa —
+            # HTML'dagi `min="1"` faqat mijoz tarafida) — `abs()` bo'lmasa
+            # belgisi pastdagi qo'lda qo'yilgan "+"/"-" bilan qo'shilib,
+            # "--5 000" kabi chalkash matn hosil bo'lardi.
             if action == 'deduct':
                 _send_fcm_to_driver(
                     driver, "💰 Balans o'zgardi",
-                    f"-{amount:,.0f} so'm ayirildi. Joriy balans: {driver.balance:,.0f} so'm".replace(',', ' '),
+                    f"-{abs(amount):,.0f} so'm ayirildi. Joriy balans: {driver.balance:,.0f} so'm".replace(',', ' '),
                     data_type='balance_changed',
                 )
             else:
                 _send_fcm_to_driver(
                     driver, "💰 Balans to'ldirildi",
-                    f"+{amount:,.0f} so'm qo'shildi. Joriy balans: {driver.balance:,.0f} so'm".replace(',', ' '),
+                    f"+{abs(amount):,.0f} so'm qo'shildi. Joriy balans: {driver.balance:,.0f} so'm".replace(',', ' '),
                     data_type='balance_changed',
                 )
         except (ValueError, TypeError, Exception):

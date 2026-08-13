@@ -3,6 +3,7 @@ package uz.vijdon.driver.ui.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,8 +46,15 @@ class ProfileViewModel @Inject constructor(private val repository: DriverReposit
         _uiState.value = _uiState.value.copy(driver = driver)
     }
 
+    // Bir nechta balans o'zgarishi yaqin vaqt ichida ketma-ket push
+    // yuborishi mumkin — tarmoq javoblarning TARTIBINI kafolatlamaydi,
+    // shu sabab faqat ENG SO'NGGI chaqiruv natijasi qo'llanishi uchun
+    // oldingi (hali tugallanmagan) so'rov bekor qilinadi.
+    private var refreshJob: Job? = null
+
     fun refresh(silent: Boolean = false) {
-        viewModelScope.launch {
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
             when (val result = repository.me()) {
                 is ApiResult.Success -> _uiState.value = _uiState.value.copy(
                     driver = result.data,
