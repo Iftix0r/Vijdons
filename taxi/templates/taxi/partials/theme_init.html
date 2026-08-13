@@ -1,0 +1,16 @@
+<!-- Tema klassi Tailwind/uslublar yuklanishidan OLDIN qo'yiladi — aks holda
+     "tungi rejim" tanlangan bo'lsa ham, sahifa BIRINCHI safar oqarib (hali
+     `.dark` klassi qo'yilmagan holatda) chizilib, keyin qorayib qolardi
+     (FOUC — Flash of Unstyled Content). base.html va system_base.html
+     ikkalasi ham shu bir xil qismni ishlatadi — ular mustaqil to'liq
+     sahifalar (bittasi ikkinchisini extend qilmaydi), shu sabab umumiy
+     JS mantig'i ikki marta yozilmasin deb shu partial'ga ajratilgan. -->
+<script>
+    (function () {
+        try {
+            var saved = localStorage.getItem('theme');
+            var dark = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            if (dark) document.documentElement.classList.add('dark');
+        } catch (_) {}
+    })();
+</script>
