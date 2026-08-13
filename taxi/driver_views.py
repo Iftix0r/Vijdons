@@ -15,7 +15,7 @@ from django.utils.cache import add_never_cache_headers
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .models import Driver, Order, ChatMessage, GroupMessage, TariffSettings, DriverActivityLog, BalanceLog, BalanceTopupRequest, PanelSound, VoiceParticipant, VoiceSignal, ContractSettings, DriverContractSignature, SavedAddress
+from .models import Driver, Order, ChatMessage, GroupMessage, TariffSettings, DriverActivityLog, BalanceLog, BalanceTopupRequest, PanelSound, ContractSettings, DriverContractSignature, SavedAddress
 from .utils import tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected, tg_driver_login, tg_duty_changed, tg_low_balance_alert, tg_topup_request, sms_order_status
 
 
@@ -1613,84 +1613,5 @@ def driver_group_chat_send(request, driver):
     })
 
 
-@driver_login_required
-@require_POST
-def driver_group_chat_send_audio(request, driver):
-    audio = request.FILES.get('audio')
-    if not audio:
-        return JsonResponse({'ok': False}, status=400)
-    msg = GroupMessage.objects.create(driver=driver, audio=audio)
-    return JsonResponse({
-        'ok': True, 'id': msg.id,
-        'driver_id': driver.id, 'driver_name': driver.full_name,
-        'car_number': driver.car_number,
-        'photo_url': request.build_absolute_uri(driver.photo.url) if driver.photo else None,
-        'text': '', 'audio_url': request.build_absolute_uri(msg.audio.url),
-        'created_at': msg.created_at.isoformat(),
-    })
 
 
-# ── Guruh jonli ovozli aloqa ("efir") — ratsiya uslubi ────────────────────────
-# Mikrofon tugmasi bosib turilganda ovoz yoziladi, qo'yib yuborilganda audio
-# fayl serverga yuklanadi va shu payt "efir"da turgan har bir boshqa
-# ishtirokchiga alohida navbat qatori sifatida (VoiceSignal, HTTP polling
-# orqali — boshqa joylardagi chat_poll bilan bir xil uslub) yetkaziladi, u esa
-# darhol avtomatik ijro etadi. Ilgari shu yerda WebRTC P2P mesh (real vaqtda
-# uzatish) ishlatilgan edi, lekin ba'zi qurilmalar/tarmoqlarda TURN server
-# yo'qligi sabab ulanish o'rnatilmay, "kimdirga eshitilib, kimdirga
-# eshitilmaydi" muammosi chiqargan — oddiy yozib-yuborish esa oddiy HTTP fayl
-# yuklash bo'lgani uchun ancha ishonchli.
-@driver_login_required
-@require_POST
-def driver_voice_join(request, driver):
-    from .utils import voice_prune_stale, voice_participants_list
-    voice_prune_stale()
-    VoiceParticipant.objects.update_or_create(driver=driver)
-    return JsonResponse({'ok': True, 'participants': voice_participants_list(f'd{driver.id}')})
-
-
-@driver_login_required
-@require_POST
-def driver_voice_leave(request, driver):
-    VoiceParticipant.objects.filter(driver=driver).delete()
-    return JsonResponse({'ok': True})
-
-
-@driver_login_required
-def driver_voice_heartbeat(request, driver):
-    from .utils import voice_prune_stale, voice_participants_list, voice_signal_sender_info
-    try:
-        # last_seen `auto_now=True` bo'lgani uchun .save() chaqirilishi kerak —
-        # queryset .update() bilan avtomatik yangilanmaydi (faqat model instance save()da ishlaydi)
-        VoiceParticipant.objects.get(driver=driver).save(update_fields=['last_seen'])
-    except VoiceParticipant.DoesNotExist:
-        return JsonResponse({'ok': True, 'joined': False})
-    voice_prune_stale()
-
-    signals = list(VoiceSignal.objects.filter(to_driver=driver).select_related('from_driver', 'from_operator').order_by('created_at')[:10])
-    signal_ids = [s.id for s in signals]
-    if signal_ids:
-        VoiceSignal.objects.filter(id__in=signal_ids).delete()
-
-    return JsonResponse({
-        'ok': True,
-        'joined': True,
-        'participants': voice_participants_list(f'd{driver.id}'),
-        'clips': [
-            dict(zip(('from', 'from_name'), voice_signal_sender_info(s)),
-                 audio_url=request.build_absolute_uri(s.audio.url))
-            for s in signals
-        ],
-    })
-
-
-@driver_login_required
-@require_POST
-def driver_voice_send_audio(request, driver):
-    from .utils import voice_prune_stale, voice_broadcast_audio
-    audio = request.FILES.get('audio')
-    if not audio:
-        return JsonResponse({'ok': False, 'error': 'Audio fayl kerak'}, status=400)
-    voice_prune_stale()
-    delivered = voice_broadcast_audio({'from_driver': driver}, f'd{driver.id}', audio)
-    return JsonResponse({'ok': True, 'delivered': delivered})

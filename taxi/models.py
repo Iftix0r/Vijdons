@@ -686,59 +686,6 @@ class GroupMessage(models.Model):
         ordering = ['created_at']
 
 
-class VoiceParticipant(models.Model):
-    """Guruh jonli ovozli aloqasida ('efir') hozir turgan ishtirokchi — haydovchi
-    yoki operator (admin panel), heartbeat (davriy so'rov) orqali yangilanadi.
-    last_seen uzoq vaqt yangilanmasa (masalan ilova yopilib qolsa), ishtirokchi
-    "chiqib ketgan" deb hisoblanadi. Aynan bittasi to'ldiriladi: driver YOKI
-    operator — ikkalasi ham bir xil "efir" xonasidagi ishtirokchi hisoblanadi."""
-    driver     = models.OneToOneField(Driver, on_delete=models.CASCADE, null=True, blank=True, related_name='voice_participant', verbose_name='Haydovchi')
-    operator   = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True, related_name='voice_participant', verbose_name='Operator')
-    joined_at  = models.DateTimeField(auto_now_add=True, verbose_name="Qo'shilgan vaqti")
-    last_seen  = models.DateTimeField(auto_now=True, verbose_name="Oxirgi faollik")
-
-    def __str__(self):
-        if self.driver_id:
-            return f"{self.driver.full_name} — efirda"
-        return f"{self.operator.username} (operator) — efirda"
-
-    class Meta:
-        verbose_name = 'Efirdagi ishtirokchi'
-        verbose_name_plural = 'Efirdagi ishtirokchilar'
-        constraints = [
-            models.CheckConstraint(
-                check=models.Q(driver__isnull=False) | models.Q(operator__isnull=False),
-                name='voice_participant_driver_or_operator',
-            ),
-        ]
-
-
-class VoiceSignal(models.Model):
-    """Ratsiya uslubidagi 'efir'da bosib gapirib yozilgan ovozli xabarni, o'sha
-    payt xonada turgan har bir boshqa ishtirokchiga birma-bir yetkazish uchun
-    navbat qatori — bitta xabar = bir nechta qator (har biri bitta qabul
-    qiluvchiga), barchasi bitta jismoniy audio faylni bo'lishadi. Har bir
-    qator manzilga yetguncha (heartbeat so'rovi orqali bir marta o'qilgunga
-    qadar) saqlanadi, shundan so'ng darhol o'chiriladi; audio fayl esa (bir
-    nechta qator bitta faylni bo'lishishi mumkinligi uchun) alohida, davriy
-    tozalash orqali (utils.voice_prune_stale) o'chiriladi. Har bir tomonda
-    (from/to) aynan bittasi to'ldiriladi: *_driver YOKI *_operator."""
-    from_driver   = models.ForeignKey(Driver, on_delete=models.CASCADE, null=True, blank=True, related_name='voice_signals_sent', verbose_name='Kimdan (haydovchi)')
-    from_operator = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='voice_signals_sent', verbose_name='Kimdan (operator)')
-    to_driver     = models.ForeignKey(Driver, on_delete=models.CASCADE, null=True, blank=True, related_name='voice_signals_received', verbose_name='Kimga (haydovchi)')
-    to_operator   = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='voice_signals_received', verbose_name='Kimga (operator)')
-    audio       = models.FileField(upload_to='voice_clips/', verbose_name='Ovozli xabar')
-    created_at  = models.DateTimeField(auto_now_add=True, verbose_name='Vaqt')
-
-    class Meta:
-        verbose_name = 'Efir ovozli xabari'
-        verbose_name_plural = 'Efir ovozli xabarlari'
-        ordering = ['created_at']
-        indexes = [
-            models.Index(fields=['to_driver', 'created_at']),
-            models.Index(fields=['to_operator', 'created_at']),
-        ]
-
 
 class BalanceLog(models.Model):
     ACTION_ADD    = 'add'

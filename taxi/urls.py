@@ -90,11 +90,6 @@ urlpatterns = [
     path('viloyatlar/tuman/add/', views.district_create, name='district_create'),
     path('viloyatlar/tuman/<int:pk>/delete/', views.district_delete, name='district_delete'),
 
-    path('voice/join/',      views.panel_voice_join,      name='panel_voice_join'),
-    path('voice/leave/',     views.panel_voice_leave,     name='panel_voice_leave'),
-    path('voice/heartbeat/', views.panel_voice_heartbeat, name='panel_voice_heartbeat'),
-    path('voice/send/',      views.panel_voice_send_audio, name='panel_voice_send'),
-
     path('api/client/lookup/', api_views.client_last_order_api, name='api_client_lookup'),
 
     # Qo'ng'iroq-xabarchi Android ilovasi

@@ -6,8 +6,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import user_passes_test
 from django.views.decorators.http import require_POST
 from django.contrib import messages
-from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher, VizitkaRewardLog, LegalDocument, SecurityIncident, VoiceParticipant, VoiceSignal, SavedAddress, Employee, EmployeeTask, EmployeeShift, EmployeeAttendance
-from .utils import haversine, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, tg_order_deleted, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed, build_balance_receipt_pdf, build_flyer_business_card_pdf, voice_prune_stale, voice_participants_list, voice_target_kwargs, voice_signal_sender_info, voice_broadcast_audio
+from .models import Order, Driver, Client, TariffSettings, ChatMessage, MapsSettings, DriverActivityLog, BotSettings, BotAdmin, SosAlert, BalanceLog, BalanceTopupRequest, GroupMessage, PanelEvent, PanelSound, SmsSettings, AiSettings, AiRewardLog, Task, ContractSettings, DriverContractSignature, FlyerVoucher, VizitkaRewardLog, LegalDocument, SecurityIncident, SavedAddress, Employee, EmployeeTask, EmployeeShift, EmployeeAttendance
+from .utils import haversine, send_telegram, dispatch_order, tg_new_order, tg_driver_registered, tg_driver_approved, tg_driver_rejected, tg_driver_blocked, tg_driver_unblocked, tg_balance_changed, tg_order_cancelled, tg_order_deleted, log_panel_event, reverse_geocode_address, sms_order_status, send_sms, generate_growth_insights, build_contract_pdf, build_flyer_pdf, generate_voucher_codes, tg_flyer_voucher_redeemed, build_balance_receipt_pdf, build_flyer_business_card_pdf
 import csv
 import json
 from functools import wraps
@@ -3435,19 +3435,14 @@ def operator_chat(request):
         return redirect(request.path + ('?driver_id=' + selected_id if selected_id else '') + '#group')
 
     if request.method == 'POST' and selected_driver:
-        text  = request.POST.get('text', '').strip()
-        audio = request.FILES.get('audio')
-        if text or audio:
+        text = request.POST.get('text', '').strip()
+        if text:
             ChatMessage.objects.create(
                 driver=selected_driver,
                 sender=ChatMessage.SENDER_OPERATOR,
                 text=text,
-                audio=audio or None,
             )
-            if text:
-                _send_fcm_to_driver(selected_driver, '💬 Operator', text)
-            elif audio:
-                _send_fcm_to_driver(selected_driver, '🎤 Operator', 'Ovozli xabar')
+            _send_fcm_to_driver(selected_driver, '💬 Operator', text)
         return redirect(f"{request.path}?driver_id={selected_id}")
 
     return render(request, 'taxi/operator_chat.html', {
@@ -4445,65 +4440,6 @@ def district_delete(request, pk):
     district.delete()
     messages.success(request, f"«{name}» o'chirildi.")
     return redirect('taxi:regions_list')
-
-
-# ── Guruh jonli ovozli aloqa ("efir") — operator paneli tomoni, ratsiya uslubi ─
-# Haydovchilar bir-biri bilan gaplashadigan "efir"ning aynan o'zi — operator
-# ham xuddi shu xonaga (VoiceParticipant/VoiceSignal) ulanadi, shu bilan
-# haydovchilarning xabarini eshitishi va o'zi ham hammaga bosib-gapirib
-# yuborishi mumkin bo'ladi. Umumiy mantiq taxi/utils.py dagi voice_*
-# funksiyalarda — batafsili uchun taxi/driver_views.py dagi driver_voice_*
-# (haydovchi tomoni) ga qarang.
-
-@panel_login_required
-@require_POST
-def panel_voice_join(request):
-    voice_prune_stale()
-    VoiceParticipant.objects.update_or_create(operator=request.user)
-    return JsonResponse({'ok': True, 'participants': voice_participants_list(f'o{request.user.id}')})
-
-
-@panel_login_required
-@require_POST
-def panel_voice_leave(request):
-    VoiceParticipant.objects.filter(operator=request.user).delete()
-    return JsonResponse({'ok': True})
-
-
-@panel_login_required
-def panel_voice_heartbeat(request):
-    try:
-        VoiceParticipant.objects.get(operator=request.user).save(update_fields=['last_seen'])
-    except VoiceParticipant.DoesNotExist:
-        return JsonResponse({'ok': True, 'joined': False})
-    voice_prune_stale()
-
-    signals = list(VoiceSignal.objects.filter(to_operator=request.user).select_related('from_driver', 'from_operator').order_by('created_at')[:10])
-    signal_ids = [s.id for s in signals]
-    if signal_ids:
-        VoiceSignal.objects.filter(id__in=signal_ids).delete()
-
-    return JsonResponse({
-        'ok': True,
-        'joined': True,
-        'participants': voice_participants_list(f'o{request.user.id}'),
-        'clips': [
-            dict(zip(('from', 'from_name'), voice_signal_sender_info(s)),
-                 audio_url=request.build_absolute_uri(s.audio.url))
-            for s in signals
-        ],
-    })
-
-
-@panel_login_required
-@require_POST
-def panel_voice_send_audio(request):
-    audio = request.FILES.get('audio')
-    if not audio:
-        return JsonResponse({'ok': False, 'error': "Audio fayl kerak"}, status=400)
-    voice_prune_stale()
-    delivered = voice_broadcast_audio({'from_operator': request.user}, f'o{request.user.id}', audio)
-    return JsonResponse({'ok': True, 'delivered': delivered})
 
 
 # ── Haydovchi shartnomasi ──────────────────────────────────────────────────────

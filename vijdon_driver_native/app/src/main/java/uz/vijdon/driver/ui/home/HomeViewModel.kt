@@ -90,6 +90,7 @@ class HomeViewModel @Inject constructor(
         startAddressPolling()
         startSurgePolling()
         startDutySyncPolling()
+        startQueuePolling()
         collectLocationForTaximeter()
         viewModelScope.launch {
             val result = repository.rating()
@@ -189,6 +190,49 @@ class HomeViewModel @Inject constructor(
                     recomputeAddressDistances()
                 }
                 delay(20_000)
+            }
+        }
+    }
+
+    // Diqqat: avval "Joriy navbatingiz" karta ochilganda navbatdagi
+    // haydovchilar ro'yxati FAQAT bir marta so'ralar edi
+    // (`toggleAddressExpand()`) — shu manzilda boshqa haydovchi navbatga
+    // qo'shilsa/chiqsa, karta ochiq turgan bo'lsa ham ro'yxat
+    // YANGILANMASDI (haydovchi o'zining navbatdagi o'rnini — ro'yxatdagi
+    // qatoridan, `DarkQueueRow`/`is_me` orqali — ko'radi), faqat ilova
+    // qayta ochilganda (yangi `HomeViewModel` — `autoExpandedOnce` qaytadan
+    // ishga tushib) "sakrab" to'g'irlanardi. Veb versiyada xuddi shu
+    // ro'yxat `_loadHomeAddressesList` orqali har 10s'da yangilanadi
+    // (`driver/home.html`) — shu bilan bir xil kadensiyada, karta ochiq
+    // turgan paytda fonda jim yangilanadi (`queueLoading`ga tegilmaydi —
+    // bu faqat BIRINCHI ochilishdagi spinner uchun). Diqqat: faqat
+    // `queueDrivers` (haqiqatan ko'rsatiladigan ro'yxat) yangilanadi —
+    // `queuePosition` (alohida raqam) `CurrentQueueCard`da umuman
+    // ko'rsatilmaydi, shu sabab uni ham fon rejimida qayta so'rash
+    // behuda tarmoq/batareya sarfi bo'lardi.
+    private var queuePollJob: Job? = null
+    private fun startQueuePolling() {
+        queuePollJob?.cancel()
+        queuePollJob = viewModelScope.launch {
+            while (true) {
+                delay(10_000)
+                val addressId = _uiState.value.expandedAddressId
+                if (addressId != null) {
+                    val requestId = addressExpandRequestId
+                    val result = repository.addressQueueDrivers(addressId)
+                    // `toggleAddressExpand()`dagi bilan bir xil sabab: shu
+                    // so'rov davom etayotgan payt haydovchi panelni
+                    // yopib-qayta ochib ulgursa (yangi so'rov boshlansa),
+                    // shu (ESKI) fon so'rovi keyinroq javob berib, YANGI
+                    // ochilishning natijasini bosib yozib qo'ymasin.
+                    if (
+                        result is ApiResult.Success &&
+                        _uiState.value.expandedAddressId == addressId &&
+                        requestId == addressExpandRequestId
+                    ) {
+                        _uiState.value = _uiState.value.copy(queueDrivers = result.data)
+                    }
+                }
             }
         }
     }
@@ -609,6 +653,7 @@ class HomeViewModel @Inject constructor(
         addressPollJob?.cancel()
         surgePollJob?.cancel()
         dutySyncPollJob?.cancel()
+        queuePollJob?.cancel()
         super.onCleared()
     }
 }

@@ -29,27 +29,12 @@
     </div>
   </div>
 
-  <!-- Group recording bar -->
-  <div id="gr-rec-bar" style="display:none;padding:8px 16px;background:rgba(255,59,48,.1);border-top:.5px solid rgba(255,59,48,.3)">
-    <div style="display:flex;align-items:center;gap:8px">
-      <span style="width:8px;height:8px;border-radius:50%;background:#FF3B30;animation:pulse-ring 1s ease-out infinite;display:inline-block"></span>
-      <span class="ios-footnote font-semibold" style="color:#FF3B30">Yozilmoqda... <span id="gr-rec-time">0:00</span></span>
-      <button onclick="cancelRec('gr')" style="margin-left:auto;color:#FF3B30;font-size:13px;font-weight:600;background:none;border:none;cursor:pointer">Bekor</button>
-    </div>
-  </div>
-
   <!-- Group input -->
   <div style="flex-shrink:0;padding:10px 12px;border-top:.5px solid var(--ios-sep);background:var(--ios-card)">
     <div style="display:flex;align-items:center;gap:8px">
       <input type="text" id="gr-msg-in" placeholder="Guruhga yozing..." maxlength="500" autocomplete="off"
              style="flex:1;background:var(--ios-fill);border:none;outline:none;border-radius:22px;padding:10px 16px;font-size:16px;color:var(--ios-label);min-width:0"
              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendGrMsg();}">
-      <button id="gr-mic-btn"
-              onmousedown="startRec('gr')" onmouseup="stopRec('gr')"
-              ontouchstart="startRec('gr',event)" ontouchend="stopRec('gr',event)"
-              style="width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;background:rgba(52,199,89,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent;user-select:none">
-        <i class="fas fa-microphone" style="color:#34C759;font-size:16px"></i>
-      </button>
       <button onclick="sendGrMsg()"
               style="width:36px;height:36px;border-radius:50%;background:#34C759;border:none;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;-webkit-tap-highlight-color:transparent">
         <i class="fas fa-arrow-up" style="color:#fff;font-size:14px"></i>
@@ -223,91 +208,6 @@ setInterval(async () => {
     });
   } catch(_) {}
 }, 4000);
-
-// ══════════════════════════════════════════════════════════════════════════════
-// RECORDING (guruh)
-// ══════════════════════════════════════════════════════════════════════════════
-const _rec = { mr:null, chunks:[], int:null, sec:0 };
-
-async function startRec(tab, e) {
-  if (e) e.preventDefault();
-  if (_rec.mr) return;
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-    _rec.chunks = [];
-    _rec.mr = new MediaRecorder(stream);
-    _rec.mr.ondataavailable = ev => _rec.chunks.push(ev.data);
-    _rec.mr.start();
-    document.getElementById('gr-rec-bar').style.display = 'block';
-    document.getElementById('gr-msg-in').disabled = true;
-    const mic = document.getElementById('gr-mic-btn');
-    mic.style.background = 'rgba(255,59,48,.2)';
-    mic.querySelector('i').style.color = '#FF3B30';
-    _rec.sec = 0;
-    _rec.int = setInterval(() => {
-      _rec.sec++;
-      document.getElementById('gr-rec-time').textContent =
-        Math.floor(_rec.sec/60)+':'+String(_rec.sec%60).padStart(2,'0');
-    }, 1000);
-  } catch(_) {
-    showToast('Ruxsat kerak', 'Mikrofonga ruxsat bering', 'error', 3000);
-  }
-}
-
-function stopRec(tab, e) {
-  if (e) e.preventDefault();
-  if (!_rec.mr) return;
-  _rec.mr.onstop = () => {
-    const blob = new Blob(_rec.chunks, {type:'audio/webm'});
-    sendAudio(blob);
-    _rec.mr.stream.getTracks().forEach(t => t.stop());
-    _rec.mr = null;
-  };
-  _rec.mr.stop();
-  _resetRecUI();
-}
-
-function cancelRec(tab) {
-  if (_rec.mr) { _rec.mr.stream.getTracks().forEach(t => t.stop()); _rec.mr = null; }
-  _rec.chunks = [];
-  _resetRecUI();
-}
-
-function _resetRecUI() {
-  clearInterval(_rec.int);
-  document.getElementById('gr-rec-bar').style.display = 'none';
-  document.getElementById('gr-msg-in').disabled = false;
-  const mic = document.getElementById('gr-mic-btn');
-  mic.style.background = 'rgba(52,199,89,.15)';
-  mic.querySelector('i').style.color = '#34C759';
-}
-
-// Bu sahifadan chiqib ketilganda (masalan Asosiy/Tarixga o'tilganda) yozib
-// turilgan ovozli xabar bo'lsa ham, mikrofon trekini albatta to'xtatamiz —
-// aks holda Android WebView'da mikrofon apparat darajasida "band" holicha
-// qolib ketishi mumkin, va keyinroq boshqa sahifada (masalan "efir"
-// mikrofoni bosilganda) getUserMedia() "NotReadableError: Could not start
-// audio source" xatosi bilan rad etiladi (garchi ruxsat berilgan bo'lsa ham).
-window.addEventListener('pagehide', () => {
-  if (_rec.mr) {
-    try { _rec.mr.stream.getTracks().forEach(t => t.stop()); } catch (_) {}
-    _rec.mr = null;
-  }
-});
-
-async function sendAudio(blob) {
-  Native.vibrate(10);
-  const fd = new FormData();
-  fd.append('audio', blob, 'voice.webm');
-  fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
-  try {
-    const r = await fetch('{% url "driver:group_chat_send_audio" %}', {method:'POST', body:fd});
-    const d = await r.json();
-    if (d.id) { grLastId = d.id; appendGrMsg(d, true); }
-  } catch(_) {
-    showToast('Xatolik', 'Audio yuborilmadi', 'error', 3000);
-  }
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function audioBubble(src, isMe) {
