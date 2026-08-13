@@ -535,10 +535,18 @@ def driver_order_action(request, driver, pk, action):
                 }, status=400)
             tariff = TariffSettings.get()
             commission = locked.commission or tariff.commission
-            if driver.balance < commission:
+            # Diqqat: balans yetarli bo'lmasa ham, buyurtma UZOQ VAQT (2
+            # daqiqa) hech kim tomonidan qabul qilinmay kutib qolgan bo'lsa
+            # — QARZGA ham bo'lsa qabul qilishga ruxsat beriladi (mijoz
+            # butunlay xizmatsiz qolib ketmasin deb).
+            from .utils import order_credit_accept_allowed, mark_driver_debt_from_order
+            on_credit = driver.balance < commission
+            if on_credit and not order_credit_accept_allowed(locked):
                 return JsonResponse({'ok': False, 'error': f'Balans yetarli emas. Komissiya: {commission} UZS'}, status=400)
             driver.balance -= Decimal(str(commission))
             driver.save(update_fields=['balance'])
+            if on_credit:
+                mark_driver_debt_from_order(driver, locked, commission)
             locked.driver = driver
             locked.status = 'accepted'
             locked.dispatched_to = None

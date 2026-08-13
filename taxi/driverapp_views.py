@@ -317,7 +317,10 @@ def order_reject(request, driver, pk):
 def order_accept(request, driver, pk):
     from django.utils import timezone
     from .models import DispatchAttempt, AddressQueueEntry
-    from .utils import _resolve_dispatch_attempt, tg_order_accepted, tg_low_balance_alert, sms_order_status
+    from .utils import (
+        _resolve_dispatch_attempt, tg_order_accepted, tg_low_balance_alert, sms_order_status,
+        order_credit_accept_allowed, mark_driver_debt_from_order,
+    )
 
     with transaction.atomic():
         locked = get_object_or_404(Order.objects.select_for_update(), pk=pk)
@@ -332,10 +335,18 @@ def order_accept(request, driver, pk):
             }, status=400)
         tariff = TariffSettings.get()
         commission = locked.commission or tariff.commission
-        if driver.balance < commission:
+        # Diqqat: balans yetarli bo'lmasa ham, buyurtma UZOQ VAQT (2 daqiqa)
+        # hech kim tomonidan qabul qilinmay kutib qolgan bo'lsa — QARZGA
+        # ham bo'lsa qabul qilishga ruxsat beriladi (mijoz butunlay
+        # xizmatsiz qolib ketmasin deb). `on_credit` — pastda balans manfiy
+        # bo'lib qolganini "Qarzdorlar" ro'yxatiga avtomatik belgilash uchun.
+        on_credit = driver.balance < commission
+        if on_credit and not order_credit_accept_allowed(locked):
             return Response({'detail': f'Balans yetarli emas. Komissiya: {commission} UZS'}, status=400)
         driver.balance -= Decimal(str(commission))
         driver.save(update_fields=['balance'])
+        if on_credit:
+            mark_driver_debt_from_order(driver, locked, commission)
         locked.driver = driver
         locked.status = 'accepted'
         locked.dispatched_to = None

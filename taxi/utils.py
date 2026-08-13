@@ -2076,6 +2076,44 @@ def _next_address_queue_driver(address, rejected_ids):
     return entry.driver if entry else None
 
 
+# Shuncha soniya hech kim tomonidan qabul qilinmay "kutib qolgan" buyurtma
+# uchun — balans komissiyadan kam bo'lsa ham QARZGA (balans manfiy bo'lib)
+# qabul qilishga ruxsat beriladi. Aks holda atrofda FAQAT past balansli
+# haydovchi(lar) qolgan holatda, mijoz butunlay xizmatsiz qolib ketardi —
+# komissiya yig'ishdan ko'ra, buyurtmani BAJARISH ustun qo'yiladi.
+ORDER_DEBT_ACCEPT_AGE_SECONDS = 120
+
+
+def order_credit_accept_allowed(order):
+    """`order.created_at`dan beri `ORDER_DEBT_ACCEPT_AGE_SECONDS`dan ko'proq
+    vaqt o'tganmi — ya'ni bu buyurtma "kutib qolgan" hisoblanadimi."""
+    from django.utils import timezone
+    return (timezone.now() - order.created_at).total_seconds() >= ORDER_DEBT_ACCEPT_AGE_SECONDS
+
+
+def mark_driver_debt_from_order(driver, order, commission):
+    """Haydovchi balansi komissiyadan kam bo'lsa ham (`order_credit_accept_allowed`
+    orqali) qabul qilishga ruxsat berilganda chaqiriladi. Diqqat: bu
+    ODATDAGI qo'lda "Qarzdor" belgilashdan (`driver_toggle_qarz`, operator
+    ANIQ shu qarorni qabul qiladi) farq qiladi — bu yerda TIZIM O'ZI qaror
+    qabul qilgani uchun, operator buni ALBATTA ko'rib, kuzatib borishi
+    uchun avtomatik "Qarzdorlar" ro'yxatiga qo'shiladi (agar hali u yerda
+    bo'lmasa — allaqachon qarzdor bo'lsa, mavjud izoh saqlanib qoladi)."""
+    from django.utils import timezone
+    from .models import DriverActivityLog
+
+    note = (
+        f"Buyurtma #{order.id} — balans yetarli bo'lmasa ham (buyurtma "
+        f"{ORDER_DEBT_ACCEPT_AGE_SECONDS // 60} daqiqadan ko'p kutib qolgani uchun) qarzga qabul qilindi"
+    )[:255]
+    if not driver.is_qarzdor:
+        driver.is_qarzdor = True
+        driver.qarz_note = note
+        driver.qarz_marked_at = timezone.now()
+        driver.save(update_fields=['is_qarzdor', 'qarz_note', 'qarz_marked_at'])
+    DriverActivityLog.objects.create(driver=driver, action=DriverActivityLog.ACTION_QARZ_ON, detail=note)
+
+
 def dispatch_order(order):
     """
     Buyurtmani navbatma-navbat eng yaqin/adolatli haydovchilarga yuborish.
