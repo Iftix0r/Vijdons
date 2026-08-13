@@ -102,6 +102,7 @@ import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.data.api.OrderDto
 import uz.vijdon.driver.data.api.QueueDriverDto
 import uz.vijdon.driver.ui.orders.TaximeterTracker
+import uz.vijdon.driver.ui.theme.AnimatedBalanceText
 import uz.vijdon.driver.ui.theme.CardShape
 import uz.vijdon.driver.ui.theme.CenteredLoading
 import uz.vijdon.driver.ui.theme.ChipShape
@@ -158,6 +159,26 @@ fun HomeScreen(
         locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    // Joylashuv RUXSATI berilgan bo'lishi mumkin, lekin qurilmaning o'zida
+    // Joylashuv (GPS) xizmati butunlay O'CHIQ bo'lishi mumkin — bu holda
+    // `DriverLocationService` hech qanday xato bermay, shunchaki hech qachon
+    // GPS nuqtasi olmaydi (jim muvaffaqiyatsizlik), haydovchi esa nima
+    // bo'layotganini tushunmay, "ilova ishlamayapti" deb o'ylashi mumkin.
+    var locationServicesDisabled by remember { mutableStateOf(false) }
+    run {
+        val lifecycleOwner = LocalLifecycleOwner.current
+        DisposableEffect(lifecycleOwner) {
+            val locationManager = context.getSystemService(android.location.LocationManager::class.java)
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME && locationManager != null) {
+                    locationServicesDisabled = !androidx.core.location.LocationManagerCompat.isLocationEnabled(locationManager)
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
         }
     }
 
@@ -252,7 +273,13 @@ fun HomeScreen(
         // joy qoldirib boshlanadi — natijada ikkalasi bitta qator kabi ko'rinadi.
         HomeHeader(driverFullName = currentDriver.full_name, balance = currentDriver.balance, onOpenBalance = onOpenBalance)
 
-        if (notificationPermissionMissing) {
+        if (locationServicesDisabled) {
+            LocationServicesDisabledBanner(
+                onEnable = {
+                    context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                },
+            )
+        } else if (notificationPermissionMissing) {
             NotificationPermissionBanner(
                 onEnable = {
                     context.startActivity(
@@ -1078,6 +1105,33 @@ private fun DutyBar(isOnDuty: Boolean, onToggle: () -> Unit, modifier: Modifier 
     }
 }
 
+/** Joylashuv RUXSATI berilgan, lekin qurilmaning Joylashuv (GPS) xizmati
+ * o'chiq bo'lsa — haydovchi navbatga chiqsa ham server hech qachon uning
+ * GPS nuqtasini olmaydi, shu sabab unga buyurtma yuborilmaydi. Qurilma
+ * Sozlamalaridagi Joylashuv sahifasiga to'g'ridan-to'g'ri yo'naltiramiz. */
+@Composable
+private fun LocationServicesDisabledBanner(onEnable: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .background(VijdonColors.Red.copy(alpha = 0.12f), CardShape)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Rounded.LocationOn, contentDescription = null, tint = VijdonColors.Red, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "Joylashuv (GPS) o'chiq — yoqmasangiz sizga buyurtma yuborilmaydi. Yoqing!",
+            color = VijdonColors.Red,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(8.dp))
+        TextButton(onClick = onEnable) { Text("Yoqish", color = VijdonColors.Red, style = MaterialTheme.typography.labelMedium) }
+    }
+}
+
 /** Bildirishnoma ruxsati (Android 13+) umuman berilmagan bo'lsa — yangi
  * buyurtma haqida HECH QANDAY signal kelmaydi (full-screen sozlamasidan
  * ham oldinroq muammo), shu sabab qurilma Sozlamalariga yo'naltiramiz. */
@@ -1405,8 +1459,8 @@ private fun HomeHeader(driverFullName: String, balance: String, onOpenBalance: (
             ) {
                 PulsingDot(color = VijdonColors.Green)
                 Spacer(Modifier.width(7.dp))
-                Text(
-                    "${formatMoney(balance)} so'm",
+                AnimatedBalanceText(
+                    balance = balance,
                     color = VijdonColors.Green,
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
                 )
@@ -1472,8 +1526,8 @@ private fun TopBar(rank: Int?, balance: String, onOpenRating: () -> Unit, onOpen
             ) {
                 Icon(Icons.Rounded.CreditCard, contentDescription = null, tint = VijdonColors.Green, modifier = Modifier.size(19.dp))
                 Spacer(Modifier.width(7.dp))
-                Text(
-                    "${formatMoney(balance)} so'm",
+                AnimatedBalanceText(
+                    balance = balance,
                     color = VijdonColors.TextPrimary,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 )

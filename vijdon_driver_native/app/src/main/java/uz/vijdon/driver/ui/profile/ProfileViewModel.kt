@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import uz.vijdon.driver.data.api.DriverDto
+import uz.vijdon.driver.data.push.BalanceChangedBus
 import uz.vijdon.driver.data.repository.ApiResult
 import uz.vijdon.driver.data.repository.DriverRepository
 import java.io.File
@@ -26,15 +27,32 @@ class ProfileViewModel @Inject constructor(private val repository: DriverReposit
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
+    init {
+        // Balans o'zgarganda (admin to'ldirdi/ayirdi) server FCM push
+        // yuboradi — shu orqali Profil ekrani ochiq bo'lsa, darhol yangi
+        // balansni ko'rsatadi (ilovani qayta ochishni kutmasdan). `silent`
+        // — bu HAYDOVCHI so'ramagan, FONDA sodir bo'ladigan yangilanish,
+        // shu sabab (masalan) shu payt ekranda ko'rinib turgan, hali
+        // haydovchi o'qib ulgurmagan boshqa xatoni (masalan rasm yuklash
+        // muvaffaqiyatsiz bo'lgani) bekorga o'chirib/bosib yozib
+        // yubormasligi kerak.
+        viewModelScope.launch {
+            BalanceChangedBus.events.collect { refresh(silent = true) }
+        }
+    }
+
     fun setDriver(driver: DriverDto) {
         _uiState.value = _uiState.value.copy(driver = driver)
     }
 
-    fun refresh() {
+    fun refresh(silent: Boolean = false) {
         viewModelScope.launch {
             when (val result = repository.me()) {
-                is ApiResult.Success -> _uiState.value = _uiState.value.copy(driver = result.data)
-                is ApiResult.Error -> _uiState.value = _uiState.value.copy(error = result.message)
+                is ApiResult.Success -> _uiState.value = _uiState.value.copy(
+                    driver = result.data,
+                    error = if (silent) _uiState.value.error else null,
+                )
+                is ApiResult.Error -> if (!silent) _uiState.value = _uiState.value.copy(error = result.message)
             }
         }
     }

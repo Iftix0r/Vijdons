@@ -647,6 +647,24 @@ def driver_recharge(request, pk):
             DriverActivityLog.objects.create(driver=driver, action=DriverActivityLog.ACTION_BALANCE, detail=detail,
                 ip_address=_get_client_ip(request), user_agent=request.META.get('HTTP_USER_AGENT', ''))
             tg_balance_changed(driver, amount, action)
+            # Diqqat: haydovchi ilovasi (native) balansni faqat qayta
+            # ishga tushirilganda yangilardi — chunki hech qanday jonli
+            # signal yo'q edi. Shu FCM push orqali ilova (agar ochiq bo'lsa)
+            # darhol o'z balansini qayta so'raydi (`VijdonFirebaseMessagingService`
+            # -> `BalanceChangedBus`), yopiq bo'lsa esa oddiy bildirishnoma
+            # sifatida ko'rinadi.
+            if action == 'deduct':
+                _send_fcm_to_driver(
+                    driver, "💰 Balans o'zgardi",
+                    f"-{amount:,.0f} so'm ayirildi. Joriy balans: {driver.balance:,.0f} so'm".replace(',', ' '),
+                    data_type='balance_changed',
+                )
+            else:
+                _send_fcm_to_driver(
+                    driver, "💰 Balans to'ldirildi",
+                    f"+{amount:,.0f} so'm qo'shildi. Joriy balans: {driver.balance:,.0f} so'm".replace(',', ' '),
+                    data_type='balance_changed',
+                )
         except (ValueError, TypeError, Exception):
             pass
     return redirect(request.META.get('HTTP_REFERER', 'taxi:driver_list'))
@@ -2457,6 +2475,11 @@ def topup_resolve(request, pk):
             )
             topup.status = BalanceTopupRequest.STATUS_APPROVED
             tg_balance_changed(driver, topup.amount, BalanceLog.ACTION_ADD)
+            _send_fcm_to_driver(
+                driver, "💰 Balans to'ldirildi",
+                f"+{topup.amount:,.0f} so'm qo'shildi. Joriy balans: {driver.balance:,.0f} so'm".replace(',', ' '),
+                data_type='balance_changed',
+            )
             messages.success(request, f"To'lov #{topup.id} tasdiqlandi — {driver.full_name} balansi: {driver.balance} UZS")
         elif action == 'reject':
             reason = request.POST.get('reason', '').strip()
@@ -3097,6 +3120,11 @@ def _handle_admin_message(token, chat_id, text, location=None):
             detail=f"Admin (bot): {'+' if amount >= 0 else ''}{amount} UZS",
         )
         tg_balance_changed(driver, abs(amount), action)
+        _send_fcm_to_driver(
+            driver, "💰 Balans o'zgardi" if action == BalanceLog.ACTION_DEDUCT else "💰 Balans to'ldirildi",
+            f"{'-' if action == BalanceLog.ACTION_DEDUCT else '+'}{abs(amount):,.0f} so'm. Joriy balans: {driver.balance:,.0f} so'm".replace(',', ' '),
+            data_type='balance_changed',
+        )
         _admin_bot_send(token, chat_id, f"💰 {driver.full_name} balansi yangilandi: {driver.balance} UZS", _ADMIN_MENU_KB)
         return
 
@@ -3153,6 +3181,11 @@ def _handle_admin_message(token, chat_id, text, location=None):
             topup.resolved_at = timezone.now()
             topup.save(update_fields=['status', 'resolved_at'])
             tg_balance_changed(driver, topup.amount, BalanceLog.ACTION_ADD)
+            _send_fcm_to_driver(
+                driver, "💰 Balans to'ldirildi",
+                f"+{topup.amount:,.0f} so'm qo'shildi. Joriy balans: {driver.balance:,.0f} so'm".replace(',', ' '),
+                data_type='balance_changed',
+            )
             _admin_bot_send(token, chat_id, f"✅ To'lov #{topup.id} tasdiqlandi. {driver.full_name} balansi: {driver.balance} UZS", _ADMIN_MENU_KB)
         else:
             topup.status = BalanceTopupRequest.STATUS_REJECTED
@@ -3473,7 +3506,7 @@ def operator_chat_typing(request):
     return JsonResponse({'ok': True})
 
 
-def _send_fcm_to_driver(driver, title, body):
+def _send_fcm_to_driver(driver, title, body, data_type='chat'):
     import urllib.request, json
     from django.conf import settings
     fcm_key = getattr(settings, 'FCM_SERVER_KEY', '')
@@ -3483,7 +3516,7 @@ def _send_fcm_to_driver(driver, title, body):
         data = json.dumps({
             'to': driver.fcm_token,
             'notification': {'title': title, 'body': body, 'sound': 'default'},
-            'data': {'type': 'chat'},
+            'data': {'type': data_type},
         }).encode()
         req = urllib.request.Request(
             'https://fcm.googleapis.com/fcm/send',

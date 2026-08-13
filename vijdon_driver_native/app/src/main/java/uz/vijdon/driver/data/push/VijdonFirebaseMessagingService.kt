@@ -36,6 +36,16 @@ class VijdonFirebaseMessagingService : FirebaseMessagingService() {
         val title = message.notification?.title ?: message.data["title"] ?: "Vijdon Taxi"
         val body = message.notification?.body ?: message.data["body"] ?: ""
         val isNewOrder = message.data["type"] == "new_order"
+
+        // Diqqat: bildirishnoma ko'rsatilishidan QAT'I NAZAR (tugma bosilishini
+        // kutmasdan) — ilova fonda yoki oldinda ochiq bo'lsa, balans darhol
+        // (real vaqtda) yangilanishi uchun. Tugma bosilganda ochiladigan
+        // `MainActivity.onNewIntent()` orqali signal berish (masalan
+        // `OpenOrderBus`) bu yerda ishlamas edi — ko'p hollarda haydovchi
+        // bildirishnomani umuman bosmaydi, faqat ekranga qaytib balansni ko'radi.
+        if (message.data["type"] == "balance_changed") {
+            CoroutineScope(Dispatchers.Default).launch { BalanceChangedBus.trigger() }
+        }
         val channelId = if (isNewOrder) "new_orders_channel" else "duty_channel"
         val notificationId = message.messageId?.hashCode() ?: 0
 

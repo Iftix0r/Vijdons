@@ -63,13 +63,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import uz.vijdon.driver.BuildConfig
 import uz.vijdon.driver.data.api.DriverDto
+import uz.vijdon.driver.ui.theme.AnimatedBalanceText
 import uz.vijdon.driver.ui.theme.CardShape
 import uz.vijdon.driver.ui.theme.Pill
 import uz.vijdon.driver.ui.theme.TabHeader
 import uz.vijdon.driver.ui.theme.VijdonColors
 import uz.vijdon.driver.ui.theme.cardShadow
 import uz.vijdon.driver.util.copyUriToCacheFile
-import uz.vijdon.driver.util.formatMoney
 
 // Dasturchi bilan bog'lanish (pastki "Powered by") HAM, balans to'ldirish
 // so'rovi (chek yuklash orqali ichki oqim o'rniga) HAM — buyurtma bo'yicha —
@@ -157,7 +157,12 @@ fun ProfileScreen(
                 Text("JORIY BALANS", color = VijdonColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
             }
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(formatMoney(currentDriver.balance), color = VijdonColors.Green, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold))
+                AnimatedBalanceText(
+                    balance = currentDriver.balance,
+                    color = VijdonColors.Green,
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    suffix = "",
+                )
                 Spacer(Modifier.width(6.dp))
                 Text("so'm", color = VijdonColors.TextSecondary, modifier = Modifier.padding(bottom = 6.dp))
             }

@@ -21,6 +21,7 @@ import uz.vijdon.driver.data.api.OrderDto
 import uz.vijdon.driver.data.api.QueueDriverDto
 import uz.vijdon.driver.data.location.DriverLocationService
 import uz.vijdon.driver.data.location.LocationBus
+import uz.vijdon.driver.data.push.BalanceChangedBus
 import uz.vijdon.driver.data.push.DriverSoundEvent
 import uz.vijdon.driver.data.push.DriverSoundPlayer
 import uz.vijdon.driver.data.push.OpenOrderBus
@@ -119,6 +120,35 @@ class HomeViewModel @Inject constructor(
             OpenOrderBus.events.collect { orderId ->
                 _uiState.value = _uiState.value.copy(pendingOpenOrderId = orderId)
                 refreshOrders()
+            }
+        }
+        // Balans o'zgarganda (admin to'ldirdi/ayirdi) server FCM push yuboradi
+        // (`VijdonFirebaseMessagingService` → `BalanceChangedBus`) — shu orqali
+        // ilova ochib-yopilishini kutmasdan, darhol yangi balansni so'raymiz.
+        viewModelScope.launch {
+            BalanceChangedBus.events.collect { refreshBalance() }
+        }
+    }
+
+    /** `BalanceChangedBus` signali kelganda chaqiriladi — faqat `balance`
+     * (va boshqa server-hisoblaydigan maydonlar: reyting, safarlar soni)
+     * yangilanadi, `is_on_duty` esa (`setDriver()`dagi kabi) mahalliy
+     * holatdan saqlanib qoladi — aks holda `SessionViewModel`dan kelgan
+     * eskirgan qiymat bilan bosib yozilib, avval tuzatilgan xato qaytadi.
+     * Diqqat: `repository.me()` javob berguncha (sekin tarmoq) haydovchi
+     * onlayn/oflaynni almashtirib ulgurishi mumkin — shu sabab eskirganlik
+     * tekshiruvi BUTUN `driver` obyektini emas, faqat shu davrda haqiqatan
+     * ahamiyatli narsani (haydovchi hali ham mavjudmi) tekshiradi, va
+     * `is_on_duty` ENG SO'NGGI holatdan (await'dan OLDIN emas, KEYIN)
+     * olinadi — aks holda shu oraliqda bo'lgan onlayn/oflayn o'zgarishi
+     * yangi balans bilan birga bekorga tashlab yuborilardi. */
+    private fun refreshBalance() {
+        viewModelScope.launch {
+            if (_uiState.value.driver == null) return@launch
+            val result = repository.me()
+            val latest = _uiState.value.driver
+            if (result is ApiResult.Success && latest != null) {
+                _uiState.value = _uiState.value.copy(driver = result.data.copy(is_on_duty = latest.is_on_duty))
             }
         }
     }
@@ -275,29 +305,35 @@ class HomeViewModel @Inject constructor(
     // (60s — tez-tez emas, bu shunchaki "server meni hali ham NIMA deb
     // bilyapti" tekshiruvi) serverdan so'raladi va HAR IKKI yo'nalishdagi
     // tafovut ham tuzatiladi.
+    //
+    // Diqqat: shu bir so'rovning O'ZI endi `balance`/`rating`/`trips_count`
+    // kabi boshqa server-hisoblaydigan maydonlarni ham yangilaydi —
+    // `BalanceChangedBus` (push orqali darhol) ANIQ shu maqsadda mavjud,
+    // lekin push yo'qolib qolishi (tarmoq, ilova hali biror ekranga
+    // kirmagan bo'lishi) yoki javob xato bo'lishi mumkin — shu holatlarda
+    // ham balans 60s ichida O'ZI tuzalib qolishi uchun zaxira sifatida.
     private var dutySyncPollJob: Job? = null
     private fun startDutySyncPolling() {
         dutySyncPollJob?.cancel()
         dutySyncPollJob = viewModelScope.launch {
             while (true) {
                 delay(60_000)
-                val before = _uiState.value.driver
-                if (before != null) {
+                if (_uiState.value.driver != null) {
                     val result = repository.me()
                     // Diqqat: `repository.me()` javob berguncha (sekin tarmoq)
-                    // haydovchi is_on_duty'ni istalgancha marta o'zgartirib
-                    // ulgurgan bo'lishi mumkin — shu sabab natija
-                    // qo'llanishidan OLDIN `driver`ning O'ZI (data class,
-                    // strukturaviy tenglik) shu davr ichida MUTLAQO
-                    // o'zgarmaganini tekshiramiz; o'zgargan bo'lsa — javob
-                    // allaqachon ESKIRGAN, e'tiborsiz qoldiriladi.
-                    if (
-                        result is ApiResult.Success &&
-                        result.data.is_on_duty != before.is_on_duty &&
-                        _uiState.value.driver == before
-                    ) {
-                        _uiState.value = _uiState.value.copy(driver = before.copy(is_on_duty = result.data.is_on_duty))
-                        syncLocationService(result.data.is_on_duty)
+                    // haydovchi is_on_duty'ni o'zgartirib ulgurgan bo'lishi
+                    // mumkin — shu sabab ENG SO'NGGI holatdan (await'dan
+                    // OLDINGI eskirgan qiymatdan emas) olinadi.
+                    val latest = _uiState.value.driver
+                    if (result is ApiResult.Success && latest != null) {
+                        // is_on_duty uchun: faqat serverning "onlayn -> oflayn"
+                        // tuzatishi qabul qilinadi (auto-offline) — aks holda
+                        // mahalliy holat ustun (`toggleDuty()`ning o'zi
+                        // boshqaradi). Boshqa barcha maydonlar esa har doim
+                        // eng yangi server qiymatidan olinadi.
+                        val onDuty = if (!result.data.is_on_duty && latest.is_on_duty) false else latest.is_on_duty
+                        _uiState.value = _uiState.value.copy(driver = result.data.copy(is_on_duty = onDuty))
+                        if (onDuty != latest.is_on_duty) syncLocationService(onDuty)
                     }
                 }
             }

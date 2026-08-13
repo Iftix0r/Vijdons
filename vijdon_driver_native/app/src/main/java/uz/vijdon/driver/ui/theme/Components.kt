@@ -1,5 +1,7 @@
 package uz.vijdon.driver.ui.theme
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,13 +25,16 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import uz.vijdon.driver.util.formatMoney
 
 /**
  * Veb paneldagi "2 navbatda" / "Yakunlandi" kabi dumaloq nishonlar. Fon
@@ -51,6 +56,37 @@ fun Pill(text: String, color: Color = VijdonColors.TextSecondary, background: Co
 
 val CardShape = RoundedCornerShape(CardRadius)
 val ChipShape = RoundedCornerShape(ChipRadius)
+
+/**
+ * Balans matnini ko'rsatadi — qiymat o'zgarganda (masalan operator
+ * to'ldirganda/ayirganda) raqamlar ORASIDA "aylanib" o'tadi, shu orqali
+ * haydovchi o'zgarishni sezmasdan qolmaydi (avval raqam sezilmasdan,
+ * sakrab yangilanardi — faqat ilovani qayta ochganda ko'rinardi).
+ */
+@Composable
+fun AnimatedBalanceText(
+    balance: String,
+    modifier: Modifier = Modifier,
+    color: Color = VijdonColors.Green,
+    style: TextStyle = MaterialTheme.typography.labelMedium,
+    suffix: String = "so'm",
+) {
+    val suffixed = if (suffix.isEmpty()) "" else " $suffix"
+    val target = balance.toFloatOrNull()
+    // Diqqat: `Float` ~16.7 mln'dan katta butun sonlarni ANIQ ifodalay
+    // olmaydi (7 xonali aniqlik) — uzoq muddat ishlagan haydovchida
+    // balans shu chegaradan oshib ketishi mumkin, shunda animatsiya
+    // OXIRIDA (nishon qiymatning o'zida) bir necha birlik xato ko'rinib
+    // qolardi. Shu sabab bunday holatlarda (yoki `balance` umuman raqam
+    // bo'lmasa) animatsiyasiz, to'g'ridan-to'g'ri ANIQ qiymat ko'rsatiladi
+    // — avvalgi (animatsiyasiz) xatti-harakat bilan bir xil.
+    if (target == null || kotlin.math.abs(target) > 9_000_000f) {
+        Text("${formatMoney(balance)}$suffixed", color = color, style = style, modifier = modifier)
+        return
+    }
+    val animated by animateFloatAsState(targetValue = target, animationSpec = tween(durationMillis = 700), label = "balance")
+    Text("${formatMoney(animated.toLong().toString())}$suffixed", color = color, style = style, modifier = modifier)
+}
 
 /**
  * Kartalarga yengil "ko'tarilgan" soya beradi. Diqqat: Yandex Pro'ning
