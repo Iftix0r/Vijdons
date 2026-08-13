@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -88,6 +89,7 @@ class HomeViewModel @Inject constructor(
         startPolling()
         startAddressPolling()
         startSurgePolling()
+        startDutySyncPolling()
         collectLocationForTaximeter()
         viewModelScope.launch {
             val result = repository.rating()
@@ -126,9 +128,32 @@ class HomeViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(pendingOpenOrderId = null)
     }
 
+    /** `HomeScreen` `HorizontalPager` ichida bo'lgani uchun sahifadan
+     * sahifaga o'tganda Compose uning KOMPOZITSIYASINI (o'zi emas — bu
+     * ViewModel `Tabs.HOME` marshrutiga bog'langani uchun butun sessiya
+     * davomida bitta nusxada qoladi) tashlab qayta yaratadi — shu payt
+     * `HomeScreen`dagi `LaunchedEffect(driver) { setDriver(driver) }` qayta
+     * ishga tushib, bu funksiya har safar `SessionViewModel`dan kelgan
+     * (faqat login/refresh paytida yangilanadigan) `driver` bilan qayta
+     * chaqiriladi. `toggleDuty()` esa `is_on_duty`ni FAQAT shu ViewModel
+     * ichida yangilaydi, `SessionViewModel`ga xabar bermaydi — shu sabab
+     * o'sha eskirgan (masalan hali "oflayn") qiymat bilan blindly
+     * almashtirilsa, onlayn bosilgandan keyin sahifa almashtirilganda
+     * haydovchi yana "oflayn" bo'lib qolardi. Shu sabab `is_on_duty` faqat
+     * shu ViewModel'ning o'zidan (mahalliy, eng so'nggi) olinadi — boshqa
+     * maydonlar (balans, ism va h.k.) esa yangilanishda davom etadi.
+     * (`startDutySyncPolling()` — server o'zi navbatdan chiqarib qo'ygan
+     * holatni ushlab olish uchun, chunki bu mexanizm sabab mahalliy
+     * qiymat SessionViewModel'dan hech qachon "tuzatilmaydi".) */
     fun setDriver(driver: DriverDto) {
-        _uiState.value = _uiState.value.copy(driver = driver)
-        syncLocationService(driver.is_on_duty)
+        val existing = _uiState.value.driver
+        val merged = if (existing != null && existing.id == driver.id) {
+            driver.copy(is_on_duty = existing.is_on_duty)
+        } else {
+            driver
+        }
+        _uiState.value = _uiState.value.copy(driver = merged)
+        syncLocationService(merged.is_on_duty)
     }
 
     /** Ruxsat ekrandan so'ralganda KEYINROQ berilsa (masalan haydovchi
@@ -189,6 +214,52 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    // `setDriver()` endi sahifa qayta yaratilganda mahalliy `is_on_duty`ni
+    // ustun qo'yadi (yuqoridagi izohga qarang) — bu haydovchining o'zi
+    // bosgan tugmasini himoya qiladi, lekin buning "narxi" bor: mahalliy va
+    // server holati IKKALA yo'nalishda ham chalkashib qolishi mumkin —
+    // (1) server haydovchini O'ZI navbatdan chiqarib qo'ysa (masalan
+    // `driverapp_views.py` + `utils.auto_offline_stale_drivers()` — GPS
+    // `AUTO_OFFLINE_MINUTES` davomida kelmasa), YOKI (2) `toggleDuty()`
+    // so'rovi serverga YETIB BORIB bajarilgan bo'lsa-yu, javobi tarmoq
+    // uzilishi sabab yo'qolib qolsa (`duty/toggle/` toggle — idempotent
+    // EMAS, shu sabab `safeCall`ning o'zi ham qayta urinsa ham natija
+    // serverda haqiqatan nima bo'lganidan qat'i nazar noaniq qolishi
+    // mumkin) — bu holda mahalliy "oflayn"ga qaytariladi (xatolik
+    // hisoblanib), server esa "onlayn" deb qolaveradi. Ilova bu ikkalasi
+    // haqida ham hech qachon o'zidan bilib olmas edi. Shu sabab kam-kam
+    // (60s — tez-tez emas, bu shunchaki "server meni hali ham NIMA deb
+    // bilyapti" tekshiruvi) serverdan so'raladi va HAR IKKI yo'nalishdagi
+    // tafovut ham tuzatiladi.
+    private var dutySyncPollJob: Job? = null
+    private fun startDutySyncPolling() {
+        dutySyncPollJob?.cancel()
+        dutySyncPollJob = viewModelScope.launch {
+            while (true) {
+                delay(60_000)
+                val before = _uiState.value.driver
+                if (before != null) {
+                    val result = repository.me()
+                    // Diqqat: `repository.me()` javob berguncha (sekin tarmoq)
+                    // haydovchi is_on_duty'ni istalgancha marta o'zgartirib
+                    // ulgurgan bo'lishi mumkin — shu sabab natija
+                    // qo'llanishidan OLDIN `driver`ning O'ZI (data class,
+                    // strukturaviy tenglik) shu davr ichida MUTLAQO
+                    // o'zgarmaganini tekshiramiz; o'zgargan bo'lsa — javob
+                    // allaqachon ESKIRGAN, e'tiborsiz qoldiriladi.
+                    if (
+                        result is ApiResult.Success &&
+                        result.data.is_on_duty != before.is_on_duty &&
+                        _uiState.value.driver == before
+                    ) {
+                        _uiState.value = _uiState.value.copy(driver = before.copy(is_on_duty = result.data.is_on_duty))
+                        syncLocationService(result.data.is_on_duty)
+                    }
+                }
+            }
+        }
+    }
+
     /** Masofa haydovchining joriy GPS'iga bog'liq bo'lgani uchun server
      * bermaydi (veb versiyada ham xuddi shunday — JS'da hisoblanadi),
      * shu sabab mahalliy so'nggi joylashuv asosida hisoblanadi. Eng yaqin
@@ -215,17 +286,48 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    // Haydovchi bitta manzilni tez-tez ochib-yopib-qayta ochsa (masalan A ->
+    // yopish -> A) — har bir ochish o'zining mustaqil so'rovini boshlaydi.
+    // Faqat `expandedAddressId`ga qarab tekshirish YETARLI EMAS: agar SHU
+    // BIR XIL manzil qayta ochilsa, ID solishtirish "true" bo'lib qoladi,
+    // lekin javob ESKI (birinchi) so'rovdan kelayotgan bo'lishi mumkin —
+    // shu sabab har bir chaqiruv o'zining noyob raqamini oladi, faqat ENG
+    // SO'NGGISI natijani qo'llaydi.
+    private var addressExpandRequestId = 0
+
     fun toggleAddressExpand(address: AddressDto, forceExpand: Boolean = false) {
         val current = _uiState.value
         if (!forceExpand && current.expandedAddressId == address.id) {
+            addressExpandRequestId++
             _uiState.value = current.copy(expandedAddressId = null, queuePosition = null, queueDrivers = emptyList())
             return
         }
+        val requestId = ++addressExpandRequestId
         _uiState.value = current.copy(expandedAddressId = address.id, queueLoading = true)
         viewModelScope.launch {
-            val posResult = repository.addressQueuePosition(address.id, driverLat, driverLng)
-            val driversResult = repository.addressQueueDrivers(address.id)
-            if (_uiState.value.expandedAddressId != address.id) return@launch
+            // Diqqat: avval bu ikkalasi KETMA-KET so'ralar edi (ikkinchisi
+            // birinchisi tugashini kutib turardi) — har biri tarmoq
+            // sekinlashganda ~15-45s cho'zilishi mumkinligini hisobga
+            // olsak, bu "Joriy navbatingiz" kartasini ikki barobar sekin
+            // ochilishiga olib kelardi. Endi ikkalasi PARALEL so'raladi.
+            val posDeferred = async { repository.addressQueuePosition(address.id, driverLat, driverLng) }
+            val driversDeferred = async { repository.addressQueueDrivers(address.id) }
+            val posResult = posDeferred.await()
+            val driversResult = driversDeferred.await()
+            // Shu so'rov davom etayotgan payt haydovchi panelni yopgan
+            // bo'lsa — natija endi kerak emas, lekin avvalgi versiyada bu
+            // yerda qaytib ketilganda `queueLoading` HECH QACHON false
+            // qilinmasdi, panel qayta ochilganda bir zumga eski
+            // "yuklanmoqda" holati bilan chizilib ketishi mumkin edi.
+            // Diqqat: agar shu orada BOSHQA manzil ochilgan bo'lsa (null
+            // emas, boshqa ID), `queueLoading`ga tegilmaydi — u holatni
+            // endi O'SHA (yangi) so'rovning o'zi to'g'ri boshqaradi.
+            if (_uiState.value.expandedAddressId != address.id || requestId != addressExpandRequestId) {
+                if (_uiState.value.expandedAddressId == null) {
+                    _uiState.value = _uiState.value.copy(queueLoading = false)
+                }
+                return@launch
+            }
             _uiState.value = _uiState.value.copy(
                 queuePosition = (posResult as? ApiResult.Success)?.data?.position,
                 queueDrivers = (driversResult as? ApiResult.Success)?.data ?: emptyList(),
@@ -316,8 +418,29 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    private var dutyToggleJob: Job? = null
+
     fun toggleDuty() {
-        viewModelScope.launch {
+        // Tugma tez-tez (masalan ikki marta ustma-ust) bosilsa — oldingi
+        // so'rov hali javob bermagan paytda ikkinchisi boshlansa,
+        // ikkinchisining `previousDriver`i BIRINCHISINING optimistik
+        // (hali tasdiqlanmagan) qiymatini olib qo'yardi; ikkalasi ham xato
+        // qaytarsa, holat serverdagi haqiqiy oxirgi holatga emas, o'sha
+        // oraliq qiymatga qaytardi. Shu sabab davom etayotgan so'rov bo'lsa,
+        // yangisi e'tiborsiz qoldiriladi.
+        if (dutyToggleJob?.isActive == true) return
+        val previousDriver = _uiState.value.driver ?: return
+        // Optimistik yangilanish: tugma bosilgan zahoti DARHOL yangi
+        // holatni ko'rsatadi, server javobini kutib turmaydi. Avval bu
+        // yerda faqat server javobi kelgach o'zgarardi — tarmoq sekin
+        // bo'lganda (safCall() ichida qayta urinishlar bilan ~45s gacha
+        // cho'zilishi mumkin) "tugma bosilgandan ancha keyin o'zgaryapti"
+        // degan shikoyatga aynan shu sabab bo'lgan edi. Xato qaytsa —
+        // pastda ORQAGA qaytariladi.
+        val optimisticOnDuty = !previousDriver.is_on_duty
+        _uiState.value = _uiState.value.copy(driver = previousDriver.copy(is_on_duty = optimisticOnDuty))
+        syncLocationService(optimisticOnDuty)
+        dutyToggleJob = viewModelScope.launch {
             when (val result = repository.toggleDuty()) {
                 is ApiResult.Success -> {
                     val driver = _uiState.value.driver?.copy(is_on_duty = result.data.is_on_duty)
@@ -325,7 +448,18 @@ class HomeViewModel @Inject constructor(
                     syncLocationService(result.data.is_on_duty)
                     refreshOrders()
                 }
-                is ApiResult.Error -> _uiState.value = _uiState.value.copy(error = result.message)
+                is ApiResult.Error -> {
+                    // Diqqat: butun `previousDriver`ga emas, FAQAT
+                    // `is_on_duty`ga qaytariladi — so'rov davom etayotgan
+                    // paytda `setDriver()` orqali kelgan yangiroq maydonlar
+                    // (masalan balans) shu bilan yo'qolib ketmasin.
+                    val current = _uiState.value.driver
+                    _uiState.value = _uiState.value.copy(
+                        driver = current?.copy(is_on_duty = previousDriver.is_on_duty) ?: previousDriver,
+                        error = result.message,
+                    )
+                    syncLocationService(previousDriver.is_on_duty)
+                }
             }
         }
     }
@@ -474,6 +608,7 @@ class HomeViewModel @Inject constructor(
         pollJob?.cancel()
         addressPollJob?.cancel()
         surgePollJob?.cancel()
+        dutySyncPollJob?.cancel()
         super.onCleared()
     }
 }

@@ -83,7 +83,7 @@ class DriverRepository @Inject constructor(
                 return ApiResult.Error("Kutilmagan javob. Server sozlamalarini tekshiring.")
             }
         }
-        return ApiResult.Error("Internet aloqasi yo'q. Qayta urinib ko'ring.")
+        return ApiResult.Error("Internet aloqasi yo'q. Qayta urinib ko'ring.", isConnectivity = true)
     }
 
     private companion object {

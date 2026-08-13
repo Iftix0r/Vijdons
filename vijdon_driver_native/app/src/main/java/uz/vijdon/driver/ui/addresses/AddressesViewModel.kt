@@ -46,6 +46,7 @@ class AddressesViewModel @Inject constructor(private val repository: DriverRepos
     val uiState: StateFlow<AddressesUiState> = _uiState.asStateFlow()
 
     private var searchDebounceJob: Job? = null
+    private var loadJob: Job? = null
 
     // Diqqat: bu yerda avval init'da darhol load() chaqirilib, ekran
     // ochilgan zahoti O'ZBEKISTON BO'YLAB BARCHA manzillar ro'yxati
@@ -92,12 +93,18 @@ class AddressesViewModel @Inject constructor(private val repository: DriverRepos
      * holatiga qaytib ketardi. Filtr bo'sh bo'lsa shunchaki ro'yxatni
      * tozalab qo'yamiz (boshlang'ich, "hech narsa ko'rsatilmagan" holat). */
     fun load() {
+        // Diqqat: oldingi so'rov BEKOR qilinadi — aks holda hudud/tuman/
+        // qidiruv tez-tez almashtirilsa, bir nechta so'rov parallel ketadi
+        // va ESKI filtr javobi YANGISIDAN keyin kelib qolsa (tartib
+        // kafolatlanmagan), ekranda joriy filtrga mos kelmaydigan ro'yxat
+        // ko'rsatilib qolardi.
+        loadJob?.cancel()
         val state = _uiState.value
         if (!state.hasActiveFilter) {
             _uiState.value = state.copy(addresses = emptyList(), loading = false, error = null)
             return
         }
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             _uiState.value = _uiState.value.copy(loading = true)
             val current = _uiState.value
             when (
@@ -145,6 +152,7 @@ class AddressesViewModel @Inject constructor(private val repository: DriverRepos
 
     fun clearFilters() {
         searchDebounceJob?.cancel()
+        loadJob?.cancel()
         _uiState.value = _uiState.value.copy(
             selectedRegionId = null, selectedDistrictId = null, searchQuery = "",
             addresses = emptyList(), loading = false, error = null,

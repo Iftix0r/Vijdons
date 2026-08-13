@@ -50,7 +50,7 @@ class ChatViewModel @Inject constructor(private val repository: DriverRepository
     private suspend fun poll() {
         when (val result = repository.chatGroupList(sinceId)) {
             is ApiResult.Success -> {
-                _uiState.value = _uiState.value.copy(messages = merge(_uiState.value.messages, result.data), loading = false)
+                _uiState.value = _uiState.value.copy(messages = merge(_uiState.value.messages, result.data), loading = false, error = null)
             }
             is ApiResult.Error -> _uiState.value = _uiState.value.copy(loading = false, error = result.message)
         }

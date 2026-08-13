@@ -3,6 +3,7 @@ package uz.vijdon.driver.ui.history
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,12 +52,20 @@ class HistoryViewModel @Inject constructor(private val repository: DriverReposit
         _uiState.value = _uiState.value.copy(statusTab = tab)
     }
 
+    private var loadJob: Job? = null
+
     fun load() {
-        viewModelScope.launch {
+        // Diqqat: oldingi so'rov BEKOR qilinadi — aks holda davr tez-tez
+        // almashtirilsa (masalan "Bugun" -> "7 kun"), ikkalasi ham parallel
+        // so'raladi va agar ESKI davr javobi YANGISIDAN keyin kelib qolsa
+        // (tarmoqda tartib kafolatlanmagan), ekranda tanlangan davr bilan
+        // mos kelmaydigan (eski) ma'lumot ko'rsatilib qolardi.
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _uiState.value = _uiState.value.copy(loading = true)
             when (val result = repository.history(_uiState.value.period)) {
                 is ApiResult.Success -> _uiState.value = _uiState.value.copy(
-                    loading = false, orders = result.data.orders,
+                    loading = false, error = null, orders = result.data.orders,
                     totalEarned = result.data.total_earned, completed = result.data.completed,
                 )
                 is ApiResult.Error -> _uiState.value = _uiState.value.copy(loading = false, error = result.message)
