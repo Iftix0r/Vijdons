@@ -20,9 +20,9 @@ import uz.vijdon.driver.data.api.DetailResponse
 import uz.vijdon.driver.data.api.DriverApiService
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.data.api.DutyToggleResponse
+import uz.vijdon.driver.data.api.ChatMessageDto
 import uz.vijdon.driver.data.api.ChatUnreadResponse
 import uz.vijdon.driver.data.api.DriverSoundDto
-import uz.vijdon.driver.data.api.GroupMessageDto
 import uz.vijdon.driver.data.api.NearbyDriverDto
 import uz.vijdon.driver.data.api.OrderDto
 import uz.vijdon.driver.data.api.OrderHistoryResponse
@@ -266,11 +266,11 @@ class DriverRepository @Inject constructor(
 
     suspend fun driverSounds(): ApiResult<Map<String, DriverSoundDto>> = safeCall { api.driverSounds() }
 
-    suspend fun chatGroupList(sinceId: Int): ApiResult<List<GroupMessageDto>> = safeCall { api.chatGroupList(sinceId) }
+    suspend fun chatList(): ApiResult<List<ChatMessageDto>> = safeCall { api.chatList() }
 
-    suspend fun chatGroupSend(text: String): ApiResult<GroupMessageDto> = safeCall {
-        api.chatGroupSend(mapOf("text" to text))
+    suspend fun chatSend(text: String): ApiResult<ChatMessageDto> = safeCall {
+        api.chatSend(mapOf("text" to text))
     }
 
-    suspend fun chatGroupUnread(): ApiResult<ChatUnreadResponse> = safeCall { api.chatGroupUnread() }
+    suspend fun chatUnread(): ApiResult<ChatUnreadResponse> = safeCall { api.chatUnread() }
 }

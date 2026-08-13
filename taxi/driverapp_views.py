@@ -983,57 +983,59 @@ def driver_sounds(request, driver):
     return Response(data)
 
 
-# ── Guruh chati ─────────────────────────────────────────────────────────────
-# Veb haydovchi panelidagi `driver_group_chat_list`/`driver_group_chat_send`
-# (taxi/driver_views.py) bilan AYNAN bir xil mantiq/JSON shakli — faqat
-# session emas, token autentifikatsiyasi bilan. Audio xabar/"efir" (ratsiya)
-# bu yerda YO'Q — native ilovaning birinchi versiyasi faqat matnli xabar
-# bilan cheklangan.
+# ── Operator chati ────────────────────────────────────────────────────────────
+# Haydovchi bilan operator o'rtasidagi XUSUSIY (faqat ikkalasi ko'radigan)
+# suhbat — boshqa haydovchilar bu xabarlarni ko'rmaydi. Operator tarafi
+# `taxi/views.py`dagi `operator_chat` panelida (`ChatMessage` modeli, xuddi
+# eski Flutter ilovasi `api_views.py: chat_messages/chat_send` bilan bir xil
+# model/mantiq) — shu sabab operator panelida hech narsa o'zgartirishga hojat
+# yo'q, faqat shu modelni token-autentifikatsiya bilan native ilovaga ochamiz.
+# Audio xabar bu yerda YO'Q — native ilovaning birinchi versiyasi faqat
+# matnli xabar bilan cheklangan.
 
-def _group_message_dict(msg, driver):
+def _chat_message_dict(msg):
     return {
         'id': msg.id,
-        'driver_id': msg.driver_id,
-        'driver_name': msg.display_name,
-        'car_number': msg.display_sub,
+        'sender': msg.sender,
         'text': msg.text,
+        'is_read': msg.is_read,
         'created_at': msg.created_at.isoformat(),
-        'is_me': msg.driver_id == driver.id,
     }
 
 
 @api_view(['GET'])
 @driver_required
-def chat_group_list(request, driver):
-    from django.utils import timezone
-    from .models import GroupMessage
+def chat_private_list(request, driver):
+    from .models import ChatMessage
 
-    since_id = int(request.query_params.get('since_id', 0) or 0)
-    msgs = GroupMessage.objects.select_related('driver').filter(id__gt=since_id).order_by('created_at')[:100]
-    # Veb versiyasi bilan bir xil — har bir so'rov "o'qilgan" deb belgilaydi,
-    # shu orqali navbar/bottom-bar dagi o'qilmagan xabarlar belgisi (badge)
-    # haydovchi shu bo'limni ochib turgan paytda tezda nolga tushadi.
-    driver.last_group_read_at = timezone.now()
-    driver.save(update_fields=['last_group_read_at'])
-    return Response([_group_message_dict(m, driver) for m in msgs])
+    ChatMessage.objects.filter(driver=driver, sender=ChatMessage.SENDER_OPERATOR, is_read=False).update(is_read=True)
+    # Diqqat: avval `created_at` bo'yicha O'SUVCHI tartibda kesilgan edi —
+    # bu suhbat 100 tadan oshgach doim ENG ESKI 100 tani qaytarardi (yangi
+    # xabarlar hech qachon ko'rinmasdi). Endi ENG SO'NGGI 100 ta olinadi,
+    # keyin ekranda eskisi tepada bo'lishi uchun xronologik tartibga
+    # qaytariladi.
+    msgs = reversed(ChatMessage.objects.filter(driver=driver).order_by('-created_at')[:100])
+    return Response([_chat_message_dict(m) for m in msgs])
 
 
 @api_view(['POST'])
 @driver_required
-def chat_group_send(request, driver):
-    from .models import GroupMessage
+def chat_private_send(request, driver):
+    from .models import ChatMessage
+    from .utils import send_telegram
 
     text = str(request.data.get('text', '')).strip()
     if not text:
         return Response({'detail': "Xabar matni bo'sh bo'lishi mumkin emas."}, status=400)
-    msg = GroupMessage.objects.create(driver=driver, text=text)
-    return Response(_group_message_dict(msg, driver), status=201)
+    msg = ChatMessage.objects.create(driver=driver, sender=ChatMessage.SENDER_DRIVER, text=text)
+    send_telegram(f"💬 <b>{driver.full_name}</b> ({driver.car_number}):\n{text}")
+    return Response(_chat_message_dict(msg), status=201)
 
 
 @api_view(['GET'])
 @driver_required
-def chat_group_unread(request, driver):
-    from .models import GroupMessage
+def chat_private_unread(request, driver):
+    from .models import ChatMessage
 
-    count = GroupMessage.objects.exclude(driver=driver).filter(created_at__gt=driver.last_group_read_at).count()
+    count = ChatMessage.objects.filter(driver=driver, sender=ChatMessage.SENDER_OPERATOR, is_read=False).count()
     return Response({'count': count})

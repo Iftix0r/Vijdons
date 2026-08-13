@@ -27,7 +27,7 @@ class ChatBadgeViewModel @Inject constructor(private val repository: DriverRepos
     init {
         viewModelScope.launch {
             while (true) {
-                val result = repository.chatGroupUnread()
+                val result = repository.chatUnread()
                 if (result is ApiResult.Success) _unread.value = result.data.count
                 delay(12_000)
             }

@@ -1,5 +1,7 @@
 package uz.vijdon.driver.ui.profile
 
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -62,6 +64,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import uz.vijdon.driver.BuildConfig
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.ui.theme.CardShape
 import uz.vijdon.driver.ui.theme.Pill
@@ -221,6 +224,9 @@ fun ProfileScreen(
         ) {
             Text("Tizimdan chiqish", color = VijdonColors.Red, style = MaterialTheme.typography.titleMedium)
         }
+
+        Spacer(Modifier.height(24.dp))
+        AppFooter()
         Spacer(Modifier.height(24.dp))
     }
 
@@ -312,6 +318,47 @@ private fun MenuRow(
             if (showChevron) {
                 Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(18.dp))
             }
+        }
+    }
+}
+
+@Composable
+private fun AppFooter() {
+    val context = LocalContext.current
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .width(36.dp)
+                .height(3.dp)
+                .clip(RoundedCornerShape(50))
+                .background(VijdonColors.TextSecondary.copy(alpha = 0.15f)),
+        )
+        Spacer(Modifier.height(14.dp))
+        Text(
+            "Versiya ${BuildConfig.VERSION_NAME}",
+            color = VijdonColors.TextSecondary,
+            style = MaterialTheme.typography.labelSmall,
+        )
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Powered by ",
+                color = VijdonColors.TextSecondary.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.labelSmall,
+            )
+            Text(
+                "ifcoder",
+                color = VijdonColors.Blue,
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier.clickable {
+                    // Dasturchi bilan bog'lanish uchun Telegram profili.
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/iftix0r"))
+                    context.startActivity(intent)
+                },
+            )
         }
     }
 }

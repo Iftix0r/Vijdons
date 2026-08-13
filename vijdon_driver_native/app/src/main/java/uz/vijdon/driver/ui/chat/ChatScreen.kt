@@ -43,7 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import uz.vijdon.driver.data.api.GroupMessageDto
+import uz.vijdon.driver.data.api.ChatMessageDto
 import uz.vijdon.driver.ui.theme.CenteredLoading
 import uz.vijdon.driver.ui.theme.ChipShape
 import uz.vijdon.driver.ui.theme.ErrorBanner
@@ -51,9 +51,9 @@ import uz.vijdon.driver.ui.theme.TabHeader
 import uz.vijdon.driver.ui.theme.VijdonColors
 
 /**
- * Haydovchilarning umumiy guruh chati — veb paneldagi "Guruh chati" bilan
- * bir xil g'oya (barcha faol haydovchilar + operator bitta umumiy suhbatda).
- * Avval bu bo'lim faqat "tez orada qo'shiladi" degan bo'sh sahifa edi.
+ * Haydovchi bilan operator o'rtasidagi XUSUSIY suhbat — veb paneldagi
+ * operator panelining "Chat" bo'limi bilan bir xil g'oya. Boshqa
+ * haydovchilar bu xabarlarni ko'rmaydi.
  */
 @Composable
 fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
@@ -68,7 +68,7 @@ fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
     Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background)) {
         TabHeader(
             "Chat",
-            subtitle = "Barcha haydovchilar bilan umumiy suhbat",
+            subtitle = "Operator bilan suhbat",
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp).padding(bottom = 0.dp),
         )
 
@@ -121,7 +121,7 @@ private fun EmptyChatState() {
             Text("Hali xabar yo'q", color = VijdonColors.TextPrimary, style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Boshqa haydovchilar va operatorga birinchi bo'lib yozing",
+                "Operatorga birinchi bo'lib yozing",
                 color = VijdonColors.TextSecondary,
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
@@ -133,44 +133,35 @@ private fun EmptyChatState() {
 private val BubbleShape = RoundedCornerShape(16.dp)
 
 @Composable
-private fun ChatBubble(msg: GroupMessageDto) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (msg.is_me) Arrangement.End else Arrangement.Start) {
+private fun ChatBubble(msg: ChatMessageDto) {
+    val isMe = msg.isFromDriver
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start) {
         Column(
             modifier = Modifier
                 .widthIn(max = 280.dp)
-                .background(if (msg.is_me) VijdonColors.Yellow else VijdonColors.Surface, BubbleShape)
+                .background(if (isMe) VijdonColors.Yellow else VijdonColors.Surface, BubbleShape)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
-            // Operator/boshqa haydovchi yozgan xabarda kim yozganini bilish
-            // uchun ism (+ mashina raqami) qatori — o'zingizning xabaringizda
-            // bu shart emas, u allaqachon o'ngga tekislangan sariq pufakcha
-            // bilan ajralib turibdi.
-            if (!msg.is_me) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        msg.driver_name,
-                        color = VijdonColors.Blue,
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    )
-                    if (msg.car_number.isNotBlank()) {
-                        Text(
-                            " · ${msg.car_number}",
-                            color = VijdonColors.TextSecondary,
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                    }
-                }
+            // Operator yozgan xabarda kim yozganini bilish uchun — o'zingizning
+            // xabaringizda bu shart emas, u allaqachon o'ngga tekislangan
+            // sariq pufakcha bilan ajralib turibdi.
+            if (!isMe) {
+                Text(
+                    "Operator",
+                    color = VijdonColors.Blue,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                )
                 Spacer(Modifier.height(2.dp))
             }
             Text(
                 msg.text,
-                color = if (msg.is_me) VijdonColors.TextOnYellow else VijdonColors.TextPrimary,
+                color = if (isMe) VijdonColors.TextOnYellow else VijdonColors.TextPrimary,
                 style = MaterialTheme.typography.bodyMedium,
             )
             Spacer(Modifier.height(2.dp))
             Text(
                 formatChatTime(msg.created_at),
-                color = if (msg.is_me) VijdonColors.TextOnYellow.copy(alpha = 0.6f) else VijdonColors.TextSecondary,
+                color = if (isMe) VijdonColors.TextOnYellow.copy(alpha = 0.6f) else VijdonColors.TextSecondary,
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                 modifier = Modifier.align(Alignment.End),
             )

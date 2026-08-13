@@ -220,18 +220,18 @@ data class NearbyDriverDto(
 @Serializable
 data class DriverSoundDto(val enabled: Boolean, val url: String? = null)
 
-/** Guruh chatidagi bitta xabar. `driver_id` operator yozgan xabarda `null`
- * bo'ladi (`car_number` ham bo'sh qatorga aylanadi). */
+/** Operator bilan xususiy chatdagi bitta xabar. `sender` — `"driver"` yoki
+ * `"operator"` (`ChatMessage.SENDER_CHOICES`, `taxi/models.py`). */
 @Serializable
-data class GroupMessageDto(
+data class ChatMessageDto(
     val id: Int,
-    val driver_id: Int? = null,
-    val driver_name: String,
-    val car_number: String,
+    val sender: String,
     val text: String,
+    val is_read: Boolean,
     val created_at: String,
-    val is_me: Boolean,
-)
+) {
+    val isFromDriver: Boolean get() = sender == "driver"
+}
 
 @Serializable
 data class ChatUnreadResponse(val count: Int)

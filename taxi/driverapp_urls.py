@@ -51,7 +51,7 @@ urlpatterns = [
     path('nearby-drivers/', v.nearby_drivers, name='nearby_drivers'),
     path('sounds/', v.driver_sounds, name='driver_sounds'),
 
-    path('chat/group/',        v.chat_group_list,   name='chat_group_list'),
-    path('chat/group/send/',   v.chat_group_send,   name='chat_group_send'),
-    path('chat/group/unread/', v.chat_group_unread, name='chat_group_unread'),
+    path('chat/',        v.chat_private_list,   name='chat_private_list'),
+    path('chat/send/',   v.chat_private_send,   name='chat_private_send'),
+    path('chat/unread/', v.chat_private_unread, name='chat_private_unread'),
 ]

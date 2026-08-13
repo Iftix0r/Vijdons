@@ -9,30 +9,30 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import uz.vijdon.driver.data.api.GroupMessageDto
+import uz.vijdon.driver.data.api.ChatMessageDto
 import uz.vijdon.driver.data.repository.ApiResult
 import uz.vijdon.driver.data.repository.DriverRepository
 import javax.inject.Inject
 
 data class ChatUiState(
-    val messages: List<GroupMessageDto> = emptyList(),
+    val messages: List<ChatMessageDto> = emptyList(),
     val loading: Boolean = true,
     val sending: Boolean = false,
     val error: String? = null,
 )
 
 /**
- * Haydovchilarning umumiy guruh chati — veb paneldagi `driver_group_chat_list`/
- * `driver_group_chat_send` bilan bir xil g'oya (Telegram uslubidagi polling,
- * har 4 soniyada). `sinceId` orqali faqat YANGI xabarlar so'raladi — butun
- * tarix qayta yuklanmaydi.
+ * Haydovchi bilan operator o'rtasidagi XUSUSIY suhbat — veb paneldagi
+ * `operator_chat` (`taxi/views.py`) bilan bir xil `ChatMessage` modeli
+ * (Telegram uslubidagi polling, har 4 soniyada). Boshqa haydovchilar bu
+ * xabarlarni ko'rmaydi (avval bu bo'lim BARCHA haydovchilar ko'radigan
+ * umumiy guruh chati edi — endi faqat operator bilan bitta-bittaga suhbat).
  */
 @HiltViewModel
 class ChatViewModel @Inject constructor(private val repository: DriverRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
-    private var sinceId = 0
     private var pollJob: Job? = null
 
     init { startPolling() }
@@ -48,9 +48,12 @@ class ChatViewModel @Inject constructor(private val repository: DriverRepository
     }
 
     private suspend fun poll() {
-        when (val result = repository.chatGroupList(sinceId)) {
+        // Diqqat: avvalgi guruh chatidan farqli o'laroq, server har safar
+        // BUTUN (so'nggi 100 ta) suhbatni qaytaradi — `since_id` kabi
+        // qisman yuklash yo'q, shu sabab natija shunchaki almashtiriladi.
+        when (val result = repository.chatList()) {
             is ApiResult.Success -> {
-                _uiState.value = _uiState.value.copy(messages = merge(_uiState.value.messages, result.data), loading = false, error = null)
+                _uiState.value = _uiState.value.copy(messages = result.data, loading = false, error = null)
             }
             is ApiResult.Error -> _uiState.value = _uiState.value.copy(loading = false, error = result.message)
         }
@@ -61,21 +64,21 @@ class ChatViewModel @Inject constructor(private val repository: DriverRepository
         if (trimmed.isEmpty() || _uiState.value.sending) return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(sending = true, error = null)
-            when (val result = repository.chatGroupSend(trimmed)) {
+            when (val result = repository.chatSend(trimmed)) {
                 is ApiResult.Success -> {
-                    _uiState.value = _uiState.value.copy(messages = merge(_uiState.value.messages, listOf(result.data)), sending = false)
+                    // Keyingi poll (4s ichida) baribir haqiqiy ro'yxatni
+                    // qaytaradi — shu oraliqda yuborilgan xabar darhol
+                    // ko'rinishi uchun mahalliy ravishda qo'shib qo'yiladi.
+                    val messages = (_uiState.value.messages + result.data).distinctBy { it.id }.sortedBy { it.id }
+                    _uiState.value = _uiState.value.copy(messages = messages, sending = false)
                 }
                 is ApiResult.Error -> _uiState.value = _uiState.value.copy(sending = false, error = result.message)
             }
         }
     }
 
-    // Bir xil xabar ikki marta ko'rinib qolmasligi uchun (masalan xabar
-    // yuborilgach, keyingi poll ham aynan o'sha xabarni qaytarib yuborishi
-    // mumkin edi — id bo'yicha noyoblashtirilib, vaqt tartibida saqlanadi.
-    private fun merge(current: List<GroupMessageDto>, incoming: List<GroupMessageDto>): List<GroupMessageDto> {
-        if (incoming.isEmpty()) return current
-        sinceId = maxOf(sinceId, incoming.maxOf { it.id })
-        return (current + incoming).distinctBy { it.id }.sortedBy { it.id }
+    override fun onCleared() {
+        pollJob?.cancel()
+        super.onCleared()
     }
 }
