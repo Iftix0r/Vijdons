@@ -35,7 +35,7 @@ import uz.vijdon.driver.ui.profile.ProfileScreen
 import uz.vijdon.driver.ui.rating.RatingScreen
 import uz.vijdon.driver.ui.sos.SosScreen
 import uz.vijdon.driver.ui.theme.VijdonColors
-import uz.vijdon.driver.ui.youtube.YouTubeScreen
+import uz.vijdon.driver.ui.webview.WebAppScreen
 
 // Diqqat: avval Bosh/Tarix/Chat/Profil har biri ALOHIDA NavHost destination
 // edi (tugma bosilganda navController.navigate() bilan almashtirilardi).
@@ -51,22 +51,23 @@ import uz.vijdon.driver.ui.youtube.YouTubeScreen
 // orqali ishlaydi — alohida (nested) surish detektori kerak emas, shu
 // sabab pastki tab-bar svaypi bilan HECH QACHON to'qnashmaydi.
 //
-// YouTube — Bosh bilan Reyting ORASIGA qo'shilgan: "Bosh sahifadan o'ngga
-// surish -> YouTube", "YouTube'dan yana o'ngga surish -> Reyting" (foydalanuvchi
-// so'rovi bo'yicha — haydovchi navbatda kutayotganda qo'shiq/video
-// eshitib/ko'rib turishi uchun). Shu sabab Bosh sahifaning indeksi endi 1
-// emas, 2.
-private val pagerPages = listOf(SubRoutes.RATING, SubRoutes.YOUTUBE, Tabs.HOME, Tabs.HISTORY, Tabs.CHAT, Tabs.PROFILE, SubRoutes.SOS)
+// YouTube — Bosh tomonga qo'shilgan: "Bosh sahifadan o'ngga surish ->
+// YouTube" (foydalanuvchi so'rovi bo'yicha — haydovchi navbatda kutayotganda
+// qo'shiq/video eshitib/ko'rib turishi uchun; Telegram/Instagram sinovdan
+// keyin keraksiz deb topilib olib tashlandi). Reyting Profil tomonida
+// ("Profildan chapga surish -> Reyting -> SOS"). Bosh sahifaning indeksi
+// endi 1.
+private val pagerPages = listOf(SubRoutes.YOUTUBE, Tabs.HOME, Tabs.HISTORY, Tabs.CHAT, Tabs.PROFILE, SubRoutes.RATING, SubRoutes.SOS)
 
-// Reyting/YouTube/SOS sahifalarida ham pastki tab-bar o'zining "uy" bo'limini
-// (mos ravishda Bosh/Profil) yoritib turishi uchun.
+// Reyting/YouTube/SOS sahifalarida ham pastki tab-bar o'zining "uy"
+// bo'limini (mos ravishda Bosh/Profil) yoritib turishi uchun.
 private fun tabForPage(page: Int) = when (pagerPages.getOrNull(page)) {
     Tabs.HISTORY -> Tabs.HISTORY
     Tabs.CHAT -> Tabs.CHAT
-    Tabs.PROFILE, SubRoutes.SOS -> Tabs.PROFILE
+    Tabs.PROFILE, SubRoutes.SOS, SubRoutes.RATING -> Tabs.PROFILE
     else -> Tabs.HOME
 }
-private fun pageForTab(route: String) = pagerPages.indexOf(route).takeIf { it >= 0 } ?: 2
+private fun pageForTab(route: String) = pagerPages.indexOf(route).takeIf { it >= 0 } ?: 1
 
 private val bottomBarRoutes = setOf(Tabs.HOME)
 
@@ -89,15 +90,24 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val showBottomBar = currentRoute == null || currentRoute in bottomBarRoutes
 
-    // To'rtta asosiy bo'lim (Bosh/Tarix/Chat/Profil) + Reyting/YouTube/SOS (eng
-    // chetlarida) — barchasi ALOHIDA NavHost destination emas, Telegram'dagi
-    // kabi bitta HorizontalPager'ning sahifalari, shu sabab tab-bar
-    // bosilganda HAM, ekranni chapga/o'ngga surganda HAM shu YAGONA
-    // `pagerState` orqali almashadi. Bosh sahifa (indeks 2) — boshlang'ich.
-    val pagerState = rememberPagerState(initialPage = 2, pageCount = { pagerPages.size })
+    // To'rtta asosiy bo'lim (Bosh/Tarix/Chat/Profil) + Reyting/YouTube/SOS
+    // (eng chetlarida) — barchasi ALOHIDA NavHost destination emas,
+    // Telegram'dagi kabi bitta HorizontalPager'ning sahifalari, shu sabab
+    // tab-bar bosilganda HAM, ekranni chapga/o'ngga surganda HAM shu
+    // YAGONA `pagerState` orqali almashadi. Bosh sahifa (indeks 1) — boshlang'ich.
+    val pagerState = rememberPagerState(initialPage = 1, pageCount = { pagerPages.size })
     val pagerScope = rememberCoroutineScope()
+
+    // YouTube sahifasida pastki tugmalar qatori (foydalanuvchi so'rovi
+    // bo'yicha) yashiriladi — ko'proq joy YouTube uchun qoladi. Diqqat:
+    // `WebAppScreen`dagi teginish-ushlab-qolish tuzatishi (Shorts uchun)
+    // sabab bu sahifada endi gorizontal svayp bilan ham chiqib bo'lmaydi —
+    // shu sabab pastki tugmalar o'rniga WebAppScreen'ning o'zida suzuvchi
+    // "Ortga" tugmasi bor (pastga qarang), aks holda haydovchi bu
+    // sahifada "qamalib" qolardi.
+    val showBottomBar = (currentRoute == null || currentRoute in bottomBarRoutes) &&
+        pagerPages.getOrNull(pagerState.currentPage) != SubRoutes.YOUTUBE
 
     fun goToTab(route: String) {
         pagerScope.launch { pagerState.animateScrollToPage(pageForTab(route)) }
@@ -146,7 +156,10 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
                     HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                         when (pagerPages.getOrNull(page)) {
                             SubRoutes.RATING -> RatingScreen()
-                            SubRoutes.YOUTUBE -> YouTubeScreen()
+                            SubRoutes.YOUTUBE -> WebAppScreen(
+                                url = "https://m.youtube.com",
+                                onBackToHome = { goToPage(pagerPages.indexOf(Tabs.HOME)) },
+                            )
                             Tabs.HISTORY -> HistoryScreen()
                             Tabs.CHAT -> ChatScreen()
                             Tabs.PROFILE -> ProfileScreen(

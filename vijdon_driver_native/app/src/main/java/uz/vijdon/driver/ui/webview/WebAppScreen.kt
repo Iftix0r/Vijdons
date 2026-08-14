@@ -1,4 +1,4 @@
-package uz.vijdon.driver.ui.youtube
+package uz.vijdon.driver.ui.webview
 
 import android.annotation.SuppressLint
 import android.view.ViewGroup
@@ -24,22 +24,22 @@ import androidx.compose.ui.viewinterop.AndroidView
 import uz.vijdon.driver.ui.theme.VijdonColors
 
 /**
- * Asosiy'dan o'ngga surilganda ochiladigan "YouTube" bo'limi — haydovchi
- * navbatda kutayotganda qo'shiq/video eshitib turishi uchun, to'liq
- * YouTube mobil saytini o'z ichiga oladi (alohida native pleylist emas,
- * foydalanuvchi so'rovi bo'yicha oddiygina YouTube ochiladi).
+ * Pastki pager'dagi "yon" bo'lim (YouTube) uchun umumiy WebView qobiq —
+ * haydovchi navbatda kutayotganda tashqi saytdan foydalanishi uchun.
+ * `url` parametri orqali boshqa saytlar uchun ham qayta ishlatilishi
+ * mumkin (`ApprovedScaffold.kt`).
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun YouTubeScreen() {
+fun WebAppScreen(url: String) {
     val context = LocalContext.current
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var progress by remember { mutableFloatStateOf(0f) }
     var loading by remember { mutableStateOf(true) }
 
-    // Tizim "Orqaga" tugmasi — agar YouTube ichida (masalan video sahifasidan
-    // qidiruvga) sahifa tarixi bo'lsa, avval o'sha ichki tarixga qaytadi,
-    // aks holda odatdagidek ilova navigatsiyasiga beriladi.
+    // Tizim "Orqaga" tugmasi — agar sayt ichida (masalan video/post
+    // sahifasidan ro'yxatga) sahifa tarixi bo'lsa, avval o'sha ichki
+    // tarixga qaytadi, aks holda odatdagidek ilova navigatsiyasiga beriladi.
     BackHandler(enabled = webViewRef?.canGoBack() == true) {
         webViewRef?.goBack()
     }
@@ -55,14 +55,65 @@ fun YouTubeScreen() {
                     settings.mediaPlaybackRequiresUserGesture = false
                     settings.loadWithOverviewMode = true
                     settings.useWideViewPort = true
-                    webViewClient = WebViewClient()
+                    // GPU kompozitsiyasi — video/tez skroll (Shorts) silliq
+                    // ishlashi uchun. Sukut bo'yicha yoqilgan bo'lishi kerak,
+                    // lekin ba'zi qurilma/ilova holatlarida WebView dasturiy
+                    // (software) qatlamga tushib qolib, sekinlashishi mumkin.
+                    setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
+                    // Bu ekran HorizontalPager'ning BITTA sahifasi — pager
+                    // har bir teginish harakatini "sahifa gorizontal
+                    // almashtirilyaptimi" deb tekshiradi, bu esa Shorts'dagi
+                    // TEZ VERTIKAL svayplarni "yeb qo'yib", WebView'ga
+                    // kechikib/qisman yetkazib berishi mumkin edi (sekin,
+                    // "yopishqoq" harakat sifatida sezilardi). Teginish
+                    // boshlanishi bilan ota-ona (pager)ga uni to'xtatishni
+                    // taqiqlab qo'yamiz — shu orqali butun svayp to'g'ridan-
+                    // to'g'ri, hech qanday kechikishsiz WebView'ning o'ziga
+                    // boradi (standart Android "ichki scroll tashqi
+                    // svayp bilan to'qnashmasin" yechimi).
+                    setOnTouchListener { v, _ ->
+                        v.parent?.requestDisallowInterceptTouchEvent(true)
+                        false
+                    }
+                    webViewClient = object : WebViewClient() {
+                        // YouTube mobil saytining o'z tepa panelidagi
+                        // "hamburger" (asosiy menyu) tugmasi ilova ichida
+                        // keraksiz — bosilsa YouTube'ning o'z navigatsiya
+                        // panelini ochib, kichik ekranda joy band qiladi.
+                        // Sof CSS/JS bilan yashiriladi (server tomonidan
+                        // emas, chunki bu YouTube'ning o'z sahifasi) —
+                        // DIQQAT: YouTube o'z HTML tuzilishini istalgan
+                        // vaqt o'zgartirishi mumkin, shu sabab bu "eng
+                        // ehtimolli" selektorlar bilan yozilgan va vaqti
+                        // bilan ishlamay qolishi mumkin.
+                        override fun onPageFinished(view: WebView, loadedUrl: String) {
+                            super.onPageFinished(view, loadedUrl)
+                            if (loadedUrl.contains("youtube.com")) {
+                                view.evaluateJavascript(
+                                    """
+                                    (function() {
+                                        var css = 'ytm-topbar-menu-button-renderer:first-of-type,'
+                                            + 'button[aria-label="Guide"],'
+                                            + 'tp-yt-iron-icon[icon="yt-icons:menu"],'
+                                            + '.topbar-menu-button-guide {'
+                                            + 'display: none !important; }';
+                                        var style = document.createElement('style');
+                                        style.appendChild(document.createTextNode(css));
+                                        document.head.appendChild(style);
+                                    })();
+                                    """.trimIndent(),
+                                    null,
+                                )
+                            }
+                        }
+                    }
                     webChromeClient = object : WebChromeClient() {
                         override fun onProgressChanged(view: WebView, newProgress: Int) {
                             progress = newProgress / 100f
                             loading = newProgress < 100
                         }
                     }
-                    loadUrl("https://m.youtube.com")
+                    loadUrl(url)
                     webViewRef = this
                 }
             },

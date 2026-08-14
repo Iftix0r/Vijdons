@@ -74,7 +74,18 @@ class HomeViewModel @Inject constructor(
     private val taximeters = mutableMapOf<Int, TaximeterTracker>()
     private var driverLat: Double? = null
     private var driverLng: Double? = null
-    private var autoExpandedOnce = false
+    // Haydovchi fizik ravishda ENG SO'NGGI avtomatik ochilgan qaysi manzil
+    // yaqinida ekanini kuzatib boradi (masalan Qirg'izqo'rg'on). Diqqat:
+    // avval bu oddiy `Boolean` ("bir marta ochildimi") edi — shu sabab
+    // haydovchi Qirg'izqo'rg'ondan Oqbuloqqa (boshqa saqlangan manzilga)
+    // ko'chib o'tsa, karta ESKI manzilda "yopishib" qolardi (yoki umuman
+    // yopiq holda qolib ketardi) — SERVER tomonda haydovchi to'g'ri yangi
+    // navbatga qo'shilgan bo'lsa ham (`update_address_queue_membership`,
+    // taxi/utils.py), ilovaning O'ZI buni hech qachon ko'rsatmasdi. Endi
+    // "eng yaqin manzil ID"ning O'ZGARISHI kuzatiladi — shu orqali
+    // haydovchi qaysi manzilga borsa ham karta O'SHA yangi manzilga
+    // AVTOMATIK almashadi, cheksiz marta.
+    private var autoExpandedAddressId: Int? = null
 
     // Yandex Pro uslubidagi to'liq ekranli "yangi buyurtma" ogohlantirishi
     // uchun — faqat shu haydovchiga shaxsan yo'naltirilgan (is_dispatched)
@@ -240,8 +251,8 @@ class HomeViewModel @Inject constructor(
     // qo'shilsa/chiqsa, karta ochiq turgan bo'lsa ham ro'yxat
     // YANGILANMASDI (haydovchi o'zining navbatdagi o'rnini — ro'yxatdagi
     // qatoridan, `DarkQueueRow`/`is_me` orqali — ko'radi), faqat ilova
-    // qayta ochilganda (yangi `HomeViewModel` — `autoExpandedOnce` qaytadan
-    // ishga tushib) "sakrab" to'g'irlanardi. Veb versiyada xuddi shu
+    // qayta ochilganda (yangi `HomeViewModel` — `autoExpandedAddressId`
+    // qaytadan ishga tushib) "sakrab" to'g'irlanardi. Veb versiyada xuddi shu
     // ro'yxat `_loadHomeAddressesList` orqali har 10s'da yangilanadi
     // (`driver/home.html`) — shu bilan bir xil kadensiyada, karta ochiq
     // turgan paytda fonda jim yangilanadi (`queueLoading`ga tegilmaydi —
@@ -357,7 +368,14 @@ class HomeViewModel @Inject constructor(
      * turgan joyi) va uning navbati ko'rsatiladi (boshqa barcha manzillar
      * ro'yxati endi faqat qidiruv orqali, alohida ekranda). Navbat bo'sh
      * bo'lsa ham ochiladi — "Navbatda hech kim yo'q" ko'rinsin, aks holda
-     * haydovchi o'zi turgan joyi haqida umuman hech narsa ko'rmas edi. */
+     * haydovchi o'zi turgan joyi haqida umuman hech narsa ko'rmas edi.
+     *
+     * Diqqat: karta faqat "eng yaqin manzil" O'ZGARGANDA qayta ochiladi
+     * (`autoExpandedAddressId` bilan solishtirib) — shu sabab haydovchi
+     * shu BIR XIL manzil ichida kartani qo'lda yopib qo'ygan bo'lsa, har
+     * safar (location update kelganda) qayta majburan ochib qo'yilmaydi;
+     * lekin BOSHQA (yangi) manzilga o'tsa, karta O'SHA yangisiga albatta
+     * almashadi. */
     private fun recomputeAddressDistances() {
         val lat = driverLat
         val lng = driverLng
@@ -366,13 +384,18 @@ class HomeViewModel @Inject constructor(
         val distances = addresses.associate { it.id to haversineMeters(lat, lng, it.lat, it.lng) }
         _uiState.value = _uiState.value.copy(addressDistancesM = distances)
 
-        if (!autoExpandedOnce) {
-            val nearest = addresses.minByOrNull { distances[it.id] ?: Double.MAX_VALUE }
-            val nearestDist = nearest?.let { distances[it.id] }
-            if (nearest != null && nearestDist != null && nearestDist <= 1000.0) {
-                autoExpandedOnce = true
+        val nearest = addresses.minByOrNull { distances[it.id] ?: Double.MAX_VALUE }
+        val nearestDist = nearest?.let { distances[it.id] }
+        if (nearest != null && nearestDist != null && nearestDist <= 1000.0) {
+            if (nearest.id != autoExpandedAddressId) {
+                autoExpandedAddressId = nearest.id
                 toggleAddressExpand(nearest, forceExpand = true)
             }
+        } else {
+            // Haydovchi barcha saqlangan manzillardan uzoqlashib ketdi —
+            // keyingi safar (istalgan, hatto avvalgisi bilan bir xil)
+            // manzilga yaqinlashsa, karta yana avtomatik ochilishi uchun.
+            autoExpandedAddressId = null
         }
     }
 

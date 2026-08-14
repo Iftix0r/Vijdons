@@ -59,8 +59,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil3.compose.AsyncImage
 import uz.vijdon.driver.BuildConfig
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.ui.theme.AnimatedBalanceText
@@ -114,18 +116,31 @@ fun ProfileScreen(
         Spacer(Modifier.height(20.dp))
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             Box {
-                Box(
-                    modifier = Modifier
-                        .size(88.dp)
-                        .clip(CircleShape)
-                        .background(VijdonColors.Red)
-                        .clickable { photoLauncher.launch("image/*") },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        currentDriver.full_name.trim().firstOrNull()?.uppercase() ?: "?",
-                        color = VijdonColors.TextPrimary,
-                        style = MaterialTheme.typography.headlineMedium,
+                if (currentDriver.photo_url.isNullOrBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .size(88.dp)
+                            .clip(CircleShape)
+                            .background(VijdonColors.Red)
+                            .clickable { photoLauncher.launch("image/*") },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            currentDriver.full_name.trim().firstOrNull()?.uppercase() ?: "?",
+                            color = VijdonColors.TextPrimary,
+                            style = MaterialTheme.typography.headlineMedium,
+                        )
+                    }
+                } else {
+                    AsyncImage(
+                        model = currentDriver.photo_url,
+                        contentDescription = "Profil rasmi",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(88.dp)
+                            .clip(CircleShape)
+                            .background(VijdonColors.Surface)
+                            .clickable { photoLauncher.launch("image/*") },
                     )
                 }
                 Box(
