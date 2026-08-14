@@ -269,6 +269,7 @@ def order_status(request, user, pk):
     from .utils import (
         haversine, notify_driver_new_order, start_dispatch_timeout, _log_dispatch_attempt,
         _resolve_dispatch_attempt, sms_order_status, send_fcm, log_system_event,
+        notify_dispatch_offer_cancelled,
     )
     from .views import _refund_order_commission
 
@@ -293,10 +294,13 @@ def order_status(request, user, pk):
     if reassigned_driver:
         if prev_dispatched_id and prev_dispatched_id != reassigned_driver.id:
             _resolve_dispatch_attempt(order, prev_dispatched_id, DispatchAttempt.RESULT_CANCELLED)
+            notify_dispatch_offer_cancelled(prev_dispatched_id, order, "operator tomonidan boshqa haydovchiga qayta yo'naltirildi (ilova)")
         manual_dist = haversine(order.from_lat, order.from_lng, reassigned_driver.latitude, reassigned_driver.longitude) if order.from_lat and order.from_lng and reassigned_driver.latitude else None
         _log_dispatch_attempt(order, reassigned_driver, manual_dist)
         notify_driver_new_order(order, reassigned_driver)
         start_dispatch_timeout(order, reassigned_driver, TariffSettings.get().dispatch_timeout)
+    elif prev_dispatched_id and old_status == 'pending' and order.status != 'pending':
+        notify_dispatch_offer_cancelled(prev_dispatched_id, order, "operator tomonidan bekor qilindi (ilova)")
 
     refunded = False
     if new_status == 'cancelled' and old_status in Order.ACTIVE_STATUSES and old_driver:
@@ -385,12 +389,14 @@ def order_cancel(request, user, pk):
 @api_view(['POST'])
 @operator_required
 def order_delete(request, user, pk):
-    from .utils import log_panel_event, log_system_event, tg_order_deleted
+    from .utils import log_panel_event, log_system_event, tg_order_deleted, notify_dispatch_offer_cancelled
     from .views import _refund_order_commission
 
     order = get_object_or_404(Order, pk=pk)
     if order.driver_id and order.status in Order.ACTIVE_STATUSES:
         _refund_order_commission(order, order.driver, "o'chirildi (operator ilova)")
+    if order.status == 'pending' and order.dispatched_to_id:
+        notify_dispatch_offer_cancelled(order.dispatched_to_id, order, "o'chirildi")
     log_panel_event('panel_order_deleted', f"Buyurtma #{order.id} — {order.from_address}")
     log_system_event('order_deleted', f"Buyurtma #{order.id} — {order.from_address} o'chirildi (operator ilova)", level='warning', request=request)
     tg_order_deleted(order)

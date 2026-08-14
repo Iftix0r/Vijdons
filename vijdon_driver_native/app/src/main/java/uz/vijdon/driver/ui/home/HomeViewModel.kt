@@ -568,7 +568,11 @@ class HomeViewModel @Inject constructor(
         // qarang), uni ham darhol yopamiz. Aks holda push bildirishnoma
         // faqat o'zining tugmasi (yoki auto-cancel) orqali yopilardi —
         // ilova ichida qabul qilingandan keyin ekranda "osilib" qolardi.
+        // `DriverSoundPlayer.stop()` — bildirishnomadan MUSTAQIL, hali
+        // ijro etilib turgan "Yangi buyurtma" ringtoni bor bo'lsa, uni ham
+        // to'xtatadi (aks holda ovoz o'z-o'zicha tugaguncha davom etaverardi).
         NotificationManagerCompat.from(context).cancel(id)
+        DriverSoundPlayer.stop()
         runAction<OrderDto>(id, onSuccess = { accepted ->
             DriverSoundPlayer.play(DriverSoundEvent.ACCEPT)
             openClientDialer(accepted.client_phone)
@@ -601,6 +605,7 @@ class HomeViewModel @Inject constructor(
             return
         }
         NotificationManagerCompat.from(context).cancel(id)
+        DriverSoundPlayer.stop()
         runAction(id, onSuccess = { DriverSoundPlayer.play(DriverSoundEvent.REJECT) }) { repository.rejectOrder(id) }
     }
 

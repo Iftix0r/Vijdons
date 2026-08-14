@@ -49,13 +49,17 @@ class VijdonFirebaseMessagingService : FirebaseMessagingService() {
             CoroutineScope(Dispatchers.Default).launch { BalanceChangedBus.trigger() }
         }
 
-        // Buyurtma taklifi javobsiz qolib (dispatch_timeout) boshqa
-        // haydovchiga o'tkazilganda — server shu turni yuboradi. Ilova
-        // ochiq bo'lishidan qat'i nazar, o'sha buyurtma uchun hali ham
-        // ekranda turgan "Yangi buyurtma" bildirishnomasini yopish kifoya
-        // (endi bu haydovchiga tegishli emas), yangi bildirishnoma shart emas.
+        // Buyurtma taklifi boshqa sabab bilan (javobsiz qolib boshqa
+        // haydovchiga o'tkazilgani, operator qayta yo'naltirgani yoki
+        // bekor/o'chirib yuborgani) endi bu haydovchiga tegishli emasligi
+        // haqida server shu turni yuboradi. Ilova ochiq bo'lishidan qat'i
+        // nazar — bildirishnomani yopish YETARLI EMAS, chunki "Yangi
+        // buyurtma" ovozi (DriverSoundPlayer.playLocalRingtone) bildirishnoma
+        // bilan bog'liq emas, mustaqil ravishda chalinmoqda — shu sabab
+        // ikkalasi ham to'xtatiladi.
         if (type == "order_timeout") {
             if (orderId != null) NotificationManagerCompat.from(this).cancel(orderId)
+            DriverSoundPlayer.stop()
             return
         }
 

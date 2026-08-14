@@ -69,6 +69,9 @@ class OrderActionWorker(context: Context, params: WorkerParameters) : CoroutineW
         }
 
         NotificationManagerCompat.from(applicationContext).cancel(notificationId)
+        // Bildirishnomani yopish "Yangi buyurtma" ringtonini to'xtatmaydi
+        // (ikkalasi mustaqil) — shu sabab bu yerda ham aniq to'xtatiladi.
+        DriverSoundPlayer.stop()
         return Result.success()
     }
 

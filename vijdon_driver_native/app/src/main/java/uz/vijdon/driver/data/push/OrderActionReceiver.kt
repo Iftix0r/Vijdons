@@ -41,7 +41,10 @@ class OrderActionReceiver : BroadcastReceiver() {
         // Foydalanuvchiga darhol javob berildi degan taassurot uchun
         // bildirishnoma shu zahoti yopiladi — haqiqiy so'rov WorkManager
         // orqali fonda (kerak bo'lsa tarmoq kutib) kafolatlangan bajariladi.
+        // Bildirishnomani yopish "Yangi buyurtma" ringtonini to'xtatmaydi
+        // (mustaqil mexanizm) — shu sabab shu yerda ham darhol to'xtatiladi.
         NotificationManagerCompat.from(context).cancel(notificationId)
+        DriverSoundPlayer.stop()
     }
 
     companion object {

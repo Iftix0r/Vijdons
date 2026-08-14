@@ -358,14 +358,25 @@ def order_update_status(request, pk):
         # order_create'dagi bilan bir xil: qo'lda qayta yo'naltirilgan haydovchiga
         # ham push/Telegram xabar va javob bermasa avtomatik bo'shatuvchi taymer.
         if reassigned_driver:
-            from .utils import notify_driver_new_order, start_dispatch_timeout, _log_dispatch_attempt, _resolve_dispatch_attempt
+            from .utils import notify_driver_new_order, start_dispatch_timeout, _log_dispatch_attempt, _resolve_dispatch_attempt, notify_dispatch_offer_cancelled
             from .models import DispatchAttempt
             if prev_dispatched_id and prev_dispatched_id != reassigned_driver.id:
                 _resolve_dispatch_attempt(order, prev_dispatched_id, DispatchAttempt.RESULT_CANCELLED)
+                # Avvalgi haydovchining telefonida hali ham ko'rinib turgan
+                # "Yangi buyurtma" bildirishnomasi (u endi bu buyurtmaga
+                # tegishli emas) — yopilishi uchun.
+                notify_dispatch_offer_cancelled(prev_dispatched_id, order, "operator tomonidan boshqa haydovchiga qayta yo'naltirildi")
             manual_dist = haversine(order.from_lat, order.from_lng, reassigned_driver.latitude, reassigned_driver.longitude) if order.from_lat and order.from_lng else None
             _log_dispatch_attempt(order, reassigned_driver, manual_dist)
             notify_driver_new_order(order, reassigned_driver)
             start_dispatch_timeout(order, reassigned_driver, TariffSettings.get().dispatch_timeout)
+        elif prev_dispatched_id and old_status == 'pending' and order.status != 'pending':
+            # Reassign qilinmadi, lekin buyurtma "pending"dan chiqdi (masalan
+            # operator to'g'ridan-to'g'ri bekor qildi) — dispatched_to
+            # haydovchi hali javob bermagan bo'lsa ham, uning telefonidagi
+            # bildirishnoma yopilishi kerak.
+            from .utils import notify_dispatch_offer_cancelled
+            notify_dispatch_offer_cancelled(prev_dispatched_id, order, "operator tomonidan bekor qilindi")
 
         # Buyurtma qabul qilingan holatda bo'lib, endi bekor qilinsa — haydovchidan
         # ilgari yechilgan komissiya balansiga qaytariladi
@@ -458,6 +469,13 @@ def order_delete(request, pk):
         # (komissiya balansidan allaqachon yechilgan) — o'chirishdan oldin qaytariladi
         if order.driver_id and order.status in Order.ACTIVE_STATUSES:
             _refund_order_commission(order, order.driver, "o'chirildi")
+        # Hali qabul qilinmagan (pending), lekin bitta haydovchiga taklif
+        # qilingan bo'lsa — o'sha haydovchining telefonidagi "Yangi buyurtma"
+        # bildirishnomasi yopilishi kerak (komissiya yechilmagan, shu sabab
+        # qaytarish shart emas — faqat bildirishnomani yopish kifoya).
+        if order.status == 'pending' and order.dispatched_to_id:
+            from .utils import notify_dispatch_offer_cancelled
+            notify_dispatch_offer_cancelled(order.dispatched_to_id, order, "o'chirildi")
         log_panel_event('panel_order_deleted', f"Buyurtma #{order.id} — {order.from_address}")
         from .utils import log_system_event
         log_system_event('order_deleted', f"Buyurtma #{order.id} — {order.from_address} o'chirildi", level='warning', request=request)

@@ -1843,21 +1843,7 @@ def auto_reject_timeout(order_id, driver_id, timeout_seconds):
             else:
                 return
 
-        # Javob bermagan haydovchining telefonida hali ham osilib turgan
-        # "Yangi buyurtma" bildirishnomasini yopish uchun — u endi bu
-        # buyurtmani qabul qila olmaydi (boshqasiga o'tkazilmoqda), shu
-        # sabab bildirishnoma ekranda abadiy qolib ketmasligi kerak.
-        # `order_timeout` — VijdonFirebaseMessagingService.onMessageReceived()
-        # shu turni ko'rib, notificationId=order_id bo'yicha uni yopadi.
-        from taxi.models import Driver
-        fcm_token = Driver.objects.filter(pk=driver_id).values_list('fcm_token', flat=True).first()
-        if fcm_token:
-            send_fcm(
-                fcm_token,
-                title='Buyurtma vaqti tugadi',
-                body=f"Buyurtma #{order.id} javob berilmagani uchun boshqa haydovchiga o'tkazildi.",
-                data={'type': 'order_timeout', 'order_id': str(order.id)},
-            )
+        notify_dispatch_offer_cancelled(driver_id, order, "javob berilmagani uchun boshqa haydovchiga o'tkazildi")
 
         # Keyingi haydovchiga yuborish — tranzaksiya (va shu bilan qulf)
         # yopilgandan KEYIN, aks holda dispatch_order() ichidagi yangi
@@ -1866,6 +1852,29 @@ def auto_reject_timeout(order_id, driver_id, timeout_seconds):
         dispatch_order(order)
     except Exception:
         pass
+
+
+def notify_dispatch_offer_cancelled(driver_id, order, reason):
+    """Haydovchiga avval taklif qilingan (dispatched_to) buyurtma endi
+    unga tegishli emasligi haqida push yuboradi — javob bermay vaqti
+    tugagani (`auto_reject_timeout`), operator boshqa haydovchiga
+    qayta yo'naltirgani yoki hali qabul qilinmagan buyurtmani
+    o'chirib/bekor qilgani sabab. Bu haydovchining telefonida hali ham
+    ko'rinib turgan "Yangi buyurtma" bildirishnomasini yopish uchun kerak
+    (aks holda ekranda/qo'ng'iroq ohangida abadiy "osilib" qolardi).
+    `type: order_timeout` — VijdonFirebaseMessagingService.onMessageReceived()
+    shu turni ko'rib, notificationId=order_id bo'yicha uni yopadi (sabab —
+    barcha holatda ilova tarafidan bir xil: shunchaki bildirishnomani yopish)."""
+    from taxi.models import Driver
+    fcm_token = Driver.objects.filter(pk=driver_id).values_list('fcm_token', flat=True).first()
+    if not fcm_token:
+        return
+    send_fcm(
+        fcm_token,
+        title='Buyurtma taklifi bekor qilindi',
+        body=f"Buyurtma #{order.id} — {reason}.",
+        data={'type': 'order_timeout', 'order_id': str(order.id)},
+    )
 
 
 ADDRESS_QUEUE_RADIUS_KM = 1.0        # manzil navbatiga "QO'SHILISH" radiusi

@@ -72,6 +72,27 @@ object DriverSoundPlayer {
         }
     }
 
+    /**
+     * Buyurtma boshqa sabab bilan (qabul qilindi/rad etildi/vaqti tugab
+     * boshqasiga o'tkazildi/bekor qilindi) tugaganda chaqiriladi — hali
+     * ijro etilib turgan mahalliy ringtone'ni DARHOL to'xtatadi.
+     *
+     * MUHIM: bildirishnomani yopish (`NotificationManagerCompat.cancel()`)
+     * bu ovozga HECH QANDAY ta'sir qilmaydi — ular butunlay mustaqil ikkita
+     * mexanizm (notification kanalining o'z ovozi va bu yerdagi qo'lda
+     * ishga tushirilgan `Ringtone`). Avval faqat bildirishnoma yopilib,
+     * ringtone esa hech kim to'xtatmagani uchun oxirigacha (o'zining
+     * to'liq davomiyligicha) chalinaverar edi — buyurtma allaqachon
+     * qabul qilingan/bekor bo'lgan bo'lsa ham.
+     */
+    fun stop() {
+        try {
+            activeRingtone?.stop()
+        } catch (_: Exception) {
+        }
+        activeRingtone = null
+    }
+
     private fun playLocalRingtone() {
         val context = appContext ?: return
         try {
