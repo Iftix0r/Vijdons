@@ -1,7 +1,10 @@
 package uz.vijdon.driver.data.push
 
+import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import android.media.Ringtone
+import android.media.RingtoneManager
 import uz.vijdon.driver.data.api.DriverSoundDto
 
 /**
@@ -15,14 +18,37 @@ import uz.vijdon.driver.data.api.DriverSoundDto
  * yutiladi (ilova asosiy ishini to'xtatmaydi).
  */
 object DriverSoundPlayer {
+    private var appContext: Context? = null
     private var sounds: Map<String, DriverSoundDto> = emptyMap()
     private var activePlayer: MediaPlayer? = null
+    private var activeRingtone: Ringtone? = null
+
+    /** `VijdonDriverApp.onCreate()`dan bir marta chaqiriladi — mahalliy
+     * qo'ng'iroq ohangini (RingtoneManager) o'qish uchun Context kerak. */
+    fun init(context: Context) {
+        appContext = context.applicationContext
+    }
 
     fun updateSounds(map: Map<String, DriverSoundDto>) {
         sounds = map
     }
 
     fun play(eventKey: String) {
+        // Yangi buyurtma — operator sozlagan maxsus ovoz (server URL'idan
+        // MediaPlayer.setDataSource + prepareAsync bilan) o'rniga telefonning
+        // O'Z qo'ng'iroq ohangi ishlatiladi. Sabab: server ovozi tarmoqdan
+        // birinchi baytlar kelguncha (sekin/beqaror aloqada bir necha soniya)
+        // jim turardi — endi javob vaqti atigi 15s bo'lgani uchun bu
+        // kechikish haydovchini buyurtmani eshitmay qolib ketishiga olib
+        // kelishi mumkin edi. Mahalliy ringtone tarmoqqa umuman bog'liq
+        // emas — DARHOL, kechikishsiz chalinadi. Admin panelidagi
+        // yoqish/o'chirish sozlamasi (Ovozlar) hurmat qilinadi — faqat
+        // ANIQ o'chirilgan bo'lsagina jim qolinadi.
+        if (eventKey == DriverSoundEvent.NEW_ORDER) {
+            if (sounds[eventKey]?.enabled == false) return
+            playLocalRingtone()
+            return
+        }
         val sound = sounds[eventKey] ?: return
         if (!sound.enabled) return
         val url = sound.url ?: return
@@ -41,6 +67,25 @@ object DriverSoundPlayer {
                 setOnErrorListener { mp, _, _ -> mp.release(); if (activePlayer === mp) activePlayer = null; true }
                 prepareAsync()
             }
+        } catch (_: Exception) {
+            // Ovoz ixtiyoriy — xato bo'lsa ilovaning asosiy oqimiga ta'sir qilmasin.
+        }
+    }
+
+    private fun playLocalRingtone() {
+        val context = appContext ?: return
+        try {
+            activeRingtone?.stop()
+            val uri = RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_RINGTONE)
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+                ?: return
+            val ringtone = RingtoneManager.getRingtone(context, uri) ?: return
+            ringtone.audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            activeRingtone = ringtone
+            ringtone.play()
         } catch (_: Exception) {
             // Ovoz ixtiyoriy — xato bo'lsa ilovaning asosiy oqimiga ta'sir qilmasin.
         }

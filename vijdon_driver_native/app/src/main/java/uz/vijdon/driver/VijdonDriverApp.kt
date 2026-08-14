@@ -8,11 +8,13 @@ import android.media.RingtoneManager
 import android.os.Build
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import dagger.hilt.android.HiltAndroidApp
+import uz.vijdon.driver.data.push.DriverSoundPlayer
 
 @HiltAndroidApp
 class VijdonDriverApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        DriverSoundPlayer.init(this)
         // google-services.json qo'shilmagan muhitda (masalan boshqa
         // dasturchi mashinasida) Firebase umuman ishga tushmaydi — shu
         // sabab BuildConfig.HAS_FCM bilan tekshiriladi. Debug build'da esa
