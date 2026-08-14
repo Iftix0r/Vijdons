@@ -1423,8 +1423,11 @@ def sms_settings(request):
         ('sms_driver_topup_approved', "To'lov tasdiqlandi",                   '💰', sms.sms_driver_topup_approved),
     ]
     from .models import SmsGatewayMessage, SmsGatewayToken
+    from django.utils import timezone
+    from datetime import timedelta
     driver_count = Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED).exclude(phone_number='').count()
     client_count = Client.objects.filter(is_blocked=False).exclude(phone_number='').count()
+    gateway_devices = SmsGatewayToken.objects.select_related('user').order_by('-updated_at')
     return render(request, 'taxi/sms_settings.html', {
         'sms': sms,
         'saved': saved,
@@ -1434,7 +1437,9 @@ def sms_settings(request):
         'client_count': client_count,
         'sms_notifs': sms_notifs,
         'driver_sms_notifs': driver_sms_notifs,
-        'gateway_devices': SmsGatewayToken.objects.select_related('user').order_by('-updated_at'),
+        'gateway_devices': gateway_devices,
+        'gateway_device_count': gateway_devices.count(),
+        'gateway_online_cutoff': timezone.now() - timedelta(minutes=3),
         'gateway_messages': SmsGatewayMessage.objects.all()[:30],
         'gateway_pending_count': SmsGatewayMessage.objects.filter(status__in=[SmsGatewayMessage.STATUS_PENDING, SmsGatewayMessage.STATUS_SENDING]).count(),
     })
