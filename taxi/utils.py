@@ -1829,11 +1829,22 @@ ADDRESS_QUEUE_LEAVE_RADIUS_KM = 2.0  # navbatdan "CHIQISH" radiusi — QO'SHILIS
                                       # chiqarib yuborilmasin — faqat chindan ham uzoqlashganda
                                       # (yoki boshqa manzilga o'tganda) chiqariladi.
 ADDRESS_QUEUE_MAX_ATTEMPTS = 3       # navbatdan ketma-ket ko'pi bilan nechta haydovchiga taklif qilinadi
-ADDRESS_QUEUE_STALE_MINUTES = 1      # shuncha daqiqa faollik (Driver.last_seen) bo'lmasa, navbatda
+ADDRESS_QUEUE_STALE_MINUTES = 4      # shuncha daqiqa faollik (Driver.last_seen) bo'lmasa, navbatda
                                       # "hozir turgan" deb hisoblanmaydi — faqat masofa (hysteresis)
                                       # tekshirilsa, uzoq vaqt oflayn/ilovani yopib qo'ygan haydovchi
                                       # (garchi joyidan jilmagan bo'lsa ham) abadiy eski o'rnini
                                       # saqlab qolaverar edi.
+                                      # Diqqat: avval bu 1 daqiqa edi — lekin native ilova
+                                      # (DriverLocationService.kt: maybeReportToServer) harakatsiz
+                                      # turgan haydovchining joylashuvini serverga ENG KO'PI BILAN
+                                      # har 2 daqiqada bir marta yuboradi. Natijada 1 daqiqalik
+                                      # chegara doim shu 2 daqiqalik oraliqdan KICHIK bo'lib,
+                                      # navbatda TINCH turgan har bir haydovchi har safar yangi
+                                      # joylashuv kelganda "qaytib keldi" deb hisoblanib, navbat
+                                      # OXIRIGA tushib qolaverardi — garchi u joyidan sira
+                                      # jilmagan bo'lsa ham. 4 daqiqa — 2 daqiqalik yuborish
+                                      # oralig'idan (tarmoq kechikishi uchun ham zахira bilan)
+                                      # xavfsiz yuqori.
 
 # Yaqin atrofda (ADDRESS_QUEUE_RADIUS_KM ichida) hech qanday SavedAddress
 # topilmasa — operator O'ZI oldindan qo'lda manzil qo'shishi shart emas.

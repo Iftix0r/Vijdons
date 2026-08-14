@@ -997,10 +997,11 @@ def driver_address_queue(request, driver):
             # Diqqat: driver_location_sync harakat 50m dan oshgandagina
             # chaqiriladi (client tomonida), lekin navbatda TURGAN
             # haydovchi aynan qimirlamayapti — shu sabab last_seen shu
-            # yerda ham yangilanmasa, ADDRESS_QUEUE_STALE_MINUTES (1 daqiqa)
-            # ichida "stale" deb hisoblanib, harakatsiz turgan haydovchi
+            # yerda ham yangilanmasa, ADDRESS_QUEUE_STALE_MINUTES ichida
+            # "stale" deb hisoblanib, harakatsiz turgan haydovchi
             # navbatdan ko'rinmay qolib ketardi (sahifa har 10s'da shu
-            # endpointni chaqirib turgan bo'lsa ham).
+            # endpointni chaqirib turgan bo'lsa ham — 10s << ADDRESS_QUEUE_STALE_MINUTES,
+            # shu sabab bu yerning o'zi hech qachon stale bo'lib qolmaydi).
             Driver.objects.filter(pk=driver.pk).update(last_seen=timezone.now())
         except (TypeError, ValueError):
             pass
