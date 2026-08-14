@@ -35,7 +35,9 @@ class VijdonFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         val title = message.notification?.title ?: message.data["title"] ?: "Vijdon Taxi"
         val body = message.notification?.body ?: message.data["body"] ?: ""
-        val isNewOrder = message.data["type"] == "new_order"
+        val type = message.data["type"]
+        val isNewOrder = type == "new_order"
+        val orderId = message.data["order_id"]?.toIntOrNull()
 
         // Diqqat: bildirishnoma ko'rsatilishidan QAT'I NAZAR (tugma bosilishini
         // kutmasdan) — ilova fonda yoki oldinda ochiq bo'lsa, balans darhol
@@ -43,11 +45,31 @@ class VijdonFirebaseMessagingService : FirebaseMessagingService() {
         // `MainActivity.onNewIntent()` orqali signal berish (masalan
         // `OpenOrderBus`) bu yerda ishlamas edi — ko'p hollarda haydovchi
         // bildirishnomani umuman bosmaydi, faqat ekranga qaytib balansni ko'radi.
-        if (message.data["type"] == "balance_changed") {
+        if (type == "balance_changed") {
             CoroutineScope(Dispatchers.Default).launch { BalanceChangedBus.trigger() }
         }
+
+        // Buyurtma taklifi javobsiz qolib (dispatch_timeout) boshqa
+        // haydovchiga o'tkazilganda — server shu turni yuboradi. Ilova
+        // ochiq bo'lishidan qat'i nazar, o'sha buyurtma uchun hali ham
+        // ekranda turgan "Yangi buyurtma" bildirishnomasini yopish kifoya
+        // (endi bu haydovchiga tegishli emas), yangi bildirishnoma shart emas.
+        if (type == "order_timeout") {
+            if (orderId != null) NotificationManagerCompat.from(this).cancel(orderId)
+            return
+        }
+
         val channelId = if (isNewOrder) "new_orders_channel" else "duty_channel"
-        val notificationId = message.messageId?.hashCode() ?: 0
+        // Diqqat: avval bu yerda `message.messageId.hashCode()` ishlatilardi
+        // — har bir push uchun TASODIFIY qiymat, shu sabab bitta buyurtma
+        // haqidagi bildirishnomani KEYINROQ (masalan vaqti tugab boshqa
+        // haydovchiga o'tganda, yoki ilova ichida "Qabul qilish" bosilganda)
+        // hech kim topib yopa olmasdi — ekranda abadiy osilib qolardi.
+        // Endi buyurtma turdagi push uchun notificationId=order_id (barqaror,
+        // shu buyurtmaga xos) — istalgan joydan xuddi shu ID bilan yopish
+        // mumkin (HomeViewModel.acceptOrder/rejectOrder, shu servisning
+        // yuqoridagi `order_timeout` filiali).
+        val notificationId = if (isNewOrder && orderId != null) orderId else (message.messageId?.hashCode() ?: 0)
 
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -85,7 +107,6 @@ class VijdonFirebaseMessagingService : FirebaseMessagingService() {
             // qabul qilish/rad etish — DriverLocationService'dagi zaxira
             // (polling) bildirishnomasi bilan bir xil OrderActionReceiver
             // mexanizmi orqali.
-            val orderId = message.data["order_id"]?.toIntOrNull()
             if (orderId != null) {
                 builder.addAction(0, "✅ Qabul qilish", orderActionPendingIntent(orderId, notificationId, OrderActionReceiver.ACTION_ACCEPT))
                 builder.addAction(0, "❌ Rad etish", orderActionPendingIntent(orderId, notificationId, OrderActionReceiver.ACTION_REJECT))

@@ -3,6 +3,7 @@ package uz.vijdon.driver.ui.home
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -561,6 +562,13 @@ class HomeViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(alertOrder = null)
             return
         }
+        // Ilova ICHIDAGI "Qabul qilish" tugmasi bosilganda — agar bu
+        // buyurtma haqida bildirishnoma (push) ilgari ko'rsatilgan bo'lsa
+        // (notificationId=order_id, VijdonFirebaseMessagingService'ga
+        // qarang), uni ham darhol yopamiz. Aks holda push bildirishnoma
+        // faqat o'zining tugmasi (yoki auto-cancel) orqali yopilardi —
+        // ilova ichida qabul qilingandan keyin ekranda "osilib" qolardi.
+        NotificationManagerCompat.from(context).cancel(id)
         runAction<OrderDto>(id, onSuccess = { accepted ->
             DriverSoundPlayer.play(DriverSoundEvent.ACCEPT)
             openClientDialer(accepted.client_phone)
@@ -592,6 +600,7 @@ class HomeViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(alertOrder = null)
             return
         }
+        NotificationManagerCompat.from(context).cancel(id)
         runAction(id, onSuccess = { DriverSoundPlayer.play(DriverSoundEvent.REJECT) }) { repository.rejectOrder(id) }
     }
 

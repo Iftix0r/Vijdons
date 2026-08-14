@@ -1843,6 +1843,22 @@ def auto_reject_timeout(order_id, driver_id, timeout_seconds):
             else:
                 return
 
+        # Javob bermagan haydovchining telefonida hali ham osilib turgan
+        # "Yangi buyurtma" bildirishnomasini yopish uchun — u endi bu
+        # buyurtmani qabul qila olmaydi (boshqasiga o'tkazilmoqda), shu
+        # sabab bildirishnoma ekranda abadiy qolib ketmasligi kerak.
+        # `order_timeout` — VijdonFirebaseMessagingService.onMessageReceived()
+        # shu turni ko'rib, notificationId=order_id bo'yicha uni yopadi.
+        from taxi.models import Driver
+        fcm_token = Driver.objects.filter(pk=driver_id).values_list('fcm_token', flat=True).first()
+        if fcm_token:
+            send_fcm(
+                fcm_token,
+                title='Buyurtma vaqti tugadi',
+                body=f"Buyurtma #{order.id} javob berilmagani uchun boshqa haydovchiga o'tkazildi.",
+                data={'type': 'order_timeout', 'order_id': str(order.id)},
+            )
+
         # Keyingi haydovchiga yuborish — tranzaksiya (va shu bilan qulf)
         # yopilgandan KEYIN, aks holda dispatch_order() ichidagi yangi
         # DispatchAttempt/notify chaqiruvlari qulf ushlab turilgan holda
