@@ -658,6 +658,13 @@ def tg_new_order(order):
     d_lines.append(f"✅ Yakunlagan: {completed} ta | ❌ Bekor qilgan: {cancelled} ta")
     _notify_driver_group('\n'.join(d_lines))
 
+    if not order.driver_id:
+        notify_operators(
+            'Yangi buyurtma',
+            f"#{order.id} — {order.from_address}" + (f" → {order.to_address}" if order.to_address else ''),
+            data={'type': 'new_order', 'order_id': str(order.id)},
+        )
+
 
 def tg_order_dispatched(order, driver):
     cfg = _cfg()
@@ -993,6 +1000,12 @@ def tg_topup_request(request_obj, receipt_url):
             send_telegram_photo(receipt_url, caption=caption, token=cfg.bot_token.strip(), chat_ids=admin_ids)
     except Exception:
         pass
+
+    notify_operators(
+        "Yangi to'lov so'rovi",
+        f"{driver.full_name} — {request_obj.amount} UZS",
+        data={'type': 'topup_request', 'topup_id': str(request_obj.id)},
+    )
 
 
 def tg_duty_changed(driver, is_on_duty):
@@ -1662,6 +1675,12 @@ def tg_sos_alert(alert):
     text = '\n'.join(lines)
     send_telegram(text, reply_markup=markup)
 
+    notify_operators(
+        'SOS SIGNAL',
+        f"{driver.full_name} — {alert.address or 'manzil nomaʻlum'}",
+        data={'type': 'sos', 'alert_id': str(alert.id), 'driver_id': str(driver.id)},
+    )
+
     # Bot adminlarga shaxsiy DM ham yuboriladi — SOS xavfsizlik uchun muhim,
     # operator guruhida bo'lmagan adminlar ham darhol xabardor bo'lishi kerak.
     try:
@@ -1747,6 +1766,17 @@ def send_fcm(fcm_token, title, body, data=None):
         return True
     except Exception:
         return False
+
+
+def notify_operators(title, body, data=None):
+    """Barcha operator native ilova (vijdon_operator_native) qurilmalariga
+    push yuboradi — yangi dispetcherlanmagan buyurtma, yangi to'lov so'rovi,
+    SOS kabi operator e'tibori kerak bo'lgan hodisalar uchun. `send_fcm()`
+    bilan bir xil (data-only, HTTP v1) mexanizm — faqat token manbai
+    Driver.fcm_token o'rniga OperatorPushToken jadvali."""
+    from taxi.models import OperatorPushToken
+    for token in OperatorPushToken.objects.values_list('fcm_token', flat=True):
+        send_fcm(token, title=title, body=body, data=data)
 
 
 def _log_dispatch_attempt(order, driver, distance_km=None):

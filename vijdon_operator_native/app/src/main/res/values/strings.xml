@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Vijdon Operator</string>
+
+    <string name="login_title">Kirish</string>
+    <string name="username">Login</string>
+    <string name="password">Parol</string>
+    <string name="login_button">Kirish</string>
+
+    <string name="logout">Chiqish</string>
+
+    <string name="tab_dashboard">Bosh sahifa</string>
+    <string name="tab_orders">Buyurtmalar</string>
+    <string name="tab_chat">Chat</string>
+    <string name="tab_balance">Balans</string>
+    <string name="tab_drivers">Haydovchilar</string>
+</resources>

@@ -1344,3 +1344,22 @@ class CallRecording(models.Model):
         verbose_name = "Qo'ng'iroq yozuvi"
         verbose_name_plural = "Qo'ng'iroq yozuvlari"
         ordering = ['-created_at']
+
+
+class OperatorPushToken(models.Model):
+    """Native Android operator ilovasi (vijdon_operator_native, /api/operatorapp/)
+    o'rnatgan FCM tokeni — yangi buyurtma/to'lov so'rovi/SOS kabi hodisalar
+    haqida operatorlarga push yuborish uchun. Bitta operator bir nechta
+    qurilmada kirishi mumkin, shu sabab Driver.fcm_token'dagidek User'ga
+    bevosita maydon sifatida emas, alohida jadval sifatida saqlanadi."""
+    user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='operator_push_tokens', verbose_name='Operator')
+    fcm_token  = models.TextField(verbose_name='FCM Token')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqt')
+
+    def __str__(self):
+        return f"{self.user.username} — {self.updated_at:%d.%m.%Y %H:%M}"
+
+    class Meta:
+        verbose_name = 'Operator push tokeni'
+        verbose_name_plural = 'Operator push tokenlari'
+        unique_together = ('user', 'fcm_token')

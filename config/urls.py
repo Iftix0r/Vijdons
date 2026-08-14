@@ -57,5 +57,8 @@ urlpatterns = [
     # Native Android haydovchi ilovasi uchun REST API — /panel/ prefiksisiz,
     # Cloudflare WAF qoidasida shu aniq yo'lni istisno qilish oson bo'lishi uchun.
     path('api/driverapp/', include('taxi.driverapp_urls')),
+    # Native Android operator ilovasi uchun REST API — xuddi shu sababga ko'ra
+    # /panel/ prefiksisiz.
+    path('api/operatorapp/', include('taxi.operatorapp_urls')),
     path('', taxi_views.landing_page, name='landing'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
