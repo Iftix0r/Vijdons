@@ -13,5 +13,6 @@ object SubRoutes {
     const val ADDRESSES = "addresses"
     const val SOS = "sos"
     const val RATING = "rating"
+    const val MUSIC = "music"
     const val ORDER_CREATE = "order_create"
 }

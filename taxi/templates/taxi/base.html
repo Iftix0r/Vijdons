@@ -254,6 +254,10 @@
            class="nav-link {% if request.resolver_match.url_name == 'client_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-users w-5 text-center"></i> Mijozlar
         </a>
+        <a href="{% url 'taxi:music_list' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'music_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-music w-5 text-center"></i> Musiqa
+        </a>
         {% if request.user.is_superuser %}
         <a href="{% url 'taxi:saved_addresses_list' %}"
            class="nav-link {% if request.resolver_match.url_name == 'saved_addresses_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">

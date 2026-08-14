@@ -30,6 +30,7 @@ import uz.vijdon.driver.ui.chat.ChatScreen
 import uz.vijdon.driver.ui.contract.ContractScreen
 import uz.vijdon.driver.ui.history.HistoryScreen
 import uz.vijdon.driver.ui.home.HomeScreen
+import uz.vijdon.driver.ui.music.MusicScreen
 import uz.vijdon.driver.ui.ordercreate.OrderCreateScreen
 import uz.vijdon.driver.ui.profile.ProfileScreen
 import uz.vijdon.driver.ui.rating.RatingScreen
@@ -49,9 +50,13 @@ import uz.vijdon.driver.ui.theme.VijdonColors
 // XUDDI tab-bar svaypi bilan bir xil, haqiqiy HorizontalPager mexanizmi
 // orqali ishlaydi — alohida (nested) surish detektori kerak emas, shu
 // sabab pastki tab-bar svaypi bilan HECH QACHON to'qnashmaydi.
-private val pagerPages = listOf(SubRoutes.RATING, Tabs.HOME, Tabs.HISTORY, Tabs.CHAT, Tabs.PROFILE, SubRoutes.SOS)
+//
+// Musiqa — Bosh bilan Reyting ORASIGA qo'shilgan: "Bosh sahifadan o'ngga
+// surish -> Musiqa", "Musiqadan yana o'ngga surish -> Reyting" (foydalanuvchi
+// so'rovi bo'yicha). Shu sabab Bosh sahifaning indeksi endi 1 emas, 2.
+private val pagerPages = listOf(SubRoutes.RATING, SubRoutes.MUSIC, Tabs.HOME, Tabs.HISTORY, Tabs.CHAT, Tabs.PROFILE, SubRoutes.SOS)
 
-// Reyting/SOS sahifalarida ham pastki tab-bar o'zining "uy" bo'limini
+// Reyting/Musiqa/SOS sahifalarida ham pastki tab-bar o'zining "uy" bo'limini
 // (mos ravishda Bosh/Profil) yoritib turishi uchun.
 private fun tabForPage(page: Int) = when (pagerPages.getOrNull(page)) {
     Tabs.HISTORY -> Tabs.HISTORY
@@ -59,7 +64,7 @@ private fun tabForPage(page: Int) = when (pagerPages.getOrNull(page)) {
     Tabs.PROFILE, SubRoutes.SOS -> Tabs.PROFILE
     else -> Tabs.HOME
 }
-private fun pageForTab(route: String) = pagerPages.indexOf(route).takeIf { it >= 0 } ?: 1
+private fun pageForTab(route: String) = pagerPages.indexOf(route).takeIf { it >= 0 } ?: 2
 
 private val bottomBarRoutes = setOf(Tabs.HOME)
 
@@ -84,12 +89,12 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
     val currentRoute = backStackEntry?.destination?.route
     val showBottomBar = currentRoute == null || currentRoute in bottomBarRoutes
 
-    // To'rtta asosiy bo'lim (Bosh/Tarix/Chat/Profil) + Reyting/SOS (eng
+    // To'rtta asosiy bo'lim (Bosh/Tarix/Chat/Profil) + Reyting/Musiqa/SOS (eng
     // chetlarida) — barchasi ALOHIDA NavHost destination emas, Telegram'dagi
     // kabi bitta HorizontalPager'ning sahifalari, shu sabab tab-bar
     // bosilganda HAM, ekranni chapga/o'ngga surganda HAM shu YAGONA
-    // `pagerState` orqali almashadi. Bosh sahifa (indeks 1) — boshlang'ich.
-    val pagerState = rememberPagerState(initialPage = 1, pageCount = { pagerPages.size })
+    // `pagerState` orqali almashadi. Bosh sahifa (indeks 2) — boshlang'ich.
+    val pagerState = rememberPagerState(initialPage = 2, pageCount = { pagerPages.size })
     val pagerScope = rememberCoroutineScope()
 
     fun goToTab(route: String) {
@@ -139,6 +144,7 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
                     HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                         when (pagerPages.getOrNull(page)) {
                             SubRoutes.RATING -> RatingScreen()
+                            SubRoutes.MUSIC -> MusicScreen()
                             Tabs.HISTORY -> HistoryScreen()
                             Tabs.CHAT -> ChatScreen()
                             Tabs.PROFILE -> ProfileScreen(

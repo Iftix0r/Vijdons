@@ -4852,3 +4852,47 @@ def task_set_status(request, pk):
 def task_delete(request, pk):
     Task.objects.filter(pk=pk).delete()
     return JsonResponse({'ok': True})
+
+
+# ── Musiqa (haydovchi ilovasidagi "Musiqa" bo'limi uchun pleylist) ─────────────
+
+@panel_login_required
+def music_list(request):
+    from .models import MusicTrack
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        artist = request.POST.get('artist', '').strip()
+        url = request.POST.get('url', '').strip()
+        file = request.FILES.get('file')
+        if title and (file or url):
+            last_order = MusicTrack.objects.aggregate(m=Max('order'))['m'] or 0
+            MusicTrack.objects.create(title=title, artist=artist, url=url, file=file, order=last_order + 1)
+            messages.success(request, f"«{title}» pleylistga qo'shildi.")
+        else:
+            messages.error(request, "Nomi va (fayl yoki havola) kiritilishi shart.")
+        return redirect('taxi:music_list')
+
+    return render(request, 'taxi/music_list.html', {
+        'tracks': MusicTrack.objects.all(),
+    })
+
+
+@panel_login_required
+@require_POST
+def music_delete(request, pk):
+    from .models import MusicTrack
+    track = get_object_or_404(MusicTrack, pk=pk)
+    if track.file:
+        track.file.delete(save=False)
+    track.delete()
+    return redirect('taxi:music_list')
+
+
+@panel_login_required
+@require_POST
+def music_toggle(request, pk):
+    from .models import MusicTrack
+    track = get_object_or_404(MusicTrack, pk=pk)
+    track.is_active = not track.is_active
+    track.save(update_fields=['is_active'])
+    return redirect('taxi:music_list')

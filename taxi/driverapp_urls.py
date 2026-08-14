@@ -54,4 +54,6 @@ urlpatterns = [
     path('chat/',        v.chat_private_list,   name='chat_private_list'),
     path('chat/send/',   v.chat_private_send,   name='chat_private_send'),
     path('chat/unread/', v.chat_private_unread, name='chat_private_unread'),
+
+    path('music/tracks/', v.music_tracks, name='music_tracks'),
 ]

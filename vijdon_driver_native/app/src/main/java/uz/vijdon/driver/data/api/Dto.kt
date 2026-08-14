@@ -235,3 +235,11 @@ data class ChatMessageDto(
 
 @Serializable
 data class ChatUnreadResponse(val count: Int)
+
+@Serializable
+data class MusicTrackDto(
+    val id: Int,
+    val title: String,
+    val artist: String = "",
+    val url: String,
+)
