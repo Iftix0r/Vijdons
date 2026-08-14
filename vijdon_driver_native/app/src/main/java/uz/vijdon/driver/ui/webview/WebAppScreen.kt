@@ -6,12 +6,20 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -20,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import uz.vijdon.driver.ui.theme.VijdonColors
 
@@ -28,10 +37,17 @@ import uz.vijdon.driver.ui.theme.VijdonColors
  * haydovchi navbatda kutayotganda tashqi saytdan foydalanishi uchun.
  * `url` parametri orqali boshqa saytlar uchun ham qayta ishlatilishi
  * mumkin (`ApprovedScaffold.kt`).
+ *
+ * `onBackToHome` berilsa (ya'ni pastki tugmalar qatori shu sahifada
+ * yashirilgan bo'lsa — `ApprovedScaffold.kt`dagi YouTube holati) — suzuvchi
+ * "Ortga" tugmasi chiziladi. MUHIM: teginish-ushlab-qolish tuzatishi
+ * (pastga qarang, Shorts tez svaypi uchun) sabab bu sahifadan endi
+ * GORIZONTAL svayp bilan chiqib bo'lmaydi — shu tugma bo'lmasa, pastki
+ * panel ham yashirilgan holda haydovchi bu yerda "qamalib" qolardi.
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun WebAppScreen(url: String) {
+fun WebAppScreen(url: String, onBackToHome: (() -> Unit)? = null) {
     val context = LocalContext.current
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var progress by remember { mutableFloatStateOf(0f) }
@@ -39,9 +55,16 @@ fun WebAppScreen(url: String) {
 
     // Tizim "Orqaga" tugmasi — agar sayt ichida (masalan video/post
     // sahifasidan ro'yxatga) sahifa tarixi bo'lsa, avval o'sha ichki
-    // tarixga qaytadi, aks holda odatdagidek ilova navigatsiyasiga beriladi.
+    // tarixga qaytadi. Aks holda — agar pastki panel shu sahifada
+    // yashirilgan bo'lsa (`onBackToHome` berilgan) — Asosiy sahifaga
+    // qaytaradi, aks holda odatdagidek ilova navigatsiyasiga beriladi.
     BackHandler(enabled = webViewRef?.canGoBack() == true) {
         webViewRef?.goBack()
+    }
+    if (onBackToHome != null) {
+        BackHandler(enabled = webViewRef?.canGoBack() != true) {
+            onBackToHome()
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -65,14 +88,50 @@ fun WebAppScreen(url: String) {
                     // almashtirilyaptimi" deb tekshiradi, bu esa Shorts'dagi
                     // TEZ VERTIKAL svayplarni "yeb qo'yib", WebView'ga
                     // kechikib/qisman yetkazib berishi mumkin edi (sekin,
-                    // "yopishqoq" harakat sifatida sezilardi). Teginish
-                    // boshlanishi bilan ota-ona (pager)ga uni to'xtatishni
-                    // taqiqlab qo'yamiz — shu orqali butun svayp to'g'ridan-
-                    // to'g'ri, hech qanday kechikishsiz WebView'ning o'ziga
-                    // boradi (standart Android "ichki scroll tashqi
-                    // svayp bilan to'qnashmasin" yechimi).
-                    setOnTouchListener { v, _ ->
-                        v.parent?.requestDisallowInterceptTouchEvent(true)
+                    // "yopishqoq" harakat sifatida sezilardi).
+                    //
+                    // Diqqat: avval BU YERDA har doim (yo'nalishidan qat'i
+                    // nazar) `requestDisallowInterceptTouchEvent(true)`
+                    // chaqirilardi — Shorts tezlashdi, LEKIN shu bilan birga
+                    // pager UMUMAN hech qanday teginishni ololmay qoldi,
+                    // gorizontal svayp bilan Asosiy sahifaga qaytish ham
+                    // ishlamay qoldi. Endi harakat YO'NALISHI aniqlanadi:
+                    // vertikal bo'lsa (Shorts) — pager batamom chetlatiladi
+                    // (tezkorlik uchun), gorizontal bo'lsa — pager'ga
+                    // ruxsat qaytariladi, u navbatdagi kadrda odatdagidek
+                    // sahifani almashtira oladi.
+                    val touchSlopPx = android.view.ViewConfiguration.get(context).scaledTouchSlop
+                    var downX = 0f
+                    var downY = 0f
+                    var directionDecided = false
+                    setOnTouchListener { v, event ->
+                        when (event.actionMasked) {
+                            android.view.MotionEvent.ACTION_DOWN -> {
+                                downX = event.x
+                                downY = event.y
+                                directionDecided = false
+                                // Boshida ehtiyot chorasi sifatida vertikal
+                                // (Shorts) deb faraz qilinadi — aksariyat
+                                // teginishlar aynan shu, video-ro'yxat
+                                // ichida bo'ladi.
+                                v.parent?.requestDisallowInterceptTouchEvent(true)
+                            }
+                            android.view.MotionEvent.ACTION_MOVE -> {
+                                if (!directionDecided) {
+                                    val dx = kotlin.math.abs(event.x - downX)
+                                    val dy = kotlin.math.abs(event.y - downY)
+                                    if (dx > touchSlopPx || dy > touchSlopPx) {
+                                        directionDecided = true
+                                        if (dx > dy) {
+                                            // Gorizontal niyat — pager'ga
+                                            // qaytadan ruxsat, u sahifani
+                                            // almashtirishi mumkin bo'lsin.
+                                            v.parent?.requestDisallowInterceptTouchEvent(false)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         false
                     }
                     webViewClient = object : WebViewClient() {
@@ -117,6 +176,21 @@ fun WebAppScreen(url: String) {
                     webViewRef = this
                 }
             },
+            // Diqqat: avval WebView pastdagi alohida `DisposableEffect`
+            // ichida to'g'ridan-to'g'ri `destroy()` qilinardi — lekin bu
+            // View HALI o'z ota-onasidan (Compose'ning ichki interop
+            // ViewGroup'i) OLIB TASHLANMAGAN paytda chaqirilishi mumkin
+            // edi (ikkalasi mustaqil, tartib kafolatlanmagan). Android'ning
+            // o'zi buni tavsiya qilmaydi — biriktirilgan holda destroy()
+            // chaqirish vaqti-vaqti bilan chizish/xotira xatoliklariga (va
+            // shu bilan bog'liq "qotib qolish"ga) olib kelishi mumkin edi.
+            // `onRelease` — Compose'ning O'ZI, View allaqachon ierarxiyadan
+            // OLIB TASHLANGANDAN keyin chaqiradigan, shu ish uchun maxsus
+            // mo'ljallangan joy.
+            onRelease = { view ->
+                view.stopLoading()
+                view.destroy()
+            },
         )
         if (loading) {
             LinearProgressIndicator(
@@ -125,15 +199,19 @@ fun WebAppScreen(url: String) {
                 modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
             )
         }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            webViewRef?.apply {
-                stopLoading()
-                destroy()
+        if (onBackToHome != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(12.dp)
+                    .size(40.dp)
+                    .background(VijdonColors.Surface.copy(alpha = 0.92f), CircleShape)
+                    .clickable(onClick = onBackToHome),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Ortga", tint = VijdonColors.TextPrimary)
             }
-            webViewRef = null
         }
     }
 }
