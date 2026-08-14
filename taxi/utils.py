@@ -466,20 +466,50 @@ def _eskiz_login(cfg):
         return ''
 
 
+def notify_sms_gateway(message):
+    """SMS-shlyuz qurilmalariga (vijdon_sms_gateway, mahalliy SIM orqali
+    yuboruvchi Android ilova) navbatga yangi xabar qo'shilgani haqida
+    push yuboradi. Bir nechta qurilma bo'lsa, barchasiga yuboriladi —
+    qaysi biri birinchi bo'sh bo'lsa, o'sha `pending/` so'rovida shu
+    xabarni ko'radi va oladi (tabiiy yuk taqsimlash, alohida "biriktirish"
+    mantig'i shart emas)."""
+    from taxi.models import SmsGatewayToken
+    for token in SmsGatewayToken.objects.values_list('fcm_token', flat=True):
+        send_fcm(
+            token, title='Yangi SMS', body=message.phone_number,
+            data={'type': 'new_sms', 'message_id': str(message.id)},
+        )
+
+
 def send_sms(phone, text):
-    """Mijozga Eskiz.uz orqali SMS yuboradi. (ok, message) qaytaradi."""
+    """Mijozga/haydovchiga SMS yuboradi. `SmsSettings.provider`ga qarab:
+    - Eskiz.uz orqali (standart, pullik), YOKI
+    - PROVIDER_LOCAL_GATEWAY bo'lsa — Eskiz'ga umuman murojaat qilinmaydi,
+      xabar navbatga (`SmsGatewayMessage`) yozib qo'yiladi, haqiqiy
+      yuborishni vijdon_sms_gateway ilovasi o'rnatilgan telefon o'zining
+      SIM kartasi orqali bajaradi (`notify_sms_gateway`, yuqorida).
+      Diqqat: bu holda funksiya SMS haqiqatan YETIB BORGANINI emas, faqat
+      NAVBATGA QO'YILGANINI bildiradi — chunki haqiqiy yuborish
+      asinxron, boshqa qurilmada sodir bo'ladi.
+    (ok, message) qaytaradi."""
     try:
         from taxi.models import SmsSettings
         cfg = SmsSettings.get()
     except Exception:
         return False, 'SMS sozlamalari topilmadi'
 
-    if not cfg.email or not cfg.password:
-        return False, "Eskiz email/parol kiritilmagan"
-
     mobile = normalize_phone_uz(phone)
     if not mobile:
         return False, f"Telefon raqam formati noto'g'ri: {phone}"
+
+    if cfg.provider == SmsSettings.PROVIDER_LOCAL_GATEWAY:
+        from taxi.models import SmsGatewayMessage
+        message = SmsGatewayMessage.objects.create(phone_number=mobile, text=text)
+        notify_sms_gateway(message)
+        return True, "Navbatga qo'shildi (mahalliy SIM orqali yuboriladi)"
+
+    if not cfg.email or not cfg.password:
+        return False, "Eskiz email/parol kiritilmagan"
 
     token = cfg.token or _eskiz_login(cfg)
     if not token:

@@ -60,5 +60,8 @@ urlpatterns = [
     # Native Android operator ilovasi uchun REST API — xuddi shu sababga ko'ra
     # /panel/ prefiksisiz.
     path('api/operatorapp/', include('taxi.operatorapp_urls')),
+    # Mahalliy SIM orqali SMS yuboruvchi telefon ilovasi (vijdon_sms_gateway)
+    # uchun REST API — xuddi shu sababga ko'ra /panel/ prefiksisiz.
+    path('api/smsgatewayapp/', include('taxi.smsgatewayapp_urls')),
     path('', taxi_views.landing_page, name='landing'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

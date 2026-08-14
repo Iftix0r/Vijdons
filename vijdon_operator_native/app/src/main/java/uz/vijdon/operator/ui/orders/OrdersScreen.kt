@@ -55,6 +55,7 @@ private val statusFilters = listOf(
     "cancelled" to "Bekor qilindi",
 )
 
+@Composable
 fun statusColor(status: String): androidx.compose.ui.graphics.Color = when (status) {
     "pending" -> VijdonColors.Yellow
     "accepted", "on_way", "arrived" -> VijdonColors.Blue

@@ -30,6 +30,35 @@
   <form method="POST">
     {% csrf_token %}
 
+    <!-- SMS xizmati tanlash -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden mb-5">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+            <p class="text-sm font-bold text-gray-800 dark:text-white"><i class="fas fa-tower-broadcast text-indigo-500 mr-2"></i>SMS xizmati</p>
+            <p class="text-xs text-gray-400 mt-0.5">Qaysi usul orqali SMS yuborilishini tanlang</p>
+        </div>
+        <div class="px-6 py-5 space-y-2">
+            <label class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition
+                {% if sms.provider == 'eskiz' %}border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-900/10{% else %}border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/40{% endif %}">
+                <input type="radio" name="provider" value="eskiz" {% if sms.provider == 'eskiz' %}checked{% endif %} class="w-4 h-4 accent-emerald-500 cursor-pointer">
+                <div>
+                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Eskiz.uz</p>
+                    <p class="text-xs text-gray-400">Rasmiy SMS-shlyuz xizmati — pullik, lekin ishonchli va cheklovsiz.</p>
+                </div>
+            </label>
+            <label class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition
+                {% if sms.provider == 'local_gateway' %}border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-900/10{% else %}border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/40{% endif %}">
+                <input type="radio" name="provider" value="local_gateway" {% if sms.provider == 'local_gateway' %}checked{% endif %} class="w-4 h-4 accent-emerald-500 cursor-pointer">
+                <div>
+                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">Telefon orqali (mahalliy SIM)</p>
+                    <p class="text-xs text-gray-400">
+                        Bepul — <code>vijdon_sms_gateway</code> ilovasi o'rnatilgan telefon(lar)ning oddiy SIM kartasi orqali yuboriladi.
+                        <span class="text-amber-600 dark:text-amber-400 font-semibold">Diqqat:</span> katta hajmda mobil operator tomonidan cheklanish xavfi bor.
+                    </p>
+                </div>
+            </label>
+        </div>
+    </div>
+
     <!-- Ulanish -->
     <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden mb-5">
         <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
@@ -136,5 +165,57 @@
             </button>
         </form>
     </div>
+
+    {% if sms.provider == 'local_gateway' %}
+    <!-- SMS-shlyuz qurilmalari va navbat -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden mt-5">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+            <div>
+                <p class="text-sm font-bold text-gray-800 dark:text-white"><i class="fas fa-mobile-screen text-indigo-500 mr-2"></i>SMS-shlyuz qurilmalari</p>
+                <p class="text-xs text-gray-400 mt-0.5"><code>vijdon_sms_gateway</code> ilovasi o'rnatilgan telefonlar</p>
+            </div>
+            {% if gateway_pending_count > 0 %}
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                {{ gateway_pending_count }} ta kutilmoqda
+            </span>
+            {% endif %}
+        </div>
+        <div class="px-6 py-4">
+            {% if gateway_devices %}
+            <div class="flex flex-wrap gap-2 mb-4">
+                {% for dev in gateway_devices %}
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    {{ dev.user.username }} — {{ dev.updated_at|date:"d.m H:i" }}
+                </span>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-xs text-gray-400 mb-4">Hali birorta qurilma ro'yxatdan o'tmagan.</p>
+            {% endif %}
+
+            <p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">So'nggi xabarlar</p>
+            <div class="space-y-1.5 max-h-80 overflow-y-auto">
+                {% for msg in gateway_messages %}
+                <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/60 text-xs">
+                    <div class="min-w-0">
+                        <span class="font-mono text-gray-700 dark:text-gray-300">{{ msg.phone_number }}</span>
+                        <span class="text-gray-400 ml-2 truncate">{{ msg.text|truncatechars:40 }}</span>
+                    </div>
+                    <span class="flex-shrink-0 px-2 py-0.5 rounded-full font-bold
+                        {% if msg.status == 'sent' %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400
+                        {% elif msg.status == 'failed' %}bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400
+                        {% elif msg.status == 'sending' %}bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400
+                        {% else %}bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400{% endif %}">
+                        {{ msg.get_status_display }}
+                    </span>
+                </div>
+                {% empty %}
+                <p class="text-xs text-gray-400">Hali xabar yo'q.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

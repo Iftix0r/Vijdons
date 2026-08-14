@@ -392,7 +392,20 @@ class BotAdmin(models.Model):
 
 
 class SmsSettings(models.Model):
-    """Singleton: Eskiz.uz SMS sozlamalari."""
+    """Singleton: SMS sozlamalari."""
+    PROVIDER_ESKIZ = 'eskiz'
+    PROVIDER_LOCAL_GATEWAY = 'local_gateway'
+    PROVIDER_CHOICES = (
+        (PROVIDER_ESKIZ, 'Eskiz.uz'),
+        (PROVIDER_LOCAL_GATEWAY, "Telefon orqali (mahalliy SIM, vijdon_sms_gateway ilovasi)"),
+    )
+    provider = models.CharField(
+        max_length=20, choices=PROVIDER_CHOICES, default=PROVIDER_ESKIZ, verbose_name='SMS xizmati',
+        help_text="\"Telefon orqali\" tanlansa, Eskiz.uz'ga pul to'lash shart emas — SMS'lar "
+                   "vijdon_sms_gateway ilovasi o'rnatilgan telefon(lar)ning oddiy SIM kartasi orqali "
+                   "yuboriladi. Diqqat: bu usul mobil operator tomonidan cheklanishi/bloklanishi "
+                   "mumkin — katta hajmda (kuniga yuzlab SMS) ehtiyot bo'ling.",
+    )
     email      = models.CharField(max_length=255, blank=True, default='', verbose_name='Eskiz Email',
                                    help_text='Eskiz.uz kabinetiga kirish emaili')
     password   = models.CharField(max_length=255, blank=True, default='', verbose_name='Eskiz Parol')
@@ -1392,3 +1405,74 @@ class MusicTrack(models.Model):
         verbose_name = 'Musiqa'
         verbose_name_plural = 'Musiqalar'
         ordering = ['order', 'id']
+
+
+class SmsGatewayToken(models.Model):
+    """SMS-shlyuz Android ilovasi (vijdon_sms_gateway) o'rnatilgan
+    telefon(lar)ning FCM tokeni — navbatga yangi SMS qo'shilganda shu
+    qurilma(lar)ga darhol signal yuborish uchun (`taxi/utils.py:
+    notify_sms_gateway`). Bir nechta qurilma bo'lishi mumkin — shunda
+    yuk bir nechta SIM karta orasida tabiiy taqsimlanadi (har biri
+    navbatdan birinchi bo'sh xabarni oladi)."""
+    user       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sms_gateway_tokens', verbose_name='Foydalanuvchi')
+    fcm_token  = models.TextField(verbose_name='FCM Token')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqt')
+
+    def __str__(self):
+        return f"{self.user.username} — {self.updated_at:%d.%m.%Y %H:%M}"
+
+    class Meta:
+        verbose_name = 'SMS-shlyuz push tokeni'
+        verbose_name_plural = 'SMS-shlyuz push tokenlari'
+        unique_together = ('user', 'fcm_token')
+
+
+class SmsGatewayMessage(models.Model):
+    """`SmsSettings.provider == PROVIDER_LOCAL_GATEWAY` bo'lganda
+    `taxi/utils.py: send_sms()` Eskiz.uz o'rniga shu navbatga yozadi —
+    vijdon_sms_gateway ilovasi o'rnatilgan telefon(lar) buni o'qib
+    (push + zaxira sifatida polling orqali), o'z SIM kartasi orqali
+    haqiqiy SMS'ni yuboradi va natijani (`sent`/`failed`) qaytaradi."""
+    STATUS_PENDING = 'pending'
+    # Bir nechta SMS-shlyuz qurilmasi bo'lsa, ikkitasi HAM bir xil xabarni
+    # "pending" holatida ko'rib, ikkalasi ham yuborib yuborishi mumkin edi
+    # (poyga sharoiti). Shu sabab `pending/` so'ralganda xabar DARHOL shu
+    # oraliq holatga o'tkaziladi (kim so'ragan bo'lsa, shu "band qilib
+    # oladi") — boshqa qurilma uni endi ko'rmaydi.
+    STATUS_SENDING = 'sending'
+    STATUS_SENT    = 'sent'
+    STATUS_FAILED  = 'failed'
+    STATUS_CHOICES = (
+        (STATUS_PENDING, 'Kutilmoqda'),
+        (STATUS_SENDING, 'Yuborilmoqda'),
+        (STATUS_SENT,    'Yuborildi'),
+        (STATUS_FAILED,  'Xato'),
+    )
+    phone_number = models.CharField(max_length=20, verbose_name='Telefon raqami')
+    text         = models.TextField(verbose_name='Matn')
+    status       = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_PENDING, verbose_name='Holati')
+    error        = models.CharField(max_length=255, blank=True, default='', verbose_name='Xato matni')
+    sent_by      = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='sent_sms_messages', verbose_name='Yuborgan qurilma')
+    created_at   = models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')
+    claimed_at   = models.DateTimeField(null=True, blank=True, verbose_name='Band qilingan vaqti')
+    resolved_at  = models.DateTimeField(null=True, blank=True, verbose_name='Hal qilingan vaqti')
+
+    def __str__(self):
+        return f"{self.phone_number} — {self.get_status_display()}"
+
+    @staticmethod
+    def status_pending_or_stale_q(stale_cutoff):
+        """`taxi/smsgatewayapp_views.py: pending()` uchun — hali hech kim
+        band qilmagan (`pending`) YOKI biror qurilma band qilib, lekin
+        javob bermay qo'ygan (`sending` + `claimed_at` juda eski)
+        xabarlarni bir xilda tanlaydi."""
+        return (
+            models.Q(status=SmsGatewayMessage.STATUS_PENDING)
+            | models.Q(status=SmsGatewayMessage.STATUS_SENDING, claimed_at__lt=stale_cutoff)
+        )
+
+    class Meta:
+        verbose_name = 'SMS-shlyuz xabari'
+        verbose_name_plural = 'SMS-shlyuz xabarlari'
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['status', 'created_at'])]

@@ -1357,6 +1357,9 @@ def sms_settings(request):
                 # Kirish ma'lumotlari o'zgardi — eski token endi yaroqsiz
                 sms.token = ''
                 sms.token_updated_at = None
+            provider = request.POST.get('provider', '').strip()
+            if provider in dict(SmsSettings.PROVIDER_CHOICES):
+                sms.provider = provider
             sms.email    = new_email
             sms.password = new_password
             sms.nickname = request.POST.get('nickname', '').strip() or '4546'
@@ -1374,11 +1377,15 @@ def sms_settings(request):
         ('sms_completed', 'Buyurtma yakunlandi',     '🏁', sms.sms_completed),
         ('sms_cancelled', 'Buyurtma bekor qilindi',  '❌', sms.sms_cancelled),
     ]
+    from .models import SmsGatewayMessage, SmsGatewayToken
     return render(request, 'taxi/sms_settings.html', {
         'sms': sms,
         'saved': saved,
         'test_result': test_result,
         'sms_notifs': sms_notifs,
+        'gateway_devices': SmsGatewayToken.objects.select_related('user').order_by('-updated_at'),
+        'gateway_messages': SmsGatewayMessage.objects.all()[:30],
+        'gateway_pending_count': SmsGatewayMessage.objects.filter(status__in=[SmsGatewayMessage.STATUS_PENDING, SmsGatewayMessage.STATUS_SENDING]).count(),
     })
 
 
