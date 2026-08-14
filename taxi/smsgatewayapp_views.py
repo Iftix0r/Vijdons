@@ -16,7 +16,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from .models import SmsGatewayMessage, SmsGatewayToken, SmsGatewayIncoming
-from .utils import normalize_phone_uz
+from .utils import normalize_phone_uz, handle_sms_opt_out_keyword, send_telegram
 
 # Band qilingan ("sending") holatda shuncha daqiqadan ko'p tursa —
 # o'sha qurilma javob bermay qo'ygan (ilova o'chirilgan, tarmoq uzilgan
@@ -85,6 +85,18 @@ def report_result(request, pk):
     message.sent_by = request.user
     message.resolved_at = timezone.now()
     message.save(update_fields=['status', 'error', 'sent_by', 'resolved_at'])
+
+    if status_value == SmsGatewayMessage.STATUS_FAILED:
+        try:
+            send_telegram(
+                f"⚠️ <b>SMS yuborilmadi</b>\n"
+                f"📱 {message.phone_number}\n"
+                f"📴 Qurilma: {request.user.username}\n"
+                f"❌ Xato: {message.error or '—'}"
+            )
+        except Exception:
+            pass
+
     return Response({'detail': 'ok'})
 
 
@@ -113,4 +125,8 @@ def incoming_report(request):
     SmsGatewayIncoming.objects.create(
         phone_number=phone, text=text, received_at=received_at, device=request.user,
     )
+    try:
+        handle_sms_opt_out_keyword(phone, text)
+    except Exception:
+        pass
     return Response({'detail': 'ok'})

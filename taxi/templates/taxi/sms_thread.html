@@ -1,0 +1,49 @@
+{% extends 'taxi/system_base.html' %}
+{% block title %}{{ phone }} — SMS suhbati — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+    <div class="flex items-center gap-3">
+        <a href="{% url 'system:sms_settings' %}" class="w-10 h-10 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <div>
+            <h1 class="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight font-mono">{{ phone }}</h1>
+            {% if person_label %}
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ person_label }}</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="max-w-2xl">
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+        <div class="px-6 py-5 space-y-3 max-h-[60vh] overflow-y-auto">
+            {% for item in timeline %}
+            <div class="flex {% if item.direction == 'out' %}justify-end{% else %}justify-start{% endif %}">
+                <div class="max-w-[80%] px-4 py-2.5 rounded-2xl text-sm
+                    {% if item.direction == 'out' %}bg-emerald-500 text-white rounded-br-sm
+                    {% else %}bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-bl-sm{% endif %}">
+                    <p>{{ item.text }}</p>
+                    <p class="text-[10px] mt-1 opacity-70">
+                        {{ item.at|date:"d.m.Y H:i" }}
+                        {% if item.status == 'failed' %} · xato{% elif item.status == 'sending' %} · yuborilmoqda{% endif %}
+                    </p>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-sm text-gray-400 text-center py-8">Hali xabar yo'q.</p>
+            {% endfor %}
+        </div>
+        <form method="POST" class="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex gap-2">
+            {% csrf_token %}
+            <input type="text" name="reply_text" required placeholder="Javob yozing..."
+                   class="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 dark:text-white transition">
+            <button type="submit"
+                    class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm rounded-xl shadow-sm transition-all hover:-translate-y-0.5 whitespace-nowrap">
+                <i class="fas fa-paper-plane mr-1"></i>Yuborish
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

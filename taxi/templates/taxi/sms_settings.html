@@ -39,6 +39,12 @@
 </div>
 {% endif %}
 
+{% if template_saved %}
+<div class="mb-4 px-4 py-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 rounded-xl text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+    <i class="fas fa-check-circle mr-2"></i>Shablon saqlandi!
+</div>
+{% endif %}
+
 <!-- Bir qarashda -->
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
     <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm px-4 py-3.5">
@@ -264,8 +270,19 @@
                         <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">Mijozlar <span class="text-gray-400 font-normal">({{ client_count }})</span></span>
                     </label>
                 </div>
+
+                {% if templates %}
+                <select onchange="if(this.value){document.getElementById('vijdon-sms-broadcast-textarea').value = this.options[this.selectedIndex].dataset.text; document.getElementById('vijdon-sms-broadcast-count').textContent = this.options[this.selectedIndex].dataset.text.length;}"
+                        class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-400 dark:text-white transition">
+                    <option value="">— Shablondan tanlash —</option>
+                    {% for tpl in templates %}
+                    <option value="{{ tpl.id }}" data-text="{{ tpl.text }}">{{ tpl.title }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+
                 <div>
-                    <textarea name="broadcast_text" rows="3" required maxlength="480" placeholder="Xabar matni..."
+                    <textarea name="broadcast_text" id="vijdon-sms-broadcast-textarea" rows="3" required maxlength="480" placeholder="Xabar matni..."
                               oninput="document.getElementById('vijdon-sms-broadcast-count').textContent = this.value.length"
                               class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 dark:text-white transition"></textarea>
                     <p class="text-[11px] text-gray-400 mt-1 text-right"><span id="vijdon-sms-broadcast-count">0</span>/480 belgi</p>
@@ -280,7 +297,107 @@
                     <i class="fas fa-bullhorn mr-1"></i>Yuborish
                 </button>
             </form>
+
+            <!-- Shablonlarni boshqarish -->
+            <div class="px-6 pb-5 pt-1 border-t border-gray-100 dark:border-gray-800">
+                <details class="text-xs">
+                    <summary class="cursor-pointer font-semibold text-gray-500 dark:text-gray-400 select-none">Shablonlarni boshqarish</summary>
+                    <div class="mt-3 space-y-2">
+                        {% for tpl in templates %}
+                        <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/60">
+                            <span class="truncate"><strong class="text-gray-600 dark:text-gray-300">{{ tpl.title }}</strong> — <span class="text-gray-400">{{ tpl.text|truncatechars:30 }}</span></span>
+                            <form method="POST" onsubmit="return confirm('Shablon o\'chirilsinmi?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="template_id" value="{{ tpl.id }}">
+                                <button type="submit" name="delete_template" value="1" class="text-red-400 hover:text-red-600 flex-shrink-0"><i class="fas fa-trash"></i></button>
+                            </form>
+                        </div>
+                        {% empty %}
+                        <p class="text-gray-400">Hali shablon yo'q.</p>
+                        {% endfor %}
+                        <form method="POST" class="flex flex-wrap gap-2 pt-1">
+                            {% csrf_token %}
+                            <input type="text" name="template_title" placeholder="Nomi" required maxlength="100"
+                                   class="flex-1 min-w-[100px] px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 dark:text-white transition">
+                            <input type="text" name="template_text" placeholder="Matni" required maxlength="480"
+                                   class="flex-1 min-w-[150px] px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 dark:text-white transition">
+                            <button type="submit" name="save_template" value="1"
+                                    class="px-3 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-semibold rounded-lg transition">
+                                Saqlash
+                            </button>
+                        </form>
+                    </div>
+                </details>
+            </div>
         </div>
+    </div>
+
+    <!-- Kunlik tendensiya va qurilma bo'yicha -->
+    <div class="grid lg:grid-cols-3 gap-5 mt-5">
+        <div class="lg:col-span-2 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                <p class="text-sm font-bold text-gray-800 dark:text-white"><i class="fas fa-chart-column text-emerald-500 mr-2"></i>So'nggi 7 kun</p>
+                <p class="text-xs text-gray-400 mt-0.5">Yuborilgan/xato SMS soni (mahalliy SIM-shlyuz) — SIM-blok xavfini oldindan sezish uchun</p>
+            </div>
+            <div class="px-6 py-4">
+                <canvas id="vijdon-sms-daily-chart" height="90"></canvas>
+            </div>
+        </div>
+        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                <p class="text-sm font-bold text-gray-800 dark:text-white"><i class="fas fa-mobile-screen text-indigo-500 mr-2"></i>Qurilma bo'yicha</p>
+                <p class="text-xs text-gray-400 mt-0.5">Tanlangan davrda yuborilgan</p>
+            </div>
+            <div class="px-6 py-4 space-y-2">
+                {% for row in device_breakdown %}
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-gray-600 dark:text-gray-300">{{ row.sent_by__username }}</span>
+                    <span class="font-bold text-gray-800 dark:text-white">{{ row.count }}</span>
+                </div>
+                {% empty %}
+                <p class="text-xs text-gray-400">Ma'lumot yo'q.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Tarixni qidirish/filtrlash -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden mt-5">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+            <p class="text-sm font-bold text-gray-800 dark:text-white"><i class="fas fa-filter text-gray-400 mr-2"></i>Tarixni qidirish/filtrlash</p>
+        </div>
+        <form method="GET" class="px-6 py-4 flex flex-wrap items-end gap-2">
+            <div class="flex-1 min-w-[140px]">
+                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1">Telefon</label>
+                <input type="text" name="sms_q" value="{{ sms_q }}" placeholder="90123..."
+                       class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-400 dark:text-white transition">
+            </div>
+            <div>
+                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1">Holati</label>
+                <select name="sms_status" class="px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 dark:text-white transition">
+                    <option value="">Hammasi</option>
+                    {% for value, label in sms_status_choices %}
+                    <option value="{{ value }}" {% if sms_status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1">Davr</label>
+                <select name="period" class="px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 dark:text-white transition">
+                    <option value="week" {% if sms_period == 'week' %}selected{% endif %}>Hafta</option>
+                    <option value="month" {% if sms_period == 'month' %}selected{% endif %}>Oy</option>
+                    <option value="year" {% if sms_period == 'year' %}selected{% endif %}>Yil</option>
+                </select>
+            </div>
+            <button type="submit" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm rounded-lg transition">
+                <i class="fas fa-magnifying-glass mr-1"></i>Qidirish
+            </button>
+            <a href="{% url 'system:sms_settings' %}" class="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-semibold text-sm rounded-lg transition">Tozalash</a>
+            <a href="{% url 'system:sms_export_csv' %}?sms_q={{ sms_q|urlencode }}&sms_status={{ sms_status|urlencode }}&period={{ sms_period|urlencode }}&start={{ sms_start }}&end={{ sms_end }}"
+               class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-semibold text-sm rounded-lg transition ml-auto">
+                <i class="fas fa-download mr-1"></i>CSV
+            </a>
+        </form>
     </div>
 
     {% if sms.provider == 'local_gateway' %}
@@ -320,7 +437,7 @@
                 {% for msg in gateway_messages %}
                 <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/60 text-xs">
                     <div class="min-w-0">
-                        <span class="font-mono text-gray-700 dark:text-gray-300">{{ msg.phone_number }}</span>
+                        <a href="{% url 'system:sms_thread' phone=msg.phone_number %}" class="font-mono text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline">{{ msg.phone_number }}</a>
                         <span class="text-gray-400 ml-2 truncate">{{ msg.text|truncatechars:40 }}</span>
                         {% if msg.sent_by %}<span class="text-gray-300 dark:text-gray-600 ml-2">· {{ msg.sent_by.username }}</span>{% endif %}
                     </div>
@@ -360,7 +477,7 @@
                         <p class="text-sm text-gray-700 dark:text-gray-200">{{ msg.text }}</p>
                         <p class="text-xs text-gray-400 mt-0.5">
                             {% if msg.sender_name %}<span class="font-semibold text-gray-500 dark:text-gray-400">{{ msg.sender_name }}</span> — {% endif %}
-                            <span class="font-mono">{{ msg.phone_number }}</span>
+                            <a href="{% url 'system:sms_thread' phone=msg.phone_number %}" class="font-mono hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline">{{ msg.phone_number }}</a>
                         </p>
                     </div>
                     <span class="flex-shrink-0 text-xs text-gray-400 whitespace-nowrap">{{ msg.received_at|date:"d.m H:i" }}</span>
@@ -378,5 +495,26 @@ function vijdonSmsToggleProvider() {
     document.getElementById('vijdon-sms-eskiz-card').style.display = eskiz ? '' : 'none';
 }
 vijdonSmsToggleProvider();
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+new Chart(document.getElementById('vijdon-sms-daily-chart'), {
+    type: 'bar',
+    data: {
+        labels: {{ daily_labels_json|safe }},
+        datasets: [
+            { label: 'Yuborildi', data: {{ daily_sent_json|safe }}, backgroundColor: '#10b981', borderRadius: 4 },
+            { label: 'Xato', data: {{ daily_failed_json|safe }}, backgroundColor: '#ef4444', borderRadius: 4 },
+        ],
+    },
+    options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+        plugins: { legend: { position: 'bottom' } },
+    },
+});
 </script>
 {% endblock %}

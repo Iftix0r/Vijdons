@@ -631,6 +631,44 @@ def send_bulk_sms(phones, text):
     return sent
 
 
+def match_driver_or_client_by_phone(phone):
+    """Berilgan telefon raqamiga (turli formatda bo'lishi mumkin — +998,
+    998, oldindagi nollar bilan/nolsiz) mos Driver yoki Client'ni oxirgi
+    9 raqam (mamlakat kodisiz obunachi raqami) bo'yicha topadi. Formatlash
+    farqlaridan qat'i nazar ishonchli moslashtirish uchun."""
+    from taxi.models import Driver, Client
+    digits = ''.join(ch for ch in (phone or '') if ch.isdigit())
+    last9 = digits[-9:]
+    if not last9:
+        return None, None
+    driver = Driver.objects.filter(phone_number__endswith=last9).first()
+    if driver:
+        return driver, None
+    client = Client.objects.filter(phone_number__endswith=last9).first()
+    return None, client
+
+
+SMS_OPT_OUT_KEYWORDS = {"BEKOR", "STOP", "TO'XTAT", "TOXTAT"}
+
+
+def handle_sms_opt_out_keyword(phone, text):
+    """Kelgan SMS matni "BEKOR"/"STOP" kabi kalit so'zlardan biriga teng
+    bo'lsa — mos Driver/Client'ni ommaviy (marketing) SMS'lardan chiqarib
+    qo'yadi va bir martalik tasdiq SMS'i yuboradi. Buyurtma/balans kabi
+    tranzaksion SMS'larga TA'SIR QILMAYDI — faqat send_bulk_sms() shu
+    bayroqni tekshiradi."""
+    normalized = (text or '').strip().upper().replace('’', "'").replace('ʻ', "'")
+    if normalized not in SMS_OPT_OUT_KEYWORDS:
+        return
+    driver, client = match_driver_or_client_by_phone(phone)
+    person = driver or client
+    if not person or person.sms_opt_out:
+        return
+    person.sms_opt_out = True
+    person.save(update_fields=['sms_opt_out'])
+    send_sms(phone, "Vijdon Taxi: Siz ommaviy SMS xabarlaridan chiqdingiz. Buyurtma holati haqidagi xabarlar davom etadi.")
+
+
 def sms_driver_event(driver, event, order=None, amount=None):
     """Haydovchiga turli hodisalar bo'yicha SMS yuboradi — push/Telegram'ga
     QO'SHIMCHA (ularni almashtirmaydi), internet yo'q/sekin bo'lgan paytda

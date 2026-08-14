@@ -1344,11 +1344,12 @@ def bot_settings(request):
 
 @system_login_required
 def sms_settings(request):
-    from .models import SmsGatewayIncoming
+    from .models import SmsGatewayIncoming, SmsTemplate
     sms = SmsSettings.get()
     saved = False
     test_result = None
     broadcast_result = None
+    template_saved = False
     if request.method == 'GET':
         # Sahifa ochilishi — "ko'rildi" deb hisoblanadi (oddiy inbox
         # xulq-atvori), shu sabab sidebardagi badge tozalanadi.
@@ -1358,6 +1359,14 @@ def sms_settings(request):
             test_phone = request.POST.get('test_phone', '').strip()
             ok, message = send_sms(test_phone, 'Vijdon Taxi: bu test SMS xabari.')
             test_result = {'ok': ok, 'message': message}
+        elif 'save_template' in request.POST:
+            title = request.POST.get('template_title', '').strip()
+            text = request.POST.get('template_text', '').strip()
+            if title and text:
+                SmsTemplate.objects.create(title=title[:100], text=text[:480])
+                template_saved = True
+        elif 'delete_template' in request.POST:
+            SmsTemplate.objects.filter(pk=request.POST.get('template_id')).delete()
         elif 'broadcast' in request.POST:
             broadcast_target = request.POST.get('broadcast_target', '')
             broadcast_text = request.POST.get('broadcast_text', '').strip()
@@ -1369,12 +1378,12 @@ def sms_settings(request):
             else:
                 if broadcast_target == 'drivers':
                     phones = list(
-                        Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED)
+                        Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED, sms_opt_out=False)
                         .exclude(phone_number='').values_list('phone_number', flat=True)
                     )
                 else:
                     phones = list(
-                        Client.objects.filter(is_blocked=False).exclude(phone_number='')
+                        Client.objects.filter(is_blocked=False, sms_opt_out=False).exclude(phone_number='')
                         .values_list('phone_number', flat=True)
                     )
                 if not phones:
@@ -1428,17 +1437,38 @@ def sms_settings(request):
         ('sms_driver_topup_approved', "To'lov tasdiqlandi",                   '💰', sms.sms_driver_topup_approved),
     ]
     from .models import SmsGatewayMessage, SmsGatewayToken
+    from .utils import match_driver_or_client_by_phone
+    from django.db.models import Count
+    from django.db.models.functions import TruncDate
     from django.utils import timezone
     from datetime import timedelta
-    driver_count = Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED).exclude(phone_number='').count()
-    client_count = Client.objects.filter(is_blocked=False).exclude(phone_number='').count()
+    driver_count = Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED, sms_opt_out=False).exclude(phone_number='').count()
+    client_count = Client.objects.filter(is_blocked=False, sms_opt_out=False).exclude(phone_number='').count()
     gateway_devices = SmsGatewayToken.objects.select_related('user').order_by('-updated_at')
 
-    incoming_messages = list(SmsGatewayIncoming.objects.all()[:30])
+    # Qidiruv/filtr — tarix ro'yxati (yuborilgan + kelgan) shu bo'yicha cheklanadi.
+    # Sana oralig'i boshqa sahifalar (Statistika/Moliya) bilan bir xil
+    # `_statistics_range()` yordamchisi orqali aniqlanadi.
+    period, start_date, end_date = _statistics_range(request)
+    sms_q = request.GET.get('sms_q', '').strip()
+    sms_status = request.GET.get('sms_status', '')
+
+    gateway_qs = SmsGatewayMessage.objects.select_related('sent_by').filter(
+        created_at__date__gte=start_date, created_at__date__lte=end_date,
+    )
+    incoming_qs = SmsGatewayIncoming.objects.filter(
+        received_at__date__gte=start_date, received_at__date__lte=end_date,
+    )
+    if sms_q:
+        gateway_qs = gateway_qs.filter(phone_number__icontains=sms_q)
+        incoming_qs = incoming_qs.filter(phone_number__icontains=sms_q)
+    if sms_status in dict(SmsGatewayMessage.STATUS_CHOICES):
+        gateway_qs = gateway_qs.filter(status=sms_status)
+
+    gateway_messages = list(gateway_qs.order_by('-created_at')[:100])
+    incoming_messages = list(incoming_qs.order_by('-received_at')[:100])
     for msg in incoming_messages:
-        last9 = msg.phone_number[-9:]
-        driver = Driver.objects.filter(phone_number__endswith=last9).only('full_name').first()
-        client = Client.objects.filter(phone_number__endswith=last9).only('full_name').first() if not driver else None
+        driver, client = match_driver_or_client_by_phone(msg.phone_number)
         if driver:
             msg.sender_name = f"{driver.full_name} (haydovchi)"
         elif client:
@@ -1446,22 +1476,138 @@ def sms_settings(request):
         else:
             msg.sender_name = None
 
+    # Kunlik tendensiya — doim so'nggi 7 kun (filtr davridan mustaqil),
+    # SIM-blok xavfini oldindan sezish uchun.
+    trend_start = end_date - timedelta(days=6)
+    daily_rows = (
+        SmsGatewayMessage.objects.filter(
+            created_at__date__gte=trend_start, created_at__date__lte=end_date,
+            status__in=[SmsGatewayMessage.STATUS_SENT, SmsGatewayMessage.STATUS_FAILED],
+        )
+        .annotate(day=TruncDate('created_at')).values('day', 'status').annotate(count=Count('id'))
+    )
+    daily_map = {}
+    for row in daily_rows:
+        daily_map.setdefault(row['day'], {}).__setitem__(row['status'], row['count'])
+    daily_labels, daily_sent, daily_failed = [], [], []
+    for i in range(7):
+        d = trend_start + timedelta(days=i)
+        daily_labels.append(d.strftime('%d.%m'))
+        daily_sent.append(daily_map.get(d, {}).get(SmsGatewayMessage.STATUS_SENT, 0))
+        daily_failed.append(daily_map.get(d, {}).get(SmsGatewayMessage.STATUS_FAILED, 0))
+
+    device_breakdown = list(
+        SmsGatewayMessage.objects.filter(
+            created_at__date__gte=start_date, created_at__date__lte=end_date,
+            status=SmsGatewayMessage.STATUS_SENT, sent_by__isnull=False,
+        ).values('sent_by__username').annotate(count=Count('id')).order_by('-count')
+    )
+
     return render(request, 'taxi/sms_settings.html', {
         'sms': sms,
         'saved': saved,
         'test_result': test_result,
         'broadcast_result': broadcast_result,
+        'template_saved': template_saved,
+        'templates': SmsTemplate.objects.all(),
         'driver_count': driver_count,
         'client_count': client_count,
         'sms_notifs': sms_notifs,
         'driver_sms_notifs': driver_sms_notifs,
+        'sms_status_choices': SmsGatewayMessage.STATUS_CHOICES,
+        'sms_q': sms_q,
+        'sms_status': sms_status,
+        'sms_period': period,
+        'sms_start': start_date.isoformat(),
+        'sms_end': end_date.isoformat(),
         'incoming_messages': incoming_messages,
         'gateway_devices': gateway_devices,
         'gateway_device_count': gateway_devices.count(),
         'gateway_online_cutoff': timezone.now() - timedelta(minutes=3),
-        'gateway_messages': SmsGatewayMessage.objects.select_related('sent_by').all()[:30],
+        'gateway_messages': gateway_messages,
         'gateway_pending_count': SmsGatewayMessage.objects.filter(status__in=[SmsGatewayMessage.STATUS_PENDING, SmsGatewayMessage.STATUS_SENDING]).count(),
+        'daily_labels_json': json.dumps(daily_labels),
+        'daily_sent_json': json.dumps(daily_sent),
+        'daily_failed_json': json.dumps(daily_failed),
+        'device_breakdown': device_breakdown,
     })
+
+
+@system_login_required
+def sms_thread(request, phone):
+    """Bitta telefon raqami bo'yicha yuborilgan+kelgan SMS'larni bitta
+    xronologik oqim (suhbat) sifatida ko'rsatadi, shu yerdan javob yozish
+    ham mumkin."""
+    from .models import SmsGatewayMessage, SmsGatewayIncoming
+    from .utils import normalize_phone_uz, match_driver_or_client_by_phone
+
+    normalized = normalize_phone_uz(phone) or phone
+
+    if request.method == 'POST':
+        reply_text = request.POST.get('reply_text', '').strip()
+        if reply_text:
+            send_sms(normalized, reply_text)
+        return redirect('system:sms_thread', phone=normalized)
+
+    last9 = normalized[-9:]
+    outgoing = SmsGatewayMessage.objects.filter(
+        phone_number__endswith=last9,
+    ).exclude(status=SmsGatewayMessage.STATUS_PENDING)
+    incoming = SmsGatewayIncoming.objects.filter(phone_number__endswith=last9)
+    SmsGatewayIncoming.objects.filter(phone_number__endswith=last9, is_read=False).update(is_read=True)
+
+    timeline = (
+        [{'direction': 'out', 'text': m.text, 'at': m.created_at, 'status': m.status} for m in outgoing]
+        + [{'direction': 'in', 'text': m.text, 'at': m.received_at, 'status': None} for m in incoming]
+    )
+    timeline.sort(key=lambda x: x['at'])
+
+    driver, client = match_driver_or_client_by_phone(normalized)
+    person_label = None
+    if driver:
+        person_label = f"{driver.full_name} (haydovchi)"
+    elif client:
+        person_label = f"{client.full_name or client.phone_number} (mijoz)"
+
+    return render(request, 'taxi/sms_thread.html', {
+        'phone': normalized,
+        'timeline': timeline,
+        'person_label': person_label,
+    })
+
+
+@system_login_required
+def sms_export_csv(request):
+    from .models import SmsGatewayMessage, SmsGatewayIncoming
+    from .utils import match_driver_or_client_by_phone
+
+    period, start_date, end_date = _statistics_range(request)
+    sms_q = request.GET.get('sms_q', '').strip()
+    sms_status = request.GET.get('sms_status', '')
+
+    gateway_qs = SmsGatewayMessage.objects.filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
+    incoming_qs = SmsGatewayIncoming.objects.filter(received_at__date__gte=start_date, received_at__date__lte=end_date)
+    if sms_q:
+        gateway_qs = gateway_qs.filter(phone_number__icontains=sms_q)
+        incoming_qs = incoming_qs.filter(phone_number__icontains=sms_q)
+    if sms_status in dict(SmsGatewayMessage.STATUS_CHOICES):
+        gateway_qs = gateway_qs.filter(status=sms_status)
+
+    rows = []
+    for m in gateway_qs:
+        rows.append(('Yuborilgan', m.phone_number, m.text, m.get_status_display(), m.created_at))
+    for m in incoming_qs:
+        rows.append(('Kelgan', m.phone_number, m.text, '—', m.received_at))
+    rows.sort(key=lambda r: r[4], reverse=True)
+
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="sms_tarixi.csv"'
+    response.write('﻿')
+    writer = csv.writer(response)
+    writer.writerow(['Yo\'nalish', 'Telefon', 'Matn', 'Holati', 'Vaqt'])
+    for direction, phone_number, text, status_display, at in rows:
+        writer.writerow([direction, phone_number, text, status_display, at.strftime('%d.%m.%Y %H:%M')])
+    return response
 
 
 # ── AI o'sish tavsiyalari ─────────────────────────────────────────────────────

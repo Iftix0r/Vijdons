@@ -58,5 +58,7 @@ urlpatterns = [
     path('bot/admins/<int:pk>/toggle/', views.bot_admin_toggle, name='bot_admin_toggle'),
 
     path('sms/', views.sms_settings, name='sms_settings'),
+    path('sms/export/', views.sms_export_csv, name='sms_export_csv'),
+    path('sms/thread/<str:phone>/', views.sms_thread, name='sms_thread'),
     path('ai/', views.ai_settings, name='ai_settings'),
 ]

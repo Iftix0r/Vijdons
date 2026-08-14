@@ -40,6 +40,9 @@ class Driver(models.Model):
     # (`qarzdorlar_list`) faqat operator ATAYLAB belgilagan haydovchilarnigina
     # ko'rsatadi — vaqtinchalik manfiy balansli barcha haydovchilarni emas.
     is_qarzdor      = models.BooleanField(default=False, verbose_name="Qarzdor")
+    sms_opt_out     = models.BooleanField(default=False, verbose_name="Ommaviy SMS'lardan chiqqan",
+                                           help_text="\"BEKOR\" deb SMS javob yozsa avtomatik yoqiladi — "
+                                                      "buyurtma/balans SMS'lariga ta'sir qilmaydi, faqat ommaviy xabarlar to'xtaydi")
     qarz_note       = models.CharField(max_length=255, blank=True, default='', verbose_name="Qarz izohi")
     qarz_marked_at  = models.DateTimeField(null=True, blank=True, verbose_name="Qarzdor deb belgilangan vaqt")
     fcm_token       = models.TextField(blank=True, null=True, verbose_name="FCM Token")
@@ -107,6 +110,9 @@ class Client(models.Model):
     telegram_chat_id = models.CharField(max_length=50, blank=True, default='', verbose_name="Telegram chat ID",
                                         help_text="Mijoz botidan foydalansa avtomatik saqlanadi")
     is_blocked   = models.BooleanField(default=False, verbose_name="Bloklangan")
+    sms_opt_out  = models.BooleanField(default=False, verbose_name="Ommaviy SMS'lardan chiqqan",
+                                        help_text="\"BEKOR\" deb SMS javob yozsa avtomatik yoqiladi — "
+                                                   "buyurtma holati SMS'lariga ta'sir qilmaydi, faqat ommaviy xabarlar to'xtaydi")
     rating       = models.DecimalField(max_digits=3, decimal_places=2, default=5.00,
                                        verbose_name="Reyting (1–5)")
     trips_count  = models.PositiveIntegerField(default=0, verbose_name="Jami safarlar soni")
@@ -1512,3 +1518,18 @@ class SmsGatewayIncoming(models.Model):
         verbose_name = 'Kelgan SMS'
         verbose_name_plural = 'Kelgan SMS xabarlari'
         ordering = ['-received_at']
+
+
+class SmsTemplate(models.Model):
+    """Ommaviy xabar uchun qayta-qayta yozmaslik uchun saqlangan matn shablonlari."""
+    title      = models.CharField(max_length=100, verbose_name='Nomi')
+    text       = models.TextField(max_length=480, verbose_name='Matn')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        verbose_name = 'SMS shabloni'
+        verbose_name_plural = 'SMS shablonlari'
+        ordering = ['title']
