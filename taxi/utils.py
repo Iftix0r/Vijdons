@@ -575,7 +575,7 @@ def sms_order_status(order, event):
     if event == 'accepted':
         car = f"{driver.car_model} {driver.car_number}".strip() if driver else ''
         text = (f"Vijdon Taxi: Buyurtmangiz (#{order.id}) qabul qilindi."
-                + (f" Haydovchi: {driver.full_name}, {car}." if driver else "")
+                + (f" Haydovchi: {driver.full_name}, {car}, tel: {driver.phone_number}." if driver else "")
                 + " Iltimos kuting.")
     elif event == 'arrived':
         text = (f"Vijdon Taxi: Haydovchi{f' ({driver.full_name})' if driver else ''} "
@@ -587,6 +587,48 @@ def sms_order_status(order, event):
         text = f"Vijdon Taxi: Buyurtmangiz (#{order.id}) bekor qilindi."
 
     send_sms(client.phone_number, text)
+
+
+def send_bulk_sms(phones, text):
+    """Ko'p sonli qabul qiluvchiga (masalan: "barcha haydovchilar"/"barcha
+    mijozlar" — marketing/umumiy e'lon) bir xil matnli SMS yuboradi.
+    Har birini alohida `send_sms()` bilan chaqirmaydi — mahalliy-shlyuz
+    holatida BARCHA xabarlarni bitta `bulk_create` bilan navbatga qo'yadi
+    va qurilmalarga N marta emas, BITTA "uyg'onish" pushi yuboradi.
+    Qaytaradi: navbatga qo'yilgan/yuborilgan xabarlar soni."""
+    from taxi.models import SmsSettings
+    try:
+        cfg = SmsSettings.get()
+    except Exception:
+        return 0
+
+    mobiles = []
+    seen = set()
+    for phone in phones:
+        mobile = normalize_phone_uz(phone)
+        if mobile and mobile not in seen:
+            seen.add(mobile)
+            mobiles.append(mobile)
+    if not mobiles:
+        return 0
+
+    if cfg.provider == SmsSettings.PROVIDER_LOCAL_GATEWAY:
+        from taxi.models import SmsGatewayMessage, SmsGatewayToken
+        SmsGatewayMessage.objects.bulk_create([SmsGatewayMessage(phone_number=m, text=text) for m in mobiles])
+        for token in SmsGatewayToken.objects.values_list('fcm_token', flat=True):
+            send_fcm(
+                token, title='Yangi SMS',
+                body=f"{len(mobiles)} ta yangi xabar navbatda",
+                data={'type': 'new_sms'},
+            )
+        return len(mobiles)
+
+    sent = 0
+    for mobile in mobiles:
+        ok, _ = send_sms(mobile, text)
+        if ok:
+            sent += 1
+    return sent
 
 
 def sms_driver_event(driver, event, order=None, amount=None):

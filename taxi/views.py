@@ -1347,11 +1347,44 @@ def sms_settings(request):
     sms = SmsSettings.get()
     saved = False
     test_result = None
+    broadcast_result = None
     if request.method == 'POST':
         if 'test' in request.POST:
             test_phone = request.POST.get('test_phone', '').strip()
             ok, message = send_sms(test_phone, 'Vijdon Taxi: bu test SMS xabari.')
             test_result = {'ok': ok, 'message': message}
+        elif 'broadcast' in request.POST:
+            broadcast_target = request.POST.get('broadcast_target', '')
+            broadcast_text = request.POST.get('broadcast_text', '').strip()
+            target_labels = {'drivers': 'haydovchilar', 'clients': 'mijozlar'}
+            if not broadcast_text:
+                broadcast_result = {'ok': False, 'message': "Xabar matni bo'sh bo'lishi mumkin emas"}
+            elif broadcast_target not in target_labels:
+                broadcast_result = {'ok': False, 'message': "Qabul qiluvchi turini tanlang"}
+            else:
+                if broadcast_target == 'drivers':
+                    phones = list(
+                        Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED)
+                        .exclude(phone_number='').values_list('phone_number', flat=True)
+                    )
+                else:
+                    phones = list(
+                        Client.objects.filter(is_blocked=False).exclude(phone_number='')
+                        .values_list('phone_number', flat=True)
+                    )
+                if not phones:
+                    broadcast_result = {'ok': False, 'message': 'Qabul qiluvchi topilmadi'}
+                else:
+                    import threading
+                    from .utils import send_bulk_sms, log_system_event
+                    threading.Thread(target=send_bulk_sms, args=(phones, broadcast_text), daemon=True).start()
+                    label = target_labels[broadcast_target]
+                    broadcast_result = {'ok': True, 'message': f"{len(phones)} ta {label}ga yuborilmoqda..."}
+                    log_system_event(
+                        'sms_broadcast',
+                        f"Ommaviy SMS — {label} ({len(phones)} ta): {broadcast_text[:80]}",
+                        request=request,
+                    )
         else:
             new_email    = request.POST.get('email', '').strip()
             new_password = request.POST.get('password', '').strip()
@@ -1390,10 +1423,15 @@ def sms_settings(request):
         ('sms_driver_topup_approved', "To'lov tasdiqlandi",                   '💰', sms.sms_driver_topup_approved),
     ]
     from .models import SmsGatewayMessage, SmsGatewayToken
+    driver_count = Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED).exclude(phone_number='').count()
+    client_count = Client.objects.filter(is_blocked=False).exclude(phone_number='').count()
     return render(request, 'taxi/sms_settings.html', {
         'sms': sms,
         'saved': saved,
         'test_result': test_result,
+        'broadcast_result': broadcast_result,
+        'driver_count': driver_count,
+        'client_count': client_count,
         'sms_notifs': sms_notifs,
         'driver_sms_notifs': driver_sms_notifs,
         'gateway_devices': SmsGatewayToken.objects.select_related('user').order_by('-updated_at'),
