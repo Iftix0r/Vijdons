@@ -322,6 +322,7 @@
                     <div class="min-w-0">
                         <span class="font-mono text-gray-700 dark:text-gray-300">{{ msg.phone_number }}</span>
                         <span class="text-gray-400 ml-2 truncate">{{ msg.text|truncatechars:40 }}</span>
+                        {% if msg.sent_by %}<span class="text-gray-300 dark:text-gray-600 ml-2">· {{ msg.sent_by.username }}</span>{% endif %}
                     </div>
                     <span class="flex-shrink-0 px-2 py-0.5 rounded-full font-bold
                         {% if msg.status == 'sent' %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400

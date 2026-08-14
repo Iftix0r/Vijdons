@@ -1459,7 +1459,7 @@ def sms_settings(request):
         'gateway_devices': gateway_devices,
         'gateway_device_count': gateway_devices.count(),
         'gateway_online_cutoff': timezone.now() - timedelta(minutes=3),
-        'gateway_messages': SmsGatewayMessage.objects.all()[:30],
+        'gateway_messages': SmsGatewayMessage.objects.select_related('sent_by').all()[:30],
         'gateway_pending_count': SmsGatewayMessage.objects.filter(status__in=[SmsGatewayMessage.STATUS_PENDING, SmsGatewayMessage.STATUS_SENDING]).count(),
     })
 
