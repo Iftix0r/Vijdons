@@ -310,7 +310,7 @@ def _refund_order_commission(order, driver, reason):
     arrived) bekor qilinsa yoki o'chirilsa, ilgari undan yechilgan komissiyani
     balansiga qaytaradi — haydovchi o'z aybisiz pulini yo'qotmasligi uchun."""
     from decimal import Decimal
-    from .utils import send_fcm
+    from .utils import send_fcm, sms_driver_event
 
     commission = order.commission or TariffSettings.get().commission
     driver.balance += Decimal(str(commission))
@@ -326,6 +326,7 @@ def _refund_order_commission(order, driver, reason):
         body=f"Buyurtma #{order.id} bekor qilindi. {commission} so'm balansingizga qaytarildi.",
         data={'type': 'order_cancelled', 'order_id': str(order.id)},
     )
+    sms_driver_event(driver, 'order_cancelled', order=order, amount=commission)
     return commission
 
 
@@ -417,7 +418,7 @@ def order_cancel_reassign(request, pk):
     order = get_object_or_404(Order, pk=pk)
     if request.method == 'POST' and order.driver_id and order.status in ('accepted', 'on_way', 'arrived'):
         from decimal import Decimal
-        from .utils import send_fcm
+        from .utils import send_fcm, sms_driver_event
 
         old_driver = order.driver
         commission = order.commission or TariffSettings.get().commission
@@ -449,6 +450,7 @@ def order_cancel_reassign(request, pk):
             body=f"Buyurtma #{order.id} operator tomonidan bekor qilindi. {commission} so'm balansingizga qaytarildi.",
             data={'type': 'order_cancelled', 'order_id': str(order.id)},
         )
+        sms_driver_event(old_driver, 'order_cancelled', order=order, amount=commission)
 
         tariff = TariffSettings.get()
         if tariff.auto_dispatch:
@@ -1367,6 +1369,10 @@ def sms_settings(request):
             sms.sms_arrived   = 'sms_arrived'   in request.POST
             sms.sms_completed = 'sms_completed' in request.POST
             sms.sms_cancelled = 'sms_cancelled' in request.POST
+            sms.sms_driver_cancelled      = 'sms_driver_cancelled'      in request.POST
+            sms.sms_driver_new_order      = 'sms_driver_new_order'      in request.POST
+            sms.sms_driver_low_balance    = 'sms_driver_low_balance'    in request.POST
+            sms.sms_driver_topup_approved = 'sms_driver_topup_approved' in request.POST
             sms.save()
             saved = True
             from .utils import log_system_event
@@ -1377,12 +1383,19 @@ def sms_settings(request):
         ('sms_completed', 'Buyurtma yakunlandi',     '🏁', sms.sms_completed),
         ('sms_cancelled', 'Buyurtma bekor qilindi',  '❌', sms.sms_cancelled),
     ]
+    driver_sms_notifs = [
+        ('sms_driver_cancelled',      'Buyurtma bekor qilindi/qayta ochildi', '❌', sms.sms_driver_cancelled),
+        ('sms_driver_new_order',      "Yangi buyurtma (zaxira, push'ga qo'shimcha)", '🚖', sms.sms_driver_new_order),
+        ('sms_driver_low_balance',    'Balans kam qoldi',                     '⚠️', sms.sms_driver_low_balance),
+        ('sms_driver_topup_approved', "To'lov tasdiqlandi",                   '💰', sms.sms_driver_topup_approved),
+    ]
     from .models import SmsGatewayMessage, SmsGatewayToken
     return render(request, 'taxi/sms_settings.html', {
         'sms': sms,
         'saved': saved,
         'test_result': test_result,
         'sms_notifs': sms_notifs,
+        'driver_sms_notifs': driver_sms_notifs,
         'gateway_devices': SmsGatewayToken.objects.select_related('user').order_by('-updated_at'),
         'gateway_messages': SmsGatewayMessage.objects.all()[:30],
         'gateway_pending_count': SmsGatewayMessage.objects.filter(status__in=[SmsGatewayMessage.STATUS_PENDING, SmsGatewayMessage.STATUS_SENDING]).count(),
@@ -2593,6 +2606,8 @@ def topup_resolve(request, pk):
                 f"+{topup.amount:,.0f} so'm qo'shildi. Joriy balans: {driver.balance:,.0f} so'm".replace(',', ' '),
                 data_type='balance_changed',
             )
+            from .utils import sms_driver_event
+            sms_driver_event(driver, 'topup_approved', amount=topup.amount)
             messages.success(request, f"To'lov #{topup.id} tasdiqlandi — {driver.full_name} balansi: {driver.balance} UZS")
         elif action == 'reject':
             reason = request.POST.get('reason', '').strip()
@@ -3160,7 +3175,7 @@ def _handle_admin_message(token, chat_id, text, location=None):
                 f"⚠️ Buyurtma #{order.id} qayta yuborib bo'lmaydi ({dict(Order.STATUS_CHOICES).get(order.status)}).",
                 _ADMIN_MENU_KB)
             return
-        from .utils import send_fcm
+        from .utils import send_fcm, sms_driver_event
         if order.driver_id and order.status in Order.ACTIVE_STATUSES:
             old_driver = order.driver
             commission = order.commission or TariffSettings.get().commission
@@ -3179,6 +3194,7 @@ def _handle_admin_message(token, chat_id, text, location=None):
                 body=f"Buyurtma #{order.id} qayta ochildi. {commission} so'm balansingizga qaytarildi.",
                 data={'type': 'order_cancelled', 'order_id': str(order.id)},
             )
+            sms_driver_event(old_driver, 'order_cancelled', order=order, amount=commission)
         order.dispatched_to = None
         order.dispatched_at = None
         order.status = 'pending'

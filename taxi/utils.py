@@ -589,6 +589,48 @@ def sms_order_status(order, event):
     send_sms(client.phone_number, text)
 
 
+def sms_driver_event(driver, event, order=None, amount=None):
+    """Haydovchiga turli hodisalar bo'yicha SMS yuboradi — push/Telegram'ga
+    QO'SHIMCHA (ularni almashtirmaydi), internet yo'q/sekin bo'lgan paytda
+    ham yetib borishi uchun.
+    event: 'order_cancelled' | 'new_order' | 'low_balance' | 'topup_approved'"""
+    if not driver or not driver.phone_number:
+        return
+    try:
+        from taxi.models import SmsSettings
+        cfg = SmsSettings.get()
+    except Exception:
+        return
+
+    toggle = {
+        'order_cancelled':  cfg.sms_driver_cancelled,
+        'new_order':        cfg.sms_driver_new_order,
+        'low_balance':      cfg.sms_driver_low_balance,
+        'topup_approved':   cfg.sms_driver_topup_approved,
+    }.get(event)
+    if not toggle:
+        return
+
+    if event == 'order_cancelled':
+        text = f"Vijdon Taxi: Buyurtma #{order.id} bekor qilindi/qayta ochildi."
+        if amount:
+            text += f" {amount} so'm balansingizga qaytarildi."
+    elif event == 'new_order':
+        text = f"Vijdon Taxi: Yangi buyurtma! {order.from_address}"
+        if order.to_address:
+            text += f" → {order.to_address}"
+        text += ". Ilovada ko'ring."
+    elif event == 'low_balance':
+        from taxi.models import TariffSettings
+        tariff = TariffSettings.get()
+        text = (f"Vijdon Taxi: Balansingiz kam ({driver.balance} so'm). Yangi buyurtma qabul qilish "
+                f"uchun kamida {tariff.commission} so'm to'ldiring.")
+    else:  # topup_approved
+        text = f"Vijdon Taxi: Balansingiz {amount} so'mga to'ldirildi. Joriy balans: {driver.balance} so'm."
+
+    send_sms(driver.phone_number, text)
+
+
 # ── Telegram xabar shablonlari ────────────────────────────────────────────────
 
 def _order_url(order_id):
@@ -988,6 +1030,18 @@ def tg_low_balance_alert(driver):
         driver, '⚠️ Balans kam',
         f"Balansingiz {driver.balance} UZS. Yangi buyurtma qabul qilish uchun kamida {tariff.commission} UZS kerak — iltimos to'ldiring.",
     )
+
+    # SMS har buyurtma qabul qilinganda emas — bir necha soatda bir marta
+    # (aks holda balans kam bo'lgan holatda haydovchi har safar buyurtma
+    # qabul qilganda qayta-qayta SMS olib, katta hajm/xarajat/SIM-blok
+    # xavfini oshirar edi).
+    from django.utils import timezone
+    from datetime import timedelta
+    LOW_BALANCE_SMS_THROTTLE = timedelta(hours=6)
+    if not driver.low_balance_sms_at or timezone.now() - driver.low_balance_sms_at > LOW_BALANCE_SMS_THROTTLE:
+        sms_driver_event(driver, 'low_balance')
+        driver.low_balance_sms_at = timezone.now()
+        driver.save(update_fields=['low_balance_sms_at'])
 
     cfg = _cfg()
     if cfg and not cfg.notify_low_balance:
@@ -2329,6 +2383,7 @@ def notify_driver_new_order(order, driver):
         send_push_to_driver(driver, '🚖 Yangi buyurtma!', body)
     except Exception:
         pass
+    sms_driver_event(driver, 'new_order', order=order)
     tg_order_dispatched(order, driver)
 
 

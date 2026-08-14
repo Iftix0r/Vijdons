@@ -47,6 +47,9 @@ class Driver(models.Model):
     latitude        = models.FloatField(null=True, blank=True, verbose_name="Kenglik (Latitude)")
     longitude       = models.FloatField(null=True, blank=True, verbose_name="Uzunlik (Longitude)")
     balance               = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Balans")
+    low_balance_sms_at    = models.DateTimeField(null=True, blank=True, verbose_name="Oxirgi 'balans kam' SMS vaqti",
+                                                  help_text="Har buyurtma qabul qilganda emas, bir necha soatda bir "
+                                                             "marta SMS yuborilishi uchun (utils.tg_low_balance_alert)")
     rating                = models.DecimalField(max_digits=3, decimal_places=2, default=5.00, verbose_name="Reyting (1–5)")
     trips_count           = models.PositiveIntegerField(default=0, verbose_name="Jami safarlar soni")
     rating_count          = models.PositiveIntegerField(default=0, verbose_name="Reytinglar soni")
@@ -419,6 +422,17 @@ class SmsSettings(models.Model):
     sms_arrived   = models.BooleanField(default=True, verbose_name='Haydovchi yetib keldi')
     sms_completed = models.BooleanField(default=True, verbose_name='Buyurtma yakunlandi')
     sms_cancelled = models.BooleanField(default=True, verbose_name='Buyurtma bekor qilindi')
+
+    # Bildirishnoma toggle lar (haydovchiga SMS) — push/Telegram'ga QO'SHIMCHA,
+    # internet yo'q/sekin bo'lganda ham yetib borishi uchun.
+    sms_driver_cancelled      = models.BooleanField(default=True, verbose_name="Haydovchiga: buyurtma bekor qilindi/qayta ochildi")
+    sms_driver_new_order      = models.BooleanField(
+        default=False, verbose_name='Haydovchiga: yangi buyurtma (zaxira)',
+        help_text="Diqqat: bu har bir tayinlangan buyurtmada yuboriladi — push allaqachon bor, "
+                   "shu sabab sukut bo'yicha O'CHIQ (katta hajm SIM-blok xavfini oshiradi).",
+    )
+    sms_driver_low_balance    = models.BooleanField(default=True, verbose_name='Haydovchiga: balans kam qoldi')
+    sms_driver_topup_approved = models.BooleanField(default=True, verbose_name="Haydovchiga: to'lov tasdiqlandi")
 
     updated_at = models.DateTimeField(auto_now=True)
 

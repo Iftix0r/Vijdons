@@ -131,6 +131,27 @@
         </div>
     </div>
 
+    <!-- Haydovchiga bildirishnomalar -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden mb-5">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+            <p class="text-sm font-bold text-gray-800 dark:text-white"><i class="fas fa-id-card text-blue-500 mr-2"></i>Haydovchiga SMS yuboriladigan hodisalar</p>
+            <p class="text-xs text-gray-400 mt-0.5">Push/Telegram'ga qo'shimcha — internet yo'q/sekin bo'lganda ham yetib borishi uchun</p>
+        </div>
+        <div class="px-6 py-5 space-y-2">
+            {% for field, label, icon, checked in driver_sms_notifs %}
+            <label class="flex items-center justify-between p-3 rounded-xl border cursor-pointer transition
+                {% if checked %}border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-900/10{% else %}border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/40{% endif %}">
+                <div class="flex items-center gap-3">
+                    <span class="text-lg w-6 text-center">{{ icon }}</span>
+                    <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ label }}</span>
+                </div>
+                <input type="checkbox" name="{{ field }}" {% if checked %}checked{% endif %}
+                       class="w-4 h-4 accent-emerald-500 cursor-pointer">
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+
     <!-- Tugmalar -->
     <div class="flex gap-3">
         <button type="submit"

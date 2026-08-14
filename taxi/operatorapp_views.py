@@ -691,7 +691,7 @@ def topup_list(request, user):
 def topup_resolve(request, user, pk):
     from django.utils import timezone
     from .models import DriverActivityLog
-    from .utils import tg_balance_changed, send_fcm
+    from .utils import tg_balance_changed, send_fcm, sms_driver_event
 
     topup = get_object_or_404(BalanceTopupRequest, pk=pk)
     if topup.status != BalanceTopupRequest.STATUS_PENDING:
@@ -717,6 +717,7 @@ def topup_resolve(request, user, pk):
             body=f"+{topup.amount:,.0f} so'm qo'shildi. Joriy balans: {driver.balance:,.0f} so'm".replace(',', ' '),
             data={'type': 'balance_changed'},
         )
+        sms_driver_event(driver, 'topup_approved', amount=topup.amount)
     elif action == 'reject':
         reason = str(request.data.get('reason', '')).strip()
         topup.status = BalanceTopupRequest.STATUS_REJECTED
