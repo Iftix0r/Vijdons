@@ -1490,3 +1490,25 @@ class SmsGatewayMessage(models.Model):
         verbose_name_plural = 'SMS-shlyuz xabarlari'
         ordering = ['-created_at']
         indexes = [models.Index(fields=['status', 'created_at'])]
+
+
+class SmsGatewayIncoming(models.Model):
+    """vijdon_sms_gateway ilovasi o'rnatilgan telefonning SIM kartasiga
+    KELGAN SMS'lar (mijoz/haydovchi yuborilgan SMS'ga javob yozsa) —
+    Eskiz/alfa-nomdan farqli, real SIM raqamiga javob yozish mumkin,
+    shu sabab operator buni panelda ko'rishi kerak."""
+    phone_number = models.CharField(max_length=20, verbose_name='Kimdan')
+    text         = models.TextField(verbose_name='Matn')
+    received_at  = models.DateTimeField(verbose_name="Qurilmada qabul qilingan vaqt")
+    device       = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name='received_sms_messages', verbose_name='Qaysi qurilma')
+    is_read      = models.BooleanField(default=False, verbose_name="O'qilgan")
+    created_at   = models.DateTimeField(auto_now_add=True, verbose_name='Serverga tushgan vaqt')
+
+    def __str__(self):
+        return f"{self.phone_number}: {self.text[:30]}"
+
+    class Meta:
+        verbose_name = 'Kelgan SMS'
+        verbose_name_plural = 'Kelgan SMS xabarlari'
+        ordering = ['-received_at']

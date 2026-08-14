@@ -22,4 +22,7 @@ interface SmsGatewayApiService {
 
     @POST("api/smsgatewayapp/{id}/result/")
     suspend fun reportResult(@Path("id") id: Int, @Body body: Map<String, String>): DetailResponse
+
+    @POST("api/smsgatewayapp/incoming/")
+    suspend fun reportIncoming(@Body body: Map<String, String>): DetailResponse
 }

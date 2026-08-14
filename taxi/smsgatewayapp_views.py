@@ -15,7 +15,8 @@ from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .models import SmsGatewayMessage, SmsGatewayToken
+from .models import SmsGatewayMessage, SmsGatewayToken, SmsGatewayIncoming
+from .utils import normalize_phone_uz
 
 # Band qilingan ("sending") holatda shuncha daqiqadan ko'p tursa —
 # o'sha qurilma javob bermay qo'ygan (ilova o'chirilgan, tarmoq uzilgan
@@ -84,4 +85,32 @@ def report_result(request, pk):
     message.sent_by = request.user
     message.resolved_at = timezone.now()
     message.save(update_fields=['status', 'error', 'sent_by', 'resolved_at'])
+    return Response({'detail': 'ok'})
+
+
+@api_view(['POST'])
+def incoming_report(request):
+    """Qurilmaning SIM kartasiga kelgan SMS haqida — `IncomingSmsReceiver.kt`
+    (SMS_RECEIVED broadcast) tomonidan chaqiriladi. Eskiz/alfa-nomdan farqli,
+    real SIM raqamiga mijoz/haydovchi javob yozishi mumkin — operator buni
+    panelda (`/system/sms/`) ko'rishi uchun."""
+    if not _staff_only(request):
+        return Response({'detail': "Ruxsat yo'q."}, status=403)
+
+    phone = normalize_phone_uz(str(request.data.get('phone_number', '')).strip())
+    text = str(request.data.get('text', '')).strip()
+    if not phone or not text:
+        return Response({'detail': "phone_number va text kiritilishi shart."}, status=400)
+
+    received_at_raw = request.data.get('received_at')
+    received_at = None
+    if received_at_raw:
+        from django.utils.dateparse import parse_datetime
+        received_at = parse_datetime(str(received_at_raw))
+    if not received_at:
+        received_at = timezone.now()
+
+    SmsGatewayIncoming.objects.create(
+        phone_number=phone, text=text, received_at=received_at, device=request.user,
+    )
     return Response({'detail': 'ok'})

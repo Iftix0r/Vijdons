@@ -1344,10 +1344,15 @@ def bot_settings(request):
 
 @system_login_required
 def sms_settings(request):
+    from .models import SmsGatewayIncoming
     sms = SmsSettings.get()
     saved = False
     test_result = None
     broadcast_result = None
+    if request.method == 'GET':
+        # Sahifa ochilishi — "ko'rildi" deb hisoblanadi (oddiy inbox
+        # xulq-atvori), shu sabab sidebardagi badge tozalanadi.
+        SmsGatewayIncoming.objects.filter(is_read=False).update(is_read=True)
     if request.method == 'POST':
         if 'test' in request.POST:
             test_phone = request.POST.get('test_phone', '').strip()
@@ -1428,6 +1433,19 @@ def sms_settings(request):
     driver_count = Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED).exclude(phone_number='').count()
     client_count = Client.objects.filter(is_blocked=False).exclude(phone_number='').count()
     gateway_devices = SmsGatewayToken.objects.select_related('user').order_by('-updated_at')
+
+    incoming_messages = list(SmsGatewayIncoming.objects.all()[:30])
+    for msg in incoming_messages:
+        last9 = msg.phone_number[-9:]
+        driver = Driver.objects.filter(phone_number__endswith=last9).only('full_name').first()
+        client = Client.objects.filter(phone_number__endswith=last9).only('full_name').first() if not driver else None
+        if driver:
+            msg.sender_name = f"{driver.full_name} (haydovchi)"
+        elif client:
+            msg.sender_name = f"{client.full_name or client.phone_number} (mijoz)"
+        else:
+            msg.sender_name = None
+
     return render(request, 'taxi/sms_settings.html', {
         'sms': sms,
         'saved': saved,
@@ -1437,6 +1455,7 @@ def sms_settings(request):
         'client_count': client_count,
         'sms_notifs': sms_notifs,
         'driver_sms_notifs': driver_sms_notifs,
+        'incoming_messages': incoming_messages,
         'gateway_devices': gateway_devices,
         'gateway_device_count': gateway_devices.count(),
         'gateway_online_cutoff': timezone.now() - timedelta(minutes=3),

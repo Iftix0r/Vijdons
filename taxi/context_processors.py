@@ -8,7 +8,7 @@ def active_drivers(request):
     from django.conf import settings
     from django.db.models import Max, Count, Q
     from django.utils import timezone
-    from .models import MapsSettings, TariffSettings, PanelEvent, PanelSound, BalanceLog, BalanceTopupRequest, SecurityIncident, EmployeeTask
+    from .models import MapsSettings, TariffSettings, PanelEvent, PanelSound, BalanceLog, BalanceTopupRequest, SecurityIncident, EmployeeTask, SmsGatewayIncoming
     from .constants import DRIVER_SOUND_EVENTS
     maps = MapsSettings.get()
     tariff = TariffSettings.get()
@@ -71,6 +71,7 @@ def active_drivers(request):
             status=EmployeeTask.STATUS_DONE
         ).count(),
         'qarzdor_count': Driver.objects.filter(is_qarzdor=True).count(),
+        'unread_incoming_sms_count': SmsGatewayIncoming.objects.filter(is_read=False).count(),
         'VAPID_PUBLIC_KEY': getattr(settings, 'VAPID_PUBLIC_KEY', ''),
         'YANDEX_MAPKIT_KEY': maps.yandex_mapkit_key or '',
         # Haydovchi paneli taxi metri barcha sahifalarda (base.html) ishlashi uchun

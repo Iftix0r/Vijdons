@@ -77,4 +77,8 @@ class SmsGatewayRepository @Inject constructor(
     suspend fun reportFailed(id: Int, error: String) = safeCall {
         api.reportResult(id, mapOf("status" to "failed", "error" to error.take(255)))
     }
+
+    suspend fun reportIncoming(phoneNumber: String, text: String, receivedAtIso: String) = safeCall {
+        api.reportIncoming(mapOf("phone_number" to phoneNumber, "text" to text, "received_at" to receivedAtIso))
+    }
 }

@@ -338,6 +338,37 @@
         </div>
     </div>
     {% endif %}
+
+    {% if incoming_messages %}
+    <!-- Kelgan xabarlar (javoblar) -->
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden mt-5">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
+                <i class="fas fa-inbox text-emerald-500"></i>
+            </div>
+            <div>
+                <p class="text-sm font-bold text-gray-800 dark:text-white">Kelgan xabarlar</p>
+                <p class="text-xs text-gray-400">Mijoz/haydovchi SIM raqamiga javob yozganda shu yerda ko'rinadi</p>
+            </div>
+        </div>
+        <div class="px-6 py-4">
+            <div class="space-y-1.5 max-h-96 overflow-y-auto">
+                {% for msg in incoming_messages %}
+                <div class="flex items-start justify-between gap-3 px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/60">
+                    <div class="min-w-0">
+                        <p class="text-sm text-gray-700 dark:text-gray-200">{{ msg.text }}</p>
+                        <p class="text-xs text-gray-400 mt-0.5">
+                            {% if msg.sender_name %}<span class="font-semibold text-gray-500 dark:text-gray-400">{{ msg.sender_name }}</span> — {% endif %}
+                            <span class="font-mono">{{ msg.phone_number }}</span>
+                        </p>
+                    </div>
+                    <span class="flex-shrink-0 text-xs text-gray-400 whitespace-nowrap">{{ msg.received_at|date:"d.m H:i" }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 <script>

@@ -160,6 +160,9 @@
         <a href="{% url 'system:sms_settings' %}"
            class="nav-link {% if request.resolver_match.url_name == 'sms_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-comment-sms w-5 text-center"></i> SMS sozlamalari
+            {% if unread_incoming_sms_count > 0 %}
+            <span class="ml-auto bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center pulse-dot">{{ unread_incoming_sms_count }}</span>
+            {% endif %}
         </a>
         <a href="{% url 'system:ai_settings' %}"
            class="nav-link {% if request.resolver_match.url_name == 'ai_settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">

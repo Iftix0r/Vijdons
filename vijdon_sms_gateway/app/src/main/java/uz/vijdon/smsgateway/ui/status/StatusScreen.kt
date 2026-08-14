@@ -66,7 +66,8 @@ fun StatusScreen(
 
     var smsPermissionGranted by remember { mutableStateOf(hasSmsPermission(context)) }
 
-    val smsPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+    val smsPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+        val granted = result.values.all { it }
         smsPermissionGranted = granted
         if (granted) startGatewayService(context)
     }
@@ -110,7 +111,9 @@ fun StatusScreen(
 
         StatusCard(
             granted = smsPermissionGranted,
-            onRequestPermission = { smsPermissionLauncher.launch(Manifest.permission.SEND_SMS) },
+            onRequestPermission = {
+                smsPermissionLauncher.launch(arrayOf(Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS))
+            },
         )
 
         Text(
@@ -158,7 +161,7 @@ private fun StatusCard(granted: Boolean, onRequestPermission: () -> Unit) {
             )
             Spacer(Modifier.width(10.dp))
             Text(
-                if (granted) "Ishlamoqda — SMS navbati kuzatilmoqda" else "SMS yuborish ruxsati kerak",
+                if (granted) "Ishlamoqda — SMS navbati kuzatilmoqda, javoblar ham qabul qilinadi" else "SMS yuborish/qabul qilish ruxsati kerak",
                 style = MaterialTheme.typography.bodyMedium,
                 color = VijdonColors.TextPrimary,
                 fontWeight = FontWeight.Medium,
@@ -208,7 +211,8 @@ private fun LogRow(entry: SentLogEntry) {
 }
 
 private fun hasSmsPermission(context: Context): Boolean =
-    ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED
+    ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED &&
+        ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
 
 private fun startGatewayService(context: Context) {
     val intent = Intent(context, SmsGatewayService::class.java)
