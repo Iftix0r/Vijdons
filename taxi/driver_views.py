@@ -183,6 +183,16 @@ def driver_logout_view(request):
     if request.user.is_authenticated:
         try:
             driver = request.user.driver_profile
+            # Chiqishda avtomatik navbatdan chiqadi — aks holda is_on_duty=True
+            # qolib ketib, ilovani yopgan haydovchiga ham yangi buyurtma
+            # dispatch qilinishi mumkin edi (u javob bermay, vaqt behuda ketardi).
+            if driver.is_on_duty:
+                from django.utils import timezone
+                from .models import AddressQueueEntry
+                driver.is_on_duty = False
+                driver.save(update_fields=['is_on_duty'])
+                AddressQueueEntry.objects.filter(driver=driver, left_at__isnull=True).update(left_at=timezone.now())
+                tg_duty_changed(driver, False)
             _log_activity(driver, DriverActivityLog.ACTION_LOGOUT, 'Saytdan chiqdi', request)
         except Driver.DoesNotExist:
             pass
