@@ -76,7 +76,17 @@ class DriverLocationService : Service() {
                     ),
                 )
             }
-            maybeReportToServer(location.latitude, location.longitude)
+            // "Online bo'lish" bosilgan zahoti FusedLocationProvider ko'pincha
+            // birinchi navbatda tarmoq/hujayra minorasi asosidagi taxminiy
+            // (aniqligi past — yuzlab metr xato bilan) nuqtani qaytaradi, aniq
+            // GPS fix bir necha soniyadan keyin keladi. Bu taxminiy nuqta
+            // serverga yuborilsa, haydovchi haqiqatda u yerda bo'lmasa ham
+            // yaqin atrofdagi SavedAddress navbatiga (ADDRESS_QUEUE_RADIUS_KM
+            // 300m) xato qo'shilib qolishi mumkin edi. Shu sabab yetarlicha
+            // aniq (accuracy) nuqta kelmaguncha serverga umuman yubormaymiz.
+            if (location.accuracy <= LOCATION_ACCURACY_THRESHOLD_M) {
+                maybeReportToServer(location.latitude, location.longitude)
+            }
         }
     }
 
@@ -250,5 +260,6 @@ class DriverLocationService : Service() {
 
     private companion object {
         const val NEW_ORDER_ALERT_NOTIFICATION_ID = 2
+        const val LOCATION_ACCURACY_THRESHOLD_M = 100f
     }
 }
