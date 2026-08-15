@@ -1053,9 +1053,13 @@ def driver_all_addresses(request, driver):
         created_at__date=today, from_lat__isnull=False, from_lng__isnull=False,
     ).exclude(status='cancelled').values_list('from_lat', 'from_lng')
 
+    # Bir marta olib, tsikl ichida qayta-qayta DB'ga so'rov yubormaymiz
+    # (bugungi buyurtmalar soni ko'p bo'lsa, avval har biriga alohida
+    # SavedAddress.objects.all() so'rovi ketardi — sezilarli kechikish sababi).
+    all_saved_addresses = list(SavedAddress.objects.all())
     counts = {}
     for lat, lng in today_orders:
-        addr = find_matching_saved_address(lat, lng)
+        addr = find_matching_saved_address(lat, lng, addresses=all_saved_addresses)
         if addr:
             counts[addr.id] = counts.get(addr.id, 0) + 1
 

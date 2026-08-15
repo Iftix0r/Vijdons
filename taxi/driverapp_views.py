@@ -745,9 +745,11 @@ def addresses_list(request, driver):
     today_orders = Order.objects.filter(
         created_at__date=today, from_lat__isnull=False, from_lng__isnull=False,
     ).exclude(status='cancelled').values_list('from_lat', 'from_lng')
+    # Bir marta olib, tsikl ichida qayta-qayta DB'ga so'rov yubormaymiz.
+    all_saved_addresses = list(SavedAddress.objects.all())
     counts = {}
     for lat, lng in today_orders:
-        addr = find_matching_saved_address(lat, lng)
+        addr = find_matching_saved_address(lat, lng, addresses=all_saved_addresses)
         if addr:
             counts[addr.id] = counts.get(addr.id, 0) + 1
 

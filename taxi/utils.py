@@ -2094,7 +2094,7 @@ AUTO_ADDRESS_DWELL_MINUTES = 2
 AUTO_ADDRESS_DEDUPE_RADIUS_KM = 3.0
 
 
-def find_matching_saved_address(lat, lng, radius_km=None):
+def find_matching_saved_address(lat, lng, radius_km=None, addresses=None):
     """Berilgan koordinata biror SavedAddress (Manzillar) radiusida
     bo'lsa — o'sha manzilni qaytaradi (eng yaqinini, bir nechtasi mos
     kelsa), aks holda None. dispatch_order() shu orqali "oddiy taqsimlash"
@@ -2104,11 +2104,18 @@ def find_matching_saved_address(lat, lng, radius_km=None):
     navbat qo'shilish aniqligi) ishlatiladi — bu qat'iy qolishi kerak,
     aks holda dispetcherlik xato joyga "yaqin" deb hisoblab qolishi mumkin.
     Kengroq radius faqat AVTOMATIK MANZIL YARATISHDAN OLDIN, "bu joy
-    allaqachon bor-yo'qligini" tekshirish uchun beriladi (pastga qarang)."""
+    allaqachon bor-yo'qligini" tekshirish uchun beriladi (pastga qarang).
+
+    `addresses` berilsa (chaqiruvchi oldindan SavedAddress.objects.all()ni
+    bir marta olib qo'ygan bo'lsa), DB'ga qayta so'rov yuborilmaydi — bu
+    ro'yxatning o'zidan qidiriladi. Ko'p koordinata ustida tsikl ichida
+    (masalan bugungi barcha buyurtmalar) chaqirilganda N+1 so'rovning
+    oldini olish uchun shart."""
     from taxi.models import SavedAddress
     radius = radius_km if radius_km is not None else ADDRESS_QUEUE_RADIUS_KM
     nearest_addr, nearest_dist = None, float('inf')
-    for a in SavedAddress.objects.all():
+    candidates = addresses if addresses is not None else SavedAddress.objects.all()
+    for a in candidates:
         d = haversine(lat, lng, a.lat, a.lng)
         if d is not None and d <= radius and d < nearest_dist:
             nearest_dist = d
