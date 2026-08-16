@@ -161,76 +161,113 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://api-maps.yandex.ru/2.1/?apikey=469e8d29-be0b-42da-9bd4-ed515dbdb741&lang=uz_UZ" type="text/javascript"></script>
+<!-- Xarita: Leaflet + OpenStreetMap taxtalari + Nominatim qidiruv — hech qanday API kalit shart emas -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
     let _officeMap = null;
     let _officePM  = null;
 
     // Ofis belgisi uchun alohida (haydovchi doira-avatarlaridan farqli)
-    // to'rtburchak, bino ikonkali belgi — Yandex tayyor preset ranglaridan
-    // ("indigo" kabi) foydalanish ba'zan noma'lum preset sifatida "?" belgisi
-    // bilan chizilib qolgani uchun, xavfsizroq bo'lgan maxsus iconLayout ishlatiladi.
-    function _officeMarkerLayout() {
-        return ymaps.templateLayoutFactory.createClass(
-            '<div style="position:relative;text-align:center">' +
+    // to'rtburchak, bino ikonkali belgi.
+    function _officeMarkerIcon() {
+        var html = '<div style="position:relative;text-align:center">' +
               '<div style="width:34px;height:34px;border-radius:10px;background:#4F46E5;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.35)">' +
                 '<i class="fas fa-building" style="color:#fff;font-size:15px"></i>' +
               '</div>' +
               '<div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid #4F46E5"></div>' +
-            '</div>'
-        );
+            '</div>';
+        return L.divIcon({ html: html, className: '', iconSize: [34, 40], iconAnchor: [17, 40] });
     }
     function _newOfficePM(coords) {
-        return new ymaps.Placemark(coords, {}, {
-            iconLayout: _officeMarkerLayout(),
-            iconShape: { type: 'Circle', coordinates: [17, 17], radius: 19 },
+        return L.marker(coords, { icon: _officeMarkerIcon() });
+    }
+
+    // Yandex'ning o'rnatilgan `searchControl` qidiruv qutisi o'rnini bosadi —
+    // kalitsiz Nominatim orqali (backend proksi, `panel_geocode_search`).
+    function _wireGeoSearch(inputId, resultsId, onSelect) {
+        var input = document.getElementById(inputId);
+        var box = document.getElementById(resultsId);
+        if (!input || !box) return;
+        var t = null;
+        input.addEventListener('input', function () {
+            clearTimeout(t);
+            var q = input.value.trim();
+            if (q.length < 3) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+            t = setTimeout(function () {
+                fetch('{% url "taxi:panel_geocode_search" %}?q=' + encodeURIComponent(q))
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        var results = data.results || [];
+                        box.innerHTML = results.length
+                            ? results.map(function (r, i) {
+                                return '<button type="button" data-i="' + i + '" class="w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-green-50 dark:hover:bg-green-900/20 border-b border-gray-100 dark:border-gray-800 last:border-0">' + r.display_name + '</button>';
+                            }).join('')
+                            : '<div class="px-3 py-2 text-xs text-gray-400">Hech narsa topilmadi</div>';
+                        box.classList.remove('hidden');
+                        box.querySelectorAll('button[data-i]').forEach(function (btn) {
+                            btn.addEventListener('click', function () {
+                                var r = results[parseInt(btn.dataset.i)];
+                                box.classList.add('hidden');
+                                input.value = r.display_name;
+                                onSelect(r.lat, r.lng, r.display_name);
+                            });
+                        });
+                    }).catch(function () {});
+            }, 400);
         });
+        document.addEventListener('click', function (e) {
+            if (e.target !== input && !box.contains(e.target)) box.classList.add('hidden');
+        });
+    }
+
+    function _setOfficePoint(coords) {
+        if (_officePM) _officeMap.removeLayer(_officePM);
+        _officePM = _newOfficePM(coords);
+        _officePM.addTo(_officeMap);
+        document.getElementById('office_lat').value = coords[0];
+        document.getElementById('office_lng').value = coords[1];
+        document.getElementById('office_map_hint').innerHTML = '<i class="fas fa-check text-green-500"></i> Nuqta belgilandi';
     }
 
     function _initOfficeMap() {
-        if (!window.ymaps || _officeMap) return;
-        ymaps.ready(function () {
-            if (_officeMap) return;
-            const savedLat = parseFloat(document.getElementById('office_lat').value);
-            const savedLng = parseFloat(document.getElementById('office_lng').value);
-            const hasSaved = !isNaN(savedLat) && !isNaN(savedLng);
-            const center = hasSaved ? [savedLat, savedLng] : [41.2995, 69.2401];
+        if (typeof L === 'undefined' || _officeMap) return;
+        const savedLat = parseFloat(document.getElementById('office_lat').value);
+        const savedLng = parseFloat(document.getElementById('office_lng').value);
+        const hasSaved = !isNaN(savedLat) && !isNaN(savedLng);
+        const center = hasSaved ? [savedLat, savedLng] : [41.2995, 69.2401];
 
-            _officeMap = new ymaps.Map('office_map', {
-                center: center,
-                zoom: hasSaved ? 15 : 12,
-                controls: ['zoomControl', 'searchControl', 'fullscreenControl']
-            });
+        _officeMap = L.map('office_map', { zoomControl: true }).setView(center, hasSaved ? 15 : 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            maxZoom: 19,
+        }).addTo(_officeMap);
 
-            if (hasSaved) {
-                _officePM = _newOfficePM(center);
-                _officeMap.geoObjects.add(_officePM);
-            }
+        if (hasSaved) {
+            _officePM = _newOfficePM(center);
+            _officePM.addTo(_officeMap);
+        }
 
-            _officeMap.events.add('click', function (e) {
-                const coords = e.get('coords');
-                if (_officePM) _officeMap.geoObjects.remove(_officePM);
-                _officePM = _newOfficePM(coords);
-                _officeMap.geoObjects.add(_officePM);
-                document.getElementById('office_lat').value = coords[0];
-                document.getElementById('office_lng').value = coords[1];
-                document.getElementById('office_map_hint').innerHTML = '<i class="fas fa-check text-green-500"></i> Nuqta belgilandi';
-            });
-
-            // Uzoqdan (tumanlar darajasida) haydovchilar bitta doiraviy belgi
-            // ichida "N ta" sifatida yig'ilib ko'rinadi, yaqinlashtirilganda
-            // esa klaster avtomatik yoyilib, har bir haydovchining o'z
-            // profili (rasm/ism/holat) bilan alohida belgisi chiqadi.
-            _officeDriversClusterer = new ymaps.Clusterer({
-                preset: 'islands#blueClusterIcons',
-                groupByCoordinates: false,
-                clusterDisableClickZoom: false,
-            });
-            _officeMap.geoObjects.add(_officeDriversClusterer);
-
-            _officeDriversTick();
-            setInterval(_officeDriversTick, 8000);
+        _officeMap.on('click', function (e) {
+            _setOfficePoint([e.latlng.lat, e.latlng.lng]);
         });
+        _wireGeoSearch('office_geo_search', 'office_geo_search_results', function (lat, lng) {
+            _setOfficePoint([lat, lng]);
+            _officeMap.setView([lat, lng], Math.max(_officeMap.getZoom(), 15));
+        });
+
+        // Uzoqdan (tumanlar darajasida) haydovchilar bitta doiraviy belgi
+        // ichida "N ta" sifatida yig'ilib ko'rinadi, yaqinlashtirilganda
+        // esa klaster avtomatik yoyilib, har bir haydovchining o'z
+        // profili (rasm/ism/holat) bilan alohida belgisi chiqadi.
+        _officeDriversClusterer = L.markerClusterGroup();
+        _officeMap.addLayer(_officeDriversClusterer);
+
+        _officeDriversTick();
+        setInterval(_officeDriversTick, 8000);
     }
 
     // Haydovchilarni ham (onlayn/oflayn profili bilan) shu xaritada ko'rsatamiz —
@@ -264,24 +301,26 @@
                         '<div style="clear:both"></div>' +
                         '</div>';
 
+                    const fallbackImg = '<div style="width:34px;height:34px;border-radius:50%;background:' + colorLight + ';border:3px solid ' + color + ';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:' + colorDark + ';box-shadow:0 2px 8px rgba(0,0,0,0.2)">' + d.full_name.charAt(0).toUpperCase() + '</div>';
                     const img = d.photo_url
-                        ? '<img src="' + d.photo_url + '" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:3px solid ' + color + ';box-shadow:0 2px 8px rgba(0,0,0,0.25)">'
-                        : '<div style="width:34px;height:34px;border-radius:50%;background:' + colorLight + ';border:3px solid ' + color + ';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:' + colorDark + ';box-shadow:0 2px 8px rgba(0,0,0,0.2)">' + d.full_name.charAt(0).toUpperCase() + '</div>';
+                        ? '<div style="position:relative;width:34px;height:34px;">' + fallbackImg +
+                          '<img src="' + d.photo_url + '" onerror="this.style.display=\'none\';" ' +
+                          'style="position:absolute;top:0;left:0;display:block;width:34px;height:34px;border-radius:50%;object-fit:cover;border:3px solid ' + color + ';box-shadow:0 2px 8px rgba(0,0,0,0.25)"></div>'
+                        : fallbackImg;
 
-                    const pm = new ymaps.Placemark(coords, {
-                        balloonContentBody: balloon,
-                        hintContent: d.full_name + ' · ' + (online ? 'Online' : 'Offline')
-                    }, {
-                        iconLayout: ymaps.templateLayoutFactory.createClass(
-                            '<div style="position:relative;text-align:center">' + img + '</div>'
-                        ),
-                        iconShape: { type: 'Circle', coordinates: [17, 17], radius: 19 }
+                    const pm = L.marker(coords, {
+                        icon: L.divIcon({
+                            html: '<div style="position:relative;text-align:center">' + img + '</div>',
+                            className: '', iconSize: [34, 34], iconAnchor: [17, 17],
+                        }),
                     });
+                    pm.bindPopup(balloon);
+                    pm.bindTooltip(d.full_name + ' · ' + (online ? 'Online' : 'Offline'));
                     placemarks.push(pm);
                 });
 
-                _officeDriversClusterer.removeAll();
-                _officeDriversClusterer.add(placemarks);
+                _officeDriversClusterer.clearLayers();
+                _officeDriversClusterer.addLayers(placemarks);
             })
             .catch(function () {});
     }
