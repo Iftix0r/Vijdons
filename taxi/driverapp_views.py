@@ -423,6 +423,28 @@ def _transition(request, driver, pk, allowed_statuses, new_status):
         driver.trips_count = (driver.trips_count or 0) + 1
         driver.save(update_fields=['trips_count'])
 
+        # Buyurtma yakunlangach, haydovchi darhol o'z manzili navbatiga
+        # qayta qo'shilishi kerak (masalan safar aynan o'sha stoyanka
+        # yonida tugagan bo'lsa). Avval bu FAQAT keyingi mustaqil GPS
+        # ping'ini (fon xizmati, harakat/vaqt chegarasiga qarab bir necha
+        # daqiqagacha kechikishi mumkin) kutardi — haydovchi "men shu
+        # yerdaman, nega navbatda emasman" deb shikoyat qilgan edi. Endi
+        # shu so'rov bilan birga kelgan koordinata bo'lsa, darhol
+        # qayta baholanadi.
+        lat, lng = request.data.get('lat'), request.data.get('lng')
+        if lat is not None and lng is not None:
+            try:
+                lat, lng = float(lat), float(lng)
+                from django.utils import timezone as _tz
+                import datetime
+                from .utils import update_address_queue_membership, ADDRESS_QUEUE_STALE_MINUTES
+                stale_cutoff = _tz.now() - datetime.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
+                was_stale = not driver.last_seen or driver.last_seen < stale_cutoff
+                update_address_queue_membership(driver, lat, lng, was_stale=was_stale)
+                Driver.objects.filter(pk=driver.pk).update(last_seen=_tz.now())
+            except (TypeError, ValueError):
+                pass
+
     tg_map = {'on_way': tg_order_on_way, 'arrived': tg_order_arrived, 'completed': tg_order_completed, 'cancelled': tg_order_cancelled}
     if new_status in tg_map:
         tg_map[new_status](order, driver)

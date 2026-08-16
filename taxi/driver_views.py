@@ -652,6 +652,25 @@ def driver_order_action(request, driver, pk, action):
         except Exception:
             pass
 
+        # Buyurtma yakunlangach, haydovchi darhol o'z manzili navbatiga
+        # qayta qo'shilishi kerak (masalan safar aynan o'sha stoyanka
+        # yonida tugagan bo'lsa) — keyingi mustaqil GPS ping'ini kutib
+        # o'tirmasdan, shu so'rov bilan kelgan koordinata bilan darhol
+        # qayta baholanadi (native API'dagi bir xil tuzatish, driverapp_views.py).
+        lat, lng = request.POST.get('lat'), request.POST.get('lng')
+        if lat is not None and lng is not None:
+            try:
+                lat, lng = float(lat), float(lng)
+                from django.utils import timezone as _tz
+                import datetime
+                from .utils import update_address_queue_membership, ADDRESS_QUEUE_STALE_MINUTES
+                stale_cutoff = _tz.now() - datetime.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
+                was_stale = not driver.last_seen or driver.last_seen < stale_cutoff
+                update_address_queue_membership(driver, lat, lng, was_stale=was_stale)
+                Driver.objects.filter(pk=driver.pk).update(last_seen=_tz.now())
+            except (TypeError, ValueError):
+                pass
+
     tg_map = {
         'on_way': tg_order_on_way, 'arrived': tg_order_arrived,
         'completed': tg_order_completed, 'cancelled': tg_order_cancelled,
