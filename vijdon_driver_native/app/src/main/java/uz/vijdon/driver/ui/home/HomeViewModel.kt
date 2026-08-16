@@ -574,8 +574,16 @@ class HomeViewModel @Inject constructor(
                         alertOrderId = alertCandidate.id
                         alertInitialTimerSec = alertCandidate.timer_sec ?: 30
                         DriverSoundPlayer.play(DriverSoundEvent.NEW_ORDER)
-                    } else if (alertCandidate == null) {
+                    } else if (alertCandidate == null && alertOrderId != null) {
+                        // Buyurtma endi nomzod emas (qabul/rad etildi, vaqti
+                        // tugadi yoki boshqasiga o'tkazildi) — himoya sifatida
+                        // shu yerda ham to'xtatiladi (asosiy to'xtatish odatda
+                        // acceptOrder()/rejectOrder() orqali allaqachon
+                        // bo'lgan bo'ladi — bu faqat zaxira, masalan buyurtma
+                        // DriverLocationService orqali boshqa yo'l bilan
+                        // hal qilingan bo'lsa).
                         alertOrderId = null
+                        DriverSoundPlayer.stop()
                     }
                 }
                 // Faqat "oflaynda edi, endi kamaydi" chegarasini kesib

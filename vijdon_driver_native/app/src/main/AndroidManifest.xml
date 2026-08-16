@@ -67,6 +67,10 @@
             android:exported="false" />
 
         <receiver
+            android:name=".data.push.OrderAlertDismissReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".ui.widget.DriverDashboardWidgetReceiver"
             android:exported="false">
             <intent-filter>

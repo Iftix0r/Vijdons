@@ -105,6 +105,15 @@ class VijdonFirebaseMessagingService : FirebaseMessagingService() {
             .setAutoCancel(true)
 
         if (isNewOrder) {
+            // Bildirishnoma oddiy SURIB (swipe) yopilganda ham "Yangi
+            // buyurtma" ringtoni to'xtatilsin — tugma bosish yagona yo'l
+            // bo'lmasin (DriverLocationService'dagi zaxira bildirishnoma
+            // bilan bir xil mexanizm).
+            builder.setDeleteIntent(orderAlertDismissPendingIntent(notificationId))
+            // Bir xil buyurtma haqida qayta `notify()` chaqirilsa (masalan
+            // server push'ni takror yuborsa) — kanalning o'z ovozi/vibratsiyasi
+            // faqat BIRINCHI marta chalinsin, har safar emas.
+            builder.setOnlyAlertOnce(true)
             // "To'liq ekran" bildirishnoma — ilova fonda yoki qurilma
             // qulflangan bo'lsa ham, xuddi kiruvchi qo'ng'iroqdek, boshqa
             // ilovalar ustidan avtomatik ochiladi. Ekran yoqilgan/qulfsiz
@@ -139,5 +148,14 @@ class VijdonFirebaseMessagingService : FirebaseMessagingService() {
         }
         val requestCode = orderId * 10 + (if (actionName == OrderActionReceiver.ACTION_ACCEPT) 1 else 2)
         return PendingIntent.getBroadcast(this, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    }
+
+    /** Bildirishnoma tugmasiz, oddiy SURIB (swipe) yopilganda ham
+     * "Yangi buyurtma" ringtoni to'xtatilishi uchun. */
+    private fun orderAlertDismissPendingIntent(notificationId: Int): PendingIntent {
+        val intent = Intent(this, OrderAlertDismissReceiver::class.java)
+        return PendingIntent.getBroadcast(
+            this, notificationId * 10 + 3, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
     }
 }

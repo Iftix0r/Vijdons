@@ -31,6 +31,7 @@ import uz.vijdon.driver.data.api.OrderDto
 import uz.vijdon.driver.data.push.DriverSoundEvent
 import uz.vijdon.driver.data.push.DriverSoundPlayer
 import uz.vijdon.driver.data.push.OrderActionReceiver
+import uz.vijdon.driver.data.push.OrderAlertDismissReceiver
 import uz.vijdon.driver.data.repository.ApiResult
 import uz.vijdon.driver.data.repository.DriverRepository
 import uz.vijdon.driver.util.DeviceInfo
@@ -61,7 +62,19 @@ class DriverLocationService : Service() {
     // "battery saver"li Xiaomi/Huawei kabi OEM'lar) FCM push kechikishi yoki
     // butunlay yetib bormasligi mumkin, shu holat uchun tarmoq/serverga
     // ancha kamroq yuk beradigan oraliqda davom etadi.
-    private var alertedOrderId: Int? = null
+    //
+    // Diqqat: oddiy instance maydon EMAS — shu OEM'larning aynan shu
+    // xizmatni majburan o'ldirib-qayta ishga tushirishi (`START_STICKY`)
+    // paytida, agar hali ham `SharedPreferences`da saqlanmasa, yangi
+    // instansiya buni "hali ogohlantirilmagan" deb noto'g'ri qayta
+    // hisoblab, xuddi shu buyurtma uchun ringtone'ni yana boshidan
+    // chalib yuborardi (server hali ham "pending" deb ko'rsatsa — masalan
+    // qabul qilish so'rovi WorkManager navbatida kutayotgan bo'lsa).
+    private var alertedOrderId: Int?
+        get() = prefs().getInt(PREF_ALERTED_ORDER_ID, -1).takeIf { it != -1 }
+        set(value) { prefs().edit().putInt(PREF_ALERTED_ORDER_ID, value ?: -1).apply() }
+
+    private fun prefs() = getSharedPreferences("driver_location_service", MODE_PRIVATE)
 
     private val fusedClient by lazy { LocationServices.getFusedLocationProviderClient(this) }
     private val locationCallback = object : LocationCallback() {
@@ -201,7 +214,18 @@ class DriverLocationService : Service() {
             it.isPending && it.is_dispatched && (it.timer_sec ?: 0) > 0
         }
         if (candidate == null) {
+            // Buyurtma endi nomzod emas (qabul/rad etildi, vaqti tugadi yoki
+            // boshqasiga o'tkazildi) — hali ijro etilib turgan ringtone va
+            // shu buyurtmaga oid bildirishnoma bo'lsa, himoya sifatida shu
+            // yerda ham to'xtatiladi/yopiladi (asosiy to'xtatish odatda
+            // OrderActionReceiver/HomeViewModel orqali allaqachon bo'lgan
+            // bo'ladi — bu faqat zaxira).
+            val previous = alertedOrderId
             alertedOrderId = null
+            if (previous != null) {
+                DriverSoundPlayer.stop()
+                NotificationManagerCompat.from(this).cancel(previous)
+            }
             return
         }
         // Bir xil buyurtma uchun har 6 soniyada qayta-qayta bezovta
@@ -225,7 +249,13 @@ class DriverLocationService : Service() {
             .setContentText(order.from_address)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)
+            .setDeleteIntent(orderAlertDismissPendingIntent(order.id))
             .setAutoCancel(true)
+            // Bir xil ID'ga qayta `notify()` chaqirilsa (masalan keyingi
+            // poll'da hali ham shu buyurtma ko'rsatilsa) — kanalning o'z
+            // ovozi/vibratsiyasi faqat BIRINCHI marta chalinadi, har safar
+            // emas.
+            .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .addAction(0, "✅ Qabul qilish", orderActionPendingIntent(order.id, OrderActionReceiver.ACTION_ACCEPT))
@@ -241,7 +271,14 @@ class DriverLocationService : Service() {
         }
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
-            NotificationManagerCompat.from(this).notify(NEW_ORDER_ALERT_NOTIFICATION_ID, builder.build())
+            // Diqqat: ID endi TURG'UN doimiy qiymat (2) EMAS, `order.id` —
+            // VijdonFirebaseMessagingService va HomeViewModel.acceptOrder()/
+            // rejectOrder() aynan shu ID (order.id) bo'yicha yopadi. Avval
+            // bu yerda alohida turg'un ID ishlatilgani sabab, ilova ICHIDA
+            // "Qabul qilish" bosilganda ushbu (poll orqali ko'rsatilgan)
+            // bildirishnoma UMUMAN yopilmas edi — notifikatsiya ekranda
+            // "osilib" qolar, hech kim yopmagani uchun.
+            NotificationManagerCompat.from(this).notify(order.id, builder.build())
         }
     }
 
@@ -252,14 +289,23 @@ class DriverLocationService : Service() {
         val intent = Intent(this, OrderActionReceiver::class.java).apply {
             action = actionName
             putExtra(OrderActionReceiver.EXTRA_ORDER_ID, orderId)
-            putExtra(OrderActionReceiver.EXTRA_NOTIFICATION_ID, NEW_ORDER_ALERT_NOTIFICATION_ID)
+            putExtra(OrderActionReceiver.EXTRA_NOTIFICATION_ID, orderId)
         }
         val requestCode = orderId * 10 + (if (actionName == OrderActionReceiver.ACTION_ACCEPT) 1 else 2)
         return PendingIntent.getBroadcast(this, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
+    /** Bildirishnoma tugmasiz, oddiy SURIB (swipe) yopilganda ham
+     * "Yangi buyurtma" ringtoni to'xtatilishi uchun. */
+    private fun orderAlertDismissPendingIntent(orderId: Int): PendingIntent {
+        val intent = Intent(this, OrderAlertDismissReceiver::class.java)
+        return PendingIntent.getBroadcast(
+            this, orderId * 10 + 3, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
     private companion object {
-        const val NEW_ORDER_ALERT_NOTIFICATION_ID = 2
+        const val PREF_ALERTED_ORDER_ID = "alerted_order_id"
         const val LOCATION_ACCURACY_THRESHOLD_M = 100f
     }
 }

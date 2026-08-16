@@ -33,6 +33,7 @@ object DriverSoundPlayer {
         sounds = map
     }
 
+    @Synchronized
     fun play(eventKey: String) {
         // Yangi buyurtma — operator sozlagan maxsus ovoz (server URL'idan
         // MediaPlayer.setDataSource + prepareAsync bilan) o'rniga telefonning
@@ -85,6 +86,7 @@ object DriverSoundPlayer {
      * to'liq davomiyligicha) chalinaverar edi — buyurtma allaqachon
      * qabul qilingan/bekor bo'lgan bo'lsa ham.
      */
+    @Synchronized
     fun stop() {
         try {
             activeRingtone?.stop()
@@ -93,6 +95,7 @@ object DriverSoundPlayer {
         activeRingtone = null
     }
 
+    @Synchronized
     private fun playLocalRingtone() {
         val context = appContext ?: return
         try {
