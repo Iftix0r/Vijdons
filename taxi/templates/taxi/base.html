@@ -1072,7 +1072,7 @@
         var addressText = (fullAddress && fullAddress.trim()) ? fullAddress : name;
         if (_omap) {
             _setOrderFromPoint(coords, addressText);
-            _omap.setCenter(coords, Math.max(_omap.getZoom(), 14));
+            _omap.setView(coords, Math.max(_omap.getZoom(), 14));
         } else {
             document.getElementById('om_from_lat').value = lat;
             document.getElementById('om_from_lng').value = lng;
