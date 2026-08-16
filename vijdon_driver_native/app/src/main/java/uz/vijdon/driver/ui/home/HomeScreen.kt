@@ -99,6 +99,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.delay
+import uz.vijdon.driver.data.api.AddressDto
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.data.api.OrderDto
 import uz.vijdon.driver.data.api.QueueDriverDto
@@ -1315,11 +1316,6 @@ private fun OfflineCallToAction() {
     }
 }
 
-// "Joriy navbatingiz" — premium quyuq karta. Eng yaqin manzilda haydovchi
-// navbatga tushganda avtomatik ko'rinadi (recomputeAddressDistances orqali),
-// navbatdagi birinchi kishilardan tortib haydovchining o'zigacha ko'rsatadi.
-// Diqqat: bu karta ATAYIN doim TO'Q rangda, tizim mavzusidan qat'i nazar.
-@Composable
 /** "Yaqin atrofdagi manzillar" ro'yxatidagi bitta qator — `AddressesScreen`
  * (Manzillar ekrani) dagi `AddressRow` bilan bir xil vizual uslub, faqat
  * bu yerda (Bosh sahifada) haydovchining joriy GPS'idan hisoblangan
@@ -1358,6 +1354,11 @@ private fun NearbyAddressRow(address: AddressDto, distanceM: Double?, onClick: (
     }
 }
 
+// "Joriy navbatingiz" — premium quyuq karta. Eng yaqin manzilda haydovchi
+// navbatga tushganda avtomatik ko'rinadi (recomputeAddressDistances orqali),
+// navbatdagi birinchi kishilardan tortib haydovchining o'zigacha ko'rsatadi.
+// Diqqat: bu karta ATAYIN doim TO'Q rangda, tizim mavzusidan qat'i nazar.
+@Composable
 private fun CurrentQueueCard(addressName: String, queueDrivers: List<QueueDriverDto>, queueLoading: Boolean) {
     Column(
         modifier = Modifier

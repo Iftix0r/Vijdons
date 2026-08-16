@@ -2,5 +2,12 @@ backups/
 __pycache__/
 *.pyc
 
+# DB zaxira nusxalari (SQL dump) — API kalitlar, parol xeshlari va mijoz/
+# haydovchi shaxsiy ma'lumotlarini o'z ichiga oladi, hech qachon commit
+# qilinmasin (2026-08-16: shu sabab GitHub push protection tomonidan
+# bloklangan edi — vijdon_backup_20260813_154251.sql ichida OpenAI API
+# kaliti bor edi).
+*.sql
+
 # Firebase xizmat hisobi kaliti (FCM push yuborish uchun) — maxfiy, hech qachon commit qilinmasin.
 fcm-service-account.json
