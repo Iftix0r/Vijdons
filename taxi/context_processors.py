@@ -8,7 +8,7 @@ def active_drivers(request):
     from django.conf import settings
     from django.db.models import Max, Count, Q
     from django.utils import timezone
-    from .models import MapsSettings, TariffSettings, PanelEvent, PanelSound, BalanceLog, BalanceTopupRequest, SecurityIncident, EmployeeTask, SmsGatewayIncoming
+    from .models import MapsSettings, TariffSettings, PanelEvent, PanelSound, BalanceLog, BalanceTopupRequest, SecurityIncident, EmployeeTask, SmsGatewayIncoming, Order
     from .constants import DRIVER_SOUND_EVENTS
     maps = MapsSettings.get()
     tariff = TariffSettings.get()
@@ -51,8 +51,14 @@ def active_drivers(request):
         # ko'rmasdan boshqasiga qayta yo'naltirilishiga olib kelardi, garchi
         # ilovada FCM push ishlab tursa ham (haydovchi oflayn bo'lgani uchun
         # asosiy ekran ro'yxatni umuman ko'rsatmaydi).
+        # `.exclude(orders__status__in=Order.ACTIVE_STATUSES)` — hozir band
+        # (yakunlanmagan buyurtmasi bor) haydovchi bu ro'yxatda umuman
+        # ko'rinmasin: unga qo'lda yana buyurtma yuborilsa, ikkita safarni
+        # bir vaqtda bajarishga majbur bo'lardi.
         'active_drivers': Driver.objects.filter(
             is_active=True, is_on_duty=True, approval_status=Driver.APPROVAL_APPROVED
+        ).exclude(
+            orders__status__in=Order.ACTIVE_STATUSES
         ).annotate(
             today_orders_count=Count(
                 'orders', filter=Q(orders__created_at__date=today) & ~Q(orders__status='cancelled')

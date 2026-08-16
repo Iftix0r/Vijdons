@@ -910,11 +910,12 @@
             .then(function(r){ return r.json(); })
             .then(function(data){
                 if (!_omap) return; // modal shu orada yopilgan bo'lishi mumkin
-                // Faqat online VA smenada (is_on_duty) haydovchilar ko'rsatiladi —
-                // aks holda operator ilovasi ochiq lekin buyurtma qabul qilmayotgan
-                // (off-duty) haydovchini xaritadan "tanlab" unga zakaz yuborib
-                // qo'yishi mumkin edi (avtomatik dispatch shart aynan shunday).
-                var online = (data.drivers || []).filter(function(d){ return d.is_online && d.is_on_duty; });
+                // Faqat online VA smenada (is_on_duty) VA hozir band bo'lmagan
+                // (is_busy emas) haydovchilar ko'rsatiladi — aks holda operator
+                // ilovasi ochiq lekin buyurtma qabul qilmayotgan (off-duty) yoki
+                // allaqachon boshqa safarda band haydovchini xaritadan "tanlab"
+                // unga yana zakaz yuborib qo'yishi mumkin edi.
+                var online = (data.drivers || []).filter(function(d){ return d.is_online && d.is_on_duty && !d.is_busy; });
                 // Birinchi yuklashda haritani Toshkent bilan cheklab qo'ymasdan,
                 // haydovchilar eng ko'p to'plangan hududga moslab markazlashtiramiz.
                 if (!_odriverCentered && online.length) {

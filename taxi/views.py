@@ -3736,7 +3736,8 @@ def active_drivers_locations(request):
     ).annotate(
         today_orders_count=Count(
             'orders', filter=Q(orders__created_at__date=today) & ~Q(orders__status='cancelled')
-        )
+        ),
+        active_order_count=Count('orders', filter=Q(orders__status__in=Order.ACTIVE_STATUSES)),
     )
     now = timezone.now()
     data = []
@@ -3756,6 +3757,7 @@ def active_drivers_locations(request):
             'photo_url': d.photo.url if d.photo else '',
             'is_online': is_online,
             'is_on_duty': d.is_on_duty,
+            'is_busy': d.active_order_count > 0,
         })
     return JsonResponse({'drivers': data})
 
