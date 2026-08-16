@@ -4152,6 +4152,7 @@ def _finance_breakdown(completed_qs, field, choices):
 def finance_dashboard(request):
     from django.db.models import Sum, Count
     from datetime import timedelta
+    from .models import Expense
 
     period, start_date, end_date = _statistics_range(request)
     range_days = (end_date - start_date).days + 1
@@ -4161,6 +4162,11 @@ def finance_dashboard(request):
     commission_revenue = float(completed_qs.aggregate(s=Sum('commission'))['s'] or 0)
     driver_share = gmv - commission_revenue
     take_rate = round(commission_revenue / gmv * 100, 1) if gmv else 0
+
+    total_expenses = float(Expense.objects.filter(
+        spent_at__gte=start_date, spent_at__lte=end_date
+    ).aggregate(s=Sum('amount'))['s'] or 0)
+    net_profit = commission_revenue - total_expenses
 
     prev_end_date   = start_date - timedelta(days=1)
     prev_start_date = prev_end_date - timedelta(days=range_days - 1)
@@ -4202,6 +4208,8 @@ def finance_dashboard(request):
         'commission_revenue': commission_revenue,
         'driver_share': driver_share,
         'take_rate': take_rate,
+        'total_expenses': total_expenses,
+        'net_profit': net_profit,
         'commission_growth_pct': commission_growth_pct,
         'labels': labels, 'daily_gmv': daily_gmv, 'daily_commission': daily_commission,
         'payment_breakdown': payment_breakdown,
@@ -4243,6 +4251,112 @@ def finance_export_csv(request):
         writer.writerow([d.full_name, d.completed, d.commission_sum or 0])
 
     return response
+
+
+# ── Xarajatlar ───────────────────────────────────────────────────────────────
+
+@panel_login_required
+@panel_admin_required
+def expense_list(request):
+    from django.db.models import Sum, Count
+    from .models import Expense
+
+    period, start_date, end_date = _statistics_range(request)
+    category_filter = request.GET.get('category', '')
+
+    expenses = Expense.objects.select_related('created_by').filter(
+        spent_at__gte=start_date, spent_at__lte=end_date,
+    )
+    if category_filter in dict(Expense.CATEGORY_CHOICES):
+        expenses = expenses.filter(category=category_filter)
+    expenses = expenses.order_by('-spent_at', '-created_at')
+
+    total = expenses.aggregate(s=Sum('amount'))['s'] or 0
+    by_category = list(
+        expenses.values('category').annotate(total=Sum('amount'), count=Count('id')).order_by('-total')
+    )
+    category_labels = dict(Expense.CATEGORY_CHOICES)
+    for row in by_category:
+        row['label'] = category_labels.get(row['category'], row['category'])
+
+    return render(request, 'taxi/expenses.html', {
+        'period': period, 'start_date': start_date, 'end_date': end_date,
+        'custom_range': bool(request.GET.get('start') and request.GET.get('end')),
+        'expenses': expenses[:200],
+        'total': total,
+        'by_category': by_category,
+        'category_choices': Expense.CATEGORY_CHOICES,
+        'category_filter': category_filter,
+    })
+
+
+@panel_login_required
+@panel_admin_required
+def expense_create(request):
+    from decimal import Decimal, InvalidOperation
+    from django.utils import timezone
+    from .models import Expense
+
+    if request.method == 'POST':
+        try:
+            amount = Decimal(request.POST.get('amount', '').replace(' ', '').replace(',', '.'))
+        except (InvalidOperation, TypeError):
+            amount = None
+        category = request.POST.get('category', Expense.CATEGORY_OTHER)
+        if amount and amount > 0 and category in dict(Expense.CATEGORY_CHOICES):
+            Expense.objects.create(
+                category=category,
+                amount=amount,
+                description=request.POST.get('description', '').strip(),
+                receipt=request.FILES.get('receipt'),
+                spent_at=request.POST.get('spent_at') or timezone.localdate(),
+                created_by=request.user,
+            )
+            messages.success(request, "Xarajat qo'shildi.")
+        else:
+            messages.error(request, "Summani va turini to'g'ri kiriting.")
+    return redirect(request.META.get('HTTP_REFERER') or 'taxi:expense_list')
+
+
+@panel_login_required
+@panel_admin_required
+def expense_edit(request, pk):
+    from decimal import Decimal, InvalidOperation
+    from .models import Expense
+
+    expense = get_object_or_404(Expense, pk=pk)
+    if request.method == 'POST':
+        try:
+            amount = Decimal(request.POST.get('amount', '').replace(' ', '').replace(',', '.'))
+        except (InvalidOperation, TypeError):
+            amount = None
+        category = request.POST.get('category', expense.category)
+        if amount and amount > 0 and category in dict(Expense.CATEGORY_CHOICES):
+            expense.amount = amount
+            expense.category = category
+            expense.description = request.POST.get('description', expense.description).strip()
+            spent_at = request.POST.get('spent_at')
+            if spent_at:
+                expense.spent_at = spent_at
+            if request.FILES.get('receipt'):
+                expense.receipt = request.FILES.get('receipt')
+            expense.save()
+            messages.success(request, "Xarajat yangilandi.")
+        else:
+            messages.error(request, "Summani va turini to'g'ri kiriting.")
+    return redirect(request.META.get('HTTP_REFERER') or 'taxi:expense_list')
+
+
+@panel_login_required
+@panel_admin_required
+def expense_delete(request, pk):
+    from .models import Expense
+
+    expense = get_object_or_404(Expense, pk=pk)
+    if request.method == 'POST':
+        expense.delete()
+        messages.success(request, "Xarajat o'chirildi.")
+    return redirect('taxi:expense_list')
 
 
 # ── Xavfsizlik (yuridik hujjatlar va jiddiy voqealar) ───────────────────────

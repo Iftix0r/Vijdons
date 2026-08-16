@@ -1,0 +1,243 @@
+{% extends 'taxi/base.html' %}
+{% block title %}Xarajatlar — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-center gap-4 mb-5">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white">Xarajatlar</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ start_date|date:"d.m.Y" }} — {{ end_date|date:"d.m.Y" }} davr uchun</p>
+    </div>
+    <button onclick="openModal('expenseModal')"
+            class="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-xl shadow-sm shadow-amber-200 dark:shadow-none transition-all hover:-translate-y-0.5">
+        <i class="fas fa-plus"></i> Xarajat qo'shish
+    </button>
+</div>
+
+<!-- Davr filtri -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm px-5 py-4 mb-5">
+    <div class="flex flex-wrap items-center gap-3">
+        <div class="flex gap-1.5 bg-gray-50 dark:bg-gray-800 rounded-xl p-1">
+            <a href="?period=week{% if category_filter %}&category={{ category_filter }}{% endif %}"
+               class="px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors {% if period == 'week' and not custom_range %}bg-amber-500 text-white{% else %}text-gray-500 dark:text-gray-400 hover:text-gray-700{% endif %}">7 kun</a>
+            <a href="?period=month{% if category_filter %}&category={{ category_filter }}{% endif %}"
+               class="px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors {% if period == 'month' and not custom_range %}bg-amber-500 text-white{% else %}text-gray-500 dark:text-gray-400 hover:text-gray-700{% endif %}">30 kun</a>
+            <a href="?period=year{% if category_filter %}&category={{ category_filter }}{% endif %}"
+               class="px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors {% if period == 'year' and not custom_range %}bg-amber-500 text-white{% else %}text-gray-500 dark:text-gray-400 hover:text-gray-700{% endif %}">1 yil</a>
+        </div>
+        <form method="get" class="flex items-center gap-1.5">
+            {% if category_filter %}<input type="hidden" name="category" value="{{ category_filter }}">{% endif %}
+            <input type="date" name="start" value="{{ start_date|date:'Y-m-d' }}"
+                   class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400">
+            <span class="text-gray-400 text-sm">—</span>
+            <input type="date" name="end" value="{{ end_date|date:'Y-m-d' }}"
+                   class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400">
+            <button type="submit" class="w-9 h-9 rounded-xl bg-amber-500 hover:bg-amber-600 text-white flex items-center justify-center transition-colors">
+                <i class="fas fa-filter text-xs"></i>
+            </button>
+        </form>
+        <form method="get" class="flex items-center gap-1.5 ml-auto">
+            {% if custom_range %}<input type="hidden" name="start" value="{{ start_date|date:'Y-m-d' }}"><input type="hidden" name="end" value="{{ end_date|date:'Y-m-d' }}">{% else %}<input type="hidden" name="period" value="{{ period }}">{% endif %}
+            <select name="category" onchange="this.form.submit()"
+                    class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400">
+                <option value="">Barcha turlar</option>
+                {% for value, label in category_choices %}
+                <option value="{{ value }}" {% if category_filter == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+</div>
+
+<!-- Umumiy summa + turlar bo'yicha taqsimot -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Jami xarajat</p>
+        <p class="text-2xl font-extrabold text-red-500">{{ total|floatformat:0 }} <span class="text-sm font-semibold text-gray-400">so'm</span></p>
+    </div>
+    <div class="lg:col-span-2 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Turlar bo'yicha</p>
+        <div class="flex flex-wrap gap-2">
+            {% for row in by_category %}
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                {{ row.label }} <span class="text-red-500">{{ row.total|floatformat:0 }}</span> <span class="text-gray-400">({{ row.count }})</span>
+            </span>
+            {% empty %}
+            <span class="text-sm text-gray-400">Ma'lumot yo'q</span>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Jadval -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                    <th class="px-5 py-3.5">Sana</th>
+                    <th class="px-5 py-3.5">Turi</th>
+                    <th class="px-5 py-3.5">Izoh</th>
+                    <th class="px-5 py-3.5">Summa</th>
+                    <th class="px-5 py-3.5">Chek</th>
+                    <th class="px-5 py-3.5">Kim kiritdi</th>
+                    <th class="px-5 py-3.5 text-right">Amallar</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
+                {% for e in expenses %}
+                <tr class="hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-colors">
+                    <td class="px-5 py-3">{{ e.spent_at|date:"d.m.Y" }}</td>
+                    <td class="px-5 py-3">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-600">{{ e.get_category_display }}</span>
+                    </td>
+                    <td class="px-5 py-3 text-gray-500 dark:text-gray-400 max-w-xs truncate">{{ e.description|default:"—" }}</td>
+                    <td class="px-5 py-3 font-semibold text-red-500">{{ e.amount|floatformat:0 }} so'm</td>
+                    <td class="px-5 py-3">
+                        {% if e.receipt %}
+                        <a href="{{ e.receipt.url }}" target="_blank" class="text-amber-600 hover:underline"><i class="fas fa-paperclip"></i> ko'rish</a>
+                        {% else %}
+                        <span class="text-xs text-gray-400">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-3 text-gray-500 dark:text-gray-400">{{ e.created_by.get_full_name|default:e.created_by.username|default:"—" }}</td>
+                    <td class="px-5 py-3 text-right">
+                        <div class="flex justify-end gap-1.5">
+                            <button onclick="openModal('expenseEditModal{{ e.pk }}')" title="Tahrirlash"
+                                    class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-amber-600 transition-colors">
+                                <i class="fas fa-pen text-xs"></i>
+                            </button>
+                            <form method="POST" action="{% url 'taxi:expense_delete' e.pk %}" onsubmit="return confirm('Ushbu xarajat o\'chirilsinmi?');">
+                                {% csrf_token %}
+                                <button type="submit" title="O'chirish"
+                                        class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-red-600 transition-colors">
+                                    <i class="fas fa-trash text-xs"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center py-10 text-gray-400 text-sm">
+                        <i class="fas fa-receipt text-2xl mb-2 block"></i> Xarajatlar topilmadi
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ══ Tahrirlash modallari (har bir xarajat uchun) ══ -->
+{% for e in expenses %}
+<div id="expenseEditModal{{ e.pk }}" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-base font-bold text-gray-900 dark:text-white"><i class="fas fa-pen text-amber-500 mr-2"></i>Xarajatni tahrirlash</h2>
+            <button onclick="closeModal('expenseEditModal{{ e.pk }}')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form method="POST" action="{% url 'taxi:expense_edit' e.pk %}" enctype="multipart/form-data" class="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Turi</label>
+                <select name="category" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+                    {% for value, label in category_choices %}
+                    <option value="{{ value }}" {% if e.category == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Summa</label>
+                    <input type="text" name="amount" value="{{ e.amount|floatformat:0 }}" required
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Sana</label>
+                    <input type="date" name="spent_at" value="{{ e.spent_at|date:'Y-m-d' }}"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Izoh</label>
+                <input type="text" name="description" value="{{ e.description }}" placeholder="Xarajat nimaga sarflandi..."
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Chek/hujjat (ixtiyoriy)</label>
+                {% if e.receipt %}<a href="{{ e.receipt.url }}" target="_blank" class="text-xs text-amber-600 hover:underline mb-1.5 block"><i class="fas fa-paperclip"></i> joriy fayl</a>{% endif %}
+                <input type="file" name="receipt" accept="image/*"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+            </div>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('expenseEditModal{{ e.pk }}')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold shadow-md shadow-amber-200 dark:shadow-none transition">
+                    Saqlash
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+<!-- ══ Yangi xarajat modali ══ -->
+<div id="expenseModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-base font-bold text-gray-900 dark:text-white"><i class="fas fa-plus text-amber-500 mr-2"></i>Xarajat qo'shish</h2>
+            <button onclick="closeModal('expenseModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form method="POST" action="{% url 'taxi:expense_create' %}" enctype="multipart/form-data" class="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Turi</label>
+                <select name="category" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+                    {% for value, label in category_choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Summa</label>
+                    <input type="text" name="amount" required placeholder="Masalan: 150000"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Sana</label>
+                    <input type="date" name="spent_at" value="{{ end_date|date:'Y-m-d' }}"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Izoh</label>
+                <input type="text" name="description" placeholder="Xarajat nimaga sarflandi..."
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Chek/hujjat (ixtiyoriy)</label>
+                <input type="file" name="receipt" accept="image/*"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+            </div>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('expenseModal')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold shadow-md shadow-amber-200 dark:shadow-none transition">
+                    Qo'shish
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

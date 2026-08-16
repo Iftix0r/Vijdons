@@ -69,6 +69,16 @@
         <h3 class="text-xl font-extrabold text-rose-500">{{ voucher_cost|floatformat:0 }}</h3>
         <p class="text-[11px] text-gray-400 mt-0.5">UZS — ishlatilgan kuponlar</p>
     </div>
+    <a href="{% url 'taxi:expense_list' %}" class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm hover:-translate-y-0.5 transition-transform">
+        <p class="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1">Xarajatlar <i class="fas fa-arrow-up-right-from-square text-[9px] ml-0.5"></i></p>
+        <h3 class="text-xl font-extrabold text-red-500">{{ total_expenses|floatformat:0 }}</h3>
+        <p class="text-[11px] text-gray-400 mt-0.5">UZS — shu davrda sarflangan</p>
+    </a>
+    <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+        <p class="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1">Sof foyda</p>
+        <h3 class="text-xl font-extrabold {% if net_profit >= 0 %}text-emerald-600{% else %}text-red-600{% endif %}">{{ net_profit|floatformat:0 }}</h3>
+        <p class="text-[11px] text-gray-400 mt-0.5">UZS — komissiya daromadi − xarajatlar</p>
+    </div>
 </div>
 
 <!-- Kunlik GMV vs komissiya -->

@@ -1523,3 +1523,43 @@ class SmsGatewayIncoming(models.Model):
         verbose_name = 'Kelgan SMS'
         verbose_name_plural = 'Kelgan SMS xabarlari'
         ordering = ['-received_at']
+
+
+class Expense(models.Model):
+    """Kompaniyaning operatsion xarajati (yoqilg'i, maosh, ijaraga, SMS/aloqa
+    xizmatlari va h.k.) — Moliya bo'limidagi "sof foyda" (komissiya
+    daromadi − xarajatlar) hisobiga kiradi."""
+    CATEGORY_FUEL          = 'fuel'
+    CATEGORY_SALARY        = 'salary'
+    CATEGORY_BONUS         = 'bonus'
+    CATEGORY_RENT          = 'rent'
+    CATEGORY_MARKETING     = 'marketing'
+    CATEGORY_MAINTENANCE   = 'maintenance'
+    CATEGORY_COMMUNICATION = 'communication'
+    CATEGORY_OTHER         = 'other'
+    CATEGORY_CHOICES = (
+        (CATEGORY_FUEL,          "Yoqilg'i"),
+        (CATEGORY_SALARY,        'Xodimlar maoshi'),
+        (CATEGORY_BONUS,         "Haydovchi bonusi/mukofot"),
+        (CATEGORY_RENT,          'Ijaraga/ofis'),
+        (CATEGORY_MARKETING,     'Reklama/marketing'),
+        (CATEGORY_MAINTENANCE,   "Texnik xizmat/ta'mirlash"),
+        (CATEGORY_COMMUNICATION, 'SMS/aloqa xizmatlari'),
+        (CATEGORY_OTHER,         'Boshqa'),
+    )
+
+    category    = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default=CATEGORY_OTHER, verbose_name='Turi')
+    amount      = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='Summa')
+    description = models.CharField(max_length=255, blank=True, default='', verbose_name='Izoh')
+    receipt     = models.ImageField(upload_to='expense_receipts/', blank=True, null=True, verbose_name='Chek/hujjat')
+    spent_at    = models.DateField(default=timezone.localdate, verbose_name='Sana')
+    created_by  = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='expenses', verbose_name='Kim kiritdi')
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.get_category_display()} — {self.amount} UZS ({self.spent_at})"
+
+    class Meta:
+        verbose_name = 'Xarajat'
+        verbose_name_plural = 'Xarajatlar'
+        ordering = ['-spent_at', '-created_at']
