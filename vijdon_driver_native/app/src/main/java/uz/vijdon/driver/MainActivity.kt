@@ -17,6 +17,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -180,8 +181,11 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun LoadingBox() {
+    // Ilova ochilganda sessiya holati aniqlanguncha ko'rinadigan yagona
+    // ekran — amalda "splash" o'rnini bosadi, shu sabab oddiy spinner
+    // o'rniga brendlangan "1351" belgisi.
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
+        uz.vijdon.driver.ui.theme.DispatchLoadingMark(modifier = Modifier.width(120.dp))
     }
 }
 

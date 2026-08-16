@@ -1,12 +1,18 @@
 package uz.vijdon.driver.ui.theme
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,12 +35,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import uz.vijdon.driver.util.formatMoney
+import kotlin.math.sin
 
 /**
  * Veb paneldagi "2 navbatda" / "Yakunlandi" kabi dumaloq nishonlar. Fon
@@ -163,6 +173,59 @@ fun TabHeader(title: String, subtitle: String? = null, modifier: Modifier = Modi
     }
 }
 
+// "1351" — dispatch raqami, taksimetr uslubidagi segmentlardan (7-segment
+// joylashuvi) yasalgan. `ic_launcher_foreground.xml` bilan bir xil 240x84
+// koordinata katakchasi — faqat u yerda VectorDrawable pathData, bu yerda
+// esa to'g'ridan-to'g'ri Canvas'ga chizilgan rounded-rect segmentlar.
+private data class DispatchSegment(val x: Float, val y: Float, val w: Float, val h: Float)
+
+private val DISPATCH_MARK_SEGMENTS: List<DispatchSegment> = run {
+    val a = DispatchSegment(9f, 0f, 30f, 10f)
+    val f = DispatchSegment(0f, 7f, 10f, 33f)
+    val b = DispatchSegment(38f, 7f, 10f, 33f)
+    val g = DispatchSegment(9f, 37f, 30f, 10f)
+    val c = DispatchSegment(38f, 44f, 10f, 33f)
+    val d = DispatchSegment(9f, 74f, 30f, 10f)
+    fun shifted(offset: Float, segs: List<DispatchSegment>) = segs.map { it.copy(x = it.x + offset) }
+    shifted(0f, listOf(b, c)) +            // "1"
+        shifted(64f, listOf(a, b, g, c, d)) +  // "3"
+        shifted(128f, listOf(a, f, g, c, d)) + // "5"
+        shifted(192f, listOf(b, c))            // "1"
+}
+private const val DISPATCH_MARK_WIDTH = 240f
+private const val DISPATCH_MARK_HEIGHT = 84f
+
+/**
+ * Brendlangan yuklanish animatsiyasi — oddiy dumaloq spinner o'rniga
+ * "1351" belgisining segmentlari ustidan yorug'lik to'lqini o'tib turadi
+ * (taksimetr yoqilganda raqamlar ustma-ust yonib-o'chganini eslatadi).
+ * Splash-holat (`MainActivity`dagi `LoadingBox`) va barcha `CenteredLoading`
+ * ekranlarida ishlatiladi.
+ */
+@Composable
+fun DispatchLoadingMark(modifier: Modifier = Modifier, color: Color = VijdonColors.Yellow) {
+    val infinite = rememberInfiniteTransition(label = "dispatch-mark")
+    val t by infinite.animateFloat(
+        initialValue = 0f,
+        targetValue = (2 * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(animation = tween(2200, easing = LinearEasing)),
+        label = "dispatch-mark-phase",
+    )
+    Canvas(modifier = modifier.aspectRatio(DISPATCH_MARK_WIDTH / DISPATCH_MARK_HEIGHT)) {
+        val scale = size.width / DISPATCH_MARK_WIDTH
+        val radius = CornerRadius(5f * scale, 5f * scale)
+        DISPATCH_MARK_SEGMENTS.forEachIndexed { index, seg ->
+            val glow = sin(t - index * 0.35f) * 0.5f + 0.5f
+            drawRoundRect(
+                color = color.copy(alpha = 0.3f + 0.7f * glow),
+                topLeft = Offset(seg.x * scale, seg.y * scale),
+                size = Size(seg.w * scale, seg.h * scale),
+                cornerRadius = radius,
+            )
+        }
+    }
+}
+
 /**
  * Ro'yxat birinchi marta yuklanayotganda (hali natija ham, xato ham yo'q)
  * ko'rsatiladi — aks holda ekran bir lahzaga "hozircha hech narsa yo'q"
@@ -171,7 +234,7 @@ fun TabHeader(title: String, subtitle: String? = null, modifier: Modifier = Modi
 @Composable
 fun CenteredLoading(modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(color = VijdonColors.Yellow)
+        DispatchLoadingMark(modifier = Modifier.width(96.dp), color = VijdonColors.Yellow)
     }
 }
 
