@@ -38,6 +38,10 @@
                 {% for d in region.districts.all %}
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
                     {{ d.name }}
+                    <button type="button" onclick="openSuggestModal({{ d.pk }}, '{{ d.name|escapejs }}')"
+                            title="Nominatim'dan joy taklif qilish" class="text-blue-400 hover:text-indigo-600 transition-colors">
+                        <i class="fas fa-wand-magic-sparkles text-[10px]"></i>
+                    </button>
                     <form method="POST" action="{% url 'taxi:district_delete' d.pk %}" onsubmit="return confirm('«{{ d.name }}» o\'chirilsinmi?')" class="inline-flex">
                         {% csrf_token %}
                         <button type="submit" class="text-blue-400 hover:text-red-500 transition-colors"><i class="fas fa-xmark text-[10px]"></i></button>
@@ -90,6 +94,34 @@
         </form>
     </div>
 </div>
+
+<!-- ══════════ Nominatim takliflari modal ══════════ -->
+<div id="suggestPlacesModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800 max-h-[85vh] flex flex-col">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
+            <h2 class="text-base font-bold text-gray-900 dark:text-white">
+                <i class="fas fa-wand-magic-sparkles text-indigo-500 mr-2"></i>Joy takliflari — <span id="suggest_district_name"></span>
+            </h2>
+            <button onclick="closeModal('suggestPlacesModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <p class="px-6 pt-3 text-[11px] text-gray-400">
+            OpenStreetMap'dan olingan taklif — hech narsa avtomatik qo'shilmaydi, faqat belgilaganlaringiz "Manzillar"ga qo'shiladi.
+        </p>
+        <div id="suggest_list" class="px-6 py-3 space-y-1 overflow-y-auto flex-1"></div>
+        <div class="flex gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex-shrink-0">
+            <button type="button" onclick="closeModal('suggestPlacesModal')"
+                    class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                Bekor qilish
+            </button>
+            <button type="button" id="suggest_submit" onclick="submitSuggestPicks()" disabled
+                    class="flex-1 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold shadow-md shadow-indigo-200 dark:shadow-none transition">
+                Tanlanganlarni qo'shish (0)
+            </button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -101,6 +133,73 @@
         const isOpen = body.classList.contains('hidden');
         body.classList.toggle('hidden');
         if (icon) icon.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+
+    // ── Nominatim'dan tuman uchun "asosiy joylar" taklifi ──
+    // Diqqat: bu yerda HECH NARSA avtomatik bazaga yozilmaydi — faqat
+    // taklif ko'rsatiladi, operator checkbox bilan tanlab, ATAYLAB
+    // tasdiqlaganlarigina "Tanlanganlarni qo'shish" bosilganda yaratiladi.
+    let _suggestDistrictId = null;
+    let _suggestResults = [];
+
+    function openSuggestModal(districtId, districtName) {
+        _suggestDistrictId = districtId;
+        _suggestResults = [];
+        document.getElementById('suggest_district_name').textContent = districtName;
+        document.getElementById('suggest_list').innerHTML = '<div class="text-center py-6 text-gray-400 text-xs"><i class="fas fa-circle-notch fa-spin mr-1"></i> Qidirilmoqda...</div>';
+        document.getElementById('suggest_submit').disabled = true;
+        document.getElementById('suggest_submit').textContent = 'Tanlanganlarni qo\'shish (0)';
+        openModal('suggestPlacesModal');
+        fetch('/panel/viloyatlar/tuman/' + districtId + '/suggest/')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                _suggestResults = data.results || [];
+                renderSuggestList();
+            })
+            .catch(function () {
+                document.getElementById('suggest_list').innerHTML = '<div class="text-center py-6 text-red-400 text-xs">Xatolik yuz berdi</div>';
+            });
+    }
+
+    function renderSuggestList() {
+        const box = document.getElementById('suggest_list');
+        if (!_suggestResults.length) {
+            box.innerHTML = '<div class="text-center py-6 text-gray-400 text-xs">Bu tuman uchun taklif topilmadi — <a href="{% url "taxi:saved_addresses_list" %}" class="text-blue-500 underline">xaritadan qo\'lda qo\'shing</a>.</div>';
+            return;
+        }
+        box.innerHTML = _suggestResults.map(function (r, i) {
+            return '<label class="flex items-start gap-2.5 p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer border border-transparent hover:border-gray-200 dark:hover:border-gray-700">' +
+                '<input type="checkbox" data-i="' + i + '" onchange="updateSuggestCount()" class="mt-0.5 accent-indigo-500">' +
+                '<div class="min-w-0"><p class="text-sm font-semibold text-gray-800 dark:text-white">' + r.name + ' <span class="text-[10px] font-normal text-gray-400">(' + r.type + ')</span></p>' +
+                '<p class="text-xs text-gray-400 truncate">' + r.display_name + '</p></div></label>';
+        }).join('');
+        updateSuggestCount();
+    }
+
+    function updateSuggestCount() {
+        const n = document.querySelectorAll('#suggest_list input[type=checkbox]:checked').length;
+        const btn = document.getElementById('suggest_submit');
+        btn.disabled = n === 0;
+        btn.textContent = "Tanlanganlarni qo'shish (" + n + ")";
+    }
+
+    function submitSuggestPicks() {
+        const picks = [];
+        document.querySelectorAll('#suggest_list input[type=checkbox]:checked').forEach(function (cb) {
+            picks.push(_suggestResults[parseInt(cb.dataset.i)]);
+        });
+        if (!picks.length) return;
+        const fd = new FormData();
+        fd.append('district_id', _suggestDistrictId);
+        fd.append('picks', JSON.stringify(picks));
+        fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+        fetch('/panel/manzillar/bulk-add/', { method: 'POST', body: fd })
+            .then(function (r) { return r.json(); })
+            .then(function () {
+                closeModal('suggestPlacesModal');
+                location.reload(); // ro'yxatdagi manzil sonini yangilash uchun
+            })
+            .catch(function () { showToast('Xatolik yuz berdi'); });
     }
 </script>
 {% endblock %}

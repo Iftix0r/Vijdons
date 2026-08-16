@@ -5069,6 +5069,60 @@ def district_delete(request, pk):
     return redirect('taxi:regions_list')
 
 
+@panel_login_required
+@panel_admin_required
+def district_suggest_places(request, pk):
+    """Berilgan tuman uchun Nominatim'dan "asosiy joylar" TAKLIFINI
+    qaytaradi — hech narsa bazaga yozmaydi, operator "Viloyatlar"
+    bo'limidagi modal orqali ko'rib, tanlab tasdiqlashi kerak
+    (`saved_address_bulk_create`)."""
+    from .models import District
+    from .utils import geocode_suggest_places_nominatim
+    district = get_object_or_404(District, pk=pk)
+    results = geocode_suggest_places_nominatim(district.region.name, district.name)
+    return JsonResponse({'results': results})
+
+
+@panel_login_required
+@panel_admin_required
+def saved_address_bulk_create(request):
+    """Operator "Nominatim takliflari" modalida tanlab tasdiqlagan
+    joylarni SavedAddress sifatida yaratadi — yaqin-atrofda (300m) yoki
+    bir xil nomda allaqachon bor bo'lganlari o'tkazib yuboriladi."""
+    from .models import District
+    from .utils import haversine
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+    district = get_object_or_404(District, pk=request.POST.get('district_id'))
+    try:
+        picks = json.loads(request.POST.get('picks', '[]'))
+    except (ValueError, TypeError):
+        picks = []
+    existing = list(SavedAddress.objects.filter(district=district))
+    created = 0
+    for p in picks[:30]:
+        name = str(p.get('name', '')).strip()[:100]
+        lat, lng = p.get('lat'), p.get('lng')
+        if not name or lat is None or lng is None:
+            continue
+        dup = any(a.name.lower() == name.lower() for a in existing)
+        if not dup:
+            for a in existing:
+                dist = haversine(lat, lng, a.lat, a.lng)
+                if dist is not None and dist <= 0.3:
+                    dup = True
+                    break
+        if dup:
+            continue
+        new_addr = SavedAddress.objects.create(
+            name=name, address=str(p.get('display_name', ''))[:255],
+            lat=lat, lng=lng, district=district, created_by=request.user,
+        )
+        existing.append(new_addr)
+        created += 1
+    return JsonResponse({'ok': True, 'created': created})
+
+
 # ── Haydovchi shartnomasi ──────────────────────────────────────────────────────
 
 @system_login_required

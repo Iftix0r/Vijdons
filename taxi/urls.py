@@ -100,12 +100,14 @@ urlpatterns = [
     path('manzillar/<int:pk>/delete/', views.saved_address_delete, name='saved_address_delete'),
     path('manzillar/<int:pk>/use/', views.saved_address_use, name='saved_address_use'),
     path('manzillar/<int:pk>/haydovchilar/', views.saved_address_queue_drivers, name='saved_address_queue_drivers'),
+    path('manzillar/bulk-add/', views.saved_address_bulk_create, name='saved_address_bulk_create'),
 
     path('viloyatlar/', views.regions_list, name='regions_list'),
     path('viloyatlar/add/', views.region_create, name='region_create'),
     path('viloyatlar/<int:pk>/delete/', views.region_delete, name='region_delete'),
     path('viloyatlar/tuman/add/', views.district_create, name='district_create'),
     path('viloyatlar/tuman/<int:pk>/delete/', views.district_delete, name='district_delete'),
+    path('viloyatlar/tuman/<int:pk>/suggest/', views.district_suggest_places, name='district_suggest_places'),
 
     path('api/client/lookup/', api_views.client_last_order_api, name='api_client_lookup'),
 

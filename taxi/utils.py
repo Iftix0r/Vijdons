@@ -61,6 +61,40 @@ def geocode_search_nominatim(query):
         return []
 
 
+_PLACE_TYPES_MAIN = {'city', 'town', 'village', 'suburb', 'quarter'}
+
+
+def geocode_suggest_places_nominatim(region_name, district_name):
+    """Berilgan viloyat+tuman nomi bo'yicha Nominatim'dan "asosiy" (shahar/
+    qishloq/mahalla darajasidagi, class=place) joylarni qidiradi — TAKLIF
+    sifatida, operator "Viloyatlar" bo'limida ko'rib, kerak bo'lganlarini
+    tasdiqlab SavedAddress sifatida qo'shadi. Kichik/tasodifiy nuqtalarni
+    (isolated_dwelling, locality) chiqarib tashlaydi — faqat kattaroq
+    aholi punktlari qoladi. Bo'sh natija — ko'p tumanlar uchun OSM
+    ma'lumoti yo'q/kam bo'lishi mumkin, bu XATO EMAS, kutilgan holat."""
+    try:
+        url = ('https://nominatim.openstreetmap.org/search'
+               f'?state={urllib.parse.quote(region_name)}'
+               f'&county={urllib.parse.quote(district_name)}'
+               '&country=Uzbekistan&format=json&addressdetails=1'
+               '&namedetails=1&limit=30&accept-language=uz,ru')
+        req = urllib.request.Request(url, headers={'User-Agent': 'VijdonTaxiPanel/1.0'})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode())
+        results = []
+        for d in data:
+            if d.get('class') != 'place' or d.get('type') not in _PLACE_TYPES_MAIN:
+                continue
+            name = (d.get('namedetails') or {}).get('name') or d['display_name'].split(',')[0]
+            results.append({
+                'name': name.strip(), 'display_name': d['display_name'],
+                'lat': float(d['lat']), 'lng': float(d['lon']), 'type': d.get('type'),
+            })
+        return results
+    except Exception:
+        return []
+
+
 def capture_order_action_location(order, new_status, original_status, lat, lng):
     """Haydovchi "Yo'lga chiqdim"/"Yetib keldim" tugmasini bosgan paytdagi
     haqiqiy GPS joylashuvini `order`ga yozadi (mutatsiya qiladi, saqlamaydi
