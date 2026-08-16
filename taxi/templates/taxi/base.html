@@ -206,13 +206,6 @@
             <span class="flex-1">Buyurtmalar</span>
             <span id="aging-orders-badge" class="hidden bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center animate-pulse"></span>
         </a>
-        {% if request.user.is_superuser %}
-        <a href="{% url 'taxi:call_recordings_list' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'call_recordings_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-microphone-lines w-5 text-center"></i>
-            <span class="flex-1">Qo'ng'iroq yozuvlari</span>
-        </a>
-        {% endif %}
         <a href="{% url 'taxi:driver_list' %}"
            class="nav-link {% if request.resolver_match.url_name == 'driver_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-id-card w-5 text-center"></i>
@@ -228,16 +221,6 @@
             <i class="fas fa-map-location-dot w-5 text-center"></i>
             <span class="flex-1">Live Xarita</span>
         </a>
-        {% if request.user.is_superuser %}
-        <a href="{% url 'taxi:ping_dashboard' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'ping_dashboard' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-wifi w-5 text-center"></i>
-            <span class="flex-1">Ping</span>
-            {% if bad_ping_driver_count > 0 %}
-            <span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center pulse-dot">{{ bad_ping_driver_count }}</span>
-            {% endif %}
-        </a>
-        {% endif %}
         <a href="{% url 'taxi:operator_chat' %}"
            class="nav-link {% if request.resolver_match.url_name == 'operator_chat' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-comments w-5 text-center"></i>
@@ -258,16 +241,6 @@
            class="nav-link {% if request.resolver_match.url_name == 'music_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-music w-5 text-center"></i> Musiqa
         </a>
-        {% if request.user.is_superuser %}
-        <a href="{% url 'taxi:saved_addresses_list' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'saved_addresses_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-map-pin w-5 text-center"></i> Manzillar
-        </a>
-        <a href="{% url 'taxi:regions_list' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'regions_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-map w-5 text-center"></i> Viloyatlar
-        </a>
-        {% endif %}
         <a href="{% url 'taxi:topup_list' %}"
            class="nav-link {% if request.resolver_match.url_name == 'topup_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-money-bill-transfer w-5 text-center"></i>
@@ -284,35 +257,10 @@
             <span class="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center pulse-dot">{{ qarzdor_count }}</span>
             {% endif %}
         </a>
-        {% if request.user.is_superuser %}
-        <a href="{% url 'taxi:finance_dashboard' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'finance_dashboard' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-sack-dollar w-5 text-center"></i> Moliya
-        </a>
-        {% endif %}
         <a href="{% url 'taxi:statistics' %}"
            class="nav-link {% if request.resolver_match.url_name == 'statistics' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-chart-pie w-5 text-center"></i> Statistika
         </a>
-        {% if request.user.is_superuser %}
-        <a href="{% url 'taxi:security_dashboard' %}"
-           class="nav-link {% if request.resolver_match.url_name == 'security_dashboard' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-shield-halved w-5 text-center"></i>
-            <span class="flex-1">Xavfsizlik</span>
-            {% if open_security_incident_count > 0 %}
-            <span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center pulse-dot">{{ open_security_incident_count }}</span>
-            {% endif %}
-        </a>
-        <a href="{% url 'taxi:employee_list' %}"
-           class="nav-link {% if request.resolver_match.url_name in 'employee_list,employee_detail' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
-            <i class="fas fa-users-gear w-5 text-center"></i>
-            <span class="flex-1">Hodimlar</span>
-            {% if open_employee_task_count > 0 %}
-            <span class="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center pulse-dot">{{ open_employee_task_count }}</span>
-            {% endif %}
-        </a>
-        {% endif %}
-
         {% if request.user.is_superuser %}
         <p class="px-3 pt-4 pb-1 text-[10px] uppercase tracking-widest font-bold text-gray-400 dark:text-gray-600">Tizim</p>
         <a href="{% url 'system:system_status' %}"
