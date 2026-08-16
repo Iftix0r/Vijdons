@@ -34,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.delay
 import uz.vijdon.driver.data.api.ChatMessageDto
 import uz.vijdon.driver.ui.theme.CenteredLoading
 import uz.vijdon.driver.ui.theme.ChipShape
@@ -65,10 +67,27 @@ fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
         if (state.messages.isNotEmpty()) listState.animateScrollToItem(state.messages.lastIndex)
     }
 
+    // Telegram'dagi kabi "... yozmoqda" — nuqtalar 400ms'da 1-2-3 bo'lib
+    // aylanadi. `state.typing` `null` bo'lsa animatsiya ishga tushmaydi.
+    val typingDots by produceState(initialValue = ".", key1 = state.typing) {
+        if (state.typing == null) return@produceState
+        var count = 0
+        while (true) {
+            value = ".".repeat((count % 3) + 1)
+            count++
+            delay(400)
+        }
+    }
+    val headerSubtitle = when (state.typing) {
+        "ai" -> "🤖 AI yozmoqda$typingDots"
+        "operator" -> "Operator yozmoqda$typingDots"
+        else -> "Operator bilan suhbat"
+    }
+
     Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background)) {
         TabHeader(
             "Chat",
-            subtitle = "Operator bilan suhbat",
+            subtitle = headerSubtitle,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp).padding(bottom = 0.dp),
         )
 

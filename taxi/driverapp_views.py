@@ -1063,6 +1063,7 @@ def _run_ai_chat_reply(driver_id):
     import threading
 
     def _run():
+        from django.utils import timezone
         from .models import ChatMessage, Driver
         from .utils import generate_ai_chat_reply, ai_toggle_duty, ai_today_stats, ai_escalate_to_operator
 
@@ -1070,30 +1071,39 @@ def _run_ai_chat_reply(driver_id):
             driver = Driver.objects.get(pk=driver_id)
         except Driver.DoesNotExist:
             return
-        # Oxirgi 20 ta xabar — AI va operator ikkalasi ham "assistant"
-        # tomon sifatida beriladi (AI oldingi operator javobidan xabardor
-        # bo'lsin, takrorlab/qarama-qarshi gapirmasin).
-        recent = list(ChatMessage.objects.filter(driver=driver).order_by('-created_at')[:20])
-        history = [
-            {'role': 'user' if m.sender == ChatMessage.SENDER_DRIVER else 'assistant', 'content': m.text}
-            for m in reversed(recent) if m.text
-        ]
-        reply_text, tool_name, tool_args = generate_ai_chat_reply(driver, history)
-        result_text = None
-        if tool_name == 'cancel_active_order':
-            from .views import ai_cancel_active_order
-            _ok, result_text = ai_cancel_active_order(driver)
-        elif tool_name == 'toggle_duty_status':
-            _ok, result_text = ai_toggle_duty(driver)
-        elif tool_name == 'get_today_stats':
-            _ok, result_text = ai_today_stats(driver)
-        elif tool_name == 'escalate_to_operator':
-            _ok, result_text = ai_escalate_to_operator(driver, (tool_args or {}).get('reason', ''))
 
-        if result_text:
-            ChatMessage.objects.create(driver=driver, sender=ChatMessage.SENDER_AI, text=result_text)
-        elif reply_text:
-            ChatMessage.objects.create(driver=driver, sender=ChatMessage.SENDER_AI, text=reply_text)
+        # Chat ekranining tepasida "AI yozmoqda..." ko'rsatilishi uchun —
+        # aniq boshlanish/tugash (freshness-timeout emas), `chat_typing_status`
+        # shu maydonni o'qiydi. `finally` bilan — xato chiqsa ham "abadiy
+        # yozmoqda" bo'lib qolib ketmasin.
+        Driver.objects.filter(pk=driver.pk).update(ai_typing_at=timezone.now())
+        try:
+            # Oxirgi 20 ta xabar — AI va operator ikkalasi ham "assistant"
+            # tomon sifatida beriladi (AI oldingi operator javobidan xabardor
+            # bo'lsin, takrorlab/qarama-qarshi gapirmasin).
+            recent = list(ChatMessage.objects.filter(driver=driver).order_by('-created_at')[:20])
+            history = [
+                {'role': 'user' if m.sender == ChatMessage.SENDER_DRIVER else 'assistant', 'content': m.text}
+                for m in reversed(recent) if m.text
+            ]
+            reply_text, tool_name, tool_args = generate_ai_chat_reply(driver, history)
+            result_text = None
+            if tool_name == 'cancel_active_order':
+                from .views import ai_cancel_active_order
+                _ok, result_text = ai_cancel_active_order(driver)
+            elif tool_name == 'toggle_duty_status':
+                _ok, result_text = ai_toggle_duty(driver)
+            elif tool_name == 'get_today_stats':
+                _ok, result_text = ai_today_stats(driver)
+            elif tool_name == 'escalate_to_operator':
+                _ok, result_text = ai_escalate_to_operator(driver, (tool_args or {}).get('reason', ''))
+
+            if result_text:
+                ChatMessage.objects.create(driver=driver, sender=ChatMessage.SENDER_AI, text=result_text)
+            elif reply_text:
+                ChatMessage.objects.create(driver=driver, sender=ChatMessage.SENDER_AI, text=reply_text)
+        finally:
+            Driver.objects.filter(pk=driver.pk).update(ai_typing_at=None)
 
     threading.Thread(target=_run, daemon=True).start()
 
@@ -1120,6 +1130,33 @@ def chat_private_unread(request, driver):
 
     count = ChatMessage.objects.filter(driver=driver, sender=ChatMessage.SENDER_OPERATOR, is_read=False).count()
     return Response({'count': count})
+
+
+# Operator "yozmoqda" belgisi hech qachon tozalanmaydi (`operator_typing_at`
+# faqat operator klaviaturada bosganda YANGILANADI — pastdagi kabi), shu
+# sabab "hozir yozayaptimi" degan xulosa faqat YAQINDAGI (bir necha soniya
+# ichidagi) yozuv bo'lsagina chiqariladi — aks holda operator BIR MARTA
+# yozgan bo'lsa ham, u "abadiy yozmoqda" bo'lib qolib ketardi.
+CHAT_TYPING_FRESHNESS_SECONDS = 6
+
+
+@api_view(['GET'])
+@driver_required
+def chat_typing_status(request, driver):
+    """Chat ekranining tepasida (Telegram'dagi kabi) "Operator yozmoqda..."/
+    "AI yozmoqda..." animatsiyasi uchun — kim (agar bo'lsa) hozir javob
+    tayyorlayotganini qaytaradi."""
+    from django.utils import timezone
+    import datetime
+
+    cutoff = timezone.now() - datetime.timedelta(seconds=CHAT_TYPING_FRESHNESS_SECONDS)
+    if driver.ai_typing_at and driver.ai_typing_at >= cutoff:
+        typing = 'ai'
+    elif driver.operator_typing_at and driver.operator_typing_at >= cutoff:
+        typing = 'operator'
+    else:
+        typing = None
+    return Response({'typing': typing})
 
 
 # ── Musiqa ────────────────────────────────────────────────────────────────────

@@ -238,6 +238,11 @@ data class ChatMessageDto(
 @Serializable
 data class ChatUnreadResponse(val count: Int)
 
+/** `typing` — `null` (hech kim), `"operator"` yoki `"ai"` (Telegram'dagi
+ * kabi "yozmoqda..." animatsiyasi uchun, Chat ekranining tepasida). */
+@Serializable
+data class ChatTypingResponse(val typing: String? = null)
+
 @Serializable
 data class MusicTrackDto(
     val id: Int,

@@ -67,6 +67,7 @@ class Driver(models.Model):
     freeze_warning_sent_at = models.DateTimeField(null=True, blank=True, verbose_name="Muzlash haqida oxirgi ogohlantirilgan vaqt")
     last_address          = models.CharField(max_length=500, blank=True, default='', verbose_name="So'nggi manzil")
     operator_typing_at    = models.DateTimeField(null=True, blank=True, verbose_name="Operator yozayotgan vaqt")
+    ai_typing_at          = models.DateTimeField(null=True, blank=True, verbose_name="AI yordamchi javob tayyorlayotgan vaqt")
     last_group_read_at    = models.DateTimeField(default=timezone.now, blank=True, verbose_name="Guruh chatini oxirgi o'qigan vaqt")
     last_ping_ms          = models.IntegerField(null=True, blank=True, verbose_name="Oxirgi ping (ms)")
     last_ping_at          = models.DateTimeField(null=True, blank=True, verbose_name="Ping o'lchangan vaqt")

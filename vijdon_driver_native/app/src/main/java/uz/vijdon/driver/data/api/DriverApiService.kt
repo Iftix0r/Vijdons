@@ -137,6 +137,9 @@ interface DriverApiService {
     @GET("chat/unread/")
     suspend fun chatUnread(): ChatUnreadResponse
 
+    @GET("chat/typing/")
+    suspend fun chatTypingStatus(): ChatTypingResponse
+
     @GET("music/tracks/")
     suspend fun musicTracks(): List<MusicTrackDto>
 }

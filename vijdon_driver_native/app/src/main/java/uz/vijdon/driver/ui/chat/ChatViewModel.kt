@@ -19,6 +19,9 @@ data class ChatUiState(
     val loading: Boolean = true,
     val sending: Boolean = false,
     val error: String? = null,
+    // `null` — hech kim yozmayapti, `"operator"`/`"ai"` — Telegram'dagi
+    // kabi ekran tepasida "... yozmoqda" animatsiyasi uchun.
+    val typing: String? = null,
 )
 
 /**
@@ -56,6 +59,12 @@ class ChatViewModel @Inject constructor(private val repository: DriverRepository
                 _uiState.value = _uiState.value.copy(messages = result.data, loading = false, error = null)
             }
             is ApiResult.Error -> _uiState.value = _uiState.value.copy(loading = false, error = result.message)
+        }
+        // "... yozmoqda" — xato bo'lsa jim o'tkazib yuboriladi (bu faqat
+        // bezak, asosiy xabar oqimiga ta'sir qilmasin).
+        val typingResult = repository.chatTypingStatus()
+        if (typingResult is ApiResult.Success) {
+            _uiState.value = _uiState.value.copy(typing = typingResult.data.typing)
         }
     }
 

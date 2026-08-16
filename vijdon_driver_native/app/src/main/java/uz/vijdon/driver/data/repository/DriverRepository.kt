@@ -21,6 +21,7 @@ import uz.vijdon.driver.data.api.DriverApiService
 import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.data.api.DutyToggleResponse
 import uz.vijdon.driver.data.api.ChatMessageDto
+import uz.vijdon.driver.data.api.ChatTypingResponse
 import uz.vijdon.driver.data.api.ChatUnreadResponse
 import uz.vijdon.driver.data.api.DriverSoundDto
 import uz.vijdon.driver.data.api.MusicTrackDto
@@ -281,6 +282,8 @@ class DriverRepository @Inject constructor(
     }
 
     suspend fun chatUnread(): ApiResult<ChatUnreadResponse> = safeCall { api.chatUnread() }
+
+    suspend fun chatTypingStatus(): ApiResult<ChatTypingResponse> = safeCall { api.chatTypingStatus() }
 
     suspend fun musicTracks(): ApiResult<List<MusicTrackDto>> = safeCall { api.musicTracks() }
 }
