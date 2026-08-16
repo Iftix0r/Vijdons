@@ -4256,7 +4256,6 @@ def finance_export_csv(request):
 # ── Xarajatlar ───────────────────────────────────────────────────────────────
 
 @panel_login_required
-@panel_admin_required
 def expense_list(request):
     from django.db.models import Sum, Count
     from .models import Expense
@@ -4291,7 +4290,6 @@ def expense_list(request):
 
 
 @panel_login_required
-@panel_admin_required
 def expense_create(request):
     from decimal import Decimal, InvalidOperation
     from django.utils import timezone
@@ -4319,7 +4317,6 @@ def expense_create(request):
 
 
 @panel_login_required
-@panel_admin_required
 def expense_edit(request, pk):
     from decimal import Decimal, InvalidOperation
     from .models import Expense
@@ -4348,7 +4345,6 @@ def expense_edit(request, pk):
 
 
 @panel_login_required
-@panel_admin_required
 def expense_delete(request, pk):
     from .models import Expense
 
