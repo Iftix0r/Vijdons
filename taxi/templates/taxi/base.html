@@ -1153,15 +1153,61 @@
             });
     }
 
-    function _initOrderMap() {
-        if (!_ymapsReady || _omap) return;
-        _omap = new ymaps.Map('order_ymap', {
-            center: [41.2995, 69.2401],
-            zoom: 12,
-            controls: ['zoomControl', 'searchControl', 'fullscreenControl']
+    // Yandex'ning o'rnatilgan `searchControl` qidiruv qutisi o'rnini bosadi —
+    // kalitsiz Nominatim orqali (backend proksi, `panel_geocode_search`).
+    // Loyihada umuman shared/static JS fayli yo'q (hamma joyda inline
+    // <script> takrorlanadi), shu sabab bu funksiya har bir kerakli
+    // shablonda (bu yerda, tariff_settings.html, saved_addresses.html)
+    // alohida-alohida yoziladi.
+    function _wireGeoSearch(inputId, resultsId, onSelect) {
+        var input = document.getElementById(inputId);
+        var box = document.getElementById(resultsId);
+        if (!input || !box) return;
+        var t = null;
+        input.addEventListener('input', function () {
+            clearTimeout(t);
+            var q = input.value.trim();
+            if (q.length < 3) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+            t = setTimeout(function () {
+                fetch('{% url "taxi:panel_geocode_search" %}?q=' + encodeURIComponent(q))
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        var results = data.results || [];
+                        box.innerHTML = results.length
+                            ? results.map(function (r, i) {
+                                return '<button type="button" data-i="' + i + '" class="w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 border-b border-gray-100 dark:border-gray-800 last:border-0">' + r.display_name + '</button>';
+                            }).join('')
+                            : '<div class="px-3 py-2 text-xs text-gray-400">Hech narsa topilmadi</div>';
+                        box.classList.remove('hidden');
+                        box.querySelectorAll('button[data-i]').forEach(function (btn) {
+                            btn.addEventListener('click', function () {
+                                var r = results[parseInt(btn.dataset.i)];
+                                box.classList.add('hidden');
+                                input.value = r.display_name;
+                                onSelect(r.lat, r.lng, r.display_name);
+                            });
+                        });
+                    }).catch(function () {});
+            }, 400);
         });
-        _omap.events.add('click', function(e) {
-            _setOrderFromPoint(e.get('coords'));
+        document.addEventListener('click', function (e) {
+            if (e.target !== input && !box.contains(e.target)) box.classList.add('hidden');
+        });
+    }
+
+    function _initOrderMap() {
+        if (typeof L === 'undefined' || _omap) return;
+        _omap = L.map('order_ymap', { zoomControl: true }).setView([41.2995, 69.2401], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            maxZoom: 19,
+        }).addTo(_omap);
+        _omap.on('click', function(e) {
+            _setOrderFromPoint([e.latlng.lat, e.latlng.lng]);
+        });
+        _wireGeoSearch('om_geo_search', 'om_geo_search_results', function(lat, lng) {
+            _setOrderFromPoint([lat, lng]);
+            _omap.setView([lat, lng], Math.max(_omap.getZoom(), 14));
         });
 
         // Yaqin atrofdagi onlayn haydovchilarni haritada ko'rsatish, 8s'da yangilanadi
@@ -1183,6 +1229,13 @@
             _stopOrderMapDrivers();
             _odriverCentered = false;
             _odriverSelectedId = null;
+            // Diqqat: `_omap = null` qilib qo'ya qolish YETARLI EMAS —
+            // Leaflet o'zining "order_ymap" konteyner divini "ishlatilgan"
+            // deb belgilab qo'yadi, shu divda `L.map()` ikkinchi marta
+            // chaqirilsa "Map container is already initialized" xatosini
+            // beradi. Shu sabab qayta yaratishdan oldin eski instansiya
+            // `.remove()` orqali ANIQ tozalanadi.
+            if (_omap) { _omap.remove(); }
             _omap = null; _omapFromPM = null;
             document.getElementById('om_from_lat').value = '';
             document.getElementById('om_from_lng').value = '';
@@ -1190,14 +1243,13 @@
             document.getElementById('om_to_lng').value   = '';
             document.getElementById('om_driver_select').value = '';
             document.getElementById('om_driver_map_hint').classList.add('hidden');
+            document.getElementById('om_geo_search').value = '';
+            document.getElementById('om_geo_search_results').classList.add('hidden');
             if (typeof window._resetOrderLookupInfo === 'function') window._resetOrderLookupInfo();
             document.getElementById('map_from_text').textContent = 'Qayerdan belgilanmagan';
             document.getElementById('map_from_badge').className = 'flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/40';
             toggleOrderMap(document.getElementById('use_map_toggle').checked);
-            setTimeout(function(){
-                if (_ymapsReady) _initOrderMap();
-                else ymaps.ready(_initOrderMap);
-            }, 150);
+            setTimeout(_initOrderMap, 150);
         }
     };
 
