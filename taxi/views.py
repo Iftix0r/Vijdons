@@ -1111,6 +1111,7 @@ def driver_list(request):
     qs  = Driver.objects.annotate(
         completed_count=Count('orders', filter=Q(orders__status='completed')),
         cancelled_count=Count('orders', filter=Q(orders__status='cancelled')),
+        active_order_count=Count('orders', filter=Q(orders__status__in=Order.ACTIVE_STATUSES)),
         is_online=Case(
             When(last_seen__gte=online_cutoff, then=Value(1)),
             default=Value(0),
