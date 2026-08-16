@@ -65,30 +65,64 @@ _PLACE_TYPES_MAIN = {'city', 'town', 'village', 'suburb', 'quarter'}
 
 
 def geocode_suggest_places_nominatim(region_name, district_name):
-    """Berilgan viloyat+tuman nomi bo'yicha Nominatim'dan "asosiy" (shahar/
-    qishloq/mahalla darajasidagi, class=place) joylarni qidiradi — TAKLIF
-    sifatida, operator "Viloyatlar" bo'limida ko'rib, kerak bo'lganlarini
-    tasdiqlab SavedAddress sifatida qo'shadi. Kichik/tasodifiy nuqtalarni
-    (isolated_dwelling, locality) chiqarib tashlaydi — faqat kattaroq
-    aholi punktlari qoladi. Bo'sh natija — ko'p tumanlar uchun OSM
-    ma'lumoti yo'q/kam bo'lishi mumkin, bu XATO EMAS, kutilgan holat."""
+    """Berilgan viloyat+tuman nomi bo'yicha "asosiy" (shahar/qishloq/mahalla
+    darajasidagi) joylarni qidiradi — TAKLIF sifatida, operator "Viloyatlar"
+    bo'limida ko'rib, kerak bo'lganlarini tasdiqlab SavedAddress sifatida
+    qo'shadi. Kichik/tasodifiy nuqtalar (isolated_dwelling, locality)
+    chiqarib tashlanadi. Bo'sh natija — ko'p tumanlar uchun OSM ma'lumoti
+    yo'q/kam bo'lishi mumkin, bu XATO EMAS, kutilgan holat.
+
+    Diqqat: Nominatim'ning strukturaviy qidiruvi (`state=`/`county=`)
+    ICHIDAGI aholi punktlarini QAYTARMAYDI — faqat o'sha tuman chegarasining
+    O'ZINI (bitta `class=boundary` yozuv) qaytaradi (tekshirilgan). Shu
+    sabab IKKI BOSQICH kerak: (1) Nominatim orqali tuman chegarasining OSM
+    relation ID'sini topish, (2) Overpass API orqali AYNAN shu chegara
+    ICHIDAGI barcha `place=*` nuqtalarni so'rash — Overpass, Nominatim'dan
+    farqli, "shu maydon ichidagi barcha X" turdagi so'rovlar uchun
+    mo'ljallangan (ikkalasi ham OSM ma'lumotidan, kalitsiz, bepul)."""
     try:
         url = ('https://nominatim.openstreetmap.org/search'
                f'?state={urllib.parse.quote(region_name)}'
                f'&county={urllib.parse.quote(district_name)}'
-               '&country=Uzbekistan&format=json&addressdetails=1'
-               '&namedetails=1&limit=30&accept-language=uz,ru')
+               '&country=Uzbekistan&format=json&limit=3')
         req = urllib.request.Request(url, headers={'User-Agent': 'VijdonTaxiPanel/1.0'})
         with urllib.request.urlopen(req, timeout=8) as resp:
-            data = json.loads(resp.read().decode())
+            boundary_data = json.loads(resp.read().decode())
+        boundary = next((d for d in boundary_data if d.get('class') == 'boundary'), None)
+        if not boundary:
+            return []
+        osm_id = boundary['osm_id']
+        # Overpass "area" ID'lari: relation uchun +3600000000, way uchun
+        # +2400000000 qo'shiladi (Overpass'ning o'z konventsiyasi) — bu
+        # yerga oddiy node kelmaydi, tuman chegarasi doim relation/way.
+        area_id = osm_id + (3600000000 if boundary.get('osm_type') == 'relation' else 2400000000)
+
+        place_regex = '^(' + '|'.join(sorted(_PLACE_TYPES_MAIN)) + ')$'
+        query = (
+            '[out:json][timeout:20];'
+            f'area({area_id})->.a;'
+            f'(node["place"~"{place_regex}"](area.a);'
+            f'way["place"~"{place_regex}"](area.a);'
+            ');'
+            'out center;'
+        )
+        ov_url = 'https://overpass-api.de/api/interpreter?data=' + urllib.parse.quote(query)
+        req = urllib.request.Request(ov_url, headers={'User-Agent': 'VijdonTaxiPanel/1.0'})
+        with urllib.request.urlopen(req, timeout=25) as resp:
+            ov_data = json.loads(resp.read().decode())
+
         results = []
-        for d in data:
-            if d.get('class') != 'place' or d.get('type') not in _PLACE_TYPES_MAIN:
+        for el in ov_data.get('elements', []):
+            tags = el.get('tags', {})
+            name = tags.get('name:uz') or tags.get('name')
+            lat = el.get('lat') or (el.get('center') or {}).get('lat')
+            lon = el.get('lon') or (el.get('center') or {}).get('lon')
+            if not name or lat is None or lon is None:
                 continue
-            name = (d.get('namedetails') or {}).get('name') or d['display_name'].split(',')[0]
             results.append({
-                'name': name.strip(), 'display_name': d['display_name'],
-                'lat': float(d['lat']), 'lng': float(d['lon']), 'type': d.get('type'),
+                'name': name.strip(),
+                'display_name': f"{name.strip()}, {district_name}, {region_name}",
+                'lat': float(lat), 'lng': float(lon), 'type': tags.get('place', ''),
             })
         return results
     except Exception:
