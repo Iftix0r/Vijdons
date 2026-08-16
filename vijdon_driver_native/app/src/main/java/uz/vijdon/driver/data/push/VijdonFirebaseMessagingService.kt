@@ -14,7 +14,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import uz.vijdon.driver.MainActivity
 import uz.vijdon.driver.R
+import uz.vijdon.driver.data.repository.ApiResult
 import uz.vijdon.driver.data.repository.DriverRepository
+import uz.vijdon.driver.ui.widget.updateWidgetData
 import javax.inject.Inject
 
 /**
@@ -47,6 +49,15 @@ class VijdonFirebaseMessagingService : FirebaseMessagingService() {
         // bildirishnomani umuman bosmaydi, faqat ekranga qaytib balansni ko'radi.
         if (type == "balance_changed") {
             CoroutineScope(Dispatchers.Default).launch { BalanceChangedBus.trigger() }
+            // Bosh ekran vidjeti — ilova butunlay yopiq bo'lsa ham (bu FCM
+            // xizmati alohida ishlaydi), balans push'i kelganda vidjet
+            // darhol yangilansin.
+            CoroutineScope(Dispatchers.IO).launch {
+                val result = repository.me()
+                if (result is ApiResult.Success) {
+                    updateWidgetData(applicationContext, result.data)
+                }
+            }
         }
 
         // Buyurtma taklifi boshqa sabab bilan (javobsiz qolib boshqa

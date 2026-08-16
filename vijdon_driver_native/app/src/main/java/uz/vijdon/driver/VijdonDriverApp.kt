@@ -6,15 +6,30 @@ import android.app.NotificationManager
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import dagger.hilt.android.HiltAndroidApp
 import uz.vijdon.driver.data.push.DriverSoundPlayer
+import uz.vijdon.driver.ui.widget.WidgetRefreshWorker
+import java.util.concurrent.TimeUnit
 
 @HiltAndroidApp
 class VijdonDriverApp : Application() {
     override fun onCreate() {
         super.onCreate()
         DriverSoundPlayer.init(this)
+        // Bosh ekran vidjeti — 30 daqiqalik fon yangilanishi (Android
+        // ruxsat beradigan eng qisqa oraliq). `KEEP` — ilova qayta-qayta
+        // ishga tushganda (masalan qurilma qayta yoqilganda) bir xil
+        // ishning nusxalari to'planib qolmasin, faqat BIR marta ro'yxatdan
+        // o'tkaziladi.
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "widget_refresh",
+            ExistingPeriodicWorkPolicy.KEEP,
+            PeriodicWorkRequestBuilder<WidgetRefreshWorker>(30, TimeUnit.MINUTES).build(),
+        )
         // google-services.json qo'shilmagan muhitda (masalan boshqa
         // dasturchi mashinasida) Firebase umuman ishga tushmaydi — shu
         // sabab BuildConfig.HAS_FCM bilan tekshiriladi. Debug build'da esa

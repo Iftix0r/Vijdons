@@ -125,6 +125,11 @@ dependencies {
     // bilan) foydalanadi.
     implementation("androidx.work:work-runtime-ktx:2.10.0")
 
+    // Telefon bosh ekrani vidjeti — Compose-asosli zamonaviy widget API
+    // (loyihaning qolgan qismi ham Compose bo'lgani uchun, eski
+    // RemoteViews/AppWidgetProvider XML uslubidan ko'ra mos keladi).
+    implementation("androidx.glance:glance-appwidget:1.1.1")
+
     // Tarmoq
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
     implementation("com.squareup.retrofit2:converter-kotlinx-serialization:3.0.0")

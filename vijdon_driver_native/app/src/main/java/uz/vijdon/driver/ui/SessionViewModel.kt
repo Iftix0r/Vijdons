@@ -1,9 +1,11 @@
 package uz.vijdon.driver.ui
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +17,7 @@ import uz.vijdon.driver.data.api.DriverDto
 import uz.vijdon.driver.data.repository.ApiResult
 import uz.vijdon.driver.data.repository.DriverRepository
 import uz.vijdon.driver.data.repository.TokenStore
+import uz.vijdon.driver.ui.widget.updateWidgetData
 import javax.inject.Inject
 
 sealed class SessionState {
@@ -29,6 +32,7 @@ sealed class SessionState {
 class SessionViewModel @Inject constructor(
     private val repository: DriverRepository,
     private val tokenStore: TokenStore,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<SessionState>(SessionState.Loading)
@@ -134,6 +138,19 @@ class SessionViewModel @Inject constructor(
 
     private fun applyState(newState: SessionState) {
         _state.value = newState
+        // Bosh ekran vidjeti — profil har yangilanganda (kirish, oddiy
+        // qayta tekshirish, muzlash/kutish holati) darhol yangilanadi.
+        // Android bundan tezroq avtomatik yangilanishga baribir ruxsat
+        // bermaydi, shu sabab bu — eng tez sodir bo'ladigan yo'llardan biri.
+        val driverForWidget = when (newState) {
+            is SessionState.Pending -> newState.driver
+            is SessionState.Frozen -> newState.driver
+            is SessionState.Approved -> newState.driver
+            else -> null
+        }
+        if (driverForWidget != null) {
+            viewModelScope.launch { updateWidgetData(context, driverForWidget) }
+        }
         val needsPolling = newState is SessionState.Pending || newState is SessionState.Frozen
         if (needsPolling && statusPollJob == null) {
             statusPollJob = viewModelScope.launch {
