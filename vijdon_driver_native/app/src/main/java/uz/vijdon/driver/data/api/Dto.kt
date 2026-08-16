@@ -242,11 +242,3 @@ data class ChatUnreadResponse(val count: Int)
  * kabi "yozmoqda..." animatsiyasi uchun, Chat ekranining tepasida). */
 @Serializable
 data class ChatTypingResponse(val typing: String? = null)
-
-@Serializable
-data class MusicTrackDto(
-    val id: Int,
-    val title: String,
-    val artist: String = "",
-    val url: String,
-)

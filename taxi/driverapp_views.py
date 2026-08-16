@@ -1230,28 +1230,3 @@ def chat_typing_status(request, driver):
     else:
         typing = None
     return Response({'typing': typing})
-
-
-# ── Musiqa ────────────────────────────────────────────────────────────────────
-
-@api_view(['GET'])
-@driver_required
-def music_tracks(request, driver):
-    """Haydovchi ilovasidagi "Musiqa" bo'limi (Asosiy'dan o'ngga surilganda
-    ochiladigan pleylist) — operator panelida qo'shilgan (`taxi/views.py:
-    music_list`) faol qo'shiqlar ro'yxati."""
-    from .models import MusicTrack
-
-    tracks = MusicTrack.objects.filter(is_active=True)
-    data = []
-    for t in tracks:
-        url = t.resolve_url()
-        if not url:
-            continue
-        data.append({
-            'id': t.id,
-            'title': t.title,
-            'artist': t.artist,
-            'url': request.build_absolute_uri(url) if url.startswith('/') else url,
-        })
-    return Response(data)

@@ -1404,35 +1404,6 @@ class OperatorPushToken(models.Model):
         unique_together = ('user', 'fcm_token')
 
 
-class MusicTrack(models.Model):
-    """Haydovchi ilovasidagi "Musiqa" bo'limi uchun operator qo'shgan
-    pleylist qatori — fayl yuklash YOKI tashqi havola (masalan biror
-    ochiq strim manzili) beriladi, ikkalasi ham bo'lsa fayl ustun turadi
-    (`resolve_url()`)."""
-    title      = models.CharField(max_length=150, verbose_name='Nomi')
-    artist     = models.CharField(max_length=150, blank=True, default='', verbose_name='Ijrochi')
-    file       = models.FileField(upload_to='music/', blank=True, null=True, verbose_name='Audio fayl')
-    url        = models.URLField(blank=True, default='', verbose_name='Tashqi havola',
-                                  help_text="Fayl yuklanmasa, shu havoladan strim qilinadi")
-    is_active  = models.BooleanField(default=True, verbose_name='Faol')
-    order      = models.PositiveIntegerField(default=0, verbose_name="Tartib raqami",
-                                              help_text="Kichigi birinchi ko'rsatiladi")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Qo'shilgan vaqti")
-
-    def resolve_url(self):
-        if self.file:
-            return self.file.url
-        return self.url or None
-
-    def __str__(self):
-        return f"{self.title} — {self.artist}" if self.artist else self.title
-
-    class Meta:
-        verbose_name = 'Musiqa'
-        verbose_name_plural = 'Musiqalar'
-        ordering = ['order', 'id']
-
-
 class SmsGatewayToken(models.Model):
     """SMS-shlyuz Android ilovasi (vijdon_sms_gateway) o'rnatilgan
     telefon(lar)ning FCM tokeni — navbatga yangi SMS qo'shilganda shu

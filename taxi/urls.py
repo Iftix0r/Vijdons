@@ -169,9 +169,4 @@ urlpatterns = [
     # ── Ovozli bildirishnomalar ──
     path('api/events/', views.panel_events_api, name='panel_events_api'),
     path('drivers/<int:pk>/contract/download/', views.driver_contract_download, name='driver_contract_download'),
-
-    # ── Musiqa (haydovchi ilovasi pleylisti) ──
-    path('musiqa/', views.music_list, name='music_list'),
-    path('musiqa/<int:pk>/delete/', views.music_delete, name='music_delete'),
-    path('musiqa/<int:pk>/toggle/', views.music_toggle, name='music_toggle'),
 ]
