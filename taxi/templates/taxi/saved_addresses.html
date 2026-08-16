@@ -9,13 +9,19 @@
             📍 Manzillar
         </h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            Haydovchi biror joyda 2+ daqiqa kutib tursa, tizim shu manzilni AVTOMATIK yaratadi — qo'lda qo'shish shart emas. Nomini istasangiz shu yerdan tahrirlashingiz mumkin.
+            Haydovchi biror joyda 2+ daqiqa kutib tursa, tizim shu manzilni AVTOMATIK yaratadi. Kerak bo'lsa qo'lda ham qo'shishingiz yoki tahrirlashingiz mumkin.
         </p>
     </div>
-    <a href="{% url 'taxi:regions_list' %}"
-       class="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 text-sm font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
-        <i class="fas fa-map"></i> Viloyatlar va tumanlar
-    </a>
+    <div class="flex items-center gap-2">
+        <button type="button" onclick="openCreateAddressModal()"
+                class="flex items-center gap-2 px-4 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold rounded-xl shadow-sm shadow-yellow-200 dark:shadow-none transition-all hover:-translate-y-0.5">
+            <i class="fas fa-plus"></i> Yangi manzil qo'shish
+        </button>
+        <a href="{% url 'taxi:regions_list' %}"
+           class="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 text-sm font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+            <i class="fas fa-map"></i> Viloyatlar va tumanlar
+        </a>
+    </div>
 </div>
 
 <!-- O'zbekiston bo'ylab manzillar ko'payishi bilan hudud bo'yicha ajratish uchun. -->
@@ -162,9 +168,11 @@
             </button>
         </div>
         <div class="overflow-y-auto flex-1">
-        <!-- Diqqat: bu modal endi FAQAT tahrirlash uchun (yangi manzil qo'lda
-             qo'shilmaydi, avtomatik yaratiladi) — action JS orqali
-             openEditAddressModal()da to'ldiriladi. -->
+        <!-- Diqqat: bu bitta modal HAM tahrirlash, HAM yangi manzil qo'shish
+             uchun ishlatiladi — qaysi rejimda ekani `openEditAddressModal()`
+             (tahrirlash) yoki `openCreateAddressModal()` (yangi qo'shish)
+             orqali JS'da belgilanadi (sarlavha/tugma matni/form action shu
+             ikkovidan biriga qarab moslanadi). -->
         <form id="sa_form" method="POST" action="" class="px-6 py-5 space-y-4">
             {% csrf_token %}
             <input type="hidden" name="lat" id="sa_lat">
@@ -224,7 +232,7 @@
                 </button>
                 <button type="submit" id="sa_submit" disabled
                         class="flex-1 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold shadow-md shadow-green-200 dark:shadow-none transition">
-                    <i class="fas fa-floppy-disk mr-1.5"></i>Yangilash
+                    <i class="fas fa-floppy-disk mr-1.5"></i><span id="sa_submit_text">Yangilash</span>
                 </button>
             </div>
         </form>
@@ -487,28 +495,56 @@
         openModal('newAddressModal');
     }
 
+    // "Yangi manzil qo'shish" tugmasi bosilganda — xuddi shu modal, lekin
+    // BO'SH holda (tahrirlash ma'lumoti yo'q) ochiladi.
+    function openCreateAddressModal() {
+        _saPendingEdit = null;
+        openModal('newAddressModal');
+    }
+
     const _origOpenSA = openModal;
     openModal = function (id) {
         _origOpenSA(id);
         if (id === 'newAddressModal') {
-            // Bu modal endi FAQAT openEditAddressModal() orqali ochiladi
-            // (yangi manzil qo'lda qo'shilmaydi), shu sabab _saPendingEdit
-            // shu yerda doim to'ldirilgan bo'ladi.
             var editing = _saPendingEdit;
-            if (!editing) return;
 
-            document.getElementById('sa_lat').value = editing.lat;
-            document.getElementById('sa_lng').value = editing.lng;
-            document.getElementById('sa_name').value = editing.name;
-            document.getElementById('sa_address').value = editing.address;
-            document.getElementById('sa_submit').disabled = false;
-            _saFillRegionOptions();
-            document.getElementById('sa_region').value = editing.regionId || '';
-            _saFillDistricts(editing.districtId);
-            document.getElementById('sa_map_hint').innerHTML =
-                '<i class="fas fa-check text-green-500"></i> Joriy nuqta — o\'zgartirish uchun xaritani qayta bosing';
-            document.getElementById('sa_form').action = '/panel/manzillar/' + editing.pk + '/edit/';
+            document.getElementById('sa_modal_title').innerHTML = editing
+                ? '<i class="fas fa-pen text-yellow-500 mr-2"></i>Manzilni tahrirlash'
+                : '<i class="fas fa-plus text-yellow-500 mr-2"></i>Yangi manzil qo\'shish';
+            document.getElementById('sa_submit_text').textContent = editing ? 'Yangilash' : "Qo'shish";
+            document.getElementById('sa_form').action = editing
+                ? '/panel/manzillar/' + editing.pk + '/edit/'
+                : '{% url "taxi:saved_address_create" %}';
 
+            if (editing) {
+                document.getElementById('sa_lat').value = editing.lat;
+                document.getElementById('sa_lng').value = editing.lng;
+                document.getElementById('sa_name').value = editing.name;
+                document.getElementById('sa_address').value = editing.address;
+                document.getElementById('sa_submit').disabled = false;
+                _saFillRegionOptions();
+                document.getElementById('sa_region').value = editing.regionId || '';
+                _saFillDistricts(editing.districtId);
+                document.getElementById('sa_map_hint').innerHTML =
+                    '<i class="fas fa-check text-green-500"></i> Joriy nuqta — o\'zgartirish uchun xaritani qayta bosing';
+            } else {
+                document.getElementById('sa_lat').value = '';
+                document.getElementById('sa_lng').value = '';
+                document.getElementById('sa_name').value = '';
+                document.getElementById('sa_address').value = '';
+                document.getElementById('sa_submit').disabled = true;
+                _saFillRegionOptions();
+                document.getElementById('sa_region').value = '';
+                _saFillDistricts();
+                document.getElementById('sa_map_hint').innerHTML =
+                    '<i class="fas fa-hand-pointer"></i> Xaritada nuqtani bosing';
+            }
+
+            // Oldingi seansdan qolgan marker (masalan tahrirlashdan keyin
+            // "Yangi manzil" ochilsa) xaritadan ham ANIQ olib tashlanadi —
+            // aks holda faqat JS o'zgaruvchisi tozalanib, eski nuqta
+            // xaritada "arvoh" bo'lib qolib ketardi.
+            if (_saPM && _saMap) { _saMap.removeLayer(_saPM); }
             _saPM = null;
             setTimeout(function () {
                 _initSavedAddressMap();

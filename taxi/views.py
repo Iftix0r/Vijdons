@@ -4918,6 +4918,28 @@ def saved_addresses_list(request):
 
 @panel_login_required
 @panel_admin_required
+def saved_address_create(request):
+    if request.method == 'POST':
+        from .models import District
+        name = request.POST.get('name', '').strip()
+        addr_text = request.POST.get('address', '').strip()
+        lat = request.POST.get('lat')
+        lng = request.POST.get('lng')
+        district_id = request.POST.get('district', '').strip()
+        if name and lat and lng:
+            SavedAddress.objects.create(
+                name=name, address=addr_text, lat=float(lat), lng=float(lng),
+                district=District.objects.filter(pk=district_id).first() if district_id else None,
+                created_by=request.user,
+            )
+            messages.success(request, f"«{name}» manzili qo'shildi.")
+        else:
+            messages.error(request, "Nomi va xaritadan nuqta tanlanishi shart.")
+    return redirect('taxi:saved_addresses_list')
+
+
+@panel_login_required
+@panel_admin_required
 def saved_address_update(request, pk):
     address = get_object_or_404(SavedAddress, pk=pk)
     if request.method == 'POST':
