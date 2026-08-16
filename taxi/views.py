@@ -2670,19 +2670,13 @@ def sos_count(request):
     return JsonResponse({'count': count})
 
 
-# ── Balans to'ldirish so'rovlari (admin panel) ──────────────────────────────
+# ── To'lovlar (balans harakatlari, admin panel) ─────────────────────────────
 
 @panel_login_required
 def topup_list(request):
     from django.db.models import Sum
     from django.utils import timezone
     from datetime import timedelta
-
-    tab = request.GET.get('tab', 'requests')
-    status_filter = request.GET.get('status', BalanceTopupRequest.STATUS_PENDING)
-    qs = BalanceTopupRequest.objects.select_related('driver').order_by('-created_at')
-    if status_filter:
-        qs = qs.filter(status=status_filter)
 
     today = timezone.now().date()
     yesterday = today - timedelta(days=1)
@@ -2730,10 +2724,6 @@ def topup_list(request):
         flow_deducted.append(float(day_logs.filter(action=BalanceLog.ACTION_DEDUCT).aggregate(s=Sum('amount'))['s'] or 0))
 
     return render(request, 'taxi/topup_list.html', {
-        'tab':           tab,
-        'requests':      qs,
-        'status_filter': status_filter,
-        'pending_count': BalanceTopupRequest.objects.filter(status=BalanceTopupRequest.STATUS_PENDING).count(),
         'drivers': Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED).order_by('full_name'),
         'total_topped_up': total_topped_up,
         'total_deducted':  total_deducted,
@@ -2791,50 +2781,6 @@ def balance_log_receipt_pdf(request, pk):
     response = HttpResponse(buf.getvalue(), content_type='application/pdf')
     response['Content-Disposition'] = f'inline; filename="chek_{log.id}.pdf"'
     return response
-
-
-@panel_login_required
-def topup_resolve(request, pk):
-    topup = get_object_or_404(BalanceTopupRequest, pk=pk)
-    if request.method == 'POST' and topup.status == BalanceTopupRequest.STATUS_PENDING:
-        from django.utils import timezone
-        action = request.POST.get('action')
-        driver = topup.driver
-        if action == 'approve':
-            driver.balance += topup.amount
-            driver.save(update_fields=['balance'])
-            BalanceLog.objects.create(
-                driver=driver, action=BalanceLog.ACTION_ADD, amount=topup.amount,
-                balance_after=driver.balance, note=f"To'lov cheki tasdiqlandi #{topup.id} (panel)",
-            )
-            DriverActivityLog.objects.create(
-                driver=driver, action=DriverActivityLog.ACTION_BALANCE,
-                detail=f"Admin (panel): to'lov cheki #{topup.id} tasdiqlandi, +{topup.amount} UZS",
-                ip_address=_get_client_ip(request), user_agent=request.META.get('HTTP_USER_AGENT', ''),
-            )
-            topup.status = BalanceTopupRequest.STATUS_APPROVED
-            tg_balance_changed(driver, topup.amount, BalanceLog.ACTION_ADD)
-            _send_fcm_to_driver(
-                driver, "💰 Balans to'ldirildi",
-                f"+{topup.amount:,.0f} so'm qo'shildi. Joriy balans: {driver.balance:,.0f} so'm".replace(',', ' '),
-                data_type='balance_changed',
-            )
-            from .utils import sms_driver_event
-            sms_driver_event(driver, 'topup_approved', amount=topup.amount)
-            messages.success(request, f"To'lov #{topup.id} tasdiqlandi — {driver.full_name} balansi: {driver.balance} UZS")
-        elif action == 'reject':
-            reason = request.POST.get('reason', '').strip()
-            topup.status = BalanceTopupRequest.STATUS_REJECTED
-            topup.reject_reason = reason
-            messages.success(request, f"To'lov #{topup.id} rad etildi.")
-            from .driver_views import send_push_to_driver
-            send_push_to_driver(
-                driver, "❌ To'lov so'rovi rad etildi",
-                f"{topup.amount} UZS to'lov so'rovingiz rad etildi." + (f" Sabab: {reason}" if reason else ''),
-            )
-        topup.resolved_at = timezone.now()
-        topup.save(update_fields=['status', 'resolved_at', 'reject_reason'])
-    return redirect(request.META.get('HTTP_REFERER', 'taxi:topup_list'))
 
 
 @panel_login_required

@@ -164,7 +164,6 @@ urlpatterns = [
     path('topups/', views.topup_list, name='topup_list'),
     path('topups/export/csv/', views.balance_log_export_csv, name='balance_log_export_csv'),
     path('topups/<int:pk>/receipt/', views.balance_log_receipt_pdf, name='balance_log_receipt_pdf'),
-    path('topups/<int:pk>/resolve/', views.topup_resolve, name='topup_resolve'),
 
     # ── Ovozli bildirishnomalar ──
     path('api/events/', views.panel_events_api, name='panel_events_api'),

@@ -212,12 +212,6 @@ class DriverRepository @Inject constructor(
 
     suspend fun balanceHistory(): ApiResult<BalanceHistoryResponse> = safeCall { api.balanceHistory() }
 
-    suspend fun requestTopup(receiptFile: File, amount: String) = safeCall {
-        val receiptBody = receiptFile.asRequestBody("image/*".toMediaType())
-        val amountBody = amount.toRequestBody("text/plain".toMediaType())
-        api.requestTopup(MultipartBody.Part.createFormData("receipt", receiptFile.name, receiptBody), amountBody)
-    }
-
     suspend fun contract(): ApiResult<ContractDto> = safeCall { api.contract() }
 
     suspend fun signContract(signatureFile: File) = safeCall {

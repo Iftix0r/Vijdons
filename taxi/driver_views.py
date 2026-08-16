@@ -15,8 +15,8 @@ from django.utils.cache import add_never_cache_headers
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .models import Driver, Order, ChatMessage, GroupMessage, TariffSettings, DriverActivityLog, BalanceLog, BalanceTopupRequest, PanelSound, ContractSettings, DriverContractSignature, SavedAddress
-from .utils import tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected, tg_driver_login, tg_duty_changed, tg_low_balance_alert, tg_topup_request, sms_order_status
+from .models import Driver, Order, ChatMessage, GroupMessage, TariffSettings, DriverActivityLog, BalanceLog, PanelSound, ContractSettings, DriverContractSignature, SavedAddress
+from .utils import tg_order_accepted, tg_order_on_way, tg_order_arrived, tg_order_completed, tg_order_cancelled, tg_order_rejected, tg_driver_login, tg_duty_changed, tg_low_balance_alert, sms_order_status
 
 
 def _get_ip(request):
@@ -1260,27 +1260,6 @@ def driver_balance_history(request, driver):
         'entries': entries,
         'driver_balance_int': int(driver.balance),
     })
-
-
-@driver_login_required
-@require_POST
-def driver_balance_topup(request, driver):
-    """Haydovchi to'lov chekini yuklab balans to'ldirishni so'raydi —
-    admin operator botdan chekni ko'rib tasdiqlaydi yoki rad etadi."""
-    receipt = request.FILES.get('receipt')
-    amount  = request.POST.get('amount', '').strip()
-    if not receipt:
-        return JsonResponse({'ok': False, 'error': 'Chek rasmi tanlanmadi'}, status=400)
-    try:
-        amount = Decimal(amount)
-        if amount <= 0:
-            raise ValueError
-    except (ValueError, TypeError):
-        return JsonResponse({'ok': False, 'error': "Summani to'g'ri kiriting"}, status=400)
-
-    topup = BalanceTopupRequest.objects.create(driver=driver, amount=amount, receipt=receipt)
-    tg_topup_request(topup, request.build_absolute_uri(topup.receipt.url))
-    return JsonResponse({'ok': True})
 
 
 @driver_login_required

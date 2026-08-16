@@ -1,7 +1,5 @@
 package uz.vijdon.driver.ui.balance
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,33 +15,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Receipt
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import uz.vijdon.driver.data.api.BalanceEntryDto
@@ -53,7 +36,6 @@ import uz.vijdon.driver.ui.theme.ErrorBanner
 import uz.vijdon.driver.ui.theme.ScreenHeader
 import uz.vijdon.driver.ui.theme.VijdonColors
 import uz.vijdon.driver.ui.theme.cardShadow
-import uz.vijdon.driver.util.copyUriToCacheFile
 import uz.vijdon.driver.util.formatMoney
 
 @Composable
@@ -118,67 +100,5 @@ private fun BalanceEntryRow(entry: BalanceEntryDto) {
             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
             maxLines = 1,
         )
-    }
-}
-
-@Composable
-fun TopupScreen(onDone: () -> Unit, viewModel: TopupViewModel = hiltViewModel()) {
-    val state by viewModel.uiState.collectAsState()
-    val context = LocalContext.current
-    var receiptFile by remember { mutableStateOf<java.io.File?>(null) }
-
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let { receiptFile = copyUriToCacheFile(context, it, "receipt.jpg") }
-    }
-
-    LaunchedEffect(state.success) { if (state.success) onDone() }
-
-    Column(modifier = Modifier.fillMaxSize().background(VijdonColors.Background).padding(16.dp)) {
-        ScreenHeader("Balans to'ldirish")
-        Spacer(Modifier.height(16.dp))
-        OutlinedTextField(
-            value = state.amount, onValueChange = viewModel::onAmountChange,
-            label = { Text("Summa (so'm)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = VijdonColors.Surface, unfocusedContainerColor = VijdonColors.Surface,
-                focusedTextColor = VijdonColors.TextPrimary, unfocusedTextColor = VijdonColors.TextPrimary,
-                focusedBorderColor = VijdonColors.Yellow,
-            ),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(Modifier.height(12.dp))
-        OutlinedButton(
-            onClick = { launcher.launch("image/*") },
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = VijdonColors.TextPrimary),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            if (receiptFile != null) {
-                Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = VijdonColors.Green, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Chek tanlandi")
-            } else {
-                Icon(Icons.Rounded.Receipt, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Chek rasmini tanlash")
-            }
-        }
-        state.error?.let {
-            Spacer(Modifier.height(8.dp))
-            Text(it, color = VijdonColors.Red)
-        }
-        Spacer(Modifier.height(20.dp))
-        Button(
-            onClick = { receiptFile?.let { viewModel.submit(it) } },
-            enabled = !state.loading && receiptFile != null,
-            colors = ButtonDefaults.buttonColors(containerColor = VijdonColors.Yellow, contentColor = VijdonColors.TextOnYellow),
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-        ) {
-            if (state.loading) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = VijdonColors.TextOnYellow, strokeWidth = 2.dp)
-            } else {
-                Text("Yuborish")
-            }
-        }
     }
 }

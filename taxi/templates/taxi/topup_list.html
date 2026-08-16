@@ -6,13 +6,8 @@
     <div>
         <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
             💳 To'lovlar
-            {% if pending_count %}
-            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500 text-white animate-pulse">
-                {{ pending_count }} kutilmoqda
-            </span>
-            {% endif %}
         </h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">To'lov so'rovlari va balans harakatlari hisoboti</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Balans harakatlari hisoboti</p>
     </div>
     <button onclick="openModal('newPaymentModal')"
             class="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl shadow-sm shadow-emerald-200 dark:shadow-none transition-all hover:-translate-y-0.5">
@@ -65,21 +60,9 @@
     <canvas id="flowChart" height="90"></canvas>
 </div>
 
-<!-- Tab tugmalari -->
-<div class="flex gap-2 mb-5">
-    <a href="?tab=requests" class="px-4 py-2 rounded-xl text-sm font-semibold transition {% if tab != 'history' %}bg-amber-500 text-white{% else %}bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50{% endif %}">
-        <i class="fas fa-inbox mr-1.5"></i>To'lov so'rovlari
-    </a>
-    <a href="?tab=history" class="px-4 py-2 rounded-xl text-sm font-semibold transition {% if tab == 'history' %}bg-amber-500 text-white{% else %}bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50{% endif %}">
-        <i class="fas fa-clock-rotate-left mr-1.5"></i>Balans tarixi
-    </a>
-</div>
-
-{% if tab == 'history' %}
 <!-- Balans tarixi filtri -->
 <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm px-5 py-4 mb-5">
     <form method="get" class="flex flex-wrap items-center gap-3">
-        <input type="hidden" name="tab" value="history">
         <input type="text" name="q" value="{{ history_q }}" placeholder="Haydovchi ismi yoki telefon..."
                class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all">
         <select name="haction"
@@ -170,13 +153,13 @@
         <p class="text-xs text-gray-400">Sahifa {{ history.number }} / {{ history.paginator.num_pages }} — jami {{ history.paginator.count }} ta</p>
         <div class="flex gap-2">
             {% if history.has_previous %}
-            <a href="?tab=history&q={{ history_q }}&haction={{ history_action }}&hstart={{ history_start }}&hend={{ history_end }}&hpage={{ history.previous_page_number }}"
+            <a href="?q={{ history_q }}&haction={{ history_action }}&hstart={{ history_start }}&hend={{ history_end }}&hpage={{ history.previous_page_number }}"
                class="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700">
                 <i class="fas fa-chevron-left"></i> Oldingi
             </a>
             {% endif %}
             {% if history.has_next %}
-            <a href="?tab=history&q={{ history_q }}&haction={{ history_action }}&hstart={{ history_start }}&hend={{ history_end }}&hpage={{ history.next_page_number }}"
+            <a href="?q={{ history_q }}&haction={{ history_action }}&hstart={{ history_start }}&hend={{ history_end }}&hpage={{ history.next_page_number }}"
                class="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700">
                 Keyingi <i class="fas fa-chevron-right"></i>
             </a>
@@ -185,120 +168,6 @@
     </div>
     {% endif %}
 </div>
-{% else %}
-
-<!-- Filter -->
-<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm px-5 py-4 mb-5">
-    <form method="get" class="flex flex-wrap gap-3">
-        <select name="status"
-                class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all">
-            <option value="pending"  {% if status_filter == 'pending' %}selected{% endif %}>🟡 Kutilmoqda</option>
-            <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>🟢 Tasdiqlangan</option>
-            <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>🔴 Rad etilgan</option>
-            <option value="">Barcha holatlar</option>
-        </select>
-        <button type="submit"
-                class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-xl transition-colors">
-            <i class="fas fa-filter mr-1"></i> Filtrlash
-        </button>
-    </form>
-</div>
-
-<!-- Table -->
-<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-            <thead>
-                <tr class="text-left text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500 font-bold bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
-                    <th class="px-5 py-3.5">#</th>
-                    <th class="px-5 py-3.5">Haydovchi</th>
-                    <th class="px-5 py-3.5">Chek</th>
-                    <th class="px-5 py-3.5">Summa</th>
-                    <th class="px-5 py-3.5">Holati</th>
-                    <th class="px-5 py-3.5">Vaqt</th>
-                    <th class="px-5 py-3.5 text-right">Amal</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
-                {% for t in requests %}
-                <tr class="hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-colors {% if t.status == 'pending' %}bg-amber-50/40 dark:bg-amber-900/10{% endif %}">
-                    <td class="px-5 py-3.5">
-                        <span class="font-bold text-gray-900 dark:text-white">#{{ t.id }}</span>
-                    </td>
-                    <td class="px-5 py-3.5">
-                        <div class="font-semibold text-gray-800 dark:text-white text-xs">{{ t.driver.full_name }}</div>
-                        <a href="tel:{{ t.driver.phone_number }}"
-                           class="text-[11px] text-blue-500 hover:text-blue-700 font-mono font-semibold flex items-center gap-1 mt-0.5">
-                            <i class="fas fa-phone text-[9px]"></i>{{ t.driver.phone_number }}
-                        </a>
-                    </td>
-                    <td class="px-5 py-3.5">
-                        <a href="{{ t.receipt.url }}" target="_blank">
-                            <img src="{{ t.receipt.url }}" alt="Chek"
-                                 class="w-12 h-12 rounded-lg object-cover border border-gray-200 dark:border-gray-700 hover:scale-150 hover:z-10 relative transition-transform">
-                        </a>
-                    </td>
-                    <td class="px-5 py-3.5">
-                        <span class="font-bold text-emerald-600 dark:text-emerald-400">{{ t.amount|floatformat:0 }} UZS</span>
-                    </td>
-                    <td class="px-5 py-3.5">
-                        {% if t.status == 'pending' %}
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 animate-pulse">
-                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Kutilmoqda
-                        </span>
-                        {% elif t.status == 'approved' %}
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Tasdiqlangan
-                        </span>
-                        {% else %}
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                            <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>Rad etilgan
-                        </span>
-                        {% if t.reject_reason %}
-                        <div class="text-[10px] text-gray-400 mt-1 max-w-[160px] truncate" title="{{ t.reject_reason }}">{{ t.reject_reason }}</div>
-                        {% endif %}
-                        {% endif %}
-                    </td>
-                    <td class="px-5 py-3.5 text-[11px] text-gray-400 whitespace-nowrap">
-                        {{ t.created_at|date:"d/m/Y H:i" }}
-                    </td>
-                    <td class="px-5 py-3.5 text-right">
-                        {% if t.status == 'pending' %}
-                        <div class="flex items-center justify-end gap-2">
-                            <form method="POST" action="{% url 'taxi:topup_resolve' t.pk %}">
-                                {% csrf_token %}
-                                <input type="hidden" name="action" value="approve">
-                                <button type="submit"
-                                        class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-500 hover:bg-green-100 hover:text-green-700 transition-colors"
-                                        title="Tasdiqlash">
-                                    <i class="fas fa-check text-xs"></i>
-                                </button>
-                            </form>
-                            <button type="button" onclick="openRejectModal({{ t.pk }})"
-                                    class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 hover:text-red-700 transition-colors"
-                                    title="Rad etish">
-                                <i class="fas fa-xmark text-xs"></i>
-                            </button>
-                        </div>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="7" class="text-center py-14">
-                        <div class="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-300 dark:text-gray-600 text-2xl mx-auto mb-3">
-                            💳
-                        </div>
-                        <p class="font-semibold text-gray-700 dark:text-gray-300">To'lov so'rovlari topilmadi</p>
-                        <p class="text-xs text-gray-400 mt-1">Hozircha hech qanday balans to'ldirish so'rovi yo'q.</p>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-{% endif %}
 
 <!-- ══ Yangi to'lov modali ══ -->
 <div id="newPaymentModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
@@ -352,37 +221,6 @@
         </form>
     </div>
 </div>
-
-<!-- ══ Rad etish modali ══ -->
-<div id="rejectTopupModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl border border-gray-100 dark:border-gray-800">
-        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
-            <h2 class="text-base font-bold text-gray-900 dark:text-white"><i class="fas fa-xmark text-red-500 mr-2"></i>To'lovni rad etish</h2>
-            <button onclick="closeModal('rejectTopupModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
-                <i class="fas fa-times text-sm"></i>
-            </button>
-        </div>
-        <form id="rejectTopupForm" method="POST" class="px-6 py-5 space-y-4">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="reject">
-            <div>
-                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Sabab (ixtiyoriy, haydovchiga ko'rinadi)</label>
-                <textarea name="reason" rows="3" placeholder="Masalan: chek noaniq, summasi mos kelmadi..."
-                          class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400 dark:text-white transition"></textarea>
-            </div>
-            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
-                <button type="button" onclick="closeModal('rejectTopupModal')"
-                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-                    Bekor qilish
-                </button>
-                <button type="submit"
-                        class="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold shadow-md shadow-red-200 dark:shadow-none transition">
-                    Rad etish
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -391,11 +229,6 @@
 function onNewPaymentDriverChange() {
     const id = document.getElementById('np-driver').value;
     document.getElementById('newPaymentForm').action = id ? `/panel/drivers/${id}/recharge/` : '';
-}
-
-function openRejectModal(topupId) {
-    document.getElementById('rejectTopupForm').action = `/panel/topups/${topupId}/resolve/`;
-    openModal('rejectTopupModal');
 }
 
 (function(){

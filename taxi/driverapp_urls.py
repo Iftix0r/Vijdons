@@ -35,7 +35,6 @@ urlpatterns = [
     path('profile/password/', v.profile_password, name='profile_password'),
 
     path('balance/history/', v.balance_history, name='balance_history'),
-    path('balance/topup/',   v.balance_topup,   name='balance_topup'),
 
     path('contract/',      v.contract_detail, name='contract_detail'),
     path('contract/sign/', v.contract_sign,   name='contract_sign'),

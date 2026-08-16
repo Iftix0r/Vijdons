@@ -763,29 +763,6 @@ def balance_history(request, driver):
     return Response({'entries': entries[:100], 'balance': str(driver.balance)})
 
 
-@api_view(['POST'])
-@driver_required
-def balance_topup(request, driver):
-    from decimal import InvalidOperation
-    from .models import BalanceTopupRequest
-    from .utils import tg_topup_request
-
-    receipt = request.FILES.get('receipt')
-    amount_raw = str(request.data.get('amount', '')).strip()
-    if not receipt:
-        return Response({'detail': 'Chek rasmi tanlanmadi.'}, status=400)
-    try:
-        amount = Decimal(amount_raw)
-        if amount <= 0:
-            raise ValueError
-    except (ValueError, InvalidOperation):
-        return Response({'detail': "Summani to'g'ri kiriting."}, status=400)
-
-    topup = BalanceTopupRequest.objects.create(driver=driver, amount=amount, receipt=receipt)
-    tg_topup_request(topup, request.build_absolute_uri(topup.receipt.url))
-    return Response({'detail': "So'rov yuborildi. Admin tasdiqlashini kuting."}, status=201)
-
-
 # ── Shartnoma ───────────────────────────────────────────────────────────────────
 
 @api_view(['GET'])
