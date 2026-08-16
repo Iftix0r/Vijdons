@@ -320,53 +320,104 @@
     let _saMap = null;
     let _saPM  = null;
     // Tahrirlash rejimida openEditAddressModal() shu yerga joriy nuqtani
-    // qo'yadi — xarita hali tayyor bo'lmasa ham (ymaps yuklanishi kech
-    // kelishi mumkin), tayyor bo'lgach _applyPendingEditMarker() shu
-    // qiymatni o'qib, markerni joyiga qo'yadi.
+    // qo'yadi — xarita hali tayyor bo'lmasa ham, tayyor bo'lgach
+    // _applyPendingEditMarker() shu qiymatni o'qib, markerni joyiga qo'yadi.
     let _saPendingEdit = null;
+
+    function _saYellowDotIcon() {
+        return L.divIcon({
+            html: '<div style="width:16px;height:16px;border-radius:50%;background:#eab308;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);"></div>',
+            className: '', iconSize: [16, 16], iconAnchor: [8, 8],
+        });
+    }
 
     function _applyPendingEditMarker() {
         if (!_saPendingEdit || !_saMap) return;
         var coords = [_saPendingEdit.lat, _saPendingEdit.lng];
-        if (_saPM) _saMap.geoObjects.remove(_saPM);
-        _saPM = new ymaps.Placemark(coords, {}, { preset: 'islands#yellowDotIcon' });
-        _saMap.geoObjects.add(_saPM);
-        _saMap.setCenter(coords, 15);
+        if (_saPM) _saMap.removeLayer(_saPM);
+        _saPM = L.marker(coords, { icon: _saYellowDotIcon() }).addTo(_saMap);
+        _saMap.setView(coords, 15);
+    }
+
+    // Yandex'ning o'rnatilgan `searchControl` qidiruv qutisi o'rnini bosadi —
+    // kalitsiz Nominatim orqali (backend proksi, `panel_geocode_search`).
+    function _wireGeoSearch(inputId, resultsId, onSelect) {
+        var input = document.getElementById(inputId);
+        var box = document.getElementById(resultsId);
+        if (!input || !box) return;
+        var t = null;
+        input.addEventListener('input', function () {
+            clearTimeout(t);
+            var q = input.value.trim();
+            if (q.length < 3) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+            t = setTimeout(function () {
+                fetch('{% url "taxi:panel_geocode_search" %}?q=' + encodeURIComponent(q))
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        var results = data.results || [];
+                        box.innerHTML = results.length
+                            ? results.map(function (r, i) {
+                                return '<button type="button" data-i="' + i + '" class="w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 border-b border-gray-100 dark:border-gray-800 last:border-0">' + r.display_name + '</button>';
+                            }).join('')
+                            : '<div class="px-3 py-2 text-xs text-gray-400">Hech narsa topilmadi</div>';
+                        box.classList.remove('hidden');
+                        box.querySelectorAll('button[data-i]').forEach(function (btn) {
+                            btn.addEventListener('click', function () {
+                                var r = results[parseInt(btn.dataset.i)];
+                                box.classList.add('hidden');
+                                input.value = r.display_name;
+                                onSelect(r.lat, r.lng, r.display_name);
+                            });
+                        });
+                    }).catch(function () {});
+            }, 400);
+        });
+        document.addEventListener('click', function (e) {
+            if (e.target !== input && !box.contains(e.target)) box.classList.add('hidden');
+        });
+    }
+
+    function _setSavedAddressPoint(coords) {
+        if (_saPM) _saMap.removeLayer(_saPM);
+        _saPM = L.marker(coords, { icon: _saYellowDotIcon() }).addTo(_saMap);
+        document.getElementById('sa_lat').value = coords[0];
+        document.getElementById('sa_lng').value = coords[1];
+        document.getElementById('sa_map_hint').innerHTML = '<i class="fas fa-check text-green-500"></i> Nuqta belgilandi';
+        document.getElementById('sa_submit').disabled = !document.getElementById('sa_name').value.trim();
     }
 
     function _initSavedAddressMap() {
-        if (!window.ymaps || _saMap) return;
-        ymaps.ready(function () {
-            if (_saMap) return;
-            _saMap = new ymaps.Map('sa_map', {
-                center: [41.2995, 69.2401],
-                zoom: 12,
-                controls: ['zoomControl', 'searchControl', 'fullscreenControl']
-            });
-            _saMap.events.add('click', function (e) {
-                var coords = e.get('coords');
-                if (_saPM) _saMap.geoObjects.remove(_saPM);
-                _saPM = new ymaps.Placemark(coords, {}, { preset: 'islands#yellowDotIcon' });
-                _saMap.geoObjects.add(_saPM);
-                document.getElementById('sa_lat').value = coords[0];
-                document.getElementById('sa_lng').value = coords[1];
-                document.getElementById('sa_map_hint').innerHTML = '<i class="fas fa-check text-green-500"></i> Nuqta belgilandi';
-                document.getElementById('sa_submit').disabled = !document.getElementById('sa_name').value.trim();
-                ymaps.geocode(coords, { results: 1 }).then(function (res) {
-                    var obj = res.geoObjects.get(0);
-                    if (obj) {
+        if (typeof L === 'undefined' || _saMap) return;
+        _saMap = L.map('sa_map', { zoomControl: true }).setView([41.2995, 69.2401], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            maxZoom: 19,
+        }).addTo(_saMap);
+        _saMap.on('click', function (e) {
+            var coords = [e.latlng.lat, e.latlng.lng];
+            _setSavedAddressPoint(coords);
+            fetch('{% url "taxi:panel_geocode_reverse" %}?lat=' + coords[0] + '&lng=' + coords[1])
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    if (res.address) {
                         var addrField = document.getElementById('sa_address');
-                        if (!addrField.value.trim()) addrField.value = obj.getAddressLine();
+                        if (!addrField.value.trim()) addrField.value = res.address;
                     }
                 }).catch(function () {});
-            });
-            // Manzil tanlashda hozir qayerda ko'p haydovchi (online/offline
-            // hammasi) borligini ko'rib, o'shanga yaqin nuqta tanlash uchun —
-            // dispatch qilinadigan xarita emas (bosish faqat nuqta belgilaydi),
-            // shu sabab off-duty/offline haydovchilar ham ko'rsatiladi.
-            _loadSavedAddressMapDrivers();
-            _applyPendingEditMarker();
         });
+        _wireGeoSearch('sa_geo_search', 'sa_geo_search_results', function (lat, lng, displayName) {
+            var coords = [lat, lng];
+            _setSavedAddressPoint(coords);
+            _saMap.setView(coords, 15);
+            var addrField = document.getElementById('sa_address');
+            if (!addrField.value.trim()) addrField.value = displayName;
+        });
+        // Manzil tanlashda hozir qayerda ko'p haydovchi (online/offline
+        // hammasi) borligini ko'rib, o'shanga yaqin nuqta tanlash uchun —
+        // dispatch qilinadigan xarita emas (bosish faqat nuqta belgilaydi),
+        // shu sabab off-duty/offline haydovchilar ham ko'rsatiladi.
+        _loadSavedAddressMapDrivers();
+        _applyPendingEditMarker();
     }
 
     let _saDriverMarks = {};
@@ -374,9 +425,10 @@
 
     function _saDriverIconLayout(d) {
         var color = d.is_online ? '#22c55e' : '#9ca3af';
-        return ymaps.templateLayoutFactory.createClass(
-            '<div style="width:14px;height:14px;border-radius:50%;background:' + color + ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);"></div>'
-        );
+        return L.divIcon({
+            html: '<div style="width:14px;height:14px;border-radius:50%;background:' + color + ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);"></div>',
+            className: '', iconSize: [14, 14], iconAnchor: [7, 7],
+        });
     }
 
     function _loadSavedAddressMapDrivers() {
@@ -392,20 +444,17 @@
                     var coords = [d.latitude, d.longitude];
                     var hint = d.full_name + ' · ' + d.car_model + ' ' + d.car_number + ' · ' + (d.is_online ? 'Online' : 'Offline');
                     if (_saDriverMarks[id]) {
-                        _saDriverMarks[id].geometry.setCoordinates(coords);
-                        _saDriverMarks[id].options.set('iconLayout', _saDriverIconLayout(d));
+                        _saDriverMarks[id].setLatLng(coords);
+                        _saDriverMarks[id].setIcon(_saDriverIconLayout(d));
                     } else {
-                        var pm = new ymaps.Placemark(coords, { hintContent: hint }, {
-                            iconLayout: _saDriverIconLayout(d),
-                            iconShape: { type: 'Circle', coordinates: [7, 7], radius: 8 }
-                        });
-                        _saMap.geoObjects.add(pm);
+                        var pm = L.marker(coords, { icon: _saDriverIconLayout(d) }).addTo(_saMap);
+                        pm.bindTooltip(hint);
                         _saDriverMarks[id] = pm;
                     }
                 });
                 Object.keys(_saDriverMarks).forEach(function (id) {
                     if (!seen[id]) {
-                        _saMap.geoObjects.remove(_saDriverMarks[id]);
+                        _saMap.removeLayer(_saDriverMarks[id]);
                         delete _saDriverMarks[id];
                     }
                 });
@@ -460,14 +509,17 @@
             _saPM = null;
             setTimeout(function () {
                 _initSavedAddressMap();
+                // Modal avval `display:none` edi — Leaflet shu paytda
+                // konteyner o'lchamini noto'g'ri (0x0) hisoblab qolishi
+                // mumkin ("kulrang katakchalar" klassik muammosi), shu
+                // sabab modal ko'ringanidan keyin o'lcham qayta hisoblanadi.
+                if (_saMap) _saMap.invalidateSize();
                 _loadSavedAddressMapDrivers();
                 _startSavedAddressMapDrivers();
                 // Diqqat: _saPendingEdit bu yerda TOZALANMAYDI — xarita
-                // hali tayyor bo'lmasa, _initSavedAddressMap ichidagi
-                // ymaps.ready keyinroq (shu setTimeout'dan ham kech)
-                // ishga tushib, _applyPendingEditMarker()ni yana chaqiradi
-                // va o'sha vaqtda ham qiymat kerak bo'ladi. Tozalash
-                // closeModal'da amalga oshadi (pastda).
+                // qayta ochilganda ham (_saMap allaqachon mavjud bo'lsa)
+                // shu qiymat kerak bo'ladi. Tozalash closeModal'da amalga
+                // oshadi (pastda).
                 _applyPendingEditMarker();
             }, 150);
         }
@@ -481,6 +533,10 @@
             // Endi tozalaymiz — keyingi safar oddiy "Yangi manzil" tugmasi
             // bosilsa, eski tahrirlash ma'lumoti qolib ketmasin.
             _saPendingEdit = null;
+            var searchInput = document.getElementById('sa_geo_search');
+            if (searchInput) searchInput.value = '';
+            var searchResults = document.getElementById('sa_geo_search_results');
+            if (searchResults) searchResults.classList.add('hidden');
         }
     };
 </script>

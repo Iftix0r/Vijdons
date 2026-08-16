@@ -382,93 +382,107 @@
 
 {% block extra_js %}
 {% if order.from_lat and order.from_lng %}
+<!-- Leaflet allaqachon taxi/base.html'da global yuklangan -->
 <script>
-ymaps.ready(function() {
-    var map = new ymaps.Map('detail_map', {
-        center: [{{ order.from_lat|unlocalize }}, {{ order.from_lng|unlocalize }}],
-        zoom: 13,
-        controls: ['zoomControl']
-    });
-
-    // Marshrut nuqtalari — mavjud bo'lganlari ketma-ket ulanadi
-    // (boshlanish -> yo'lga chiqqan -> yetib kelgan/kutish -> tugash).
-    // Yakunlangan buyurtmalarda bu haydovchi bosgan yo'lni ko'rgazmali
-    // qiladi.
-    var routePoints = [];
-
-    map.geoObjects.add(new ymaps.Placemark(
-        [{{ order.from_lat|unlocalize }}, {{ order.from_lng|unlocalize }}],
-        { balloonContent: "Boshlanish (mijoz manzili): {{ order.from_address|escapejs }}" },
-        { preset: 'islands#greenDotIcon' }
-    ));
-    routePoints.push([{{ order.from_lat|unlocalize }}, {{ order.from_lng|unlocalize }}]);
-
-    {% if order.on_way_lat and order.on_way_lng %}
-    map.geoObjects.add(new ymaps.Placemark(
-        [{{ order.on_way_lat|unlocalize }}, {{ order.on_way_lng|unlocalize }}],
-        { balloonContent: "Yo'lga chiqqan joyi: {{ order.on_way_address|default:''|escapejs }}" },
-        { preset: 'islands#violetDotIcon' }
-    ));
-    routePoints.push([{{ order.on_way_lat|unlocalize }}, {{ order.on_way_lng|unlocalize }}]);
-    {% endif %}
-
-    {% if order.arrived_lat and order.arrived_lng %}
-    map.geoObjects.add(new ymaps.Placemark(
-        [{{ order.arrived_lat|unlocalize }}, {{ order.arrived_lng|unlocalize }}],
-        { balloonContent: "Yetib kelgan / kutish boshlangan joyi: {{ order.arrived_address|default:''|escapejs }}" },
-        { preset: 'islands#blueDotIcon' }
-    ));
-    routePoints.push([{{ order.arrived_lat|unlocalize }}, {{ order.arrived_lng|unlocalize }}]);
-    {% endif %}
-
-    {% if order.to_lat and order.to_lng %}
-    map.geoObjects.add(new ymaps.Placemark(
-        [{{ order.to_lat|unlocalize }}, {{ order.to_lng|unlocalize }}],
-        { balloonContent: "Tugash nuqtasi: {{ order.to_address|escapejs }}" },
-        { preset: 'islands#redDotIcon' }
-    ));
-    routePoints.push([{{ order.to_lat|unlocalize }}, {{ order.to_lng|unlocalize }}]);
-    {% endif %}
-
-    if (routePoints.length > 1) {
-        map.geoObjects.add(new ymaps.Polyline(routePoints, {}, {
-            strokeColor: '#94a3b8',
-            strokeWidth: 3,
-            strokeStyle: 'shortdash'
-        }));
+(function () {
+    function dotIcon(color) {
+        return L.divIcon({
+            html: '<div style="width:16px;height:16px;border-radius:50%;background:' + color + ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);"></div>',
+            className: '', iconSize: [16, 16], iconAnchor: [8, 8],
+        });
+    }
+    function captionIcon(color, caption) {
+        var html = '<div style="display:flex;flex-direction:column;align-items:center;">' +
+            '<div style="width:16px;height:16px;border-radius:50%;background:' + color + ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);"></div>' +
+            '<div style="margin-top:2px;padding:1px 6px;background:#fff;border-radius:6px;font-size:10px;font-weight:700;color:' + color + ';box-shadow:0 1px 3px rgba(0,0,0,.25);white-space:nowrap;">' + caption + '</div>' +
+            '</div>';
+        return L.divIcon({ html: html, className: '', iconSize: [16, 36], iconAnchor: [8, 16] });
     }
 
-    map.setBounds(map.geoObjects.getBounds(), { checkZoomRange: true, zoomMargin: 40 });
+    function boot() {
+        var map = L.map('detail_map', { zoomControl: true }).setView(
+            [{{ order.from_lat|unlocalize }}, {{ order.from_lng|unlocalize }}], 13
+        );
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            maxZoom: 19,
+        }).addTo(map);
 
-    {% if order.status == 'accepted' or order.status == 'on_way' or order.status == 'arrived' %}
-    // Haydovchining JONLI joylashuvi — buyurtma hali faol bo'lgani uchun
-    // sahifa ochiq turgan payt har 5 soniyada bir yangilanadi.
-    var driverMark = null;
-    function refreshDriverLocation() {
-        fetch('{% url "taxi:order_driver_location" order.pk %}', { cache: 'no-store' })
-            .then(function(r) { return r.json(); })
-            .then(function(d) {
-                if (!d.available) return;
-                var coords = [d.lat, d.lng];
-                if (!driverMark) {
-                    driverMark = new ymaps.Placemark(coords, {
-                        balloonContent: "Haydovchining joriy joylashuvi"
-                    }, {
-                        preset: 'islands#darkOrangeDotIconWithCaption',
-                        iconCaption: "Haydovchi"
-                    });
-                    map.geoObjects.add(driverMark);
-                } else {
-                    driverMark.geometry.setCoordinates(coords);
-                }
-            })
-            .catch(function() {});
+        // Marshrut nuqtalari — mavjud bo'lganlari ketma-ket ulanadi
+        // (boshlanish -> yo'lga chiqqan -> yetib kelgan/kutish -> tugash).
+        // Yakunlangan buyurtmalarda bu haydovchi bosgan yo'lni ko'rgazmali
+        // qiladi.
+        var routePoints = [];
+        var allLayers = [];
+
+        var fromMark = L.marker(
+            [{{ order.from_lat|unlocalize }}, {{ order.from_lng|unlocalize }}],
+            { icon: dotIcon('#22c55e') }
+        ).addTo(map).bindPopup("Boshlanish (mijoz manzili): {{ order.from_address|escapejs }}");
+        allLayers.push(fromMark);
+        routePoints.push([{{ order.from_lat|unlocalize }}, {{ order.from_lng|unlocalize }}]);
+
+        {% if order.on_way_lat and order.on_way_lng %}
+        var onWayMark = L.marker(
+            [{{ order.on_way_lat|unlocalize }}, {{ order.on_way_lng|unlocalize }}],
+            { icon: dotIcon('#8b5cf6') }
+        ).addTo(map).bindPopup("Yo'lga chiqqan joyi: {{ order.on_way_address|default:''|escapejs }}");
+        allLayers.push(onWayMark);
+        routePoints.push([{{ order.on_way_lat|unlocalize }}, {{ order.on_way_lng|unlocalize }}]);
+        {% endif %}
+
+        {% if order.arrived_lat and order.arrived_lng %}
+        var arrivedMark = L.marker(
+            [{{ order.arrived_lat|unlocalize }}, {{ order.arrived_lng|unlocalize }}],
+            { icon: dotIcon('#3b82f6') }
+        ).addTo(map).bindPopup("Yetib kelgan / kutish boshlangan joyi: {{ order.arrived_address|default:''|escapejs }}");
+        allLayers.push(arrivedMark);
+        routePoints.push([{{ order.arrived_lat|unlocalize }}, {{ order.arrived_lng|unlocalize }}]);
+        {% endif %}
+
+        {% if order.to_lat and order.to_lng %}
+        var toMark = L.marker(
+            [{{ order.to_lat|unlocalize }}, {{ order.to_lng|unlocalize }}],
+            { icon: dotIcon('#ef4444') }
+        ).addTo(map).bindPopup("Tugash nuqtasi: {{ order.to_address|escapejs }}");
+        allLayers.push(toMark);
+        routePoints.push([{{ order.to_lat|unlocalize }}, {{ order.to_lng|unlocalize }}]);
+        {% endif %}
+
+        if (routePoints.length > 1) {
+            var route = L.polyline(routePoints, { color: '#94a3b8', weight: 3, dashArray: '6,6' }).addTo(map);
+            allLayers.push(route);
+        }
+
+        map.fitBounds(L.featureGroup(allLayers).getBounds(), { padding: [40, 40] });
+
+        {% if order.status == 'accepted' or order.status == 'on_way' or order.status == 'arrived' %}
+        // Haydovchining JONLI joylashuvi — buyurtma hali faol bo'lgani uchun
+        // sahifa ochiq turgan payt har 5 soniyada bir yangilanadi.
+        var driverMark = null;
+        function refreshDriverLocation() {
+            fetch('{% url "taxi:order_driver_location" order.pk %}', { cache: 'no-store' })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (!d.available) return;
+                    var coords = [d.lat, d.lng];
+                    if (!driverMark) {
+                        driverMark = L.marker(coords, { icon: captionIcon('#c2410c', 'Haydovchi') })
+                            .addTo(map).bindPopup('Haydovchining joriy joylashuvi');
+                    } else {
+                        driverMark.setLatLng(coords);
+                    }
+                })
+                .catch(function() {});
+        }
+        refreshDriverLocation();
+        var driverLocInterval = setInterval(refreshDriverLocation, 5000);
+        window.addEventListener('beforeunload', function() { clearInterval(driverLocInterval); });
+        {% endif %}
     }
-    refreshDriverLocation();
-    var driverLocInterval = setInterval(refreshDriverLocation, 5000);
-    window.addEventListener('beforeunload', function() { clearInterval(driverLocInterval); });
-    {% endif %}
-});
+
+    if (typeof L !== 'undefined') { boot(); } else { document.addEventListener('DOMContentLoaded', boot); }
+})();
 </script>
 {% endif %}
 {% endblock %}
