@@ -2766,6 +2766,30 @@ AI_CHAT_TOOLS = [
     {
         'type': 'function',
         'function': {
+            'name': 'explain_rating',
+            'description': "Haydovchining reytingi so'nggi 30 kunda nega shunday ekanini (nechta buyurtma yakunlagani/bekor qilgani asosida) tushuntiradi. Faqat ma'lumot beradi.",
+            'parameters': {'type': 'object', 'properties': {}, 'required': []},
+        },
+    },
+    {
+        'type': 'function',
+        'function': {
+            'name': 'get_nearby_queue_info',
+            'description': "Haydovchining joriy GPS'iga eng yaqin saqlangan manzillarda hozir nechta haydovchi navbatda turganini qaytaradi. Faqat ma'lumot beradi.",
+            'parameters': {'type': 'object', 'properties': {}, 'required': []},
+        },
+    },
+    {
+        'type': 'function',
+        'function': {
+            'name': 'get_balance_history',
+            'description': "Haydovchining so'nggi balans to'ldirish so'rovlari tarixini (summa, sana, holati) qaytaradi. Faqat ma'lumot beradi.",
+            'parameters': {'type': 'object', 'properties': {}, 'required': []},
+        },
+    },
+    {
+        'type': 'function',
+        'function': {
             'name': 'escalate_to_operator',
             'description': "Sen yecha olmaydigan yoki haydovchi aniq 'odam bilan gaplashmoqchiman' degan muammoni operatorlar guruhiga USTUVOR (shoshilinch) belgi bilan yuboradi.",
             'parameters': {
@@ -2848,13 +2872,17 @@ def generate_ai_chat_reply(driver, history):
         "`cancel_active_order` funksiyasini chaqir — birinchi so'ragan zahoti emas.\n"
         "2) Onlayn/oflayn almashtirish (`toggle_duty_status`) — past xavfli, so'ralishi "
         "bilan darhol chaqirsang bo'ladi, qo'shimcha tasdiq shart emas.\n"
-        "3) Bugungi statistika (`get_today_stats`) — faqat ma'lumot, darhol chaqir.\n"
+        "3) Bugungi statistika (`get_today_stats`), reyting tushuntirishi (`explain_rating`), "
+        "yaqin manzillardagi navbat holati (`get_nearby_queue_info`), balans to'ldirish "
+        "tarixi (`get_balance_history`) — hammasi faqat ma'lumot beradi, darhol chaqirsang "
+        "bo'ladi, tasdiq shart emas.\n"
         "4) Agar haydovchining muammosini o'zing hal qila olmasang, yoki u aniq odam bilan "
         "gaplashmoqchi bo'lsa — `escalate_to_operator`ni qisqa sabab bilan chaqir.\n"
-        "5) Balansni to'ldirish so'ralsa — o'zing amalga oshira olmaysing (chek rasmi kerak, "
-        "senda rasm yuklash imkoniyati yo'q). Buning o'rniga: ilovadagi \"Balans\" bo'limiga "
-        "o'tib, \"To'ldirish\" tugmasini bosib, to'lov chekini rasmga olib yuklashi kerakligini "
-        "tushuntir.\n"
+        "5) Balansni TO'LDIRISHNI (yangi so'rov yaratishni) so'rasa — o'zing amalga oshira "
+        "olmaysing (chek rasmi kerak, senda rasm yuklash imkoniyati yo'q). Buning o'rniga: "
+        "ilovadagi \"Balans\" bo'limiga o'tib, \"To'ldirish\" tugmasini bosib, to'lov chekini "
+        "rasmga olib yuklashi kerakligini tushuntir. Lekin AVVALGI to'ldirish so'rovlari "
+        "TARIXINI so'rasa (masalan \"oxirgi to'ldirishlarim\"), `get_balance_history`ni chaqir.\n"
         "Agar faol buyurtma yo'q bo'lsa, `cancel_active_order` chaqirma — buni aytib qo'y."
     )
 
@@ -2950,6 +2978,73 @@ def ai_escalate_to_operator(driver, reason):
         f"Sabab: {reason}",
     )
     return True, "Operatorlarga xabar berdim, tez orada siz bilan bog'lanishadi."
+
+
+def ai_explain_rating(driver):
+    """AI-chat orqali — reyting so'nggi 30 kunda NEGA shunday ekanini
+    (nechta buyurtma yakunlagani/bekor qilgani asosida) tushuntiradi.
+    Aniq arifmetik hisob-kitob va'da qilmaydi (reyting MIN/MAX'da
+    to'xtab qolgan bo'lishi mumkin) — faqat umumiy tendensiyani ko'rsatadi."""
+    from django.utils import timezone
+    import datetime
+    from taxi.models import Order
+
+    cutoff = timezone.now() - datetime.timedelta(days=30)
+    completed = Order.objects.filter(driver=driver, status='completed', updated_at__gte=cutoff).count()
+    cancelled = Order.objects.filter(driver=driver, status='cancelled', updated_at__gte=cutoff).count()
+    if completed == 0 and cancelled == 0:
+        return True, f"So'nggi 30 kunda buyurtma tarixingiz yo'q. Joriy reytingingiz: {driver.rating}."
+    text = (
+        f"So'nggi 30 kunda {completed} ta buyurtma yakunladingiz (har biri reytingni ozgina "
+        f"ko'taradi) va {cancelled} ta buyurtma bekor qilindi (har biri sezilarli pasaytiradi). "
+        f"Joriy reytingingiz: {driver.rating}. "
+    )
+    if cancelled > 0:
+        text += "Reytingni ko'tarish uchun buyurtmalarni kamroq bekor qilib, ko'proq yakunlang."
+    return True, text
+
+
+def ai_nearby_queue_info(driver):
+    """AI-chat orqali — haydovchining joriy GPS'iga eng yaqin saqlangan
+    manzillarda hozir nechta haydovchi navbatda turganini qaytaradi
+    (`driver_all_addresses`/`addresses_list`dagi bilan bir xil bulk
+    Count() hisoblash, faqat matn ko'rinishida)."""
+    import datetime
+    from django.db.models import Count, Q as DQ
+    from django.utils import timezone
+    from taxi.models import SavedAddress
+
+    online_cutoff = timezone.now() - datetime.timedelta(seconds=120)
+    addresses = list(SavedAddress.objects.annotate(
+        queue_count=Count('queue_entries', filter=DQ(
+            queue_entries__left_at__isnull=True, queue_entries__driver__is_active=True,
+            queue_entries__driver__is_on_duty=True, queue_entries__driver__approval_status='approved',
+            queue_entries__driver__last_seen__gte=online_cutoff,
+        )),
+    ))
+    if not addresses:
+        return True, "Hozircha saqlangan manzillar yo'q."
+    if driver.latitude and driver.longitude:
+        addresses.sort(key=lambda a: haversine(driver.latitude, driver.longitude, a.lat, a.lng) or float('inf'))
+    addresses = addresses[:6]
+    lines = [f"- {a.name}: {a.queue_count} kishi navbatda" for a in addresses]
+    return True, "Yaqin manzillardagi navbat holati:\n" + "\n".join(lines)
+
+
+def ai_balance_history(driver):
+    """AI-chat orqali — so'nggi balans to'ldirish so'rovlari tarixini
+    (summa, sana, holati) qaytaradi."""
+    from django.utils import timezone
+    from taxi.models import BalanceTopupRequest
+
+    recent = BalanceTopupRequest.objects.filter(driver=driver).order_by('-created_at')[:5]
+    if not recent:
+        return True, "Hali birorta balans to'ldirish so'rovingiz yo'q."
+    lines = []
+    for r in recent:
+        when = timezone.localtime(r.created_at).strftime('%d.%m.%Y')
+        lines.append(f"- {when}: {r.amount} so'm — {r.get_status_display()}")
+    return True, "So'nggi to'ldirish so'rovlaringiz:\n" + "\n".join(lines)
 
 
 def build_contract_pdf(contract, driver=None, signature=None):

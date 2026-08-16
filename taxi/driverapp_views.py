@@ -1065,7 +1065,10 @@ def _run_ai_chat_reply(driver_id):
     def _run():
         from django.utils import timezone
         from .models import ChatMessage, Driver
-        from .utils import generate_ai_chat_reply, ai_toggle_duty, ai_today_stats, ai_escalate_to_operator
+        from .utils import (
+            generate_ai_chat_reply, ai_toggle_duty, ai_today_stats, ai_escalate_to_operator,
+            ai_explain_rating, ai_nearby_queue_info, ai_balance_history,
+        )
 
         try:
             driver = Driver.objects.get(pk=driver_id)
@@ -1095,6 +1098,12 @@ def _run_ai_chat_reply(driver_id):
                 _ok, result_text = ai_toggle_duty(driver)
             elif tool_name == 'get_today_stats':
                 _ok, result_text = ai_today_stats(driver)
+            elif tool_name == 'explain_rating':
+                _ok, result_text = ai_explain_rating(driver)
+            elif tool_name == 'get_nearby_queue_info':
+                _ok, result_text = ai_nearby_queue_info(driver)
+            elif tool_name == 'get_balance_history':
+                _ok, result_text = ai_balance_history(driver)
             elif tool_name == 'escalate_to_operator':
                 _ok, result_text = ai_escalate_to_operator(driver, (tool_args or {}).get('reason', ''))
 
