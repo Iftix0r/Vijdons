@@ -2738,30 +2738,73 @@ def generate_growth_insights(stats):
         return False, f'Tarmoq xatosi: {e}'
 
 
+AI_CHAT_TOOLS = [
+    {
+        'type': 'function',
+        'function': {
+            'name': 'cancel_active_order',
+            'description': "Haydovchining joriy faol buyurtmasini bekor qiladi. FAQAT haydovchi aniq tasdiqlagandan keyin chaqir.",
+            'parameters': {'type': 'object', 'properties': {}, 'required': []},
+        },
+    },
+    {
+        'type': 'function',
+        'function': {
+            'name': 'toggle_duty_status',
+            'description': "Haydovchining onlayn/oflayn (navbat) holatini almashtiradi — hozir onlayn bo'lsa oflaynga, aksincha. Past xavfli amal, alohida tasdiq so'rash shart emas.",
+            'parameters': {'type': 'object', 'properties': {}, 'required': []},
+        },
+    },
+    {
+        'type': 'function',
+        'function': {
+            'name': 'get_today_stats',
+            'description': "Haydovchining BUGUNGI yakunlangan buyurtmalar soni va jami daromadini qaytaradi. Faqat ma'lumot beradi, hech narsani o'zgartirmaydi.",
+            'parameters': {'type': 'object', 'properties': {}, 'required': []},
+        },
+    },
+    {
+        'type': 'function',
+        'function': {
+            'name': 'escalate_to_operator',
+            'description': "Sen yecha olmaydigan yoki haydovchi aniq 'odam bilan gaplashmoqchiman' degan muammoni operatorlar guruhiga USTUVOR (shoshilinch) belgi bilan yuboradi.",
+            'parameters': {
+                'type': 'object',
+                'properties': {'reason': {'type': 'string', 'description': "Muammoning qisqa tavsifi, o'zbek tilida"}},
+                'required': ['reason'],
+            },
+        },
+    },
+]
+
+
 def generate_ai_chat_reply(driver, history):
     """Haydovchi ilovasidagi "Chat" bo'limida AI yordamchi javobini
     generatsiya qiladi — `generate_growth_insights()` bilan bir xil xom
     HTTP naqsh (`openai` python paketisiz), faqat bu yerda OpenAI'ning
-    "function calling" (`tools`) imkoniyati ham ishlatiladi, chunki AI
-    haqiqiy amal (buyurtmani bekor qilish) so'ray olishi kerak.
+    "function calling" (`tools`, `AI_CHAT_TOOLS`) imkoniyati ham
+    ishlatiladi, chunki AI haqiqiy amallar (buyurtmani bekor qilish,
+    onlayn/oflayn almashtirish, operatorga eskalatsiya) so'ray olishi kerak.
 
     `history` — [{'role': 'user'|'assistant', 'content': str}, ...]
     (oxirgi ChatMessage'lardan qurilgan, eng eskisi birinchi).
 
-    Qaytaradi: (reply_text, tool_name) — `tool_name` odatda `None`, faqat
-    AI `cancel_active_order`ni chaqirishga qaror qilsa shu nom qaytadi
-    (bu holda `reply_text` odatda bo'sh/`None` bo'ladi — chaqiruvchi
-    `ai_cancel_active_order()` natijasini haqiqiy javob sifatida yozadi).
-    Xato/sozlanmagan holatda (None, None) — chaqiruvchi jim o'tkazib
-    yuboradi, operator odatdagidek qo'lda javob beraveradi."""
+    Qaytaradi: (reply_text, tool_name, tool_args) — `tool_name` odatda
+    `None`. AI biror funksiyani chaqirishga qaror qilsa, shu funksiya nomi
+    va argumentlari (dict) qaytadi — bu holda `reply_text` odatda bo'sh
+    bo'ladi, chaqiruvchi mos `ai_*()` funksiyasini ishga tushirib, UNING
+    natijasini haqiqiy javob sifatida yozadi. Xato/sozlanmagan holatda
+    (None, None, None) — chaqiruvchi jim o'tkazib yuboradi, operator
+    odatdagidek qo'lda javob beraveradi."""
     try:
-        from taxi.models import AiSettings, Order
+        from taxi.models import AiSettings, Order, TariffSettings
+        from django.utils import timezone
         cfg = AiSettings.get()
     except Exception:
-        return None, None
+        return None, None, None
 
     if not cfg.api_key or not cfg.chat_ai_enabled:
-        return None, None
+        return None, None, None
 
     active_order = Order.objects.filter(driver=driver, status__in=Order.ACTIVE_STATUSES).order_by('-id').first()
     if active_order:
@@ -2772,18 +2815,47 @@ def generate_ai_chat_reply(driver, history):
     else:
         order_context = "Hozir faol buyurtmasi yo'q."
 
+    tariff = TariffSettings.get()
+    tariff_context = (
+        f"Joriy tarif: bazaviy narx {tariff.base_price} so'm, km narxi {tariff.price_per_km} so'm, "
+        f"kutish (1 daqiqa) {tariff.waiting_price_per_minute} so'm, komissiya {tariff.commission} so'm."
+    )
+
+    recent_orders = Order.objects.filter(driver=driver, status='completed').order_by('-created_at')[:5]
+    if recent_orders:
+        lines = []
+        for o in recent_orders:
+            when = timezone.localtime(o.created_at).strftime('%d.%m %H:%M') if o.created_at else '?'
+            lines.append(f"- {when}: {o.from_address} → {o.to_address or '?'}, {o.price or 0} so'm")
+        history_context = "So'nggi yakunlangan buyurtmalari:\n" + "\n".join(lines)
+    else:
+        history_context = "Hali yakunlangan buyurtmasi yo'q."
+
     system_prompt = (
         "Sen Vijdon Taxi haydovchilar ilovasidagi \"Chat\" bo'limidagi AI yordamchisan. "
         "Faqat shu haydovchining O'ZIGA tegishli savollariga (ish tartibi, buyurtma, balans, "
-        "navbat, umumiy savol-javob) qisqa va aniq, faqat o'zbek tilida javob ber. "
+        "navbat, tarif, umumiy savol-javob) qisqa va aniq, faqat o'zbek tilida javob ber. "
         "Boshqa haydovchi/mijoz haqida ma'lumot bera olmaysan va berma.\n\n"
-        f"Haydovchi: {driver.full_name}. Balansi: {driver.balance} so'm. {order_context}\n\n"
-        "Agar haydovchi buyurtmasini bekor qilishni so'rasa: AVVAL qaysi buyurtma ekanini "
-        "(yuqoridagi kontekstdan) tasdiqla va ANIQ savol ber (\"#{id} buyurtmasini bekor "
-        "qilishni tasdiqlaysizmi?\"). Haydovchi ANIQ ha/tasdiq (\"ha\", \"tasdiqlayman\", "
-        "\"bekor qil\" kabi qat'iy javob) BERGANDAN KEYINGINA `cancel_active_order` "
-        "funksiyasini chaqir — birinchi so'ragan zahoti emas, faqat tasdiqdan keyin. "
-        "Agar faol buyurtma yo'q bo'lsa, buni aytib qo'y, funksiya chaqirma."
+        f"Haydovchi: {driver.full_name}. Balansi: {driver.balance} so'm. "
+        f"Holati: {'onlayn' if driver.is_on_duty else 'oflayn'}. {order_context}\n"
+        f"{tariff_context}\n"
+        f"{history_context}\n\n"
+        "Amallar bo'yicha qoidalar:\n"
+        "1) Buyurtmani bekor qilish — ENG XAVFLI amal. Haydovchi so'raganda AVVAL qaysi "
+        "buyurtma ekanini (yuqoridagi kontekstdan) tasdiqla va ANIQ savol ber (\"#{id} "
+        "buyurtmasini bekor qilishni tasdiqlaysizmi?\"). Haydovchi ANIQ ha/tasdiq (\"ha\", "
+        "\"tasdiqlayman\", \"bekor qil\" kabi qat'iy javob) BERGANDAN KEYINGINA "
+        "`cancel_active_order` funksiyasini chaqir — birinchi so'ragan zahoti emas.\n"
+        "2) Onlayn/oflayn almashtirish (`toggle_duty_status`) — past xavfli, so'ralishi "
+        "bilan darhol chaqirsang bo'ladi, qo'shimcha tasdiq shart emas.\n"
+        "3) Bugungi statistika (`get_today_stats`) — faqat ma'lumot, darhol chaqir.\n"
+        "4) Agar haydovchining muammosini o'zing hal qila olmasang, yoki u aniq odam bilan "
+        "gaplashmoqchi bo'lsa — `escalate_to_operator`ni qisqa sabab bilan chaqir.\n"
+        "5) Balansni to'ldirish so'ralsa — o'zing amalga oshira olmaysing (chek rasmi kerak, "
+        "senda rasm yuklash imkoniyati yo'q). Buning o'rniga: ilovadagi \"Balans\" bo'limiga "
+        "o'tib, \"To'ldirish\" tugmasini bosib, to'lov chekini rasmga olib yuklashi kerakligini "
+        "tushuntir.\n"
+        "Agar faol buyurtma yo'q bo'lsa, `cancel_active_order` chaqirma — buni aytib qo'y."
     )
 
     messages = [{'role': 'system', 'content': system_prompt}] + history
@@ -2791,14 +2863,7 @@ def generate_ai_chat_reply(driver, history):
         'model': cfg.model or 'gpt-4o-mini',
         'messages': messages,
         'temperature': 0.4,
-        'tools': [{
-            'type': 'function',
-            'function': {
-                'name': 'cancel_active_order',
-                'description': "Haydovchining joriy faol buyurtmasini bekor qiladi. FAQAT haydovchi aniq tasdiqlagandan keyin chaqir.",
-                'parameters': {'type': 'object', 'properties': {}, 'required': []},
-            },
-        }],
+        'tools': AI_CHAT_TOOLS,
         'tool_choice': 'auto',
     }).encode()
     req = urllib.request.Request(
@@ -2815,15 +2880,76 @@ def generate_ai_chat_reply(driver, history):
             data = json.loads(resp.read().decode())
         message = data['choices'][0]['message']
         tool_calls = message.get('tool_calls') or []
-        for call in tool_calls:
-            if call.get('function', {}).get('name') == 'cancel_active_order':
-                return None, 'cancel_active_order'
+        if tool_calls:
+            call = tool_calls[0]
+            fn = call.get('function', {})
+            name = fn.get('name')
+            try:
+                args = json.loads(fn.get('arguments') or '{}')
+            except (TypeError, json.JSONDecodeError):
+                args = {}
+            if name in {t['function']['name'] for t in AI_CHAT_TOOLS}:
+                return None, name, args
         reply = (message.get('content') or '').strip()
         if not reply:
-            return None, None
-        return reply, None
+            return None, None, None
+        return reply, None, None
     except Exception:
-        return None, None
+        return None, None, None
+
+
+def ai_toggle_duty(driver):
+    """AI-chat orqali onlayn/oflayn holatini almashtiradi —
+    `driverapp_views.py:duty_toggle`dagi bilan bir xil mantiq (navbat
+    yozuvini yopish, faoliyat jurnali, Telegram xabari), faqat `request`
+    obyektisiz (fon oqimida ishlaydi) chaqirish mumkin bo'lishi uchun
+    `_log_activity()` o'rniga to'g'ridan-to'g'ri yoziladi."""
+    from django.utils import timezone
+    from taxi.models import AddressQueueEntry, DriverActivityLog
+
+    driver.is_on_duty = not driver.is_on_duty
+    driver.save(update_fields=['is_on_duty'])
+    if not driver.is_on_duty:
+        AddressQueueEntry.objects.filter(driver=driver, left_at__isnull=True).update(left_at=timezone.now())
+    action = DriverActivityLog.ACTION_DUTY_ON if driver.is_on_duty else DriverActivityLog.ACTION_DUTY_OFF
+    DriverActivityLog.objects.create(driver=driver, action=action, detail='AI-chat orqali', ip_address=None, user_agent='AI-chat')
+    tg_duty_changed(driver, driver.is_on_duty)
+    state = 'onlayn' if driver.is_on_duty else 'oflayn'
+    return True, f"Endi siz {state}siz."
+
+
+def ai_today_stats(driver):
+    """AI-chat orqali — haydovchining bugungi yakunlangan buyurtmalari
+    soni va jami daromadini qaytaradi. Faqat o'qish, hech narsa
+    o'zgartirmaydi."""
+    from django.utils import timezone
+    from django.db.models import Sum, Count
+    from taxi.models import Order
+
+    today = timezone.localdate()
+    agg = Order.objects.filter(
+        driver=driver, status='completed', created_at__date=today,
+    ).aggregate(count=Count('id'), total=Sum('price'))
+    count = agg['count'] or 0
+    total = agg['total'] or 0
+    if count == 0:
+        return True, "Bugun hali yakunlangan buyurtmangiz yo'q."
+    return True, f"Bugun {count} ta buyurtma yakunladingiz, jami {total:.0f} so'm ishladingiz."
+
+
+def ai_escalate_to_operator(driver, reason):
+    """AI-chat orqali — AI o'zi yecha olmaydigan yoki haydovchi aniq odam
+    bilan gaplashmoqchi bo'lgan holatni operatorlar guruhiga USTUVOR
+    belgi bilan yuboradi (oddiy xabarlar ham Telegramga ketadi,
+    `chat_private_send`da — bu ALOHIDA, ko'zga tashlanadigan shoshilinch
+    xabar)."""
+    reason = (reason or "aniqlanmagan").strip()
+    send_telegram(
+        f"🚨 <b>USTUVOR — AI yordamchi operator e'tiborini so'ramoqda</b>\n"
+        f"👤 <b>{driver.full_name}</b> | <code>{driver.phone_number}</code>\n"
+        f"Sabab: {reason}",
+    )
+    return True, "Operatorlarga xabar berdim, tez orada siz bilan bog'lanishadi."
 
 
 def build_contract_pdf(contract, driver=None, signature=None):

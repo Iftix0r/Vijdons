@@ -1064,7 +1064,7 @@ def _run_ai_chat_reply(driver_id):
 
     def _run():
         from .models import ChatMessage, Driver
-        from .utils import generate_ai_chat_reply
+        from .utils import generate_ai_chat_reply, ai_toggle_duty, ai_today_stats, ai_escalate_to_operator
 
         try:
             driver = Driver.objects.get(pk=driver_id)
@@ -1078,10 +1078,19 @@ def _run_ai_chat_reply(driver_id):
             {'role': 'user' if m.sender == ChatMessage.SENDER_DRIVER else 'assistant', 'content': m.text}
             for m in reversed(recent) if m.text
         ]
-        reply_text, tool_name = generate_ai_chat_reply(driver, history)
+        reply_text, tool_name, tool_args = generate_ai_chat_reply(driver, history)
+        result_text = None
         if tool_name == 'cancel_active_order':
             from .views import ai_cancel_active_order
             _ok, result_text = ai_cancel_active_order(driver)
+        elif tool_name == 'toggle_duty_status':
+            _ok, result_text = ai_toggle_duty(driver)
+        elif tool_name == 'get_today_stats':
+            _ok, result_text = ai_today_stats(driver)
+        elif tool_name == 'escalate_to_operator':
+            _ok, result_text = ai_escalate_to_operator(driver, (tool_args or {}).get('reason', ''))
+
+        if result_text:
             ChatMessage.objects.create(driver=driver, sender=ChatMessage.SENDER_AI, text=result_text)
         elif reply_text:
             ChatMessage.objects.create(driver=driver, sender=ChatMessage.SENDER_AI, text=reply_text)
