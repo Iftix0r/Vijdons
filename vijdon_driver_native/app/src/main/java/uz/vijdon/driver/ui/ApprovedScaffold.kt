@@ -30,7 +30,7 @@ import uz.vijdon.driver.ui.chat.ChatScreen
 import uz.vijdon.driver.ui.contract.ContractScreen
 import uz.vijdon.driver.ui.history.HistoryScreen
 import uz.vijdon.driver.ui.home.HomeScreen
-import uz.vijdon.driver.ui.ordercreate.OrderCreateScreen
+import uz.vijdon.driver.ui.starttrip.StartTripScreen
 import uz.vijdon.driver.ui.profile.ProfileScreen
 import uz.vijdon.driver.ui.rating.RatingScreen
 import uz.vijdon.driver.ui.sos.SosScreen
@@ -130,7 +130,7 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
                     chatBadge = chatUnread,
                     profilePhotoUrl = driver.photo_url,
                     onTabSelected = ::goToTab,
-                    onCreateOrder = { navController.navigate(SubRoutes.ORDER_CREATE) },
+                    onStartTrip = { navController.navigate(SubRoutes.ORDER_CREATE) },
                 )
             }
         },
@@ -198,7 +198,7 @@ fun ApprovedScaffold(driver: DriverDto, onLogout: () -> Unit) {
                     enterTransition = { pushEnter }, exitTransition = { pushExit },
                     popEnterTransition = { popEnter }, popExitTransition = { popExit },
                 ) {
-                    OrderCreateScreen(
+                    StartTripScreen(
                         onDone = { navController.popBackStack() },
                         onBack = { navController.popBackStack() },
                     )

@@ -17,6 +17,7 @@ urlpatterns = [
     path('orders/available/',       v.orders_available, name='orders_available'),
     path('orders/my/',              v.orders_my,         name='orders_my'),
     path('orders/create/',          v.order_create,      name='order_create'),
+    path('orders/start_taximeter/', v.order_start_taximeter, name='order_start_taximeter'),
     # Diqqat: `meter/` kabi aniq yo'llar generik `<action>` naqshidan YO'Q —
     # bu yerda har bir amal alohida view, shu sabab tartib muammosi yo'q
     # (driver_urls.py'dagi eslatma shu loyihada dolzarb emas).

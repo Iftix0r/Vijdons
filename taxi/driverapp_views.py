@@ -574,6 +574,70 @@ def order_create(request, driver):
     return Response(DriverAppOrderSerializer(order, context={'driver': driver}).data, status=201)
 
 
+@api_view(['POST'])
+@driver_required
+def order_start_taximeter(request, driver):
+    """"+" tugmasi — ko'chada to'xtatib olingan yo'lovchi uchun, hech qanday
+    forma to'ldirmasdan darhol taksimetrni ishga tushiradi. Buyurtma
+    to'g'ridan-to'g'ri 'on_way' holatida yaratiladi (komissiya darhol
+    yechiladi — "o'zi uchun" oddiy buyurtma yaratishdagi bilan bir xil),
+    manzil haydovchining joriy GPS'idan keladi. Telefon raqami talab
+    qilinmaydi — mijoz o'rniga noyob vaqtinchalik ("yolda-...") Client
+    yoziladi; ilova taksimetrni avtomatik davom ettiradi (har qanday
+    'on_way' buyurtma uchun `HomeViewModel.ensureTaximeter()` ishlaydi),
+    alohida hech narsa qilish shart emas."""
+    from django.utils import timezone
+    from .models import Client
+    from .utils import tg_order_accepted, tg_low_balance_alert, capture_order_action_location, _schedule_reverse_geocode
+
+    try:
+        lat = float(request.data.get('lat'))
+        lng = float(request.data.get('lng'))
+    except (TypeError, ValueError):
+        lat, lng = driver.latitude, driver.longitude
+    if lat is None or lng is None:
+        return Response({'detail': "Joylashuv aniqlanmadi. Birozdan keyin qayta urinib ko'ring."}, status=400)
+
+    active_count = Order.objects.filter(driver=driver, status__in=Order.ACTIVE_STATUSES).count()
+    if active_count >= Order.MAX_ACTIVE_PER_DRIVER:
+        return Response({
+            'detail': f"Bir vaqtda ko'pi bilan {Order.MAX_ACTIVE_PER_DRIVER} ta faol buyurtma olish mumkin.",
+        }, status=400)
+
+    tariff = TariffSettings.get()
+    commission = tariff.commission
+    if driver.balance < commission:
+        return Response({'detail': f'Balans yetarli emas. Komissiya: {commission} UZS'}, status=400)
+
+    # Telefon raqami hali yo'q — noyob vaqtinchalik Client (bir nechta
+    # ko'cha-safari BITTA umumiy "mijoz"ga qo'shilib ketmasin, chunki
+    # `Client.phone_number` `unique=True`). Haydovchi xohlasa, safar
+    # davomida/keyin haqiqiy raqamni alohida kiritishi mumkin bo'ladi.
+    import uuid
+    client = Client.objects.create(phone_number=f'yolda-{uuid.uuid4().hex[:10]}')
+
+    order = Order.objects.create(
+        client=client, driver=driver, from_address=f'{lat:.5f}, {lng:.5f}', from_lat=lat, from_lng=lng,
+        payment_type=Order.PAYMENT_CASH, car_type=driver.car_type,
+        commission=commission, status='on_way', created_by_driver=driver,
+        tmx_start_time=timezone.now(),
+    )
+    # `from_address` ni ham (koordinata o'rniga) haqiqiy manzil nomi bilan
+    # yangilash uchun — `capture_order_action_location`dagi bilan bir xil
+    # fon-oqimi naqshi (tashqi HTTP so'rov tugma bosilishini bloklamasin).
+    _schedule_reverse_geocode(order.pk, 'from_address', lat, lng)
+    update_fields = capture_order_action_location(order, 'on_way', 'accepted', lat, lng)
+    if update_fields:
+        order.save(update_fields=update_fields)
+
+    driver.balance -= Decimal(str(commission))
+    driver.save(update_fields=['balance'])
+    _log_activity(driver, DriverActivityLog.ACTION_ORDER, f"Taksimetr bilan safar boshladi — buyurtma #{order.id}", request)
+    tg_order_accepted(order, driver)
+    tg_low_balance_alert(driver)
+    return Response(DriverAppOrderSerializer(order, context={'driver': driver}).data, status=201)
+
+
 # ── Tarix / Reyting ────────────────────────────────────────────────────────────
 
 @api_view(['GET'])

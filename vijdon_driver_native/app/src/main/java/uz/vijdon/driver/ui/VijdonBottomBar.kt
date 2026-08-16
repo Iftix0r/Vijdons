@@ -60,8 +60,8 @@ private val DispatchMarkIcon: ImageVector by lazy {
 /**
  * Pastki navigatsiya paneli — `demo.html` maketidagi kabi: to'liq kenglikda,
  * yuqorida ajratuvchi chiziq bilan, markazda "-mt-5" uslubida biroz yuqoriga
- * chiqarilgan, soyali kvadrat "Buyurtma yaratish" FAB tugmasi. Diqqat: matn
- * yorliqlari ATAYIN yo'q — faqat kattaroq, ma'nosi aniq ikonkalar orqali.
+ * chiqarilgan, soyali kvadrat "Taksimetrni boshlash" FAB tugmasi. Diqqat:
+ * matn yorliqlari ATAYIN yo'q — faqat kattaroq, ma'nosi aniq ikonkalar orqali.
  */
 @Composable
 fun VijdonBottomBar(
@@ -69,7 +69,7 @@ fun VijdonBottomBar(
     chatBadge: Int,
     profilePhotoUrl: String?,
     onTabSelected: (String) -> Unit,
-    onCreateOrder: () -> Unit,
+    onStartTrip: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth().background(VijdonColors.Surface.copy(alpha = 0.96f))) {
         HorizontalDivider(color = VijdonColors.Border)
@@ -83,7 +83,7 @@ fun VijdonBottomBar(
         ) {
             BottomTab(DispatchMarkIcon, "Asosiy", selected = currentRoute == Tabs.HOME) { onTabSelected(Tabs.HOME) }
             BottomTab(Icons.Rounded.History, "Tarix", selected = currentRoute == Tabs.HISTORY) { onTabSelected(Tabs.HISTORY) }
-            FabButton(onClick = onCreateOrder)
+            FabButton(onClick = onStartTrip)
             BottomTab(Icons.AutoMirrored.Rounded.Chat, "Chat", selected = currentRoute == Tabs.CHAT, badge = chatBadge) { onTabSelected(Tabs.CHAT) }
             ProfileBottomTab(photoUrl = profilePhotoUrl, selected = currentRoute == Tabs.PROFILE) { onTabSelected(Tabs.PROFILE) }
         }
@@ -147,9 +147,11 @@ private fun ProfileBottomTab(photoUrl: String?, selected: Boolean, onClick: () -
 }
 
 /**
- * Markaziy "Buyurtma yaratish" tugmasi — panel ustidan biroz chiqib turadi
- * (`-mt-5`), atrofida panel foni rangida "halqa" (`border-4 border-slate-50`)
- * bilan ajratilgan, shu sabab pastki panel ustiga "kesib qo'yilgandek" ko'rinadi.
+ * Markaziy tugma — bosilsa forma so'ramasdan DARHOL taksimetrni ishga
+ * tushiradi (ko'chada to'xtatib olingan yo'lovchi uchun, `StartTripScreen`).
+ * Panel ustidan biroz chiqib turadi (`-mt-5`), atrofida panel foni rangida
+ * "halqa" (`border-4 border-slate-50`) bilan ajratilgan, shu sabab pastki
+ * panel ustiga "kesib qo'yilgandek" ko'rinadi.
  */
 @Composable
 private fun FabButton(onClick: () -> Unit) {
@@ -172,6 +174,6 @@ private fun FabButton(onClick: () -> Unit) {
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Rounded.Add, contentDescription = "Buyurtma yaratish", tint = VijdonColors.TextOnYellow, modifier = Modifier.size(24.dp))
+        Icon(Icons.Rounded.Add, contentDescription = "Taksimetrni boshlash", tint = VijdonColors.TextOnYellow, modifier = Modifier.size(24.dp))
     }
 }

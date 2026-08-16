@@ -39,8 +39,8 @@ interface DriverApiService {
     @GET("orders/my/")
     suspend fun myOrders(): List<OrderDto>
 
-    @POST("orders/create/")
-    suspend fun createOrder(@Body body: Map<String, String>): OrderDto
+    @POST("orders/start_taximeter/")
+    suspend fun startTaximeterOrder(@Body body: Map<String, String>): OrderDto
 
     @POST("orders/{id}/accept/")
     suspend fun acceptOrder(@Path("id") id: Int): OrderDto
