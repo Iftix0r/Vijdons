@@ -407,26 +407,16 @@
                 </div>
             </div>
 
-            <!-- Harita mode toggle -->
-            <div class="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800/40">
-                <i class="fas fa-map-marked-alt text-yellow-600 text-sm"></i>
-                <span class="text-xs font-semibold text-yellow-800 dark:text-yellow-300 flex-1">
-                    Xaritadan belgilang → eng yaqin haydovchiga avtomatik beriladi
-                </span>
-                <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" id="use_map_toggle" class="sr-only peer" checked onchange="toggleOrderMap(this.checked)">
-                    <div class="w-9 h-5 bg-gray-300 peer-checked:bg-yellow-500 rounded-full peer-focus:ring-2 peer-focus:ring-yellow-300 transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-transform peer-checked:after:translate-x-4"></div>
-                </label>
-            </div>
-
-            <!-- Xarita (Leaflet + OSM) -->
+            <!-- Xarita (Leaflet + OSM) — doim yoniq: xaritadan belgilash eng
+                 yaqin haydovchiga avtomatik taqsimlash uchun shart, shu
+                 sabab uni o'chirib qo'yish imkoniyati olib tashlandi. -->
             <div id="order_map_wrap">
                 <div class="flex items-center gap-1.5 mb-2">
-                    <select id="om_addr_region" onchange="_omOnRegionChange()"
+                    <select id="om_addr_region" name="quick_filter_region" onchange="_omOnRegionChange()"
                             class="px-2 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
                         <option value="">Barcha viloyatlar</option>
                     </select>
-                    <select id="om_addr_district" onchange="_omOnDistrictChange()" disabled
+                    <select id="om_addr_district" name="quick_filter_district" onchange="_omOnDistrictChange()" disabled
                             class="px-2 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition disabled:opacity-50">
                         <option value="">Barcha tumanlar</option>
                     </select>
@@ -977,25 +967,6 @@
         _odriverInfo = {};
     }
 
-    function toggleOrderMap(show) {
-        document.getElementById('order_map_wrap').style.display = show ? '' : 'none';
-        // Xarita orqali belgilaganda manzilni qo'lda yozish shart emas — reverse-geocode
-        // avtomatik to'ldiradi. Xarita o'chirilganda esa qo'lda yozish yagona yo'l bo'lgani
-        // uchun majburiy qilamiz.
-        document.getElementById('om_from_address').required = !show;
-        document.getElementById('om_from_address_hint').textContent = show
-            ? "(xarita bosilganda avtomatik to'ladi)" : "(majburiy)";
-        document.getElementById('om_from_address_hint').className = show
-            ? 'text-gray-400 font-normal normal-case' : 'text-red-400 font-normal normal-case';
-        if (!show) {
-            // koordinatalarni tozalash
-            document.getElementById('om_from_lat').value = '';
-            document.getElementById('om_from_lng').value = '';
-            document.getElementById('om_to_lat').value   = '';
-            document.getElementById('om_to_lng').value   = '';
-        }
-    }
-
     // Yandex'ning "islands#greenDotIconWithCaption" presetiga o'xshash —
     // yashil nuqta + ostida qisqa matnli yorliq.
     function _fromPinIcon(caption) {
@@ -1361,7 +1332,6 @@
             if (typeof window._resetOrderLookupInfo === 'function') window._resetOrderLookupInfo();
             document.getElementById('map_from_text').textContent = 'Qayerdan belgilanmagan';
             document.getElementById('map_from_badge').className = 'flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/40';
-            toggleOrderMap(document.getElementById('use_map_toggle').checked);
             setTimeout(_initOrderMap, 150);
         }
     };

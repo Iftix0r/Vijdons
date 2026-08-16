@@ -294,6 +294,27 @@ def order_create(request):
             # qilib olishi mumkin edi.
             if has_coords and driver is None and tariff.auto_dispatch:
                 dispatch_order(order)
+            elif driver is None and tariff.auto_dispatch:
+                # Xaritadan aniq nuqta belgilanmagan (qo'lda yozilgan manzil),
+                # lekin operator "Tezkor" filtridan viloyat/tuman tanlagan
+                # bo'lsa — o'sha hududdagi eng tanish (ko'p ishlatilgan)
+                # nuqtadan foydalanib taqsimlashga urinib ko'riladi (haqiqiy
+                # from_lat/from_lng ga YOZILMAYDI — faqat taqsimlash uchun),
+                # aks holda bunday buyurtma umuman taqsimlanmasdan
+                # to'g'ridan-to'g'ri BUTUN kompaniya bo'yicha umumiy tabloga
+                # tushib ketardi, garchi operator aniq hududni ko'rsatgan
+                # bo'lsa ham. Muvaffaqiyatsiz bo'lsa (masalan shu hududda
+                # yaqin atrofda hech kim topilmasa) — baribir umumiy tabloga
+                # tushadi, faqat OXIRGI chora sifatida.
+                filter_district_id = request.POST.get('quick_filter_district', '').strip()
+                filter_region_id = request.POST.get('quick_filter_region', '').strip()
+                anchor = None
+                if filter_district_id:
+                    anchor = SavedAddress.objects.filter(district_id=filter_district_id).order_by('-usage_count').first()
+                elif filter_region_id:
+                    anchor = SavedAddress.objects.filter(district__region_id=filter_region_id).order_by('-usage_count').first()
+                if anchor:
+                    dispatch_order(order, override_from_coords=(anchor.lat, anchor.lng))
 
             from .utils import log_system_event
             log_system_event(

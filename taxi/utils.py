@@ -2529,7 +2529,7 @@ def mark_driver_debt_from_order(driver, order, commission):
     DriverActivityLog.objects.create(driver=driver, action=DriverActivityLog.ACTION_QARZ_ON, detail=note)
 
 
-def dispatch_order(order):
+def dispatch_order(order, override_from_coords=None):
     """
     Buyurtmani navbatma-navbat eng yaqin/adolatli haydovchilarga yuborish.
 
@@ -2544,7 +2544,16 @@ def dispatch_order(order):
     Aks holda (manzil navbatiga tegishli bo'lmasa) — TariffSettings dagi
     Score (masofa + adolat vazni − kutish bonusi) bo'yicha eng mos
     haydovchi tanlanadi, max_dispatch_attempts sonigacha urinadi.
-    """
+
+    `override_from_coords` — (lat, lng) berilsa, buyurtmaning HAQIQIY
+    `from_lat`/`from_lng`si (bazada `None` bo'lishi mumkin — masalan manzil
+    qo'lda yozilgan, xaritadan belgilanmagan) o'rniga shu koordinata
+    taqsimlash uchun ishlatiladi, lekin ORDER'GA YOZILMAYDI (narx/masofa
+    hisob-kitobi haqiqiy — noma'lum — manzilga bog'liq bo'lib qolaveradi).
+    `order_create()` buni operator "Tezkor" filtridan viloyat/tuman
+    tanlagan, lekin xaritadan aniq nuqta belgilamagan holatda ishlatadi —
+    aks holda bunday buyurtma umuman taqsimlanmasdan, to'g'ridan-to'g'ri
+    BUTUN kompaniya bo'yicha umumiy tabloga tushib ketardi."""
     from django.utils import timezone
     from taxi.models import TariffSettings, Driver
 
@@ -2552,14 +2561,16 @@ def dispatch_order(order):
     if order.status != 'pending':
         return None
 
-    if not order.from_lat or not order.from_lng:
+    from_lat = override_from_coords[0] if override_from_coords else order.from_lat
+    from_lng = override_from_coords[1] if override_from_coords else order.from_lng
+    if not from_lat or not from_lng:
         return None
 
     tariff = TariffSettings.get()
     attempts_count = order.rejected_by.count()
     rejected_ids = list(order.rejected_by.values_list('id', flat=True))
 
-    address = find_matching_saved_address(order.from_lat, order.from_lng)
+    address = find_matching_saved_address(from_lat, from_lng)
 
     if address:
         # ── Manzil navbati (sodda, "kim birinchi kelgan") ──
@@ -2574,7 +2585,7 @@ def dispatch_order(order):
                 order.dispatched_to = None
                 order.save(update_fields=['dispatched_to'])
             return None
-        dist = haversine(order.from_lat, order.from_lng, nearest.latitude, nearest.longitude)
+        dist = haversine(from_lat, from_lng, nearest.latitude, nearest.longitude)
     else:
         # ── Oddiy Score bo'yicha taqsimlash ──
         if attempts_count >= tariff.max_dispatch_attempts:
@@ -2599,7 +2610,7 @@ def dispatch_order(order):
             return None
 
         nearest, dist = find_fairest_driver(
-            candidates, order.from_lat, order.from_lng,
+            candidates, from_lat, from_lng,
             tariff.fairness_weight_km, tariff.fairness_max_radius_km,
         )
         if not nearest:
