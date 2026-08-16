@@ -163,10 +163,17 @@ class DriverRepository @Inject constructor(
         lng?.let { put("lng", it.toString()) }
     }
 
-    suspend fun orderComplete(id: Int, distKm: Double?, price: Double?): ApiResult<OrderDto> = safeCall {
+    suspend fun orderComplete(id: Int, distKm: Double?, price: Double?, lat: Double? = null, lng: Double? = null): ApiResult<OrderDto> = safeCall {
         val body = buildMap {
             distKm?.let { put("tmx_dist_km", it.toString()) }
             price?.let { put("tmx_price", it.toString()) }
+            // "Yetib keldim" bosqichi endi ko'p holatda o'tkazib
+            // yuboriladi (on_way -> to'g'ridan-to'g'ri completed) — shu
+            // sabab "yetib kelingan joy" endi shu yerda yuboriladi, aks
+            // holda backend (`capture_order_action_location`) buni hech
+            // qachon yoza olmay qolardi.
+            lat?.let { put("lat", it.toString()) }
+            lng?.let { put("lng", it.toString()) }
         }
         api.orderComplete(id, body)
     }

@@ -52,6 +52,15 @@ def capture_order_action_location(order, new_status, original_status, lat, lng):
     chaqiradi) — bunday holda ham bosilgan ondagi joylashuv "yetib kelingan
     joy" sifatida saqlanadi.
 
+    Diqqat: manzil NOMI (`on_way_address`/`arrived_address`) shu yerda
+    SINXRON hisoblanmaydi — `reverse_geocode_address()` tashqi HTTP so'rov
+    (Yandex/Nominatim, 5s gacha) bo'lgani uchun, avval haydovchi "Yo'lga
+    chiqdim"/"Yetib keldim"/"Yakunlash" tugmasini bosganda shu javobni
+    kutib, bir necha soniya "osilib" qolardi — ayniqsa internet sekin
+    bo'lganda. Endi koordinata darhol saqlanadi, manzil NOMI esa fon
+    oqimida (`_schedule_reverse_geocode`) keyinroq alohida yoziladi —
+    tugma javobi endi geocoder tezligiga bog'liq emas.
+
     Qaytaradi: yangilangan maydon nomlari ro'yxati (bo'sh bo'lishi mumkin)."""
     if lat is None or lng is None:
         return []
@@ -62,14 +71,30 @@ def capture_order_action_location(order, new_status, original_status, lat, lng):
     if new_status == 'on_way':
         order.on_way_lat = lat
         order.on_way_lng = lng
-        order.on_way_address = reverse_geocode_address(lat, lng) or ''
-        return ['on_way_lat', 'on_way_lng', 'on_way_address']
+        _schedule_reverse_geocode(order.pk, 'on_way_address', lat, lng)
+        return ['on_way_lat', 'on_way_lng']
     if new_status == 'arrived' or (new_status == 'completed' and original_status == 'on_way' and order.arrived_lat is None):
         order.arrived_lat = lat
         order.arrived_lng = lng
-        order.arrived_address = reverse_geocode_address(lat, lng) or ''
-        return ['arrived_lat', 'arrived_lng', 'arrived_address']
+        _schedule_reverse_geocode(order.pk, 'arrived_address', lat, lng)
+        return ['arrived_lat', 'arrived_lng']
     return []
+
+
+def _schedule_reverse_geocode(order_pk, field_name, lat, lng):
+    """`reverse_geocode_address()` ni fon oqimida bajaradi va natijani
+    to'g'ridan-to'g'ri (alohida) UPDATE bilan yozadi — chaqiruvchining
+    `order.save(update_fields=...)` bilan poyga sharoitiga tushmasin uchun
+    (u ancha oldin, geocoder javob berishidan oldin tugaydi)."""
+    import threading
+
+    def _run():
+        address = reverse_geocode_address(lat, lng)
+        if address:
+            from taxi.models import Order
+            Order.objects.filter(pk=order_pk).update(**{field_name: address})
+
+    threading.Thread(target=_run, daemon=True).start()
 
 
 def reverse_geocode_admin_area(lat, lng):

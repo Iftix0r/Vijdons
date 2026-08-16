@@ -677,7 +677,7 @@ class HomeViewModel @Inject constructor(
     fun orderComplete(id: Int) {
         val tracker = taximeters[id]
         runAction(id, onSuccess = { DriverSoundPlayer.play(DriverSoundEvent.COMPLETE) }) {
-            repository.orderComplete(id, tracker?.distanceKm, tracker?.priceUzs())
+            repository.orderComplete(id, tracker?.distanceKm, tracker?.priceUzs(), driverLat, driverLng)
         }
     }
 

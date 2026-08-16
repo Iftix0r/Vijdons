@@ -708,7 +708,16 @@ private fun OrderDetailSheetContent(
                             OutlineButton("Operator", Modifier.weight(1f), onCallOperator)
                         }
                         order.isOnWay -> {
-                            YellowButton("Yetib keldim", Modifier.weight(1f), onClick = onArrived)
+                            // Diqqat: avval bu yerda "Yetib keldim" (onArrived, on_way ->
+                            // arrived) turardi, "Yakunlash" esa alohida keyingi bosqichda
+                            // edi — ya'ni yo'lda haydovchi ikkita alohida tugmani ketma-ket
+                            // bosishi kerak edi. Har biri alohida tarmoq so'rovi bo'lgani
+                            // uchun (ayniqsa sekin internetda) bu ikki marta kutishga olib
+                            // kelardi. Endi to'g'ridan-to'g'ri "Yakunlash" (onComplete,
+                            // on_way -> completed) — backend (`_transition`) buni
+                            // qo'llab-quvvatlaydi, "arrived" bosqichi shu native oqim
+                            // uchun endi ishlatilmaydi.
+                            YellowButton("Yakunlash", Modifier.weight(1f), onClick = onComplete)
                             OutlineButton("Operator", Modifier.weight(1f), onCallOperator)
                         }
                         order.isArrived -> {
