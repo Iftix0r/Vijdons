@@ -894,8 +894,11 @@ def panel_dashboard(request):
     completed_qs = Order.objects.filter(status='completed')
     today_qs     = Order.objects.filter(created_at__date=today)
 
-    total_revenue   = completed_qs.aggregate(s=Sum('price'))['s'] or Decimal('0')
-    today_revenue   = today_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or Decimal('0')
+    # Diqqat: "daromad" — kompaniyaning HAQIQIY daromadi, ya'ni komissiya
+    # (Order.commission), GMV (Order.price — asosan haydovchiga tegadigan
+    # summa) EMAS. Moliya bo'limi (finance_dashboard) bilan bir xil mezon.
+    total_revenue   = completed_qs.aggregate(s=Sum('commission'))['s'] or Decimal('0')
+    today_revenue   = today_qs.filter(status='completed').aggregate(s=Sum('commission'))['s'] or Decimal('0')
     today_orders    = today_qs.count()
     avg_price       = completed_qs.aggregate(a=Avg('price'))['a'] or Decimal('0')
     cancelled_orders = Order.objects.filter(status='cancelled').count()
@@ -909,7 +912,7 @@ def panel_dashboard(request):
         day = today - timedelta(days=i)
         day_qs = Order.objects.filter(created_at__date=day)
         weekly_labels.append(day.strftime('%d/%m'))
-        weekly_revenue.append(float(day_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or 0))
+        weekly_revenue.append(float(day_qs.filter(status='completed').aggregate(s=Sum('commission'))['s'] or 0))
         weekly_counts.append(day_qs.count())
 
     # Shu hafta vs o'tgan hafta o'sish foizi (daromad va buyurtmalar soni)
@@ -918,8 +921,8 @@ def panel_dashboard(request):
     last_week_end    = this_week_start - timedelta(days=1)
     this_week_qs = Order.objects.filter(created_at__date__gte=this_week_start, created_at__date__lte=today)
     last_week_qs = Order.objects.filter(created_at__date__gte=last_week_start, created_at__date__lte=last_week_end)
-    this_week_revenue = float(this_week_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or 0)
-    last_week_revenue = float(last_week_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or 0)
+    this_week_revenue = float(this_week_qs.filter(status='completed').aggregate(s=Sum('commission'))['s'] or 0)
+    last_week_revenue = float(last_week_qs.filter(status='completed').aggregate(s=Sum('commission'))['s'] or 0)
     this_week_orders  = this_week_qs.count()
     last_week_orders  = last_week_qs.count()
     revenue_growth_pct = round((this_week_revenue - last_week_revenue) / last_week_revenue * 100, 1) if last_week_revenue else None
