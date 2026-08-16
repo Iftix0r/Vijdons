@@ -344,6 +344,7 @@ class BotSettings(models.Model):
     notify_balance_changed_to_driver_group = models.BooleanField(default=True, verbose_name="Balans to'ldirilganda haydovchilar guruhiga ham yuborish")
     notify_low_balance_to_driver_group     = models.BooleanField(default=True, verbose_name='Balans kam qolganda haydovchilar guruhiga ham yuborish')
     notify_freeze_warning = models.BooleanField(default=True, verbose_name="Muzlashga 1 kun qolganda ogohlantirish")
+    notify_goal_events    = models.BooleanField(default=True, verbose_name="Maqsadga erishilganda/muddat yaqinlashganda xabar")
 
     # Har bir kunlik/haftalik/oylik xabar oxirgi marta yuborilgan sana — bir marta
     # yuborilib ketmasligi uchun (masalan bir nechta worker jarayoni bo'lsa)
@@ -1563,3 +1564,97 @@ class Expense(models.Model):
         verbose_name = 'Xarajat'
         verbose_name_plural = 'Xarajatlar'
         ordering = ['-spent_at', '-created_at']
+
+
+class Goal(models.Model):
+    """Kompaniya/jamoa maqsadi — muddati (deadline) va o'lchov turi bilan.
+    Ba'zi turlar (`METRIC_CUSTOM` bundan mustasno) joriy natijani DB'dan
+    real vaqtda hisoblab beradi — alohida "progress" maydonini qo'lda
+    yangilab yurish shart emas. Holat (`status`) `utils.check_goals()`
+    orqali (scheduler tick'ida va sahifa ochilganda) avtomatik yangilanadi:
+    maqsadga erishilsa "Erishildi", muddat o'tib ketsa "Muddati o'tdi"."""
+    METRIC_REVENUE       = 'revenue'
+    METRIC_ORDERS        = 'orders'
+    METRIC_NEW_DRIVERS   = 'new_drivers'
+    METRIC_ACTIVE_CLIENTS = 'active_clients'
+    METRIC_CUSTOM        = 'custom'
+    METRIC_CHOICES = (
+        (METRIC_REVENUE,        "Komissiya daromadi (so'm)"),
+        (METRIC_ORDERS,         'Yakunlangan buyurtmalar soni'),
+        (METRIC_NEW_DRIVERS,    "Yangi ro'yxatdan o'tgan haydovchilar"),
+        (METRIC_ACTIVE_CLIENTS, 'Faol mijozlar soni (buyurtma bergan)'),
+        (METRIC_CUSTOM,         "Qo'lda kiritiladi"),
+    )
+
+    STATUS_ACTIVE    = 'active'
+    STATUS_COMPLETED = 'completed'
+    STATUS_FAILED    = 'failed'
+    STATUS_CHOICES = (
+        (STATUS_ACTIVE,    'Faol'),
+        (STATUS_COMPLETED, 'Erishildi'),
+        (STATUS_FAILED,    "Muddati o'tdi"),
+    )
+
+    title        = models.CharField(max_length=200, verbose_name='Nomi')
+    description  = models.TextField(blank=True, default='', verbose_name='Tavsif')
+    metric       = models.CharField(max_length=20, choices=METRIC_CHOICES, default=METRIC_CUSTOM, verbose_name="O'lchov turi")
+    target_value = models.DecimalField(max_digits=14, decimal_places=2, verbose_name='Maqsad qiymati')
+    manual_value = models.DecimalField(max_digits=14, decimal_places=2, default=0, verbose_name="Joriy qiymat (qo'lda)",
+                                        help_text="Faqat \"Qo'lda kiritiladi\" turi uchun — boshqa turlar avtomatik hisoblanadi")
+    start_date   = models.DateField(default=timezone.localdate, verbose_name='Boshlanish sanasi')
+    deadline     = models.DateField(verbose_name='Tugash muddati')
+    status       = models.CharField(max_length=12, choices=STATUS_CHOICES, default=STATUS_ACTIVE, verbose_name='Holati')
+    completed_at = models.DateTimeField(null=True, blank=True, verbose_name='Erishilgan vaqt')
+    notified_completed     = models.BooleanField(default=False)
+    notified_deadline_soon = models.BooleanField(default=False)
+    created_by   = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='goals', verbose_name='Kim yaratdi')
+    created_at   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Maqsad'
+        verbose_name_plural = 'Maqsadlar'
+        ordering = ['status', 'deadline']
+
+    def __str__(self):
+        return self.title
+
+    def current_value(self):
+        """Maqsad turiga qarab joriy natijani hisoblaydi — `custom` bo'lsa
+        qo'lda kiritilgan qiymat, aks holda tegishli modeldan real vaqtda."""
+        from django.utils import timezone as tz
+
+        if self.metric == self.METRIC_CUSTOM:
+            return self.manual_value
+
+        end = min(tz.localdate(), self.deadline)
+        if end < self.start_date:
+            return 0
+
+        if self.metric == self.METRIC_REVENUE:
+            from django.db.models import Sum
+            return Order.objects.filter(
+                status='completed', created_at__date__gte=self.start_date, created_at__date__lte=end,
+            ).aggregate(s=Sum('commission'))['s'] or 0
+        if self.metric == self.METRIC_ORDERS:
+            return Order.objects.filter(
+                status='completed', created_at__date__gte=self.start_date, created_at__date__lte=end,
+            ).count()
+        if self.metric == self.METRIC_NEW_DRIVERS:
+            return Driver.objects.filter(
+                registered_at__date__gte=self.start_date, registered_at__date__lte=end,
+            ).count()
+        if self.metric == self.METRIC_ACTIVE_CLIENTS:
+            return Order.objects.filter(
+                status='completed', created_at__date__gte=self.start_date, created_at__date__lte=end,
+            ).values('client').distinct().count()
+        return 0
+
+    def progress_pct(self):
+        if not self.target_value:
+            return 0
+        pct = float(self.current_value()) / float(self.target_value) * 100
+        return min(round(pct, 1), 100)
+
+    def days_left(self):
+        from django.utils import timezone as tz
+        return (self.deadline - tz.localdate()).days

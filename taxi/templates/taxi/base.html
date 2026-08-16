@@ -265,6 +265,10 @@
            class="nav-link {% if request.resolver_match.url_name == 'expense_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
             <i class="fas fa-receipt w-5 text-center"></i> Xarajatlar
         </a>
+        <a href="{% url 'taxi:goal_list' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'goal_list' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-gray-600 dark:text-gray-400 text-sm">
+            <i class="fas fa-bullseye w-5 text-center"></i> Maqsadlar
+        </a>
     </nav>
 
     <!-- user -->

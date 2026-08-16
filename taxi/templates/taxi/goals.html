@@ -1,0 +1,225 @@
+{% extends 'taxi/base.html' %}
+{% block title %}Maqsadlar — Vijdon Taxi{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-center gap-4 mb-5">
+    <div>
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white">Maqsadlar</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ active_count }} faol / {{ completed_count }} erishilgan / {{ failed_count }} muddati o'tgan</p>
+    </div>
+    <button onclick="openModal('goalModal')"
+            class="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-xl shadow-sm shadow-amber-200 dark:shadow-none transition-all hover:-translate-y-0.5">
+        <i class="fas fa-bullseye"></i> Maqsad qo'shish
+    </button>
+</div>
+
+<!-- Holat filtri -->
+<div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm px-5 py-4 mb-5">
+    <div class="flex gap-1.5 bg-gray-50 dark:bg-gray-800 rounded-xl p-1 w-fit">
+        <a href="?" class="px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors {% if not status_filter %}bg-amber-500 text-white{% else %}text-gray-500 dark:text-gray-400 hover:text-gray-700{% endif %}">Barchasi</a>
+        {% for value, label in status_choices %}
+        <a href="?status={{ value }}" class="px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors {% if status_filter == value %}bg-amber-500 text-white{% else %}text-gray-500 dark:text-gray-400 hover:text-gray-700{% endif %}">{{ label }}</a>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Maqsad kartochkalari -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mb-5">
+    {% for row in goal_rows %}
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 flex flex-col gap-3">
+        <div class="flex items-start justify-between gap-2">
+            <div>
+                <h3 class="font-bold text-gray-900 dark:text-white text-sm">{{ row.goal.title }}</h3>
+                <p class="text-xs text-gray-400 mt-0.5">{{ row.goal.get_metric_display }}</p>
+            </div>
+            {% if row.goal.status == 'completed' %}
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 shrink-0"><i class="fas fa-trophy"></i> Erishildi</span>
+            {% elif row.goal.status == 'failed' %}
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 dark:bg-rose-900/30 text-rose-600 shrink-0"><i class="fas fa-clock"></i> Muddati o'tdi</span>
+            {% else %}
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-600 shrink-0"><i class="fas fa-bolt"></i> Faol</span>
+            {% endif %}
+        </div>
+
+        {% if row.goal.description %}
+        <p class="text-xs text-gray-500 dark:text-gray-400">{{ row.goal.description }}</p>
+        {% endif %}
+
+        <div>
+            <div class="flex justify-between items-baseline mb-1.5">
+                <span class="text-lg font-extrabold {% if row.goal.status == 'completed' %}text-emerald-500{% elif row.goal.status == 'failed' %}text-rose-500{% else %}text-gray-900 dark:text-white{% endif %}">{{ row.current|floatformat:0 }}</span>
+                <span class="text-xs text-gray-400">/ {{ row.goal.target_value|floatformat:0 }}</span>
+            </div>
+            <div class="w-full h-2.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                <div class="h-full rounded-full transition-all {% if row.goal.status == 'completed' %}bg-emerald-500{% elif row.goal.status == 'failed' %}bg-rose-400{% else %}bg-amber-500{% endif %}" style="width: {{ row.progress_pct }}%"></div>
+            </div>
+            <p class="text-[11px] text-gray-400 mt-1">{{ row.progress_pct }}% bajarildi</p>
+        </div>
+
+        <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-100 dark:border-gray-800">
+            <span><i class="fas fa-calendar-days mr-1"></i> {{ row.goal.deadline|date:"d.m.Y" }}</span>
+            {% if row.goal.status == 'active' %}
+                {% if row.days_left >= 0 %}
+                <span class="font-semibold {% if row.days_left <= 3 %}text-rose-500{% else %}text-gray-500 dark:text-gray-400{% endif %}"><i class="fas fa-hourglass-half mr-1"></i> {{ row.days_left }} kun qoldi</span>
+                {% endif %}
+            {% endif %}
+        </div>
+
+        <div class="flex gap-1.5 pt-1">
+            <button onclick="openModal('goalEditModal{{ row.goal.pk }}')"
+                    class="flex-1 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                <i class="fas fa-pen mr-1"></i> Tahrirlash
+            </button>
+            {% if row.goal.status == 'failed' %}
+            <form method="POST" action="{% url 'taxi:goal_reopen' row.goal.pk %}" class="flex-1">
+                {% csrf_token %}
+                <button type="submit" class="w-full py-2 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 text-xs font-semibold hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors">
+                    <i class="fas fa-rotate-right mr-1"></i> Qayta faollashtirish
+                </button>
+            </form>
+            {% endif %}
+            <form method="POST" action="{% url 'taxi:goal_delete' row.goal.pk %}" onsubmit="return confirm('Ushbu maqsad o\'chirilsinmi?');">
+                {% csrf_token %}
+                <button type="submit" title="O'chirish"
+                        class="w-9 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-red-600 transition-colors">
+                    <i class="fas fa-trash text-xs"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+    {% empty %}
+    <div class="md:col-span-2 xl:col-span-3 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm text-center py-12 text-gray-400 text-sm">
+        <i class="fas fa-bullseye text-2xl mb-2 block"></i> Maqsadlar topilmadi
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ══ Tahrirlash modallari ══ -->
+{% for row in goal_rows %}
+<div id="goalEditModal{{ row.goal.pk }}" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-base font-bold text-gray-900 dark:text-white"><i class="fas fa-pen text-amber-500 mr-2"></i>Maqsadni tahrirlash</h2>
+            <button onclick="closeModal('goalEditModal{{ row.goal.pk }}')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form method="POST" action="{% url 'taxi:goal_edit' row.goal.pk %}" class="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Nomi</label>
+                <input type="text" name="title" value="{{ row.goal.title }}" required
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Tavsif</label>
+                <textarea name="description" rows="2" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">{{ row.goal.description }}</textarea>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">O'lchov turi</label>
+                <select name="metric" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+                    {% for value, label in metric_choices %}
+                    <option value="{{ value }}" {% if row.goal.metric == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Boshlanish</label>
+                    <input type="date" name="start_date" value="{{ row.goal.start_date|date:'Y-m-d' }}"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Muddat (deadline)</label>
+                    <input type="date" name="deadline" value="{{ row.goal.deadline|date:'Y-m-d' }}" required
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Maqsad qiymati</label>
+                <input type="text" name="target_value" value="{{ row.goal.target_value|floatformat:0 }}" required
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+            </div>
+            {% if row.goal.metric == 'custom' %}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Joriy qiymat (qo'lda)</label>
+                <input type="text" name="manual_value" value="{{ row.goal.manual_value|floatformat:0 }}"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+            </div>
+            {% endif %}
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('goalEditModal{{ row.goal.pk }}')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold shadow-md shadow-amber-200 dark:shadow-none transition">
+                    Saqlash
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+<!-- ══ Yangi maqsad modali ══ -->
+<div id="goalModal" class="modal-wrap hidden-modal fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="modal-box bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div class="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <h2 class="text-base font-bold text-gray-900 dark:text-white"><i class="fas fa-bullseye text-amber-500 mr-2"></i>Maqsad qo'shish</h2>
+            <button onclick="closeModal('goalModal')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+        <form method="POST" action="{% url 'taxi:goal_create' %}" class="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Nomi</label>
+                <input type="text" name="title" required placeholder="Masalan: Iyun oyi komissiya daromadi"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Tavsif (ixtiyoriy)</label>
+                <textarea name="description" rows="2" placeholder="Bu maqsad nima uchun kerak..."
+                          class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition"></textarea>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">O'lchov turi</label>
+                <select name="metric" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+                    {% for value, label in metric_choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <p class="text-[11px] text-gray-400 mt-1">"Qo'lda kiritiladi" tanlansa, natijani keyin tahrirlash orqali qo'lda yangilaysiz — qolganlari avtomatik hisoblanadi.</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Boshlanish</label>
+                    <input type="date" name="start_date" value="{{ start_date_default|default:'' }}" placeholder="Bugun"
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Muddat (deadline)</label>
+                    <input type="date" name="deadline" required
+                           class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1.5">Maqsad qiymati</label>
+                <input type="text" name="target_value" required placeholder="Masalan: 10000000"
+                       class="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:text-white transition">
+            </div>
+            <div class="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="closeModal('goalModal')"
+                        class="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Bekor qilish
+                </button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold shadow-md shadow-amber-200 dark:shadow-none transition">
+                    Qo'shish
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

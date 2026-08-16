@@ -69,6 +69,11 @@ def _run_tick():
     # ta'minlaydi).
     utils.tg_surge_alert_check()
 
+    # Faol maqsadlarning holatini tekshirish (erishildi/muddati o'tdi) —
+    # har tickda, cheklov utils.check_goals() ichida (notified_* bayroqlari
+    # orqali) o'zi boshqariladi.
+    utils.check_goals()
+
     # Signali uzoq vaqt kelmagan (ilova yopilgan/tarmoq uzilgan) haydovchilarni
     # avtomatik ish navbatidan chiqarish — har tickda, soatidan qat'i nazar
     # (AUTO_OFFLINE_MINUTES = 10 daqiqalik chegara bilan ichkarida cheklanadi).

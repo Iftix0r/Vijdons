@@ -1278,6 +1278,7 @@ def bot_settings(request):
         bot.notify_balance_changed_to_driver_group = 'notify_balance_changed_to_driver_group' in request.POST
         bot.notify_low_balance_to_driver_group     = 'notify_low_balance_to_driver_group'     in request.POST
         bot.notify_freeze_warning  = 'notify_freeze_warning'  in request.POST
+        bot.notify_goal_events     = 'notify_goal_events'     in request.POST
         bot.notify_morning_greeting    = 'notify_morning_greeting'    in request.POST
         bot.notify_evening_top_drivers = 'notify_evening_top_drivers' in request.POST
         bot.notify_night_greeting      = 'notify_night_greeting'      in request.POST
@@ -1338,6 +1339,7 @@ def bot_settings(request):
         ('notify_balance_changed_to_driver_group', "Balans to'ldirilganda haydovchilar guruhiga ham yuborish", '💚', bot.notify_balance_changed_to_driver_group),
         ('notify_low_balance_to_driver_group',     'Balans kam qolganda haydovchilar guruhiga ham yuborish',   '⚠️', bot.notify_low_balance_to_driver_group),
         ('notify_freeze_warning',      "Muzlashga 1 kun qolganda ogohlantirish (03:00)", '⏰', bot.notify_freeze_warning),
+        ('notify_goal_events',         "Maqsadga erishilganda/muddat yaqinlashganda", '🎯', bot.notify_goal_events),
         ('notify_morning_greeting',    'Ertalabki salomlashuv (07:00)',        '🌅', bot.notify_morning_greeting),
         ('notify_evening_top_drivers', 'Kechqurungi TOP-10 (20:00)',           '🏆', bot.notify_evening_top_drivers),
         ('notify_night_greeting',      'Tungi navbatchilarga salom (23:00)',   '🌙', bot.notify_night_greeting),
@@ -4353,6 +4355,141 @@ def expense_delete(request, pk):
         expense.delete()
         messages.success(request, "Xarajat o'chirildi.")
     return redirect('taxi:expense_list')
+
+
+# ── Maqsadlar ────────────────────────────────────────────────────────────────
+
+@panel_login_required
+def goal_list(request):
+    from .models import Goal
+    from .utils import check_goals
+
+    # Sahifa ochilganda darhol yangilangan holatni ko'rsatish uchun — asosiy
+    # tekshiruv scheduler tick'ida (har 30s) ishlaydi, bu shunchaki UI'ni
+    # kutmasdan darhol yangilaydi.
+    check_goals()
+
+    status_filter = request.GET.get('status', '')
+    goals = Goal.objects.select_related('created_by')
+    if status_filter in dict(Goal.STATUS_CHOICES):
+        goals = goals.filter(status=status_filter)
+
+    goal_rows = [
+        {
+            'goal': g,
+            'current': g.current_value(),
+            'progress_pct': g.progress_pct(),
+            'days_left': g.days_left(),
+        }
+        for g in goals
+    ]
+
+    active_count = Goal.objects.filter(status=Goal.STATUS_ACTIVE).count()
+    completed_count = Goal.objects.filter(status=Goal.STATUS_COMPLETED).count()
+    failed_count = Goal.objects.filter(status=Goal.STATUS_FAILED).count()
+
+    return render(request, 'taxi/goals.html', {
+        'goal_rows': goal_rows,
+        'status_filter': status_filter,
+        'status_choices': Goal.STATUS_CHOICES,
+        'metric_choices': Goal.METRIC_CHOICES,
+        'active_count': active_count,
+        'completed_count': completed_count,
+        'failed_count': failed_count,
+    })
+
+
+@panel_login_required
+def goal_create(request):
+    from django.utils import timezone
+    from decimal import Decimal, InvalidOperation
+    from .models import Goal
+
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        deadline = request.POST.get('deadline')
+        try:
+            target_value = Decimal(request.POST.get('target_value', '').replace(' ', '').replace(',', '.'))
+        except (InvalidOperation, TypeError):
+            target_value = None
+        metric = request.POST.get('metric', Goal.METRIC_CUSTOM)
+        if title and deadline and target_value and target_value > 0 and metric in dict(Goal.METRIC_CHOICES):
+            Goal.objects.create(
+                title=title,
+                description=request.POST.get('description', '').strip(),
+                metric=metric,
+                target_value=target_value,
+                start_date=request.POST.get('start_date') or timezone.localdate(),
+                deadline=deadline,
+                created_by=request.user,
+            )
+            messages.success(request, "Maqsad qo'shildi.")
+        else:
+            messages.error(request, "Nomi, muddati va maqsad qiymatini to'g'ri kiriting.")
+    return redirect('taxi:goal_list')
+
+
+@panel_login_required
+def goal_edit(request, pk):
+    from decimal import Decimal, InvalidOperation
+    from .models import Goal
+
+    goal = get_object_or_404(Goal, pk=pk)
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        deadline = request.POST.get('deadline')
+        try:
+            target_value = Decimal(request.POST.get('target_value', '').replace(' ', '').replace(',', '.'))
+        except (InvalidOperation, TypeError):
+            target_value = None
+        metric = request.POST.get('metric', goal.metric)
+        if title and deadline and target_value and target_value > 0 and metric in dict(Goal.METRIC_CHOICES):
+            goal.title = title
+            goal.description = request.POST.get('description', goal.description).strip()
+            goal.metric = metric
+            goal.target_value = target_value
+            start_date = request.POST.get('start_date')
+            if start_date:
+                goal.start_date = start_date
+            goal.deadline = deadline
+            if metric == Goal.METRIC_CUSTOM:
+                try:
+                    goal.manual_value = Decimal(request.POST.get('manual_value', '').replace(' ', '').replace(',', '.'))
+                except (InvalidOperation, TypeError):
+                    pass
+            goal.save()
+            messages.success(request, "Maqsad yangilandi.")
+        else:
+            messages.error(request, "Nomi, muddati va maqsad qiymatini to'g'ri kiriting.")
+    return redirect('taxi:goal_list')
+
+
+@panel_login_required
+def goal_delete(request, pk):
+    from .models import Goal
+
+    goal = get_object_or_404(Goal, pk=pk)
+    if request.method == 'POST':
+        goal.delete()
+        messages.success(request, "Maqsad o'chirildi.")
+    return redirect('taxi:goal_list')
+
+
+@panel_login_required
+def goal_reopen(request, pk):
+    """"Muddati o'tdi" holatidagi maqsadni qayta faollashtirish (masalan
+    muddatni uzaytirgandan keyin) — bayroqlar (notified_*) ham tozalanadi,
+    shu sabab keyingi yangilanish/muddat yaqinlashuvi haqida qayta xabar bera oladi."""
+    from .models import Goal
+
+    goal = get_object_or_404(Goal, pk=pk)
+    if request.method == 'POST':
+        goal.status = Goal.STATUS_ACTIVE
+        goal.notified_completed = False
+        goal.notified_deadline_soon = False
+        goal.save(update_fields=['status', 'notified_completed', 'notified_deadline_soon'])
+        messages.success(request, "Maqsad qayta faollashtirildi.")
+    return redirect('taxi:goal_list')
 
 
 # ── Xavfsizlik (yuridik hujjatlar va jiddiy voqealar) ───────────────────────

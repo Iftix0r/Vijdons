@@ -1457,6 +1457,54 @@ def tg_surge_alert_check():
     )
 
 
+def check_goals():
+    """Faol maqsadlarni tekshiradi (scheduler tick'ida va Maqsadlar sahifasi
+    ochilganda chaqiriladi): maqsad qiymatiga yetilgan bo'lsa "Erishildi"ga
+    o'tkazadi va guruhga tabrik xabari yuboradi (faqat bir marta,
+    `notified_completed` orqali); muddat o'tib ketgan, hali yetilmagan
+    bo'lsa "Muddati o'tdi"ga o'tkazadi; muddatga 3 kun yoki kamroq qolib,
+    hali yetilmagan bo'lsa — bir martalik eslatma yuboradi."""
+    from django.utils import timezone
+    from taxi.models import Goal
+
+    cfg = _cfg()
+    notify = bool(cfg and cfg.notify_goal_events)
+
+    today = timezone.localdate()
+    for goal in Goal.objects.filter(status=Goal.STATUS_ACTIVE):
+        current = goal.current_value()
+        if goal.target_value and current >= goal.target_value:
+            goal.status = Goal.STATUS_COMPLETED
+            goal.completed_at = timezone.now()
+            update_fields = ['status', 'completed_at']
+            if notify and not goal.notified_completed:
+                send_telegram(
+                    f"🎯 <b>Maqsadga erishildi!</b>\n\n<b>{goal.title}</b>\n"
+                    f"Natija: {current} / {goal.target_value}\n"
+                    f"Muddat: {goal.deadline.strftime('%d.%m.%Y')}\n\n"
+                    "Jamoaga rahmat! 🎉"
+                )
+                goal.notified_completed = True
+                update_fields.append('notified_completed')
+            goal.save(update_fields=update_fields)
+            continue
+
+        if today > goal.deadline:
+            goal.status = Goal.STATUS_FAILED
+            goal.save(update_fields=['status'])
+            continue
+
+        days_left = (goal.deadline - today).days
+        if notify and days_left <= 3 and not goal.notified_deadline_soon:
+            send_telegram(
+                f"⏳ <b>Muddat yaqinlashmoqda</b>\n\n<b>{goal.title}</b>\n"
+                f"Qoldi: {days_left} kun\n"
+                f"Joriy natija: {current} / {goal.target_value}"
+            )
+            goal.notified_deadline_soon = True
+            goal.save(update_fields=['notified_deadline_soon'])
+
+
 def tg_low_rating_alert(driver):
     """Haydovchining o'rtacha reytingi belgilangan chegaradan pastga
     tushganda operatorlar guruhini ogohlantiradi."""
