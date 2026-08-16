@@ -182,18 +182,22 @@ def _match_region(name):
 
 
 def _resolve_district(region, name):
-    """Berilgan Region ostida shu nomli District'ni topadi, topilmasa
-    YANGI yaratadi (operator "Manzillar" bo'limida avtomatik yaratilgan
-    manzilni ko'rib, kerak bo'lsa nomini tuzatishi/birlashtirishi mumkin —
-    xuddi avtomatik manzillarning o'zi kabi)."""
+    """Berilgan Region ostida shu nomli District'ni topadi.
+
+    Diqqat: avval bu yerda topilmasa YANGI District avtomatik YARATILARDI —
+    lekin geocoder (ayniqsa Nominatim/OSM, O'zbekiston bo'yicha to'liq
+    bo'lmagan chegara ma'lumoti bilan) noto'g'ri/qo'shni tuman nomini
+    qaytarsa, bu xato nom TEKSHIRUVSIZ, doimiy ravishda bazaga Tuman
+    sifatida yozilib qolardi (masalan "Oqbuloq" nuqtasi uchun "Qirg'izobod"
+    kabi). Endi topilmasa `None` qaytariladi — SavedAddress `district=None`
+    holda yaratiladi, operator "Manzillar" bo'limida ko'rib, to'g'ri
+    tumanni QO'LDA biriktiradi. Yangi Tuman yaratish endi FAQAT operator
+    "Viloyatlar" bo'limida ataylab qo'shganda sodir bo'ladi (`district_create`)."""
     from taxi.models import District
     name = (name or '').strip()
     if not name:
         return None
-    existing = District.objects.filter(region=region, name__iexact=name).first()
-    if existing:
-        return existing
-    return District.objects.create(region=region, name=name)
+    return District.objects.filter(region=region, name__iexact=name).first()
 
 
 def haversine(lat1, lon1, lat2, lon2):
