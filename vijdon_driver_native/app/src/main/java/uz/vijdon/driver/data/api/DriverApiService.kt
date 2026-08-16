@@ -76,10 +76,6 @@ interface DriverApiService {
     @GET("balance/history/")
     suspend fun balanceHistory(): BalanceHistoryResponse
 
-    @Multipart
-    @POST("balance/topup/")
-    suspend fun requestTopup(@Part receipt: MultipartBody.Part, @Part("amount") amount: RequestBody): DetailResponse
-
     @GET("contract/")
     suspend fun contract(): ContractDto
 
