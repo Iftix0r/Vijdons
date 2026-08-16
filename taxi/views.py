@@ -3794,13 +3794,37 @@ def panel_regions_json(request):
     uchun — butun hudud daraxtini bir martalik qaytaradi, JS shu asosda
     ikkala dropdown'ni to'ldiradi (saved_addresses.html'dagi regions_json
     naqshi bilan bir xil, faqat bu yerda global modal uchun alohida
-    endpoint — har sahifa yuklanishida emas, faqat oyna ochilganda so'raladi)."""
-    from .models import Region
+    endpoint — har sahifa yuklanishida emas, faqat oyna ochilganda so'raladi).
+    Shu operator akkaunti oxirgi tanlagan viloyat/tuman ham (agar bo'lsa)
+    birga qaytariladi — JS oynani shu holatda avtomatik ochadi."""
+    from .models import Region, OperatorPreference
     regions = Region.objects.prefetch_related('districts')
-    return JsonResponse({'regions': [
-        {'id': r.pk, 'name': r.name, 'districts': [{'id': d.pk, 'name': d.name} for d in r.districts.all()]}
-        for r in regions
-    ]})
+    pref = OperatorPreference.objects.filter(user=request.user).first()
+    return JsonResponse({
+        'regions': [
+            {'id': r.pk, 'name': r.name, 'districts': [{'id': d.pk, 'name': d.name} for d in r.districts.all()]}
+            for r in regions
+        ],
+        'last_region': pref.quick_address_region_id if pref else None,
+        'last_district': pref.quick_address_district_id if pref else None,
+    })
+
+
+@panel_login_required
+def panel_save_quick_address_filter(request):
+    """"Yangi buyurtma" oynasidagi "Tezkor" manzil filtrida viloyat/tuman
+    o'zgartirilganda chaqiriladi — shu operator akkaunti uchun saqlab
+    qo'yadi, keyingi safar oyna shu tanlov bilan avtomatik ochilishi uchun."""
+    from .models import Region, District, OperatorPreference
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+    region_id = request.POST.get('region', '').strip()
+    district_id = request.POST.get('district', '').strip()
+    pref, _ = OperatorPreference.objects.get_or_create(user=request.user)
+    pref.quick_address_region = Region.objects.filter(pk=region_id).first() if region_id else None
+    pref.quick_address_district = District.objects.filter(pk=district_id).first() if district_id else None
+    pref.save(update_fields=['quick_address_region', 'quick_address_district', 'updated_at'])
+    return JsonResponse({'ok': True})
 
 
 @panel_login_required

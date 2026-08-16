@@ -1658,3 +1658,23 @@ class Goal(models.Model):
     def days_left(self):
         from django.utils import timezone as tz
         return (self.deadline - tz.localdate()).days
+
+
+class OperatorPreference(models.Model):
+    """Operator/admin akkaunti uchun panelda saqlanadigan shaxsiy
+    sozlamalar — hozircha faqat "Yangi buyurtma" oynasidagi "Tezkor"
+    manzil filtri (oxirgi tanlangan viloyat/tuman). Har bir akkaunt
+    uchun alohida (1 ta User = 1 ta yozuv), shu sabab bitta kompyuterda
+    bir necha operator alternativ kirib-chiqsa ham, har biriga o'zining
+    oxirgi tanlovi qaytadi — brauzer/qurilmaga emas, akkauntga bog'liq."""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='panel_preference', verbose_name='Foydalanuvchi')
+    quick_address_region = models.ForeignKey('Region', null=True, blank=True, on_delete=models.SET_NULL, related_name='+', verbose_name='Tezkor manzil — oxirgi viloyat')
+    quick_address_district = models.ForeignKey('District', null=True, blank=True, on_delete=models.SET_NULL, related_name='+', verbose_name='Tezkor manzil — oxirgi tuman')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Operator sozlamasi'
+        verbose_name_plural = 'Operator sozlamalari'
+
+    def __str__(self):
+        return f'{self.user.username} sozlamalari'

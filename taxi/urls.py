@@ -51,6 +51,7 @@ urlpatterns = [
     path('map/geocode/search/', views.panel_geocode_search, name='panel_geocode_search'),
     path('map/regions/', views.panel_regions_json, name='panel_regions_json'),
     path('map/quick-addresses/', views.panel_quick_addresses, name='panel_quick_addresses'),
+    path('map/quick-addresses/save-filter/', views.panel_save_quick_address_filter, name='panel_save_quick_address_filter'),
     path('drivers/ping/', views.ping_dashboard, name='ping_dashboard'),
 
     path('clients/', views.client_list, name='client_list'),
