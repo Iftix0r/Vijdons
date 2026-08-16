@@ -3788,6 +3788,41 @@ def panel_geocode_search(request):
     return JsonResponse({'results': geocode_search_nominatim(q)})
 
 
+@panel_login_required
+def panel_regions_json(request):
+    """"Yangi buyurtma" oynasidagi "Tezkor" manzil filtri (viloyat→tuman)
+    uchun — butun hudud daraxtini bir martalik qaytaradi, JS shu asosda
+    ikkala dropdown'ni to'ldiradi (saved_addresses.html'dagi regions_json
+    naqshi bilan bir xil, faqat bu yerda global modal uchun alohida
+    endpoint — har sahifa yuklanishida emas, faqat oyna ochilganda so'raladi)."""
+    from .models import Region
+    regions = Region.objects.prefetch_related('districts')
+    return JsonResponse({'regions': [
+        {'id': r.pk, 'name': r.name, 'districts': [{'id': d.pk, 'name': d.name} for d in r.districts.all()]}
+        for r in regions
+    ]})
+
+
+@panel_login_required
+def panel_quick_addresses(request):
+    """"Yangi buyurtma" oynasidagi "Tezkor" manzil chiplarini viloyat/tuman
+    bo'yicha filtrlab qaytaradi. Filtr berilmasa — SavedAddress.Meta.ordering
+    (eng ko'p ishlatilgani birinchi) bo'yicha standart ro'yxat, xuddi
+    sahifa birinchi ochilgandagi kabi."""
+    district_id = request.GET.get('district', '').strip()
+    region_id = request.GET.get('region', '').strip()
+    addresses = SavedAddress.objects.all()
+    if district_id:
+        addresses = addresses.filter(district_id=district_id)
+    elif region_id:
+        addresses = addresses.filter(district__region_id=region_id)
+    addresses = addresses[:30]
+    return JsonResponse({'results': [
+        {'id': a.pk, 'name': a.name, 'address': a.address, 'lat': a.lat, 'lng': a.lng}
+        for a in addresses
+    ]})
+
+
 # ── Operator Chat ──────────────────────────────────────────────────────────────────
 
 @panel_login_required

@@ -421,17 +421,29 @@
 
             <!-- Xarita (Leaflet + OSM) -->
             <div id="order_map_wrap">
-                {% if saved_addresses %}
-                <div class="flex items-center gap-1.5 flex-wrap mb-2">
-                    <span class="text-[11px] text-gray-400 font-semibold mr-0.5"><i class="fas fa-bolt text-yellow-500"></i> Tezkor:</span>
-                    {% for addr in saved_addresses %}
-                    <button type="button" onclick="_pickSavedAddress({{ addr.lat|unlocalize }}, {{ addr.lng|unlocalize }}, '{{ addr.name|escapejs }}', {{ addr.pk }}, '{{ addr.address|escapejs }}')"
-                            class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800/40 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition">
-                        {{ addr.name }}
-                    </button>
-                    {% endfor %}
+                <div class="flex items-center gap-1.5 mb-2">
+                    <select id="om_addr_region" onchange="_omOnRegionChange()"
+                            class="px-2 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                        <option value="">Barcha viloyatlar</option>
+                    </select>
+                    <select id="om_addr_district" onchange="_omFilterQuickAddresses()" disabled
+                            class="px-2 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition disabled:opacity-50">
+                        <option value="">Barcha tumanlar</option>
+                    </select>
                 </div>
-                {% endif %}
+                <div id="om_quick_addr_wrap" class="flex items-center gap-1.5 flex-wrap mb-2">
+                    <span class="text-[11px] text-gray-400 font-semibold mr-0.5"><i class="fas fa-bolt text-yellow-500"></i> Tezkor:</span>
+                    <span id="om_quick_addr_chips">
+                        {% for addr in saved_addresses %}
+                        <button type="button" onclick="_pickSavedAddress({{ addr.lat|unlocalize }}, {{ addr.lng|unlocalize }}, '{{ addr.name|escapejs }}', {{ addr.pk }}, '{{ addr.address|escapejs }}')"
+                                class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800/40 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition">
+                            {{ addr.name }}
+                        </button>
+                        {% empty %}
+                        <span class="text-[11px] text-gray-400">Hali manzil saqlanmagan</span>
+                        {% endfor %}
+                    </span>
+                </div>
                 <div class="relative mb-2">
                     <input type="text" id="om_geo_search" placeholder="Manzil qidirish..." autocomplete="off"
                            class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
@@ -1088,6 +1100,72 @@
         }
     }
 
+    // ── "Tezkor" manzillarni viloyat→tuman bo'yicha filtrlash ──
+    // Diqqat: hudud daraxti (regions) modal HAR safar ochilganda emas,
+    // faqat BIRINCHI marta so'raladi (`_omRegions` keshda saqlanadi) —
+    // 14 viloyat + tumanlar ro'yxati sessiya davomida o'zgarmaydi.
+    let _omRegions = null;
+
+    function _omLoadRegionsIfNeeded() {
+        if (_omRegions) return;
+        fetch('{% url "taxi:panel_regions_json" %}')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                _omRegions = data.regions || [];
+                var sel = document.getElementById('om_addr_region');
+                _omRegions.forEach(function (r) {
+                    var opt = document.createElement('option');
+                    opt.value = r.id;
+                    opt.textContent = r.name;
+                    sel.appendChild(opt);
+                });
+            })
+            .catch(function () { _omRegions = []; });
+    }
+
+    function _omOnRegionChange() {
+        var regionSel = document.getElementById('om_addr_region');
+        var districtSel = document.getElementById('om_addr_district');
+        districtSel.innerHTML = '<option value="">Barcha tumanlar</option>';
+        var region = (_omRegions || []).find(function (r) { return String(r.id) === regionSel.value; });
+        if (region) {
+            districtSel.disabled = false;
+            region.districts.forEach(function (d) {
+                var opt = document.createElement('option');
+                opt.value = d.id;
+                opt.textContent = d.name;
+                districtSel.appendChild(opt);
+            });
+        } else {
+            districtSel.disabled = true;
+        }
+        _omFilterQuickAddresses();
+    }
+
+    function _omFilterQuickAddresses() {
+        var regionId = document.getElementById('om_addr_region').value;
+        var districtId = document.getElementById('om_addr_district').value;
+        var box = document.getElementById('om_quick_addr_chips');
+        box.innerHTML = '<span class="text-[11px] text-gray-400"><i class="fas fa-circle-notch fa-spin"></i></span>';
+        var url = '{% url "taxi:panel_quick_addresses" %}?region=' + encodeURIComponent(regionId) + '&district=' + encodeURIComponent(districtId);
+        fetch(url)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var results = data.results || [];
+                box.innerHTML = results.length
+                    ? results.map(function (a) {
+                        return '<button type="button" onclick="_pickSavedAddress(' + a.lat + ',' + a.lng + ',\'' +
+                            a.name.replace(/'/g, "\\'") + '\',' + a.id + ',\'' + (a.address || '').replace(/'/g, "\\'") + '\')" ' +
+                            'class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800/40 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition">' +
+                            a.name + '</button>';
+                    }).join('')
+                    : '<span class="text-[11px] text-gray-400">Bu hududda manzil topilmadi</span>';
+            })
+            .catch(function () {
+                box.innerHTML = '<span class="text-[11px] text-red-400">Xatolik yuz berdi</span>';
+            });
+    }
+
     // ── Maydonlarni ovoz bilan kiritish (mikrofon tugmalari, Whisper orqali) ──
     // mode='phone' bo'lsa, natija backendda telefon raqam formatiga o'giriladi.
     let _micRecorder = null;
@@ -1252,6 +1330,13 @@
             document.getElementById('om_driver_map_hint').classList.add('hidden');
             document.getElementById('om_geo_search').value = '';
             document.getElementById('om_geo_search_results').classList.add('hidden');
+            // Viloyat/tuman filtri — har ochilganda tozalanadi, hudud
+            // daraxti esa faqat birinchi safar so'raladi (keshlanadi).
+            document.getElementById('om_addr_region').value = '';
+            document.getElementById('om_addr_district').innerHTML = '<option value="">Barcha tumanlar</option>';
+            document.getElementById('om_addr_district').disabled = true;
+            _omLoadRegionsIfNeeded();
+            _omFilterQuickAddresses();
             if (typeof window._resetOrderLookupInfo === 'function') window._resetOrderLookupInfo();
             document.getElementById('map_from_text').textContent = 'Qayerdan belgilanmagan';
             document.getElementById('map_from_badge').className = 'flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/40';
