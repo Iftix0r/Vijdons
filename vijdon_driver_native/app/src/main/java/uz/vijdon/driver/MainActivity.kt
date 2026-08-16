@@ -18,7 +18,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
@@ -26,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
@@ -45,6 +45,7 @@ import uz.vijdon.driver.ui.auth.FrozenScreen
 import uz.vijdon.driver.ui.auth.LoginScreen
 import uz.vijdon.driver.ui.auth.PendingScreen
 import uz.vijdon.driver.ui.auth.RegisterScreen
+import uz.vijdon.driver.ui.theme.DispatchLoadingMark
 import uz.vijdon.driver.ui.theme.VijdonDriverTheme
 
 private object Routes {
@@ -185,7 +186,7 @@ private fun LoadingBox() {
     // ekran — amalda "splash" o'rnini bosadi, shu sabab oddiy spinner
     // o'rniga brendlangan "1351" belgisi.
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        uz.vijdon.driver.ui.theme.DispatchLoadingMark(modifier = Modifier.width(120.dp))
+        DispatchLoadingMark(modifier = Modifier.width(120.dp))
     }
 }
 
