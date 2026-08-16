@@ -43,6 +43,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CreditCard
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.LocalTaxi
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Navigation
@@ -424,12 +425,22 @@ fun HomeScreen(
                             )
                         }
                         items(nearbyOthers, key = { "nearby-${it.id}" }) { addr ->
+                            val isExpanded = state.expandedAddressId == addr.id
                             Column(Modifier.animateItem()) {
                                 NearbyAddressRow(
                                     address = addr,
                                     distanceM = state.addressDistancesM[addr.id],
-                                    onClick = onOpenAddresses,
+                                    isExpanded = isExpanded,
+                                    onClick = { viewModel.toggleAddressExpand(addr) },
                                 )
+                                if (isExpanded) {
+                                    Spacer(Modifier.height(8.dp))
+                                    CurrentQueueCard(
+                                        addressName = addr.name,
+                                        queueDrivers = state.queueDrivers,
+                                        queueLoading = state.queueLoading,
+                                    )
+                                }
                                 Spacer(Modifier.height(8.dp))
                             }
                         }
@@ -1320,9 +1331,12 @@ private fun OfflineCallToAction() {
 /** "Yaqin atrofdagi manzillar" ro'yxatidagi bitta qator — `AddressesScreen`
  * (Manzillar ekrani) dagi `AddressRow` bilan bir xil vizual uslub, faqat
  * bu yerda (Bosh sahifada) haydovchining joriy GPS'idan hisoblangan
- * masofa ham qo'shilgan — u yerda masofa umuman ko'rsatilmaydi. */
+ * masofa ham qo'shilgan — u yerda masofa umuman ko'rsatilmaydi. Bosilsa
+ * (o'zining ostiga, `CurrentQueueCard` orqali) o'sha manzilda hozir kim
+ * navbatda turganini ochib ko'rsatadi — pastki/tepa strelka shu holatni
+ * bildiradi. */
 @Composable
-private fun NearbyAddressRow(address: AddressDto, distanceM: Double?, onClick: () -> Unit) {
+private fun NearbyAddressRow(address: AddressDto, distanceM: Double?, isExpanded: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().cardShadow()
             .background(VijdonColors.Surface, CardShape).clickable(onClick = onClick)
@@ -1352,6 +1366,13 @@ private fun NearbyAddressRow(address: AddressDto, distanceM: Double?, onClick: (
         } else {
             Pill("Bo'sh", color = VijdonColors.TextSecondary, background = VijdonColors.TextSecondary.copy(alpha = 0.15f))
         }
+        Spacer(Modifier.width(4.dp))
+        Icon(
+            if (isExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+            contentDescription = if (isExpanded) "Yopish" else "Navbatni ko'rish",
+            tint = VijdonColors.TextSecondary,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 
