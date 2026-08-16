@@ -879,7 +879,6 @@ def panel_dashboard(request):
     today = timezone.now().date()
     online_threshold = timezone.now() - timezone.timedelta(minutes=2)
     aging_cutoff = timezone.now() - timezone.timedelta(seconds=PENDING_ORDER_AGING_SECONDS)
-    orders = Order.objects.select_related('client', 'driver').order_by('-created_at')[:10]
     aging_orders = Order.objects.select_related('client').filter(
         status='pending', created_at__lte=aging_cutoff
     ).order_by('created_at')
@@ -954,7 +953,6 @@ def panel_dashboard(request):
     ).order_by('-tmx_start_time')
 
     context = {
-        'orders':               orders,
         'total_orders':         Order.objects.count(),
         'total_drivers':        Driver.objects.filter(is_active=True, approval_status=Driver.APPROVAL_APPROVED).count(),
         'on_duty_drivers':      on_duty_drivers,
