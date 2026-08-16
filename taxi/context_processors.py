@@ -51,12 +51,18 @@ def active_drivers(request):
         # ko'rmasdan boshqasiga qayta yo'naltirilishiga olib kelardi, garchi
         # ilovada FCM push ishlab tursa ham (haydovchi oflayn bo'lgani uchun
         # asosiy ekran ro'yxatni umuman ko'rsatmaydi).
+        # `last_seen__gte=online_cutoff` — shunchaki is_on_duty=True bo'lishi
+        # yetarli emas: haydovchi ilovasi yopilgan/aloqasi uzilgan bo'lsa ham
+        # is_on_duty bazada TRUE bo'lib qolishi mumkin (avtomatik oflayn
+        # qilish AUTO_OFFLINE_MINUTES — 10 daqiqa kutadi), shu oraliqda bu
+        # ro'yxatda "onlayn" bo'lib ko'rinib, aslida javob bermasligi mumkin.
         # `.exclude(orders__status__in=Order.ACTIVE_STATUSES)` — hozir band
         # (yakunlanmagan buyurtmasi bor) haydovchi bu ro'yxatda umuman
         # ko'rinmasin: unga qo'lda yana buyurtma yuborilsa, ikkita safarni
         # bir vaqtda bajarishga majbur bo'lardi.
         'active_drivers': Driver.objects.filter(
-            is_active=True, is_on_duty=True, approval_status=Driver.APPROVAL_APPROVED
+            is_active=True, is_on_duty=True, approval_status=Driver.APPROVAL_APPROVED,
+            last_seen__gte=timezone.now() - timedelta(seconds=120),
         ).exclude(
             orders__status__in=Order.ACTIVE_STATUSES
         ).annotate(
