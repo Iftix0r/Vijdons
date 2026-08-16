@@ -1359,8 +1359,8 @@ private fun NearbyAddressRow(address: AddressDto, distanceM: Double?, isExpanded
             Column(modifier = Modifier.weight(1f)) {
                 Text(address.name, color = VijdonColors.TextPrimary, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
-                    distanceM?.let { formatDistanceM(it) } ?: "—",
-                    color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall, maxLines = 1,
+                    "${distanceM?.let { formatDistanceM(it) } ?: "—"} · Bugun: ${address.today_orders} buyurtma",
+                    color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }
         }
