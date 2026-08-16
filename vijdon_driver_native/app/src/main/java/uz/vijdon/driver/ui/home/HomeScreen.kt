@@ -373,6 +373,15 @@ fun HomeScreen(
             // Faol buyurtmalar ro'yxatdan olib tashlanadi — ular endi pastdagi
             // suzuvchi tugma orqali ko'rsatiladi (pastga qarang).
             val pendingOrders = remember(state.orders) { state.orders.filter { it.isPending } }
+            // Joriy turgan joyidan tashqari, ENG YAQIN 10 ta boshqa manzil —
+            // har biri masofasi va o'sha yerdagi navbat soni bilan.
+            // Diqqat: `remember` — @Composable funksiya, shu sabab u
+            // `LazyColumn { ... }` ICHIDA (LazyListScope, `item {}`dan
+            // tashqarida) emas, balki shu yerda — hali "haqiqiy" composable
+            // kontekstda — hisoblanishi kerak.
+            val nearbyOthers = remember(sortedAddresses, nearestId) {
+                sortedAddresses.filter { it.id != nearestId }.take(10)
+            }
 
             LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
                     item { Spacer(Modifier.height(4.dp)) }
@@ -404,14 +413,6 @@ fun HomeScreen(
                                 Spacer(Modifier.height(14.dp))
                             }
                         }
-                    }
-                    // Joriy turgan joyidan tashqari, ENG YAQIN 10 ta boshqa
-                    // manzil — har biri masofasi va o'sha yerdagi navbat
-                    // soni bilan. `queue_count` allaqachon `addresses()`
-                    // javobida bor (backendda bitta Count() bilan bulk
-                    // hisoblanadi) — alohida so'rov kerak emas.
-                    val nearbyOthers = remember(sortedAddresses, nearestId) {
-                        sortedAddresses.filter { it.id != nearestId }.take(10)
                     }
                     if (nearbyOthers.isNotEmpty()) {
                         item {
