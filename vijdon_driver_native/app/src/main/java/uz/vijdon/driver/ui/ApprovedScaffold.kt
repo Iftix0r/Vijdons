@@ -44,20 +44,19 @@ import uz.vijdon.driver.ui.webview.WebAppScreen
 // (Tabs.HOME) ichidagi HorizontalPager'ning sahifalari. Pastki tab-bar
 // tugmasi bosilganda ham pager shu sahifaga siljiydi (navigate emas).
 //
-// Reyting va SOS ham ATAYLAB shu YAGONA pager'ga, eng CHETLARIGA qo'shilgan
-// (Reyting — Bosh'dan OLDIN, SOS — Profil'dan KEYIN): shu orqali "Bosh
-// sahifadan o'ngga surish -> Reyting" va "Profildan chapga surish -> SOS"
-// XUDDI tab-bar svaypi bilan bir xil, haqiqiy HorizontalPager mexanizmi
-// orqali ishlaydi — alohida (nested) surish detektori kerak emas, shu
-// sabab pastki tab-bar svaypi bilan HECH QACHON to'qnashmaydi.
+// Reyting, YouTube va SOS ham ATAYLAB shu YAGONA pager'ga, eng CHETLARIGA
+// qo'shilgan: shu orqali "Bosh sahifadan o'ngga surish -> Reyting" va
+// "Profildan chapga surish -> YouTube -> SOS" XUDDI tab-bar svaypi bilan
+// bir xil, haqiqiy HorizontalPager mexanizmi orqali ishlaydi — alohida
+// (nested) surish detektori kerak emas, shu sabab pastki tab-bar svaypi
+// bilan HECH QACHON to'qnashmaydi.
 //
-// YouTube — Bosh tomonga qo'shilgan: "Bosh sahifadan o'ngga surish ->
-// YouTube" (foydalanuvchi so'rovi bo'yicha — haydovchi navbatda kutayotganda
-// qo'shiq/video eshitib/ko'rib turishi uchun; Telegram/Instagram sinovdan
-// keyin keraksiz deb topilib olib tashlandi). Reyting Profil tomonida
-// ("Profildan chapga surish -> Reyting -> SOS"). Bosh sahifaning indeksi
-// endi 1.
-private val pagerPages = listOf(SubRoutes.YOUTUBE, Tabs.HOME, Tabs.HISTORY, Tabs.CHAT, Tabs.PROFILE, SubRoutes.RATING, SubRoutes.SOS)
+// Reyting — Bosh tomonga qo'shilgan: "Bosh sahifadan o'ngga surish ->
+// Reyting" (avval bu yerda YouTube edi, foydalanuvchi so'rovi bilan
+// Reytingga almashtirildi). YouTube va SOS Profil tomonida ("Profildan
+// chapga surish -> YouTube -> SOS", avval shu yo'nalishda Reyting bor edi).
+// Bosh sahifaning indeksi endi 1.
+private val pagerPages = listOf(SubRoutes.RATING, Tabs.HOME, Tabs.HISTORY, Tabs.CHAT, Tabs.PROFILE, SubRoutes.YOUTUBE, SubRoutes.SOS)
 
 // Reyting/YouTube/SOS sahifalarida ham pastki tab-bar o'zining "uy"
 // bo'limini (mos ravishda Bosh/Profil) yoritib turishi uchun.

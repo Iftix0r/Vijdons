@@ -64,6 +64,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -341,7 +342,11 @@ fun HomeScreen(
             ErrorBanner(it, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         }
 
-        Box(modifier = Modifier.fillMaxSize()) {
+        PullToRefreshBox(
+            isRefreshing = state.isRefreshing,
+            onRefresh = { viewModel.refreshManually() },
+            modifier = Modifier.fillMaxSize(),
+        ) {
         if (!currentDriver.is_on_duty) {
             // Oflaynda haydovchiga buyurtma/manzil ro'yxati emas — chunki
             // ular baribir unga tegishli emas — balki onlayn bo'lishga

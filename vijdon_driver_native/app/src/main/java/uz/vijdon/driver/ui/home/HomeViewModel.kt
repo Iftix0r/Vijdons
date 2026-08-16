@@ -43,6 +43,7 @@ data class HomeUiState(
     val lowBalance: Boolean = false,
     val error: String? = null,
     val loading: Boolean = true,
+    val isRefreshing: Boolean = false,
     val actionInProgress: Set<Int> = emptySet(),
     val operatorPhone: String = "1351",
     val rank: Int? = null,
@@ -479,55 +480,86 @@ class HomeViewModel @Inject constructor(
     }
 
     fun refreshOrders() {
+        viewModelScope.launch { fetchAndApplyOrders() }
+    }
+
+    /** Ekranni pastga tortib qo'lda yangilash — polling (4s) tugashini
+     * kutmasdan, "Asosiy"da ko'rinadigan hamma narsani (buyurtmalar,
+     * manzillar navbati, surge) darhol, PARALEL yangilaydi. */
+    fun refreshManually() {
         viewModelScope.launch {
-            when (val result = repository.availableOrders()) {
-                is ApiResult.Success -> {
-                    // SINOV (soxta) ogohlantirish ko'rsatilib turgan bo'lsa —
-                    // bu yerda hisoblangan (serverdan kelgan haqiqiy
-                    // buyurtmalar asosidagi) alertCandidate uni qayta
-                    // yozib, muddatidan oldin yopib qo'ymasin.
-                    val showingTestAlert = alertOrderId == TEST_ORDER_ID
-                    val alertCandidate = if (showingTestAlert) {
-                        _uiState.value.alertOrder
-                    } else {
-                        result.data.orders.firstOrNull {
-                            it.isPending && it.is_dispatched && (it.timer_sec ?: 0) > 0
-                        }
-                    }
-                    if (!showingTestAlert) {
-                        if (alertCandidate != null && alertCandidate.id != alertOrderId) {
-                            alertOrderId = alertCandidate.id
-                            alertInitialTimerSec = alertCandidate.timer_sec ?: 30
-                            DriverSoundPlayer.play(DriverSoundEvent.NEW_ORDER)
-                        } else if (alertCandidate == null) {
-                            alertOrderId = null
-                        }
-                    }
-                    // Faqat "oflaynda edi, endi kamaydi" chegarasini kesib
-                    // o'tganda bir marta ogohlantiradi — har 4 soniyalik
-                    // pollingda qayta-qayta chalinib ketmasin deb.
-                    if (result.data.low_balance && !_uiState.value.lowBalance) {
-                        DriverSoundPlayer.play(DriverSoundEvent.LOW_BALANCE)
-                    }
-                    _uiState.value = _uiState.value.copy(
-                        orders = result.data.orders,
-                        lowBalance = result.data.low_balance,
-                        error = null,
-                        loading = false,
-                        alertOrder = alertCandidate,
-                        alertTotalSec = alertInitialTimerSec,
-                    )
-                    recomputeOrderDistances()
-                    pruneFinishedTaximeters(result.data.orders)
-                    // Ilova qayta ochilganda (masalan yo'lda paytida majburan
-                    // yopib qo'yilgan bo'lsa) safar allaqachon "yo'lda"/"yetib
-                    // keldim" holatida bo'lishi mumkin — taximetr shu yerda
-                    // ham (faqat GPS nuqtasini kutmasdan) darhol yaratiladi,
-                    // aks holda vidjet birinchi GPS nuqtasigacha ko'rinmasdi.
-                    result.data.orders.filter { it.isOnWay || it.isArrived }.forEach { ensureTaximeter(it.id) }
+            _uiState.value = _uiState.value.copy(isRefreshing = true)
+            val addressesDeferred = async {
+                val result = repository.addresses()
+                if (result is ApiResult.Success) {
+                    _uiState.value = _uiState.value.copy(addresses = result.data)
+                    recomputeAddressDistances()
                 }
-                is ApiResult.Error -> _uiState.value = _uiState.value.copy(error = result.message, loading = false)
             }
+            val surgeDeferred = async {
+                val result = repository.surge()
+                if (result is ApiResult.Success) {
+                    _uiState.value = _uiState.value.copy(
+                        surgeMultiplier = result.data.multiplier.takeIf { it > 1.0 },
+                        surgeReason = result.data.reason,
+                    )
+                }
+            }
+            fetchAndApplyOrders()
+            addressesDeferred.await()
+            surgeDeferred.await()
+            _uiState.value = _uiState.value.copy(isRefreshing = false)
+        }
+    }
+
+    private suspend fun fetchAndApplyOrders() {
+        when (val result = repository.availableOrders()) {
+            is ApiResult.Success -> {
+                // SINOV (soxta) ogohlantirish ko'rsatilib turgan bo'lsa —
+                // bu yerda hisoblangan (serverdan kelgan haqiqiy
+                // buyurtmalar asosidagi) alertCandidate uni qayta
+                // yozib, muddatidan oldin yopib qo'ymasin.
+                val showingTestAlert = alertOrderId == TEST_ORDER_ID
+                val alertCandidate = if (showingTestAlert) {
+                    _uiState.value.alertOrder
+                } else {
+                    result.data.orders.firstOrNull {
+                        it.isPending && it.is_dispatched && (it.timer_sec ?: 0) > 0
+                    }
+                }
+                if (!showingTestAlert) {
+                    if (alertCandidate != null && alertCandidate.id != alertOrderId) {
+                        alertOrderId = alertCandidate.id
+                        alertInitialTimerSec = alertCandidate.timer_sec ?: 30
+                        DriverSoundPlayer.play(DriverSoundEvent.NEW_ORDER)
+                    } else if (alertCandidate == null) {
+                        alertOrderId = null
+                    }
+                }
+                // Faqat "oflaynda edi, endi kamaydi" chegarasini kesib
+                // o'tganda bir marta ogohlantiradi — har 4 soniyalik
+                // pollingda qayta-qayta chalinib ketmasin deb.
+                if (result.data.low_balance && !_uiState.value.lowBalance) {
+                    DriverSoundPlayer.play(DriverSoundEvent.LOW_BALANCE)
+                }
+                _uiState.value = _uiState.value.copy(
+                    orders = result.data.orders,
+                    lowBalance = result.data.low_balance,
+                    error = null,
+                    loading = false,
+                    alertOrder = alertCandidate,
+                    alertTotalSec = alertInitialTimerSec,
+                )
+                recomputeOrderDistances()
+                pruneFinishedTaximeters(result.data.orders)
+                // Ilova qayta ochilganda (masalan yo'lda paytida majburan
+                // yopib qo'yilgan bo'lsa) safar allaqachon "yo'lda"/"yetib
+                // keldim" holatida bo'lishi mumkin — taximetr shu yerda
+                // ham (faqat GPS nuqtasini kutmasdan) darhol yaratiladi,
+                // aks holda vidjet birinchi GPS nuqtasigacha ko'rinmasdi.
+                result.data.orders.filter { it.isOnWay || it.isArrived }.forEach { ensureTaximeter(it.id) }
+            }
+            is ApiResult.Error -> _uiState.value = _uiState.value.copy(error = result.message, loading = false)
         }
     }
 
