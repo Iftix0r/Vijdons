@@ -404,6 +404,34 @@ fun HomeScreen(
                             }
                         }
                     }
+                    // Joriy turgan joyidan tashqari, ENG YAQIN 10 ta boshqa
+                    // manzil — har biri masofasi va o'sha yerdagi navbat
+                    // soni bilan. `queue_count` allaqachon `addresses()`
+                    // javobida bor (backendda bitta Count() bilan bulk
+                    // hisoblanadi) — alohida so'rov kerak emas.
+                    val nearbyOthers = remember(sortedAddresses, nearestId) {
+                        sortedAddresses.filter { it.id != nearestId }.take(10)
+                    }
+                    if (nearbyOthers.isNotEmpty()) {
+                        item {
+                            Text(
+                                "Yaqin atrofdagi manzillar",
+                                color = VijdonColors.TextSecondary,
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                modifier = Modifier.padding(top = if (pendingOrders.isNotEmpty() || nearestAddress != null) 4.dp else 0.dp, bottom = 6.dp),
+                            )
+                        }
+                        items(nearbyOthers, key = { "nearby-${it.id}" }) { addr ->
+                            Column(Modifier.animateItem()) {
+                                NearbyAddressRow(
+                                    address = addr,
+                                    distanceM = state.addressDistancesM[addr.id],
+                                    onClick = onOpenAddresses,
+                                )
+                                Spacer(Modifier.height(8.dp))
+                            }
+                        }
+                    }
                     // Diqqat: avval shu yerda "Yo'nalishlar & Stoyankalar"
                     // sarlavhasi ostida BARCHA manzillar ro'yxat sifatida
                     // ko'rsatilardi — endi bosh sahifada faqat haydovchining
@@ -1292,6 +1320,44 @@ private fun OfflineCallToAction() {
 // navbatdagi birinchi kishilardan tortib haydovchining o'zigacha ko'rsatadi.
 // Diqqat: bu karta ATAYIN doim TO'Q rangda, tizim mavzusidan qat'i nazar.
 @Composable
+/** "Yaqin atrofdagi manzillar" ro'yxatidagi bitta qator — `AddressesScreen`
+ * (Manzillar ekrani) dagi `AddressRow` bilan bir xil vizual uslub, faqat
+ * bu yerda (Bosh sahifada) haydovchining joriy GPS'idan hisoblangan
+ * masofa ham qo'shilgan — u yerda masofa umuman ko'rsatilmaydi. */
+@Composable
+private fun NearbyAddressRow(address: AddressDto, distanceM: Double?, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().cardShadow()
+            .background(VijdonColors.Surface, CardShape).clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier.size(32.dp).background(VijdonColors.BadgeNeutral, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Rounded.LocationOn, contentDescription = null, tint = VijdonColors.TextSecondary, modifier = Modifier.size(16.dp))
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(address.name, color = VijdonColors.TextPrimary, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    distanceM?.let { formatDistanceM(it) } ?: "—",
+                    color = VijdonColors.TextSecondary, style = MaterialTheme.typography.bodySmall, maxLines = 1,
+                )
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        if (address.queue_count > 0) {
+            Pill("${address.queue_count} navbatda", color = VijdonColors.Green, background = VijdonColors.Green.copy(alpha = 0.18f))
+        } else {
+            Pill("Bo'sh", color = VijdonColors.TextSecondary, background = VijdonColors.TextSecondary.copy(alpha = 0.15f))
+        }
+    }
+}
+
 private fun CurrentQueueCard(addressName: String, queueDrivers: List<QueueDriverDto>, queueLoading: Boolean) {
     Column(
         modifier = Modifier
