@@ -425,20 +425,21 @@ fun HomeScreen(
                             )
                         }
                         items(nearbyOthers, key = { "nearby-${it.id}" }) { addr ->
-                            val isExpanded = state.expandedAddressId == addr.id
+                            val isInspected = state.inspectedAddressId == addr.id
                             Column(Modifier.animateItem()) {
                                 NearbyAddressRow(
                                     address = addr,
                                     distanceM = state.addressDistancesM[addr.id],
-                                    isExpanded = isExpanded,
-                                    onClick = { viewModel.toggleAddressExpand(addr) },
+                                    isExpanded = isInspected,
+                                    onClick = { viewModel.toggleInspectAddress(addr) },
                                 )
-                                if (isExpanded) {
+                                if (isInspected) {
                                     Spacer(Modifier.height(8.dp))
                                     CurrentQueueCard(
                                         addressName = addr.name,
-                                        queueDrivers = state.queueDrivers,
-                                        queueLoading = state.queueLoading,
+                                        queueDrivers = state.inspectedQueueDrivers,
+                                        queueLoading = state.inspectedQueueLoading,
+                                        title = "NAVBATDAGI HAYDOVCHILAR",
                                     )
                                 }
                                 Spacer(Modifier.height(8.dp))
@@ -1381,7 +1382,12 @@ private fun NearbyAddressRow(address: AddressDto, distanceM: Double?, isExpanded
 // navbatdagi birinchi kishilardan tortib haydovchining o'zigacha ko'rsatadi.
 // Diqqat: bu karta ATAYIN doim TO'Q rangda, tizim mavzusidan qat'i nazar.
 @Composable
-private fun CurrentQueueCard(addressName: String, queueDrivers: List<QueueDriverDto>, queueLoading: Boolean) {
+private fun CurrentQueueCard(
+    addressName: String,
+    queueDrivers: List<QueueDriverDto>,
+    queueLoading: Boolean,
+    title: String = "JORIY NAVBATINGIZ",
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1403,7 +1409,7 @@ private fun CurrentQueueCard(addressName: String, queueDrivers: List<QueueDriver
                 }
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "JORIY NAVBATINGIZ",
+                    title,
                     color = Color.White.copy(alpha = 0.85f),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.4.sp),
                 )

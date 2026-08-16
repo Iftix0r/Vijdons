@@ -55,6 +55,16 @@ data class HomeUiState(
     val queuePosition: Int? = null,
     val queueDrivers: List<QueueDriverDto> = emptyList(),
     val queueLoading: Boolean = false,
+    // Diqqat: yuqoridagi `expandedAddressId`/`queueDrivers` FAQAT
+    // haydovchining O'ZI turgan (avtomatik ochiladigan) manzil uchun —
+    // "JORIY NAVBATINGIZ" kartasi shundan. "Yaqin atrofdagi manzillar"
+    // ro'yxatida boshqa (o'zi turmagan) manzilni ko'rish uchun ATAYLAB
+    // ALOHIDA holat — aks holda ikkalasi bitta "joy"ni bo'lishib, boshqa
+    // manzilni ochsa, haydovchi o'zining navbatdagi o'rnini yo'qotib
+    // qo'yardi (aynan shu xato haqida shikoyat kelgan edi).
+    val inspectedAddressId: Int? = null,
+    val inspectedQueueDrivers: List<QueueDriverDto> = emptyList(),
+    val inspectedQueueLoading: Boolean = false,
     val orderDistancesM: Map<Int, Double> = emptyMap(),
     val surgeMultiplier: Double? = null,
     val surgeReason: String? = null,
@@ -446,6 +456,38 @@ class HomeViewModel @Inject constructor(
                 queuePosition = (posResult as? ApiResult.Success)?.data?.position,
                 queueDrivers = (driversResult as? ApiResult.Success)?.data ?: emptyList(),
                 queueLoading = false,
+            )
+        }
+    }
+
+    private var inspectAddressRequestId = 0
+
+    /** "Yaqin atrofdagi manzillar" ro'yxatida BOSHQA (haydovchi o'zi
+     * turmagan) manzilni bosib ko'rish uchun — `toggleAddressExpand`dan
+     * ATAYLAB mustaqil: u yerdagi `queuePosition` ("sizning o'rningiz")
+     * bu yerda ma'nosiz (haydovchi u yerda emas), shu sabab faqat
+     * navbatdagilar ro'yxati so'raladi — `addressQueuePosition` (yozish
+     * bilan bog'liq, `driverLat/driverLng`ga tayanadi) chaqirilmaydi. */
+    fun toggleInspectAddress(address: AddressDto) {
+        val current = _uiState.value
+        if (current.inspectedAddressId == address.id) {
+            inspectAddressRequestId++
+            _uiState.value = current.copy(inspectedAddressId = null, inspectedQueueDrivers = emptyList())
+            return
+        }
+        val requestId = ++inspectAddressRequestId
+        _uiState.value = current.copy(inspectedAddressId = address.id, inspectedQueueLoading = true)
+        viewModelScope.launch {
+            val result = repository.addressQueueDrivers(address.id)
+            if (_uiState.value.inspectedAddressId != address.id || requestId != inspectAddressRequestId) {
+                if (_uiState.value.inspectedAddressId == null) {
+                    _uiState.value = _uiState.value.copy(inspectedQueueLoading = false)
+                }
+                return@launch
+            }
+            _uiState.value = _uiState.value.copy(
+                inspectedQueueDrivers = (result as? ApiResult.Success)?.data ?: emptyList(),
+                inspectedQueueLoading = false,
             )
         }
     }
