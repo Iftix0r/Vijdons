@@ -4,6 +4,7 @@ import urllib.request
 import urllib.parse
 import urllib.error
 import json
+from decimal import Decimal
 
 def reverse_geocode_address(lat, lng):
     """Koordinatadan manzil olish — MapsSettings provider orqali."""
@@ -1464,6 +1465,55 @@ def tg_low_rating_alert(driver):
         f"Xizmat sifatiga e'tibor qaratish tavsiya etiladi.",
         reply_markup=_driver_inline(driver.id),
     )
+
+
+# Xulq-atvorga asoslangan reyting: Driver.rating (avval hech qachon
+# avtomatik o'zgarmagan, statik 5.00) endi har bir YAKUNLANGAN buyurtmadan
+# keyin ozgina ko'tariladi (yakunlash — "kutilgan me'yor", shu sabab sekin),
+# qabul qilingandan keyin BEKOR qilingan har bir buyurtmadan keyin esa
+# ancha ko'proq pasayadi (yomon xulq-atvor tezroq "sezilishi" uchun).
+RATING_STEP_UP = Decimal('0.02')
+RATING_STEP_DOWN = Decimal('0.15')
+RATING_MIN = Decimal('1.00')
+RATING_MAX = Decimal('5.00')
+RATING_WARNING_THRESHOLD = Decimal('4.00')
+
+
+def _adjust_driver_rating(driver, delta):
+    """`driver.rating`ni `delta` qadar o'zgartiradi (RATING_MIN..RATING_MAX
+    oralig'ida ushlab turadi) va DB'ga yozadi. Agar natija
+    RATING_WARNING_THRESHOLD'ni YUQORIDAN PASTGA kesib o'tsa (avval undan
+    baland, endi past bo'lsa — faqat aynan shu chegara kesilganda, har
+    safar emas — aks holda haydovchi 4.00 dan pastda qolib ketsa, har bir
+    keyingi bekor qilishda qayta-qayta ogohlantirilib, spam bo'lib qolardi),
+    haydovchining o'ziga push va operatorlar guruhiga Telegram
+    ogohlantirish yuboriladi."""
+    old_rating = driver.rating
+    new_rating = max(RATING_MIN, min(RATING_MAX, old_rating + delta))
+    if new_rating == old_rating:
+        return
+    driver.rating = new_rating
+    driver.save(update_fields=['rating'])
+    if new_rating < RATING_WARNING_THRESHOLD <= old_rating:
+        send_fcm(
+            driver.fcm_token,
+            title='Reytingingiz pasaymoqda',
+            body=f"Joriy reytingingiz: {new_rating}. Buyurtmalarni ko'proq yakunlab, kamroq bekor qiling.",
+            data={'type': 'low_rating_warning'},
+        )
+        tg_low_rating_alert(driver)
+
+
+def reward_driver_rating_on_completion(driver):
+    """Buyurtma yakunlanganda chaqiriladi (`_transition` — native ilova,
+    `driver_order_action` — veb ilova) — reytingni ozgina ko'taradi."""
+    _adjust_driver_rating(driver, RATING_STEP_UP)
+
+
+def penalize_driver_rating_on_cancellation(driver):
+    """Qabul qilingan buyurtma bekor qilinganda/o'chirilganda chaqiriladi
+    (`_refund_order_commission`, `views.py`) — reytingni ancha pasaytiradi."""
+    _adjust_driver_rating(driver, -RATING_STEP_DOWN)
 
 
 _MILESTONE_TRIPS = (1, 10, 50, 100, 250, 500, 1000, 2500, 5000, 10000)

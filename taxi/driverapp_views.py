@@ -422,6 +422,8 @@ def _transition(request, driver, pk, allowed_statuses, new_status):
         order.client.save(update_fields=['trips_count'])
         driver.trips_count = (driver.trips_count or 0) + 1
         driver.save(update_fields=['trips_count'])
+        from .utils import reward_driver_rating_on_completion
+        reward_driver_rating_on_completion(driver)
 
         # Buyurtma yakunlangach, haydovchi darhol o'z manzili navbatiga
         # qayta qo'shilishi kerak (masalan safar aynan o'sha stoyanka

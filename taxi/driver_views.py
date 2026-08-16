@@ -652,6 +652,12 @@ def driver_order_action(request, driver, pk, action):
         except Exception:
             pass
 
+        try:
+            from .utils import reward_driver_rating_on_completion
+            reward_driver_rating_on_completion(driver)
+        except Exception:
+            pass
+
         # Buyurtma yakunlangach, haydovchi darhol o'z manzili navbatiga
         # qayta qo'shilishi kerak (masalan safar aynan o'sha stoyanka
         # yonida tugagan bo'lsa) — keyingi mustaqil GPS ping'ini kutib

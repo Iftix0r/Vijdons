@@ -310,7 +310,7 @@ def _refund_order_commission(order, driver, reason):
     arrived) bekor qilinsa yoki o'chirilsa, ilgari undan yechilgan komissiyani
     balansiga qaytaradi — haydovchi o'z aybisiz pulini yo'qotmasligi uchun."""
     from decimal import Decimal
-    from .utils import send_fcm, sms_driver_event
+    from .utils import send_fcm, sms_driver_event, penalize_driver_rating_on_cancellation
 
     commission = order.commission or TariffSettings.get().commission
     driver.balance += Decimal(str(commission))
@@ -327,6 +327,7 @@ def _refund_order_commission(order, driver, reason):
         data={'type': 'order_cancelled', 'order_id': str(order.id)},
     )
     sms_driver_event(driver, 'order_cancelled', order=order, amount=commission)
+    penalize_driver_rating_on_cancellation(driver)
     return commission
 
 
