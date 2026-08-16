@@ -180,6 +180,7 @@ data class QueueDriverDto(
     val car_number: String,
     val joined_at: String,
     val is_me: Boolean,
+    val photo_url: String? = null,
 )
 
 @Serializable

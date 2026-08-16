@@ -15,7 +15,10 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -1444,6 +1447,32 @@ private fun CurrentQueueCard(
     }
 }
 
+/** Navbat qatoridagi kichik doiraviy profil rasmi — `ProfileScreen`dagi
+ * bilan bir xil g'oya (rasm bo'lsa `AsyncImage`, bo'lmasa ismning birinchi
+ * harfi bilan rangli doira), faqat bu yerga moslab kichraytirilgan. */
+@Composable
+private fun QueueDriverAvatar(photoUrl: String?, fullName: String, size: Dp, background: Color, textColor: Color) {
+    if (photoUrl.isNullOrBlank()) {
+        Box(
+            modifier = Modifier.size(size).clip(CircleShape).background(background),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                fullName.trim().firstOrNull()?.uppercase() ?: "?",
+                color = textColor,
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            )
+        }
+    } else {
+        AsyncImage(
+            model = photoUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.size(size).clip(CircleShape).background(background),
+        )
+    }
+}
+
 @Composable
 private fun DarkQueueRow(d: QueueDriverDto) {
     if (d.is_me) {
@@ -1464,7 +1493,9 @@ private fun DarkQueueRow(d: QueueDriverDto) {
                 ) {
                     Text(d.position.toString(), color = VijdonColors.Yellow, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black))
                 }
-                Spacer(Modifier.width(9.dp))
+                Spacer(Modifier.width(7.dp))
+                QueueDriverAvatar(d.photo_url, d.full_name, size = 22.dp, background = Color(0xFF0E1621), textColor = VijdonColors.Yellow)
+                Spacer(Modifier.width(7.dp))
                 Text(
                     d.full_name,
                     color = Color(0xFF0E1621),
@@ -1500,7 +1531,9 @@ private fun DarkQueueRow(d: QueueDriverDto) {
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                     modifier = Modifier.width(16.dp),
                 )
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(6.dp))
+                QueueDriverAvatar(d.photo_url, d.full_name, size = 22.dp, background = Color.White.copy(alpha = 0.12f), textColor = Color.White.copy(alpha = 0.7f))
+                Spacer(Modifier.width(8.dp))
                 Text(
                     d.full_name,
                     color = Color.White.copy(alpha = 0.9f),

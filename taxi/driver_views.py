@@ -1119,6 +1119,7 @@ def driver_address_queue_drivers(request, driver, pk):
             'car_number': e.driver.car_number,
             'joined_at': timezone.localtime(e.joined_at).strftime('%H:%M'),
             'is_me': e.driver_id == driver.id,
+            'photo_url': request.build_absolute_uri(e.driver.photo.url) if e.driver.photo else None,
         }
         for i, e in enumerate(entries)
     ]
