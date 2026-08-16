@@ -438,14 +438,9 @@
                         <i class="fas fa-circle text-[7px]"></i>
                         <span id="map_from_text">Qayerdan belgilanmagan</span>
                     </span>
-                    <span id="map_to_badge" class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-semibold
-                        bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
-                        <i class="fas fa-map-marker-alt text-[9px]"></i>
-                        <span id="map_to_text">Qayerga belgilanmagan</span>
-                    </span>
                 </div>
                 <p class="text-[11px] text-gray-400 mt-1">
-                    <b>1-bosing:</b> qayerdan (yashil) &nbsp;|&nbsp; <b>2-bosing:</b> qayerga (qizil, ixtiyoriy) &nbsp;|&nbsp;
+                    <b>Tezkor/xaritaga bosish:</b> har doim mijoz manziliga beriladi (qayta bossangiz — yangilanadi) &nbsp;|&nbsp;
                     <b>haydovchi belgisini bosing:</b> aynan o'shanga beriladi
                 </p>
             </div>
@@ -848,8 +843,6 @@
     // ── Yandex Map Logic ──
     let _omap = null;
     let _omapFromPM = null;
-    let _omapToPM   = null;
-    let _omapStep   = 1; // 1=qayerdan, 2=qayerga
     let _ymapsReady = false;
     let _odriverMarks = {};
     let _odriverInfo  = {};
@@ -1040,39 +1033,17 @@
             }).catch(function(){});
         }
         document.getElementById('map_from_badge').className = 'flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/40';
-        _omapStep = 2; // Keyingi bosish qayerga uchun
     }
 
-    function _setOrderToPoint(coords, knownAddress) {
-        if (_omapToPM) _omap.geoObjects.remove(_omapToPM);
-        _omapToPM = new ymaps.Placemark(coords,
-            { hintContent: 'Qayerga' },
-            { preset: 'islands#redDotIconWithCaption', iconCaptionMaxWidth: '150' }
-        );
-        _omap.geoObjects.add(_omapToPM);
-        document.getElementById('om_to_lat').value = coords[0];
-        document.getElementById('om_to_lng').value = coords[1];
-        if (knownAddress) {
-            document.getElementById('om_to_address').value = knownAddress;
-            document.getElementById('map_to_text').textContent = knownAddress.length > 30 ? knownAddress.slice(0,30)+'…' : knownAddress;
-            _omapToPM.properties.set('iconCaption', knownAddress.slice(0,20));
-        } else {
-            ymaps.geocode(coords, {results:1}).then(function(res){
-                var obj = res.geoObjects.get(0);
-                if (obj) {
-                    var addr = obj.getAddressLine();
-                    document.getElementById('om_to_address').value = addr;
-                    document.getElementById('map_to_text').textContent = addr.length > 30 ? addr.slice(0,30)+'…' : addr;
-                    _omapToPM.properties.set('iconCaption', addr.slice(0,20));
-                }
-            }).catch(function(){});
-        }
-        document.getElementById('map_to_badge').className = 'flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-semibold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/40';
-        _omapStep = 1; // Reset: keyingi bosish qayerdan uchun (tahrirlash)
-    }
-
-    // Tezkor manzil chipi bosilganda — hozirgi navbat (1=qayerdan, 2=qayerga)
-    // bo'yicha xuddi xaritaga bosilgandek ishlaydi, faqat geocode shart emas.
+    // Tezkor manzil chipi bosilganda — avval bu yerda "1-bosing qayerdan,
+    // 2-bosing qayerga" degan navbat bor edi: birinchi tanlovdan keyin,
+    // agar operator fikrini o'zgartirib BOSHQA tezkor manzilni (yoki
+    // xaritadagi boshqa nuqtani) tanlasa, u endi "qayerdan"ni yangilash
+    // o'rniga kutilmaganda "qayerga"ni to'ldirib qo'yardi. Endi tanlov
+    // HAR DOIM faqat mijoz manziliga (qayerdan) beriladi — qayta tanlansa,
+    // avvalgisining o'rnini bosadi. "Qayerga" endi faqat pastdagi matn
+    // maydoniga qo'lda (yoki mikrofon bilan) kiritiladi.
+    //
     // Diqqat: xarita hali tayyor bo'lmasa ham (masalan modal endigina
     // ochilgan, Yandex Maps skripti hali yuklanayotgan bo'lsa — bunga
     // ~150ms+ ketadi) koordinata baribir to'ldirilishi SHART. Avval bu
@@ -1092,26 +1063,14 @@
         var coords = [lat, lng];
         var addressText = (fullAddress && fullAddress.trim()) ? fullAddress : name;
         if (_omap) {
-            if (_omapStep === 1) {
-                _setOrderFromPoint(coords, addressText);
-            } else {
-                _setOrderToPoint(coords, addressText);
-            }
+            _setOrderFromPoint(coords, addressText);
             _omap.setCenter(coords, Math.max(_omap.getZoom(), 14));
-        } else if (_omapStep === 1) {
+        } else {
             document.getElementById('om_from_lat').value = lat;
             document.getElementById('om_from_lng').value = lng;
             document.getElementById('om_from_address').value = addressText;
             document.getElementById('map_from_text').textContent = addressText.length > 30 ? addressText.slice(0,30)+'…' : addressText;
             document.getElementById('map_from_badge').className = 'flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/40';
-            _omapStep = 2;
-        } else {
-            document.getElementById('om_to_lat').value = lat;
-            document.getElementById('om_to_lng').value = lng;
-            document.getElementById('om_to_address').value = addressText;
-            document.getElementById('map_to_text').textContent = addressText.length > 30 ? addressText.slice(0,30)+'…' : addressText;
-            document.getElementById('map_to_badge').className = 'flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-semibold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/40';
-            _omapStep = 1;
         }
         if (addressId) {
             fetch('/panel/manzillar/' + addressId + '/use/', {
@@ -1193,21 +1152,8 @@
             zoom: 12,
             controls: ['zoomControl', 'searchControl', 'fullscreenControl']
         });
-        // Diqqat: _omapStep bu yerda QAYTA 1ga tushirilmaydi — u allaqachon
-        // openModal ochilganda 1ga o'rnatilgan. Xarita yuklanishi (ymaps.ready)
-        // biroz kech kelishi mumkin (~150ms+), shu oraliqda operator "Tezkor"
-        // manzil orqali "qayerdan" nuqtasini allaqachon belgilab, _omapStep'ni
-        // 2ga o'tkazgan bo'lishi mumkin edi — shu yerda qayta 1ga tushirilsa,
-        // xarita tayyor bo'lgach bosilgan keyingi klik "qayerga" o'rniga yana
-        // "qayerdan"ni ustidan yozib yuborardi.
-
         _omap.events.add('click', function(e) {
-            var coords = e.get('coords');
-            if (_omapStep === 1) {
-                _setOrderFromPoint(coords);
-            } else {
-                _setOrderToPoint(coords);
-            }
+            _setOrderFromPoint(e.get('coords'));
         });
 
         // Yaqin atrofdagi onlayn haydovchilarni haritada ko'rsatish, 8s'da yangilanadi
@@ -1229,7 +1175,7 @@
             _stopOrderMapDrivers();
             _odriverCentered = false;
             _odriverSelectedId = null;
-            _omap = null; _omapFromPM = null; _omapToPM = null; _omapStep = 1;
+            _omap = null; _omapFromPM = null;
             document.getElementById('om_from_lat').value = '';
             document.getElementById('om_from_lng').value = '';
             document.getElementById('om_to_lat').value   = '';
@@ -1238,9 +1184,7 @@
             document.getElementById('om_driver_map_hint').classList.add('hidden');
             if (typeof window._resetOrderLookupInfo === 'function') window._resetOrderLookupInfo();
             document.getElementById('map_from_text').textContent = 'Qayerdan belgilanmagan';
-            document.getElementById('map_to_text').textContent   = 'Qayerga belgilanmagan';
             document.getElementById('map_from_badge').className = 'flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/40';
-            document.getElementById('map_to_badge').className   = 'flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-semibold bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700';
             toggleOrderMap(document.getElementById('use_map_toggle').checked);
             setTimeout(function(){
                 if (_ymapsReady) _initOrderMap();
