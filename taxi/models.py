@@ -1518,18 +1518,3 @@ class SmsGatewayIncoming(models.Model):
         verbose_name = 'Kelgan SMS'
         verbose_name_plural = 'Kelgan SMS xabarlari'
         ordering = ['-received_at']
-
-
-class SmsTemplate(models.Model):
-    """Ommaviy xabar uchun qayta-qayta yozmaslik uchun saqlangan matn shablonlari."""
-    title      = models.CharField(max_length=100, verbose_name='Nomi')
-    text       = models.TextField(max_length=480, verbose_name='Matn')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')
-
-    def __str__(self):
-        return self.title
-
-    class Meta:
-        verbose_name = 'SMS shabloni'
-        verbose_name_plural = 'SMS shablonlari'
-        ordering = ['title']

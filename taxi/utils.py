@@ -589,48 +589,6 @@ def sms_order_status(order, event):
     send_sms(client.phone_number, text)
 
 
-def send_bulk_sms(phones, text):
-    """Ko'p sonli qabul qiluvchiga (masalan: "barcha haydovchilar"/"barcha
-    mijozlar" — marketing/umumiy e'lon) bir xil matnli SMS yuboradi.
-    Har birini alohida `send_sms()` bilan chaqirmaydi — mahalliy-shlyuz
-    holatida BARCHA xabarlarni bitta `bulk_create` bilan navbatga qo'yadi
-    va qurilmalarga N marta emas, BITTA "uyg'onish" pushi yuboradi.
-    Qaytaradi: navbatga qo'yilgan/yuborilgan xabarlar soni."""
-    from taxi.models import SmsSettings
-    try:
-        cfg = SmsSettings.get()
-    except Exception:
-        return 0
-
-    mobiles = []
-    seen = set()
-    for phone in phones:
-        mobile = normalize_phone_uz(phone)
-        if mobile and mobile not in seen:
-            seen.add(mobile)
-            mobiles.append(mobile)
-    if not mobiles:
-        return 0
-
-    if cfg.provider == SmsSettings.PROVIDER_LOCAL_GATEWAY:
-        from taxi.models import SmsGatewayMessage, SmsGatewayToken
-        SmsGatewayMessage.objects.bulk_create([SmsGatewayMessage(phone_number=m, text=text) for m in mobiles])
-        for token in SmsGatewayToken.objects.values_list('fcm_token', flat=True):
-            send_fcm(
-                token, title='Yangi SMS',
-                body=f"{len(mobiles)} ta yangi xabar navbatda",
-                data={'type': 'new_sms'},
-            )
-        return len(mobiles)
-
-    sent = 0
-    for mobile in mobiles:
-        ok, _ = send_sms(mobile, text)
-        if ok:
-            sent += 1
-    return sent
-
-
 def match_driver_or_client_by_phone(phone):
     """Berilgan telefon raqamiga (turli formatda bo'lishi mumkin — +998,
     998, oldindagi nollar bilan/nolsiz) mos Driver yoki Client'ni oxirgi
@@ -655,8 +613,7 @@ def handle_sms_opt_out_keyword(phone, text):
     """Kelgan SMS matni "BEKOR"/"STOP" kabi kalit so'zlardan biriga teng
     bo'lsa — mos Driver/Client'ni ommaviy (marketing) SMS'lardan chiqarib
     qo'yadi va bir martalik tasdiq SMS'i yuboradi. Buyurtma/balans kabi
-    tranzaksion SMS'larga TA'SIR QILMAYDI — faqat send_bulk_sms() shu
-    bayroqni tekshiradi."""
+    tranzaksion SMS'larga TA'SIR QILMAYDI."""
     normalized = (text or '').strip().upper().replace('’', "'").replace('ʻ', "'")
     if normalized not in SMS_OPT_OUT_KEYWORDS:
         return
