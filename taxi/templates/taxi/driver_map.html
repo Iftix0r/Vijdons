@@ -79,9 +79,12 @@
 
     function boot() {
         vmap = L.map('vmap', { zoomControl: true }).setView([41.3, 69.24], 12);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-            maxZoom: 19,
+        // OSM'ning o'z tile serveri o'rniga CARTO (tashqi ilovalarga
+        // joylashtirish uchun mo'ljallangan, kalitsiz, bepul).
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
+            maxZoom: 20,
+            subdomains: 'abcd',
         }).addTo(vmap);
         // Uzoqdan (tumanlar darajasida) haydovchilar bitta doiraviy belgi
         // ichida "N ta" sifatida yig'ilib ko'rinadi, yaqinlashtirilganda esa

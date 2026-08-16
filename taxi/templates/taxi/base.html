@@ -1198,9 +1198,16 @@
     function _initOrderMap() {
         if (typeof L === 'undefined' || _omap) return;
         _omap = L.map('order_ymap', { zoomControl: true }).setView([41.2995, 69.2401], 12);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-            maxZoom: 19,
+        // Diqqat: OSM'ning O'Z tile serveri (tile.openstreetmap.org) faqat
+        // openstreetmap.org saytining o'zi uchun — boshqa ilovalar
+        // ko'plab so'rov yuborsa (yoki tegishli Referer/User-Agent bo'lmasa)
+        // TEZDA "Access blocked" bilan rad etadi (bu ANIQ sodir bo'ldi).
+        // CARTO'ning bepul taxtalari xuddi shu maqsad uchun — tashqi
+        // ilovalarga joylashtirish uchun — mo'ljallangan, kalitsiz.
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
+            maxZoom: 20,
+            subdomains: 'abcd',
         }).addTo(_omap);
         _omap.on('click', function(e) {
             _setOrderFromPoint([e.latlng.lat, e.latlng.lng]);

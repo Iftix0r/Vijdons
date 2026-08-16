@@ -241,9 +241,12 @@
         const center = hasSaved ? [savedLat, savedLng] : [41.2995, 69.2401];
 
         _officeMap = L.map('office_map', { zoomControl: true }).setView(center, hasSaved ? 15 : 12);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-            maxZoom: 19,
+        // OSM'ning o'z tile serveri o'rniga CARTO (tashqi ilovalarga
+        // joylashtirish uchun mo'ljallangan, kalitsiz, bepul).
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
+            maxZoom: 20,
+            subdomains: 'abcd',
         }).addTo(_officeMap);
 
         if (hasSaved) {
