@@ -91,7 +91,10 @@
         <div id="msg-container" class="flex-1 overflow-y-auto px-5 py-4 space-y-3">
             {% for msg in messages %}
             <div class="flex {% if msg.sender == 'operator' %}justify-end{% else %}justify-start{% endif %}">
-                <div class="max-w-[75%] {% if msg.sender == 'operator' %}bg-yellow-500 text-white rounded-2xl rounded-br-sm{% else %}bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-2xl rounded-bl-sm{% endif %} px-4 py-2.5 shadow-sm">
+                <div class="max-w-[75%] {% if msg.sender == 'operator' %}bg-yellow-500 text-white rounded-2xl rounded-br-sm{% elif msg.sender == 'ai' %}bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 text-gray-800 dark:text-gray-200 rounded-2xl rounded-bl-sm{% else %}bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-2xl rounded-bl-sm{% endif %} px-4 py-2.5 shadow-sm">
+                    {% if msg.sender == 'ai' %}
+                    <p class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 mb-1">🤖 AI Yordamchi</p>
+                    {% endif %}
                     {% if msg.audio %}
                     <div class="flex items-center gap-2 min-w-[180px]">
                         <button onclick="toggleAudio(this)" data-src="{{ msg.audio.url }}"

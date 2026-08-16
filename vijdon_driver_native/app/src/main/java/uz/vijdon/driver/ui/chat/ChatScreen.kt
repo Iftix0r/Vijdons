@@ -144,11 +144,14 @@ private fun ChatBubble(msg: ChatMessageDto) {
         ) {
             // Operator yozgan xabarda kim yozganini bilish uchun — o'zingizning
             // xabaringizda bu shart emas, u allaqachon o'ngga tekislangan
-            // sariq pufakcha bilan ajralib turibdi.
+            // sariq pufakcha bilan ajralib turibdi. AI javobi ham ATAYLAB
+            // "Operator"dan alohida rang/matn bilan belgilanadi — haydovchi
+            // odam bilan emas, bot bilan gaplashayotganini aniq bilib tursin
+            // (masalan buyurtmani bekor qilish so'ralganda bu muhim).
             if (!isMe) {
                 Text(
-                    "Operator",
-                    color = VijdonColors.Blue,
+                    if (msg.isFromAi) "🤖 AI Yordamchi" else "Operator",
+                    color = if (msg.isFromAi) VijdonColors.Green else VijdonColors.Blue,
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                 )
                 Spacer(Modifier.height(2.dp))

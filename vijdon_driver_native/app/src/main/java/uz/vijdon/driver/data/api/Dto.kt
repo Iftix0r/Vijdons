@@ -232,6 +232,7 @@ data class ChatMessageDto(
     val created_at: String,
 ) {
     val isFromDriver: Boolean get() = sender == "driver"
+    val isFromAi: Boolean get() = sender == "ai"
 }
 
 @Serializable

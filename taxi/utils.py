@@ -2738,6 +2738,94 @@ def generate_growth_insights(stats):
         return False, f'Tarmoq xatosi: {e}'
 
 
+def generate_ai_chat_reply(driver, history):
+    """Haydovchi ilovasidagi "Chat" bo'limida AI yordamchi javobini
+    generatsiya qiladi — `generate_growth_insights()` bilan bir xil xom
+    HTTP naqsh (`openai` python paketisiz), faqat bu yerda OpenAI'ning
+    "function calling" (`tools`) imkoniyati ham ishlatiladi, chunki AI
+    haqiqiy amal (buyurtmani bekor qilish) so'ray olishi kerak.
+
+    `history` — [{'role': 'user'|'assistant', 'content': str}, ...]
+    (oxirgi ChatMessage'lardan qurilgan, eng eskisi birinchi).
+
+    Qaytaradi: (reply_text, tool_name) — `tool_name` odatda `None`, faqat
+    AI `cancel_active_order`ni chaqirishga qaror qilsa shu nom qaytadi
+    (bu holda `reply_text` odatda bo'sh/`None` bo'ladi — chaqiruvchi
+    `ai_cancel_active_order()` natijasini haqiqiy javob sifatida yozadi).
+    Xato/sozlanmagan holatda (None, None) — chaqiruvchi jim o'tkazib
+    yuboradi, operator odatdagidek qo'lda javob beraveradi."""
+    try:
+        from taxi.models import AiSettings, Order
+        cfg = AiSettings.get()
+    except Exception:
+        return None, None
+
+    if not cfg.api_key or not cfg.chat_ai_enabled:
+        return None, None
+
+    active_order = Order.objects.filter(driver=driver, status__in=Order.ACTIVE_STATUSES).order_by('-id').first()
+    if active_order:
+        order_context = (
+            f"Hozir faol buyurtmasi bor: #{active_order.id}, holati "
+            f"'{active_order.get_status_display()}', manzil: {active_order.from_address}."
+        )
+    else:
+        order_context = "Hozir faol buyurtmasi yo'q."
+
+    system_prompt = (
+        "Sen Vijdon Taxi haydovchilar ilovasidagi \"Chat\" bo'limidagi AI yordamchisan. "
+        "Faqat shu haydovchining O'ZIGA tegishli savollariga (ish tartibi, buyurtma, balans, "
+        "navbat, umumiy savol-javob) qisqa va aniq, faqat o'zbek tilida javob ber. "
+        "Boshqa haydovchi/mijoz haqida ma'lumot bera olmaysan va berma.\n\n"
+        f"Haydovchi: {driver.full_name}. Balansi: {driver.balance} so'm. {order_context}\n\n"
+        "Agar haydovchi buyurtmasini bekor qilishni so'rasa: AVVAL qaysi buyurtma ekanini "
+        "(yuqoridagi kontekstdan) tasdiqla va ANIQ savol ber (\"#{id} buyurtmasini bekor "
+        "qilishni tasdiqlaysizmi?\"). Haydovchi ANIQ ha/tasdiq (\"ha\", \"tasdiqlayman\", "
+        "\"bekor qil\" kabi qat'iy javob) BERGANDAN KEYINGINA `cancel_active_order` "
+        "funksiyasini chaqir — birinchi so'ragan zahoti emas, faqat tasdiqdan keyin. "
+        "Agar faol buyurtma yo'q bo'lsa, buni aytib qo'y, funksiya chaqirma."
+    )
+
+    messages = [{'role': 'system', 'content': system_prompt}] + history
+    payload = json.dumps({
+        'model': cfg.model or 'gpt-4o-mini',
+        'messages': messages,
+        'temperature': 0.4,
+        'tools': [{
+            'type': 'function',
+            'function': {
+                'name': 'cancel_active_order',
+                'description': "Haydovchining joriy faol buyurtmasini bekor qiladi. FAQAT haydovchi aniq tasdiqlagandan keyin chaqir.",
+                'parameters': {'type': 'object', 'properties': {}, 'required': []},
+            },
+        }],
+        'tool_choice': 'auto',
+    }).encode()
+    req = urllib.request.Request(
+        'https://api.openai.com/v1/chat/completions',
+        data=payload,
+        headers={
+            'Authorization': f'Bearer {cfg.api_key}',
+            'Content-Type': 'application/json',
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode())
+        message = data['choices'][0]['message']
+        tool_calls = message.get('tool_calls') or []
+        for call in tool_calls:
+            if call.get('function', {}).get('name') == 'cancel_active_order':
+                return None, 'cancel_active_order'
+        reply = (message.get('content') or '').strip()
+        if not reply:
+            return None, None
+        return reply, None
+    except Exception:
+        return None, None
+
+
 def build_contract_pdf(contract, driver=None, signature=None):
     """Shartnoma matnidan bitta sahifaga sig'adigan, chop etishga mos ikki
     ustunli (gazeta uslubi) PDF quradi (BytesIO qaytaradi). `driver`/`signature`

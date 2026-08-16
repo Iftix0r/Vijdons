@@ -238,9 +238,11 @@ class DispatchAttempt(models.Model):
 class ChatMessage(models.Model):
     SENDER_DRIVER   = 'driver'
     SENDER_OPERATOR = 'operator'
+    SENDER_AI       = 'ai'
     SENDER_CHOICES  = (
         (SENDER_DRIVER,   'Haydovchi'),
         (SENDER_OPERATOR, 'Operator'),
+        (SENDER_AI,       'AI yordamchi'),
     )
 
     driver     = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='messages', verbose_name='Haydovchi')
@@ -468,6 +470,8 @@ class AiSettings(models.Model):
     api_key = models.CharField(max_length=255, blank=True, default='', verbose_name='OpenAI API kalit',
                                 help_text='platform.openai.com dan olingan sk-... kalit')
     model   = models.CharField(max_length=50, choices=MODEL_CHOICES, default='gpt-4o-mini', verbose_name='Model')
+    chat_ai_enabled = models.BooleanField(default=True, verbose_name='Chatda AI javob bersin',
+                                           help_text='Yoqilsa, haydovchi ilovasidagi Chat bo\'limida AI avtomatik javob beradi')
     updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):

@@ -1056,6 +1056,39 @@ def chat_private_list(request, driver):
     return Response([_chat_message_dict(m) for m in msgs])
 
 
+def _run_ai_chat_reply(driver_id):
+    """Fon oqimida (`_schedule_reverse_geocode`, utils.py bilan bir xil
+    naqsh) AI javobini so'raydi va yozadi — haydovchining "xabar yuborish"
+    so'rovini AI javobini kutib sekinlatmasin uchun."""
+    import threading
+
+    def _run():
+        from .models import ChatMessage, Driver
+        from .utils import generate_ai_chat_reply
+
+        try:
+            driver = Driver.objects.get(pk=driver_id)
+        except Driver.DoesNotExist:
+            return
+        # Oxirgi 20 ta xabar — AI va operator ikkalasi ham "assistant"
+        # tomon sifatida beriladi (AI oldingi operator javobidan xabardor
+        # bo'lsin, takrorlab/qarama-qarshi gapirmasin).
+        recent = list(ChatMessage.objects.filter(driver=driver).order_by('-created_at')[:20])
+        history = [
+            {'role': 'user' if m.sender == ChatMessage.SENDER_DRIVER else 'assistant', 'content': m.text}
+            for m in reversed(recent) if m.text
+        ]
+        reply_text, tool_name = generate_ai_chat_reply(driver, history)
+        if tool_name == 'cancel_active_order':
+            from .views import ai_cancel_active_order
+            _ok, result_text = ai_cancel_active_order(driver)
+            ChatMessage.objects.create(driver=driver, sender=ChatMessage.SENDER_AI, text=result_text)
+        elif reply_text:
+            ChatMessage.objects.create(driver=driver, sender=ChatMessage.SENDER_AI, text=reply_text)
+
+    threading.Thread(target=_run, daemon=True).start()
+
+
 @api_view(['POST'])
 @driver_required
 def chat_private_send(request, driver):
@@ -1067,6 +1100,7 @@ def chat_private_send(request, driver):
         return Response({'detail': "Xabar matni bo'sh bo'lishi mumkin emas."}, status=400)
     msg = ChatMessage.objects.create(driver=driver, sender=ChatMessage.SENDER_DRIVER, text=text)
     send_telegram(f"💬 <b>{driver.full_name}</b> ({driver.car_number}):\n{text}")
+    _run_ai_chat_reply(driver.id)
     return Response(_chat_message_dict(msg), status=201)
 
 

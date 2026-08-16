@@ -331,6 +331,30 @@ def _refund_order_commission(order, driver, reason):
     return commission
 
 
+def ai_cancel_active_order(driver):
+    """Chatdagi AI yordamchi orqali (haydovchi ANIQ tasdiqlagandan keyin)
+    joriy faol buyurtmani bekor qiladi — `_refund_order_commission()` orqali
+    komissiya qaytarish VA reyting jazosi (`penalize_driver_rating_on_cancellation`,
+    shu funksiya ichida allaqachon ulangan) avtomatik qo'llanadi, operator
+    qo'lda bekor qilgandagi bilan bir xil oqibat. Faqat shu haydovchining
+    o'z ACTIVE_STATUSES'dagi buyurtmasiga tegadi — boshqa hech kimga emas.
+    (ok, xabar_matni) qaytaradi."""
+    from .utils import sms_order_status, log_system_event
+
+    order = Order.objects.filter(driver=driver, status__in=Order.ACTIVE_STATUSES).order_by('-id').first()
+    if not order:
+        return False, "Hozir sizda faol (qabul qilingan/yo'lda) buyurtma yo'q."
+    order.status = 'cancelled'
+    order.save(update_fields=['status', 'updated_at'])
+    commission = _refund_order_commission(order, driver, "AI-chat orqali (haydovchi so'rovi bilan) bekor qilindi")
+    sms_order_status(order, 'cancelled')
+    log_system_event(
+        'order_status_changed',
+        f"Buyurtma #{order.id}: bekor qilindi (AI-chat orqali, haydovchi: {driver.full_name})",
+    )
+    return True, f"Buyurtma #{order.id} bekor qilindi. {commission} so'm balansingizga qaytarildi."
+
+
 @panel_login_required
 def order_update_status(request, pk):
     order = get_object_or_404(Order, pk=pk)
