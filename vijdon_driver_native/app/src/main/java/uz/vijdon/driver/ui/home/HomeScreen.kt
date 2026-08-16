@@ -49,6 +49,7 @@ import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.LocalTaxi
 import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Navigation
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Pause
@@ -277,7 +278,7 @@ fun HomeScreen(
         // Hamburger tugmasi yuqori CHAP burchakda (ApprovedScaffold, alohida
         // suzuvchi doira) turgani uchun bu sarlavha qatori chapdan shuncha
         // joy qoldirib boshlanadi — natijada ikkalasi bitta qator kabi ko'rinadi.
-        HomeHeader(driverFullName = currentDriver.full_name, balance = currentDriver.balance, onOpenBalance = onOpenBalance)
+        HomeHeader(driverFullName = currentDriver.full_name, rating = currentDriver.rating, balance = currentDriver.balance, onOpenBalance = onOpenBalance)
 
         if (locationServicesDisabled) {
             LocationServicesDisabledBanner(
@@ -1569,7 +1570,7 @@ internal fun formatDistanceEta(m: Double): String {
  * (pulsatsiyalanuvchi jonli nuqta + summa + "qo'shish" ikonkasi).
  */
 @Composable
-private fun HomeHeader(driverFullName: String, balance: String, onOpenBalance: () -> Unit) {
+private fun HomeHeader(driverFullName: String, rating: String, balance: String, onOpenBalance: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1581,13 +1582,34 @@ private fun HomeHeader(driverFullName: String, balance: String, onOpenBalance: (
                 color = VijdonColors.TextSecondary,
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
             )
-            Text(
-                shortDriverName(driverFullName),
-                color = VijdonColors.TextPrimary,
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    shortDriverName(driverFullName),
+                    color = VijdonColors.TextPrimary,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                val ratingValue = rating.toDoubleOrNull()
+                if (ratingValue != null) {
+                    Spacer(Modifier.width(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .background(VijdonColors.Yellow.copy(alpha = 0.16f), CircleShape)
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Rounded.Star, contentDescription = null, tint = VijdonColors.Yellow, modifier = Modifier.size(12.dp))
+                        Spacer(Modifier.width(3.dp))
+                        Text(
+                            String.format(java.util.Locale.US, "%.1f", ratingValue),
+                            color = VijdonColors.Yellow,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
+                        )
+                    }
+                }
+            }
         }
         Surface(
             shape = CircleShape,
