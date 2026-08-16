@@ -575,6 +575,9 @@ def send_sms(phone, text):
         return False, f'Xatolik: {e}'
 
 
+CLIENT_BOT_PROMO_LINK = 't.me/vijdon1351bot'
+
+
 def sms_order_status(order, event):
     """Mijozga buyurtma holati o'zgarganda SMS yuboradi.
     event: 'accepted' | 'arrived' | 'completed' | 'cancelled'"""
@@ -608,9 +611,11 @@ def sms_order_status(order, event):
                 f"manzilingizga yetib keldi. Buyurtma #{order.id}.")
     elif event == 'completed':
         text = (f"Vijdon Taxi: Buyurtmangiz (#{order.id}) yakunlandi. "
-                f"Narxi: {order.price or '—'} so'm. Xizmatimizdan foydalanganingiz uchun rahmat!")
+                f"Narxi: {order.price or '—'} so'm. Xizmatimizdan foydalanganingiz uchun rahmat! "
+                f"Keyingi safar Telegram orqali ham buyurtma bering: {CLIENT_BOT_PROMO_LINK}")
     else:  # cancelled
-        text = f"Vijdon Taxi: Buyurtmangiz (#{order.id}) bekor qilindi."
+        text = (f"Vijdon Taxi: Buyurtmangiz (#{order.id}) bekor qilindi. "
+                f"Telegram orqali ham buyurtma berishingiz mumkin: {CLIENT_BOT_PROMO_LINK}")
 
     send_sms(client.phone_number, text)
 
