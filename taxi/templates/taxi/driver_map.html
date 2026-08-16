@@ -225,21 +225,24 @@
             el.classList.toggle('bg-emerald-50', active);
             el.classList.toggle('dark:bg-emerald-900/20', active);
         });
-        vmap.setCenter([d.latitude, d.longitude], 16, { duration: 500 });
-        // Zoom animatsiyasi va klaster qayta hisoblanishi tugashini biroz
-        // kutamiz — aks holda belgi hali klasterlangan holatda bo'lib,
-        // balonni ochish muvaffaqiyatsiz bo'lishi mumkin.
-        setTimeout(function () {
-            if (marks[id]) marks[id].balloon.open();
-        }, 550);
+        // Klaster ichida bo'lsa, Leaflet.markercluster o'zi belgi ko'ringuncha
+        // yaqinlashtirib, keyin popup ochadi (Yandex'dagi kabi taxminiy
+        // vaqt kutish shart emas — bu API buni ANIQ biladi).
+        var marker = marks[id];
+        if (marker && clusterer.hasLayer(marker)) {
+            clusterer.zoomToShowLayer(marker, function () { marker.openPopup(); });
+        } else if (marker) {
+            vmap.setView([d.latitude, d.longitude], 16);
+            marker.openPopup();
+        }
     }
 
     window.fitAll = function() {
         if (!vmap) return;
         var pts = Object.values(driversData).map(function(d){ return [d.latitude, d.longitude]; });
         if (!pts.length) return;
-        if (pts.length === 1) { vmap.setCenter(pts[0], 14); return; }
-        vmap.setBounds(ymaps.util.bounds.fromPoints(pts), { checkZoomRange: true, zoomMargin: 60 });
+        if (pts.length === 1) { vmap.setView(pts[0], 14); return; }
+        vmap.fitBounds(L.latLngBounds(pts), { padding: [60, 60] });
     };
 
     // Search
@@ -252,9 +255,9 @@
     }
 
     var t = setInterval(function(){
-        if (typeof ymaps !== 'undefined' && typeof ymaps.Map === 'function') {
+        if (typeof L !== 'undefined' && typeof L.markerClusterGroup === 'function') {
             clearInterval(t);
-            ymaps.ready(boot);
+            boot();
         }
     }, 50);
 })();
