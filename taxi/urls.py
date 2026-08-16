@@ -43,6 +43,12 @@ urlpatterns = [
     path('api/ai-insights/reward/', views.panel_ai_reward_given, name='panel_ai_reward_given'),
     path('drivers/map/', views.driver_map, name='driver_map'),
     path('drivers/api/locations/', views.active_drivers_locations, name='active_drivers_locations'),
+    # Diqqat: `api/geocode/reverse/` nomi allaqachon band (pastda,
+    # `api_views.reverse_geocode` — mobil haydovchi ilovasi uchun, DRF token
+    # autentifikatsiyasi bilan) — shu sabab panel xaritasi uchun ataylab
+    # boshqa yo'l (`map/geocode/...`) tanlangan, to'qnashmasin deb.
+    path('map/geocode/reverse/', views.panel_geocode_reverse, name='panel_geocode_reverse'),
+    path('map/geocode/search/', views.panel_geocode_search, name='panel_geocode_search'),
     path('drivers/ping/', views.ping_dashboard, name='ping_dashboard'),
 
     path('clients/', views.client_list, name='client_list'),

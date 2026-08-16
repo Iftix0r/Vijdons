@@ -3762,6 +3762,32 @@ def active_drivers_locations(request):
     return JsonResponse({'drivers': data})
 
 
+# ── Panel xarita geocoding (Leaflet + Nominatim, kalitsiz) ──────────────────────
+# Diqqat: brauzerdan Nominatim'ga TO'G'RIDAN-TO'G'RI murojaat qilinmaydi —
+# Nominatim foydalanish siyosati o'ziga xos User-Agent va cheklangan so'rov
+# tezligini talab qiladi, shu sabab har doim shu ikkita panel endpoint
+# orqali (Django backend proksi qilib) chaqiriladi.
+
+@panel_login_required
+def panel_geocode_reverse(request):
+    from .utils import reverse_geocode_address
+    try:
+        lat = float(request.GET.get('lat', ''))
+        lng = float(request.GET.get('lng', ''))
+    except (TypeError, ValueError):
+        return JsonResponse({'address': ''})
+    return JsonResponse({'address': reverse_geocode_address(lat, lng)})
+
+
+@panel_login_required
+def panel_geocode_search(request):
+    from .utils import geocode_search_nominatim
+    q = request.GET.get('q', '').strip()
+    if len(q) < 3:
+        return JsonResponse({'results': []})
+    return JsonResponse({'results': geocode_search_nominatim(q)})
+
+
 # ── Operator Chat ──────────────────────────────────────────────────────────────────
 
 @panel_login_required

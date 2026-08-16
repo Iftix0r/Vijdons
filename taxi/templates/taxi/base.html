@@ -22,8 +22,9 @@
     </script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- Yandex Maps API -->
-    <script src="https://api-maps.yandex.ru/2.1/?apikey=469e8d29-be0b-42da-9bd4-ed515dbdb741&lang=uz_UZ" type="text/javascript"></script>
+    <!-- Xarita: Leaflet + OpenStreetMap taxtalari + Nominatim qidiruv — hech qanday API kalit shart emas -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         * { font-family: 'Outfit', sans-serif; }
 
@@ -418,7 +419,7 @@
                 </label>
             </div>
 
-            <!-- Yandex harita -->
+            <!-- Xarita (Leaflet + OSM) -->
             <div id="order_map_wrap">
                 {% if saved_addresses %}
                 <div class="flex items-center gap-1.5 flex-wrap mb-2">
@@ -431,6 +432,11 @@
                     {% endfor %}
                 </div>
                 {% endif %}
+                <div class="relative mb-2">
+                    <input type="text" id="om_geo_search" placeholder="Manzil qidirish..." autocomplete="off"
+                           class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 dark:text-white transition">
+                    <div id="om_geo_search_results" class="hidden absolute z-[1100] top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-48 overflow-y-auto"></div>
+                </div>
                 <div id="order_ymap" style="width:100%;height:240px;border-radius:12px;overflow:hidden;border:1.5px solid #e5e7eb;"></div>
                 <div class="flex gap-2 mt-2">
                     <span id="map_from_badge" class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-semibold
@@ -840,10 +846,9 @@
         openModal('clientSmsModal');
     }
 
-    // ── Yandex Map Logic ──
+    // ── Leaflet Map Logic (OSM taxtalar + Nominatim, kalitsiz) ──
     let _omap = null;
     let _omapFromPM = null;
-    let _ymapsReady = false;
     let _odriverMarks = {};
     let _odriverInfo  = {};
     let _odriverPoll  = null;
@@ -878,11 +883,15 @@
         var cnt = d.today_orders_count || 0;
         var cntColor = cnt <= 1 ? '#22c55e' : (cnt <= 4 ? '#f59e0b' : '#ef4444');
         var countBadge = '<div style="position:absolute;bottom:-6px;right:-6px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:' + cntColor + ';border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;line-height:1;">' + cnt + '</div>';
-        return ymaps.templateLayoutFactory.createClass(
-            '<div style="position:relative;text-align:center;">' + img + check + countBadge +
+        var html = '<div style="position:relative;text-align:center;">' + img + check + countBadge +
             '<div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid ' + borderColor + ';"></div>' +
-            '</div>'
-        );
+            '</div>';
+        // iconAnchor'ning Y qismi (39) — avatar (34px) + ostidagi uchburchak
+        // "igna"ning pastki uchigacha bo'lgan masofa (34 + 5px overlap + 7px
+        // uchburchak balandligi ≈ 39-40px) — shu nuqta xaritadagi haqiqiy
+        // koordinataga to'g'ri kelishi uchun (Yandex'da bu avtomatik
+        // hisoblanardi, Leafletda qo'lda ko'rsatish shart).
+        return L.divIcon({ html: html, className: '', iconSize: [34, 40], iconAnchor: [17, 40] });
     }
 
     function _selectDriverFromMap(id, fullName, todayCount) {
@@ -896,7 +905,7 @@
         }
         Object.keys(_odriverMarks).forEach(function(mid){
             var info = _odriverInfo[mid];
-            if (info) _odriverMarks[mid].options.set('iconLayout', _odriverIconLayout(info, mid === _odriverSelectedId));
+            if (info) _odriverMarks[mid].setIcon(_odriverIconLayout(info, mid === _odriverSelectedId));
         });
     }
 
@@ -907,7 +916,7 @@
         if (hint) hint.classList.add('hidden');
         Object.keys(_odriverMarks).forEach(function(mid){
             var info = _odriverInfo[mid];
-            if (info) _odriverMarks[mid].options.set('iconLayout', _odriverIconLayout(info, mid === _odriverSelectedId));
+            if (info) _odriverMarks[mid].setIcon(_odriverIconLayout(info, mid === _odriverSelectedId));
         });
     }
 
@@ -929,9 +938,9 @@
                     _odriverCentered = true;
                     var pts = online.map(function(d){ return [d.latitude, d.longitude]; });
                     if (pts.length === 1) {
-                        _omap.setCenter(pts[0], 13);
+                        _omap.setView(pts[0], 13);
                     } else {
-                        _omap.setBounds(ymaps.util.bounds.fromPoints(pts), { checkZoomRange: true, zoomMargin: 40 });
+                        _omap.fitBounds(L.latLngBounds(pts), { padding: [40, 40] });
                     }
                 }
                 var seen = {};
@@ -943,29 +952,24 @@
                     var hint = d.full_name + ' · ' + d.car_model + ' ' + d.car_number + ' · bugun: ' + (d.today_orders_count || 0) + ' ta';
                     var selected = id === _odriverSelectedId;
                     if (_odriverMarks[id]) {
-                        _odriverMarks[id].geometry.setCoordinates(coords);
-                        _odriverMarks[id].options.set('iconLayout', _odriverIconLayout(d, selected));
+                        _odriverMarks[id].setLatLng(coords);
+                        _odriverMarks[id].setIcon(_odriverIconLayout(d, selected));
                     } else {
-                        var pm = new ymaps.Placemark(coords, {
-                            hintContent: hint
-                        }, {
-                            iconLayout: _odriverIconLayout(d, selected),
-                            iconShape: { type: 'Circle', coordinates: [17, 17], radius: 18 }
-                        });
+                        var pm = L.marker(coords, { icon: _odriverIconLayout(d, selected) }).addTo(_omap);
+                        pm.bindTooltip(hint);
                         // Haydovchi belgisini bosish — o'sha haydovchi qo'lda tanlanadi
                         // (xarita klik hodisasiga o'tib ketmasin, aks holda "qayerdan/
                         // qayerga" pin ham qo'yilib qolardi).
-                        pm.events.add('click', function(e){
-                            if (e.stopPropagation) e.stopPropagation();
+                        pm.on('click', function(e){
+                            L.DomEvent.stopPropagation(e);
                             _selectDriverFromMap(id, d.full_name, d.today_orders_count);
                         });
-                        _omap.geoObjects.add(pm);
                         _odriverMarks[id] = pm;
                     }
                 });
                 Object.keys(_odriverMarks).forEach(function(id){
                     if (!seen[id]) {
-                        _omap.geoObjects.remove(_odriverMarks[id]);
+                        _omap.removeLayer(_odriverMarks[id]);
                         delete _odriverMarks[id];
                         delete _odriverInfo[id];
                     }
@@ -977,13 +981,11 @@
     function _stopOrderMapDrivers() {
         if (_odriverPoll) { clearInterval(_odriverPoll); _odriverPoll = null; }
         if (_omap) {
-            Object.keys(_odriverMarks).forEach(function(id){ _omap.geoObjects.remove(_odriverMarks[id]); });
+            Object.keys(_odriverMarks).forEach(function(id){ _omap.removeLayer(_odriverMarks[id]); });
         }
         _odriverMarks = {};
         _odriverInfo = {};
     }
-
-    ymaps.ready(function () { _ymapsReady = true; });
 
     function toggleOrderMap(show) {
         document.getElementById('order_map_wrap').style.display = show ? '' : 'none';

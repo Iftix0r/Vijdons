@@ -40,6 +40,27 @@ def reverse_geocode_address(lat, lng):
         return ''
 
 
+def geocode_search_nominatim(query):
+    """Manzil matnidan koordinata(lar) qidiradi (forward geocoding) —
+    operator panelining xarita qidiruv qutisi uchun. `MapsSettings.provider`dan
+    mustaqil, doim Nominatim (kalitsiz) ishlatadi — panel xaritasi endi
+    hech qanday tashqi API kalitiga bog'liq bo'lmasligi kerak.
+    O'zbekistonga moslab cheklangan (countrycodes=uz)."""
+    try:
+        url = ('https://nominatim.openstreetmap.org/search'
+               f'?q={urllib.parse.quote(query)}&format=json&limit=6'
+               '&countrycodes=uz&accept-language=uz,ru')
+        req = urllib.request.Request(url, headers={'User-Agent': 'VijdonTaxiPanel/1.0'})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode())
+        return [
+            {'display_name': d['display_name'], 'lat': float(d['lat']), 'lng': float(d['lon'])}
+            for d in data
+        ]
+    except Exception:
+        return []
+
+
 def capture_order_action_location(order, new_status, original_status, lat, lng):
     """Haydovchi "Yo'lga chiqdim"/"Yetib keldim" tugmasini bosgan paytdagi
     haqiqiy GPS joylashuvini `order`ga yozadi (mutatsiya qiladi, saqlamaydi
