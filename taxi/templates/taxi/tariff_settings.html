@@ -125,6 +125,11 @@
                 <p class="text-xs text-gray-400 mb-2">Xaritada nuqtani bosib belgilang — bu belgi haydovchilar ilovasidagi xaritada ham ko'rinadi. Hozir onlayn/oflayn haydovchilar ham xaritada, profili bilan ko'rsatiladi.</p>
                 <input type="hidden" name="office_lat" id="office_lat" value="{{ tariff.office_lat|stringformat:'f'|default:'' }}">
                 <input type="hidden" name="office_lng" id="office_lng" value="{{ tariff.office_lng|stringformat:'f'|default:'' }}">
+                <div class="relative mb-2">
+                    <input type="text" id="office_geo_search" placeholder="Manzil qidirish..." autocomplete="off"
+                           class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 dark:text-white transition">
+                    <div id="office_geo_search_results" class="hidden absolute z-[1100] top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-48 overflow-y-auto"></div>
+                </div>
                 <div id="office_map" style="width:100%;height:420px;border-radius:12px;overflow:hidden;border:1.5px solid #e5e7eb;"></div>
                 <p id="office_map_hint" class="text-[11px] text-gray-400 mt-1.5">
                     {% if tariff.office_lat and tariff.office_lng %}
