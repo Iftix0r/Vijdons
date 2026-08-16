@@ -2230,8 +2230,8 @@ def panel_ai_insights(request):
     prev_week_qs = Order.objects.filter(created_at__date__gte=prev_week_start, created_at__date__lte=prev_week_end)
     this_week_orders  = this_week_qs.count()
     prev_week_orders  = prev_week_qs.count()
-    this_week_revenue = float(this_week_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or 0)
-    prev_week_revenue = float(prev_week_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or 0)
+    this_week_revenue = float(this_week_qs.filter(status='completed').aggregate(s=Sum('commission'))['s'] or 0)
+    prev_week_revenue = float(prev_week_qs.filter(status='completed').aggregate(s=Sum('commission'))['s'] or 0)
     orders_change_pct  = round((this_week_orders - prev_week_orders) / prev_week_orders * 100, 1) if prev_week_orders else None
     revenue_change_pct = round((this_week_revenue - prev_week_revenue) / prev_week_revenue * 100, 1) if prev_week_revenue else None
 
@@ -2299,7 +2299,7 @@ def panel_ai_insights(request):
         'yakunlangan_buyurtmalar':       completed_qs.count(),
         'bekor_qilingan_buyurtmalar':    cancelled_orders,
         'bekor_qilish_foizi':            cancel_rate,
-        'jami_daromad_som':              float(completed_qs.aggregate(s=Sum('price'))['s'] or 0),
+        'jami_daromad_som':              float(completed_qs.aggregate(s=Sum('commission'))['s'] or 0),
         'ortacha_narx_som':              float(completed_qs.aggregate(a=Avg('price'))['a'] or 0),
         'songgi_7_kun_buyurtmalar_soni': weekly_counts,
         'shu_hafta_buyurtmalar':         this_week_orders,
@@ -4033,7 +4033,7 @@ def statistics(request):
         day = start_date + timedelta(days=i)
         day_qs = Order.objects.filter(created_at__date=day)
         labels.append(day.strftime('%d/%m'))
-        revenues.append(float(day_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or 0))
+        revenues.append(float(day_qs.filter(status='completed').aggregate(s=Sum('commission'))['s'] or 0))
         counts.append(day_qs.count())
 
     range_qs = Order.objects.filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
@@ -4041,13 +4041,13 @@ def statistics(request):
     range_orders_count    = range_qs.count()
     range_cancelled_count = range_qs.filter(status='cancelled').count()
     cancellation_rate = round(range_cancelled_count / range_orders_count * 100, 1) if range_orders_count else 0
-    range_revenue = float(range_completed_qs.aggregate(s=Sum('price'))['s'] or 0)
+    range_revenue = float(range_completed_qs.aggregate(s=Sum('commission'))['s'] or 0)
 
     # Oldingi (bir xil uzunlikdagi) davrga nisbatan o'sish foizi
     prev_end_date   = start_date - timedelta(days=1)
     prev_start_date = prev_end_date - timedelta(days=range_days - 1)
     prev_qs = Order.objects.filter(created_at__date__gte=prev_start_date, created_at__date__lte=prev_end_date)
-    prev_revenue = float(prev_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or 0)
+    prev_revenue = float(prev_qs.filter(status='completed').aggregate(s=Sum('commission'))['s'] or 0)
     prev_orders_count = prev_qs.count()
     revenue_growth_pct = round((range_revenue - prev_revenue) / prev_revenue * 100, 1) if prev_revenue else None
     orders_growth_pct  = round((range_orders_count - prev_orders_count) / prev_orders_count * 100, 1) if prev_orders_count else None
@@ -4065,7 +4065,7 @@ def statistics(request):
 
     top_drivers = Driver.objects.annotate(
         completed=Count('orders', filter=Q(orders__status='completed', orders__created_at__date__gte=start_date, orders__created_at__date__lte=end_date)),
-        earned=Sum('orders__price', filter=Q(orders__status='completed', orders__created_at__date__gte=start_date, orders__created_at__date__lte=end_date))
+        earned=Sum('orders__commission', filter=Q(orders__status='completed', orders__created_at__date__gte=start_date, orders__created_at__date__lte=end_date))
     ).filter(completed__gt=0).order_by('-completed')[:10]
 
     top_clients = Client.objects.annotate(
@@ -4073,7 +4073,7 @@ def statistics(request):
         spent=Sum('orders__price', filter=Q(orders__status='completed', orders__created_at__date__gte=start_date, orders__created_at__date__lte=end_date))
     ).filter(total__gt=0).order_by('-total')[:10]
 
-    total_revenue = Order.objects.filter(status='completed').aggregate(s=Sum('price'))['s'] or Decimal('0')
+    total_revenue = Order.objects.filter(status='completed').aggregate(s=Sum('commission'))['s'] or Decimal('0')
     avg_price     = Order.objects.filter(status='completed').aggregate(a=Avg('price'))['a'] or Decimal('0')
 
     return render(request, 'taxi/statistics.html', {
@@ -4116,14 +4116,14 @@ def statistics_export_csv(request):
     for i in range(range_days):
         day = start_date + timedelta(days=i)
         day_qs = Order.objects.filter(created_at__date=day)
-        revenue = day_qs.filter(status='completed').aggregate(s=Sum('price'))['s'] or 0
+        revenue = day_qs.filter(status='completed').aggregate(s=Sum('commission'))['s'] or 0
         writer.writerow([day.strftime('%d.%m.%Y'), revenue, day_qs.count()])
 
     writer.writerow([])
     writer.writerow(['Top haydovchilar', 'Safarlar', 'Daromad (UZS)'])
     top_drivers = Driver.objects.annotate(
         completed=Count('orders', filter=Q(orders__status='completed', orders__created_at__date__gte=start_date, orders__created_at__date__lte=end_date)),
-        earned=Sum('orders__price', filter=Q(orders__status='completed', orders__created_at__date__gte=start_date, orders__created_at__date__lte=end_date))
+        earned=Sum('orders__commission', filter=Q(orders__status='completed', orders__created_at__date__gte=start_date, orders__created_at__date__lte=end_date))
     ).filter(completed__gt=0).order_by('-completed')[:20]
     for d in top_drivers:
         writer.writerow([d.full_name, d.completed, d.earned or 0])
