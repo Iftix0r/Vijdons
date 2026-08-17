@@ -3840,6 +3840,8 @@ def operator_chat(request):
         text = request.POST.get('group_text', '').strip()
         if text:
             GroupMessage.objects.create(driver=None, sender_name='Operator', text=text)
+            for d in Driver.objects.filter(approval_status=Driver.APPROVAL_APPROVED).exclude(fcm_token=''):
+                _send_fcm_to_driver(d, '📢 Barchaga xabar', text, data_type='group_chat')
         return redirect(request.path + ('?driver_id=' + selected_id if selected_id else '') + '#group')
 
     if request.method == 'POST' and selected_driver:
