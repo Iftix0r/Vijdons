@@ -326,14 +326,21 @@ def order_accept(request, driver, pk):
         locked = get_object_or_404(Order.objects.select_for_update(), pk=pk)
         if locked.status != 'pending':
             return Response({'detail': 'Bu buyurtmani boshqa haydovchi qabul qildi.'}, status=409)
-        if locked.dispatched_to_id and locked.dispatched_to_id != driver.id:
+        # dispatch_timeout o'tib, buyurtma umumiy tabloga tushgan bo'lsa
+        # (dispatched_at eski), dispatched_to tekshiruvi o'tkazib yuboriladi —
+        # aks holda haydovchi _visible_orders_qs da ko'rgan buyurtmani
+        # qabul qilishga urinsa "sizga emas" xatosi chiqardi.
+        import datetime
+        tariff = TariffSettings.get()
+        dispatch_cutoff = timezone.now() - datetime.timedelta(seconds=tariff.dispatch_timeout)
+        offer_expired = locked.dispatched_at and locked.dispatched_at < dispatch_cutoff
+        if locked.dispatched_to_id and locked.dispatched_to_id != driver.id and not offer_expired:
             return Response({'detail': 'Bu buyurtma sizga yuborilmagan.'}, status=403)
         active_count = Order.objects.filter(driver=driver, status__in=Order.ACTIVE_STATUSES).count()
         if active_count >= Order.MAX_ACTIVE_PER_DRIVER:
             return Response({
                 'detail': f"Bir vaqtda ko'pi bilan {Order.MAX_ACTIVE_PER_DRIVER} ta faol buyurtma olish mumkin.",
             }, status=400)
-        tariff = TariffSettings.get()
         commission = locked.commission or tariff.commission
         # Diqqat: balans yetarli bo'lmasa ham, buyurtma UZOQ VAQT (2 daqiqa)
         # hech kim tomonidan qabul qilinmay kutib qolgan bo'lsa — QARZGA
@@ -915,7 +922,9 @@ def address_queue_position(request, driver, pk):
             stale_cutoff = timezone.now() - datetime.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
             was_stale = not driver.last_seen or driver.last_seen < stale_cutoff
             update_address_queue_membership(driver, float(lat), float(lng), was_stale=was_stale)
-            Driver.objects.filter(pk=driver.pk).update(last_seen=timezone.now())
+            now = timezone.now()
+            Driver.objects.filter(pk=driver.pk).update(last_seen=now)
+            driver.last_seen = now  # Python obyektini ham yangilash — keyingi was_stale tekshiruvi uchun
         except (TypeError, ValueError):
             pass
 
