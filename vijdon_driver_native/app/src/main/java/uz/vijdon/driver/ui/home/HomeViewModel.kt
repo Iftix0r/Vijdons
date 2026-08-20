@@ -30,6 +30,7 @@ import uz.vijdon.driver.data.push.TEST_ORDER_ID
 import uz.vijdon.driver.data.push.TestAlertBus
 import uz.vijdon.driver.data.repository.ApiResult
 import uz.vijdon.driver.data.repository.DriverRepository
+import uz.vijdon.driver.data.repository.OfflineCache
 import uz.vijdon.driver.ui.orders.TaximeterTracker
 import javax.inject.Inject
 import kotlin.math.atan2
@@ -49,6 +50,7 @@ data class HomeUiState(
     val rank: Int? = null,
     val alertOrder: OrderDto? = null,
     val alertTotalSec: Int = 30,
+    val alertError: String? = null,
     val addresses: List<AddressDto> = emptyList(),
     val addressDistancesM: Map<Int, Double> = emptyMap(),
     val expandedAddressId: Int? = null,
@@ -74,6 +76,7 @@ data class HomeUiState(
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: DriverRepository,
+    private val offlineCache: OfflineCache,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -231,7 +234,7 @@ class HomeViewModel @Inject constructor(
         pollJob = viewModelScope.launch {
             while (true) {
                 refreshOrders()
-                delay(4_000)
+                delay(3_000)
             }
         }
     }
@@ -243,11 +246,17 @@ class HomeViewModel @Inject constructor(
     // "Yaqin manzillar" bo'limida ko'rinardi). Veb bilan bir xil kadensiya — 20s.
     private var addressPollJob: Job? = null
     private fun startAddressPolling() {
+        // Ilova birinchi ochilganda keshdan darhol ko'rsatish
+        offlineCache.loadAddresses()?.let {
+            _uiState.value = _uiState.value.copy(addresses = it)
+            recomputeAddressDistances()
+        }
         addressPollJob?.cancel()
         addressPollJob = viewModelScope.launch {
             while (true) {
                 val result = repository.addresses()
                 if (result is ApiResult.Success) {
+                    offlineCache.saveAddresses(result.data)
                     _uiState.value = _uiState.value.copy(addresses = result.data)
                     recomputeAddressDistances()
                 }
@@ -555,6 +564,17 @@ class HomeViewModel @Inject constructor(
     }
 
     private suspend fun fetchAndApplyOrders() {
+        // Birinchi yuklashda keshdan darhol ko'rsatish (loading=false)
+        if (_uiState.value.loading && _uiState.value.orders.isEmpty()) {
+            offlineCache.loadOrders()?.let { cached ->
+                _uiState.value = _uiState.value.copy(
+                    orders = cached.orders,
+                    lowBalance = cached.low_balance,
+                    loading = false,
+                )
+                recomputeOrderDistances()
+            }
+        }
         when (val result = repository.availableOrders()) {
             is ApiResult.Success -> {
                 // SINOV (soxta) ogohlantirish ko'rsatilib turgan bo'lsa —
@@ -592,6 +612,7 @@ class HomeViewModel @Inject constructor(
                 if (result.data.low_balance && !_uiState.value.lowBalance) {
                     DriverSoundPlayer.play(DriverSoundEvent.LOW_BALANCE)
                 }
+                offlineCache.saveOrders(result.data)
                 _uiState.value = _uiState.value.copy(
                     orders = result.data.orders,
                     lowBalance = result.data.low_balance,
@@ -679,8 +700,12 @@ class HomeViewModel @Inject constructor(
         NotificationManagerCompat.from(context).cancel(id)
         DriverSoundPlayer.stop()
         runAction<OrderDto>(id, onSuccess = { accepted ->
+            alertOrderId = null
+            _uiState.value = _uiState.value.copy(alertOrder = null, alertError = null)
             DriverSoundPlayer.play(DriverSoundEvent.ACCEPT)
             openClientDialer(accepted.client_phone)
+        }, onError = { msg ->
+            _uiState.value = _uiState.value.copy(alertError = msg)
         }) { repository.acceptOrder(id) }
     }
 

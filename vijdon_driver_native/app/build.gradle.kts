@@ -42,15 +42,9 @@ android {
 
         buildConfigField("boolean", "HAS_FCM", hasGoogleServices.toString())
         // Ishlab chiqarish serveri hosting darajasidagi Imunify360 WAF
-        // JS-bot-tekshiruvi ostida — bu WHM/server administratori darajasida
-        // qulflangan (cPanel hisobidan o'zgartirib bo'lmaydi), shu sabab
-        // ChallengeInterceptor (data/challenge/) uni ilova ichida ko'rinmas
-        // WebView orqali avtomatik "yechadi". Lokal sinov uchun vaqtincha
-        // "http://127.0.0.1:8000/api/driverapp/" ga o'zgartirib, qurilmada
-        // `adb reverse tcp:8000 tcp:8000` ishga tushiring (bu holda
-        // ChallengeInterceptor hech narsa qilmaydi, chunki host boshqacha).
+        // Lokal sinov uchun vaqtincha "http://127.0.0.1:8000/api/driverapp/" ga
+        // o'zgartirib, qurilmada `adb reverse tcp:8000 tcp:8000` ishga tushiring.
         buildConfigField("String", "BASE_URL", "\"https://vijdontaxi.uz/api/driverapp/\"")
-        buildConfigField("String", "CHALLENGE_ORIGIN", "\"https://vijdontaxi.uz/\"")
     }
 
     signingConfigs {
@@ -139,6 +133,7 @@ dependencies {
 
     // Token saqlash
     implementation("androidx.datastore:datastore-preferences:1.2.1")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // Joylashuv (foreground service)
     implementation("com.google.android.gms:play-services-location:21.4.0")

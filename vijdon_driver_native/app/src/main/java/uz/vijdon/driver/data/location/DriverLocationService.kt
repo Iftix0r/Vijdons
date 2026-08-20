@@ -55,21 +55,12 @@ class DriverLocationService : Service() {
     private var lastReportedLng: Double? = null
     private var lastReportedAtMs: Long = 0L
 
-    // FCM endi ulangan — "shaxsan menga yuborilgan" yangi buyurtma haqida
-    // asosiy signal endi VijdonFirebaseMessagingService.onMessageReceived()
-    // orqali (deyarli bir zumda, ilova fonda/o'chirilgan bo'lsa ham) keladi.
-    // Shu polling endi faqat ZAXIRA — ba'zi qurilmalarda (masalan agressiv
-    // "battery saver"li Xiaomi/Huawei kabi OEM'lar) FCM push kechikishi yoki
-    // butunlay yetib bormasligi mumkin, shu holat uchun tarmoq/serverga
-    // ancha kamroq yuk beradigan oraliqda davom etadi.
-    //
-    // Diqqat: oddiy instance maydon EMAS — shu OEM'larning aynan shu
-    // xizmatni majburan o'ldirib-qayta ishga tushirishi (`START_STICKY`)
-    // paytida, agar hali ham `SharedPreferences`da saqlanmasa, yangi
-    // instansiya buni "hali ogohlantirilmagan" deb noto'g'ri qayta
-    // hisoblab, xuddi shu buyurtma uchun ringtone'ni yana boshidan
-    // chalib yuborardi (server hali ham "pending" deb ko'rsatsa — masalan
-    // qabul qilish so'rovi WorkManager navbatida kutayotgan bo'lsa).
+    /** FCM endi ulangan — "shaxsan menga yuborilgan" yangi buyurtma haqida
+     * asosiy signal endi VijdonFirebaseMessagingService.onMessageReceived()
+     * orqali (deyarli bir zumda, ilova fonda/o'chirilgan bo'lsa ham) keladi.
+     * Shu polling endi faqat ZAXIRA — ba'zi qurilmalarda (masalan agressiv
+     * "battery saver"li Xiaomi/Huawei kabi OEM'lar) FCM push kechikishi yoki
+     * butunlay yetib bormasligi mumkin, shu holat uchun davom etadi. */
     private var alertedOrderId: Int?
         get() = prefs().getInt(PREF_ALERTED_ORDER_ID, -1).takeIf { it != -1 }
         set(value) { prefs().edit().putInt(PREF_ALERTED_ORDER_ID, value ?: -1).apply() }
@@ -175,7 +166,7 @@ class DriverLocationService : Service() {
         val prevLng = lastReportedLng
         val now = System.currentTimeMillis()
         val movedEnough = prevLat == null || prevLng == null || distanceMeters(prevLat, prevLng, lat, lng) >= 30.0
-        val staleByTime = now - lastReportedAtMs >= 120_000L
+        val staleByTime = now - lastReportedAtMs >= 90_000L
         if (!movedEnough && !staleByTime) return
         lastReportedLat = lat
         lastReportedLng = lng
@@ -202,7 +193,7 @@ class DriverLocationService : Service() {
         scope.launch {
             while (true) {
                 pollForDispatchedOrder()
-                delay(15_000L)
+                delay(6_000L)
             }
         }
     }

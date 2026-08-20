@@ -9,6 +9,7 @@ lekin og'ir/pul bilan bog'liq mantiqni (balans yechish, dispatch, taximetr
 idempotentligi) taxi/utils.py va taxi/driver_views.py'dagi sinovdan o'tgan
 funksiyalarni chaqirib amalga oshiradi, qayta yozmaydi.
 """
+import datetime
 import json
 from decimal import Decimal
 from functools import wraps
@@ -170,7 +171,6 @@ def duty_toggle(request, driver):
 @driver_required
 def location_update(request, driver):
     from django.utils import timezone
-    import datetime
     from .utils import update_address_queue_membership, ADDRESS_QUEUE_STALE_MINUTES, reverse_geocode_address
 
     try:
@@ -223,18 +223,17 @@ def fcm_sync(request, driver):
 def _visible_orders_qs(driver):
     from django.db.models import Q
     from django.utils import timezone
-    import datetime
     from .utils import haversine
 
     dispatch_cutoff = timezone.now() - datetime.timedelta(seconds=TariffSettings.get().dispatch_timeout)
     active_orders = list(Order.objects.filter(
         driver=driver, status__in=Order.ACTIVE_STATUSES
-    ).select_related('client', 'driver'))
+    ).select_related('client', 'driver').prefetch_related('rejected_by'))
 
     if len(active_orders) >= Order.MAX_ACTIVE_PER_DRIVER:
         base = active_orders
     else:
-        pending_qs = Order.objects.select_related('client', 'driver').filter(
+        pending_qs = Order.objects.select_related('client', 'driver').prefetch_related('rejected_by').filter(
             Q(status='pending', dispatched_to=driver) |
             Q(status='pending', dispatched_to__isnull=True) |
             Q(status='pending', dispatched_at__lt=dispatch_cutoff)
@@ -330,7 +329,6 @@ def order_accept(request, driver, pk):
         # (dispatched_at eski), dispatched_to tekshiruvi o'tkazib yuboriladi —
         # aks holda haydovchi _visible_orders_qs da ko'rgan buyurtmani
         # qabul qilishga urinsa "sizga emas" xatosi chiqardi.
-        import datetime
         tariff = TariffSettings.get()
         dispatch_cutoff = timezone.now() - datetime.timedelta(seconds=tariff.dispatch_timeout)
         offer_expired = locked.dispatched_at and locked.dispatched_at < dispatch_cutoff
@@ -445,7 +443,6 @@ def _transition(request, driver, pk, allowed_statuses, new_status):
             try:
                 lat, lng = float(lat), float(lng)
                 from django.utils import timezone as _tz
-                import datetime
                 from .utils import update_address_queue_membership, ADDRESS_QUEUE_STALE_MINUTES
                 stale_cutoff = _tz.now() - datetime.timedelta(minutes=ADDRESS_QUEUE_STALE_MINUTES)
                 was_stale = not driver.last_seen or driver.last_seen < stale_cutoff
@@ -652,7 +649,6 @@ def order_start_taximeter(request, driver):
 def order_history(request, driver):
     from django.db.models import Sum, Count, Q as DQ
     from django.utils import timezone
-    import datetime
 
     period = request.query_params.get('period', 'all')
     qs = Order.objects.filter(driver=driver)
@@ -911,7 +907,6 @@ def current_area(request, driver):
 @driver_required
 def address_queue_position(request, driver, pk):
     from django.utils import timezone
-    import datetime
     from .models import AddressQueueEntry
     from .utils import update_address_queue_membership, ADDRESS_QUEUE_STALE_MINUTES
 
@@ -1206,7 +1201,6 @@ def chat_typing_status(request, driver):
     "AI yozmoqda..." animatsiyasi uchun — kim (agar bo'lsa) hozir javob
     tayyorlayotganini qaytaradi."""
     from django.utils import timezone
-    import datetime
 
     cutoff = timezone.now() - datetime.timedelta(seconds=CHAT_TYPING_FRESHNESS_SECONDS)
     if driver.ai_typing_at and driver.ai_typing_at >= cutoff:

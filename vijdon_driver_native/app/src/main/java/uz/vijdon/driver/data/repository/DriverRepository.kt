@@ -89,7 +89,7 @@ class DriverRepository @Inject constructor(
 
     private companion object {
         const val NETWORK_RETRY_ATTEMPTS = 3
-        const val NETWORK_RETRY_BACKOFF_MS = 400L
+        const val NETWORK_RETRY_BACKOFF_MS = 150L
     }
 
     suspend fun register(
