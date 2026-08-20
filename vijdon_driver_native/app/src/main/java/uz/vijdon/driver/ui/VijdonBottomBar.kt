@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -137,6 +138,7 @@ private fun ProfileBottomTab(photoUrl: String?, selected: Boolean, onClick: () -
                 model = photoUrl,
                 contentDescription = "Profil",
                 contentScale = ContentScale.Crop,
+                error = rememberVectorPainter(Icons.Rounded.AccountCircle),
                 modifier = Modifier
                     .size(27.dp)
                     .clip(CircleShape)

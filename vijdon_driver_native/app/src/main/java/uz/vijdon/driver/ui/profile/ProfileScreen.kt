@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.AddCard
 import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.DirectionsCar
@@ -54,6 +55,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -136,6 +138,8 @@ fun ProfileScreen(
                         model = currentDriver.photo_url,
                         contentDescription = "Profil rasmi",
                         contentScale = ContentScale.Crop,
+                        placeholder = rememberVectorPainter(Icons.Rounded.AccountCircle),
+                        error = rememberVectorPainter(Icons.Rounded.AccountCircle),
                         modifier = Modifier
                             .size(88.dp)
                             .clip(CircleShape)

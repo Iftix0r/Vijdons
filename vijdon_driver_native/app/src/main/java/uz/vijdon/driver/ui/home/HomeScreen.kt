@@ -89,6 +89,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -261,6 +262,7 @@ fun HomeScreen(
             order = alertOrder,
             totalSec = state.alertTotalSec,
             distanceM = state.orderDistancesM[alertOrder.id],
+            error = state.alertError,
             onAccept = { viewModel.acceptOrder(alertOrder.id) },
             onReject = { viewModel.rejectOrder(alertOrder.id) },
         )
@@ -1469,6 +1471,7 @@ private fun QueueDriverAvatar(photoUrl: String?, fullName: String, size: Dp, bac
             model = photoUrl,
             contentDescription = null,
             contentScale = ContentScale.Crop,
+            error = rememberVectorPainter(Icons.Rounded.AccountCircle),
             modifier = Modifier.size(size).clip(CircleShape).background(background),
         )
     }

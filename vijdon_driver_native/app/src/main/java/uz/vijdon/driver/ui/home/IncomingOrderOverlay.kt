@@ -58,15 +58,16 @@ import uz.vijdon.driver.util.formatMoney
  * o'zi yopiladi (HomeViewModel `alertOrder=null` qilib qo'yadi).
  */
 @Composable
-fun IncomingOrderOverlay(order: OrderDto, totalSec: Int, distanceM: Double?, onAccept: () -> Unit, onReject: () -> Unit) {
+fun IncomingOrderOverlay(order: OrderDto, totalSec: Int, distanceM: Double?, error: String? = null, onAccept: () -> Unit, onReject: () -> Unit) {
     val safeTotal = totalSec.coerceAtLeast(1)
     var remainingMs by remember(order.id) { mutableLongStateOf((order.timer_sec ?: safeTotal).toLong() * 1000L) }
 
-    // Server har poll'da (~4s) haqiqiy qolgan vaqtni qaytaradi — shu bilan
-    // qayta sinxronlanadi, lekin orasidagi tebranishni silliq ko'rsatish
-    // uchun mahalliy 200ms tikligi davom etadi.
+    // Server timer_sec=0 qaytarsa — buyurtma boshqasiga o'tkazilgan,
+    // overlay darhol yopiladi (keyingi polling gacha kutmasdan).
     LaunchedEffect(order.timer_sec) {
-        order.timer_sec?.let { remainingMs = it.toLong() * 1000L }
+        val sec = order.timer_sec ?: return@LaunchedEffect
+        if (sec <= 0) { onReject(); return@LaunchedEffect }
+        remainingMs = sec.toLong() * 1000L
     }
     LaunchedEffect(order.id) {
         while (isActive) {
@@ -176,6 +177,19 @@ fun IncomingOrderOverlay(order: OrderDto, totalSec: Int, distanceM: Double?, onA
         )
 
         Spacer(Modifier.weight(1f))
+
+        // Internet yo'q yoki server xatosi bo'lsa — tugmalar ustida ko'rsatiladi
+        if (error != null) {
+            androidx.compose.material3.Text(
+                error,
+                color = VijdonColors.Red,
+                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    .background(VijdonColors.Red.copy(alpha = 0.12f), androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            )
+        }
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(

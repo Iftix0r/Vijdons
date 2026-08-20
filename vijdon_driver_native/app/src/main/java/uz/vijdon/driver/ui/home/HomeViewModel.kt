@@ -768,7 +768,7 @@ class HomeViewModel @Inject constructor(
         taximeters[id] = TaximeterTracker(cfg.base_price, cfg.price_per_km, cfg.waiting_price_per_minute)
     }
 
-    private fun <T> runAction(orderId: Int, onSuccess: (T) -> Unit = {}, block: suspend () -> ApiResult<T>) {
+    private fun <T> runAction(orderId: Int, onSuccess: (T) -> Unit = {}, onError: ((String) -> Unit)? = null, block: suspend () -> ApiResult<T>) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(actionInProgress = _uiState.value.actionInProgress + orderId)
             when (val result = block()) {
@@ -776,7 +776,10 @@ class HomeViewModel @Inject constructor(
                     refreshOrders()
                     onSuccess(result.data)
                 }
-                is ApiResult.Error -> _uiState.value = _uiState.value.copy(error = result.message)
+                is ApiResult.Error -> {
+                    if (onError != null) onError(result.message)
+                    else _uiState.value = _uiState.value.copy(error = result.message)
+                }
             }
             _uiState.value = _uiState.value.copy(actionInProgress = _uiState.value.actionInProgress - orderId)
         }

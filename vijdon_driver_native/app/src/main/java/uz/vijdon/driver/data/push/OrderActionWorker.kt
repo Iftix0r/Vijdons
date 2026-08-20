@@ -48,16 +48,16 @@ class OrderActionWorker(context: Context, params: WorkerParameters) : CoroutineW
             val repository = EntryPointAccessors.fromApplication(applicationContext, OrderActionEntryPoint::class.java).driverRepository()
             when (action) {
                 OrderActionReceiver.ACTION_ACCEPT -> {
-                    if (repository.acceptOrder(orderId) is ApiResult.Success) {
+                    val result = repository.acceptOrder(orderId)
+                    if (result is ApiResult.Success) {
                         DriverSoundPlayer.play(DriverSoundEvent.ACCEPT)
-                        // Ilova ochilib, to'g'ridan-to'g'ri shu buyurtma tafsiloti
-                        // ko'rsatilsin — haydovchi qabul qilgandan keyin nima
-                        // bo'layotganini darhol ko'rishi kerak.
                         val intent = Intent(applicationContext, MainActivity::class.java).apply {
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK
                             putExtra(MainActivity.EXTRA_OPEN_ORDER_ID, orderId)
                         }
                         applicationContext.startActivity(intent)
+                    } else if (result is ApiResult.Error) {
+                        showErrorNotification(orderId, result.message)
                     }
                 }
                 OrderActionReceiver.ACTION_REJECT -> {
@@ -73,6 +73,21 @@ class OrderActionWorker(context: Context, params: WorkerParameters) : CoroutineW
         // (ikkalasi mustaqil) — shu sabab bu yerda ham aniq to'xtatiladi.
         DriverSoundPlayer.stop()
         return Result.success()
+    }
+
+    private fun showErrorNotification(orderId: Int, message: String) {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                applicationContext, android.Manifest.permission.POST_NOTIFICATIONS,
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) return
+        val notification = androidx.core.app.NotificationCompat.Builder(applicationContext, "new_orders_channel")
+            .setContentTitle("Buyurtma qabul qilinmadi")
+            .setContentText(message)
+            .setSmallIcon(uz.vijdon.driver.R.drawable.ic_launcher_foreground)
+            .setAutoCancel(true)
+            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+            .build()
+        NotificationManagerCompat.from(applicationContext).notify(orderId + 10000, notification)
     }
 
     companion object {

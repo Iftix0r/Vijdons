@@ -33,7 +33,7 @@ _WEEKLY_HOUR  = 21  # Yakshanba kuni shu soatda (TOP-10) / 22 (umumiy hisobot)
 _MONTHLY_HOUR = 21  # Oyning oxirgi kunida shu soatda
 _MONTHLY_FINANCIAL_REPORT_HOUR = 9  # Oyning 1-kunida shu soatda (o'tgan oy hisoboti)
 
-_TICK_SECONDS = 30
+_TICK_SECONDS = 20
 
 # Diqqat: "Tizim holati" sahifasi shuni o'qiydi — oxirgi tick qachon
 # bo'lganini bilib, scheduler threadi qotib qolgan/o'lgan bo'lsa (kutilgan
