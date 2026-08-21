@@ -19,6 +19,15 @@
 {% endblock %}
 {% block content %}
 
+<div id="driver-action-loading" class="hidden fixed inset-0 z-[100] items-center justify-center"
+     style="background:rgba(0,0,0,.18);backdrop-filter:blur(2px)" aria-live="polite">
+  <div class="mx-5 flex items-center gap-3 rounded-2xl px-5 py-4 shadow-xl"
+       style="background:var(--ios-bg);color:var(--ios-label)">
+    <span class="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+    <span id="driver-action-loading-text">So'rov yuborilmoqda...</span>
+  </div>
+</div>
+
 <!-- Pull-to-refresh -->
 <div id="ptr" class="relative flex items-center justify-center gap-2 overflow-hidden"
      style="height:0;opacity:0;transition:height .18s ease,opacity .18s ease;color:var(--ios-label3)">
@@ -2469,6 +2478,20 @@ async function doAction(id,action,extra){
   // hali ko'rinib turadi va ikkinchi marta bosilishi mumkin.
   if (window._actionInFlight) return;
   window._actionInFlight = true;
+  const actionLoading = document.getElementById('driver-action-loading');
+  const actionLoadingText = document.getElementById('driver-action-loading-text');
+  const slowTestMs = Math.min(10000, Math.max(0, Number(
+    new URLSearchParams(window.location.search).get('slow_test') || 0
+  )));
+  if (actionLoading) {
+    actionLoading.classList.remove('hidden');
+    actionLoading.classList.add('flex');
+  }
+  if (actionLoadingText) {
+    actionLoadingText.textContent = slowTestMs
+      ? `Test rejimi: ${Math.ceil(slowTestMs / 1000)} soniya kutilmoqda...`
+      : "So'rov yuborilmoqda...";
+  }
 
   try { Native.vibrate(); } catch(e) { console.error('vibrate xatosi', e); }
   // Sheet faqat "yakunlovchi" harakatlarda (yakunlash/bekor qilish/rad etish)
@@ -2490,6 +2513,7 @@ async function doAction(id,action,extra){
   } catch(e) { console.error('FlutterNotify xatosi', e); }
 
   try{
+    if (slowTestMs) await new Promise(resolve => setTimeout(resolve, slowTestMs));
     const fd = new FormData();
     // Taksimetr bir vaqtda faqat BITTA buyurtmani kuzatadi (global _tmxDistKm).
     // Haydovchida 2-chi faol buyurtma bo'lganda, ushbu amal boshqa (kuzatilmayotgan)
@@ -2607,6 +2631,11 @@ async function doAction(id,action,extra){
       : (err?.message || 'Internet aloqasini tekshiring');
     showToast('Tarmoq xatosi', msg, 'error');
   } finally {
+    if (actionLoading) {
+      actionLoading.classList.add('hidden');
+      actionLoading.classList.remove('flex');
+    }
+    if (actionLoadingText) actionLoadingText.textContent = "So'rov yuborilmoqda...";
     window._actionInFlight = false;
   }
 }

@@ -82,6 +82,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',   # ← whitenoise: static fayllarni serve qiladi
+    'taxi.middleware.DriverFakeSlowMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -89,6 +90,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# Test uchun haydovchi sayt/API javobini sun'iy sekinlashtirish. O'chirish: 0.
+DRIVER_FAKE_DELAY_SECONDS = 5
 
 ROOT_URLCONF = 'config.urls'
 
