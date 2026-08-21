@@ -92,7 +92,7 @@ MIDDLEWARE = [
 ]
 
 # Test uchun haydovchi sayt/API javobini sun'iy sekinlashtirish. O'chirish: 0.
-DRIVER_FAKE_DELAY_SECONDS = 5
+DRIVER_FAKE_DELAY_SECONDS = 0
 
 ROOT_URLCONF = 'config.urls'
 
