@@ -2401,13 +2401,27 @@ def update_address_queue_membership(driver, lat, lng, was_stale=False):
             return
 
         nearest_addr = find_matching_saved_address(lat, lng)
+        # 1km ichida manzil topilmasa, onlayn haydovchi kengroq radiusdagi
+        # (AUTO_ADDRESS_DEDUPE_RADIUS_KM) mavjud manzil navbatiga DARHOL
+        # qo'shiladi. Avval bu faqat AUTO_ADDRESS_DWELL_MINUTES "turib
+        # qolish"dan keyin bo'lardi — amalda ~3 daqiqa kutish, GPS 100m dan
+        # ko'p tebransa esa umuman hech qachon qo'shilmaslik edi (haydovchi
+        # "Onlayn" bo'lib turibdi-yu, navbatda yo'q). Kutish endi faqat
+        # YANGI manzil avtomatik yaratilishi uchun qoldi (pastga qarang).
+        if nearest_addr is None and driver.is_on_duty:
+            nearest_addr = find_matching_saved_address(lat, lng, radius_km=AUTO_ADDRESS_DEDUPE_RADIUS_KM)
 
         if open_entry:
-            switched_address = nearest_addr is not None and nearest_addr.pk != open_entry.address_id
+            same_address = nearest_addr is not None and nearest_addr.pk == open_entry.address_id
             dist_to_current = haversine(lat, lng, open_entry.address.lat, open_entry.address.lng)
-            if (
-                not was_stale and not switched_address
-                and dist_to_current is not None and dist_to_current <= ADDRESS_QUEUE_LEAVE_RADIUS_KM
+            # Eng yaqin moslik hali ham shu manzil bo'lsa — masofadan qat'i
+            # nazar o'rni saqlanadi (aks holda 2-3km oralig'ida turgan
+            # haydovchi LEAVE radiusidan tashqarida deb har yangilanishda
+            # chiqarilib, darhol qayta OXIRIGA qo'shilaverardi).
+            if not was_stale and (
+                same_address
+                or (nearest_addr is None and dist_to_current is not None
+                    and dist_to_current <= ADDRESS_QUEUE_LEAVE_RADIUS_KM)
             ):
                 return  # hali "yetarlicha yaqin" — navbatdagi o'rni saqlanib qoladi
             open_entry.left_at = timezone.now()
@@ -2451,19 +2465,10 @@ def update_address_queue_membership(driver, lat, lng, was_stale=False):
 
         from taxi.models import SavedAddress
 
-        # Yaratishdan OLDIN — kengroq radiusda "bu joy allaqachon bormi"
-        # tekshiriladi (duplikat manzillarning oldini olish uchun). Topilsa,
-        # YANGISINI yaratmasdan o'sha mavjud manzilga qo'shiladi — xuddi
-        # oddiy (1km) moslik topilgandagi kabi.
-        wider_match = find_matching_saved_address(lat, lng, radius_km=AUTO_ADDRESS_DEDUPE_RADIUS_KM)
-        if wider_match:
-            AddressQueueEntry.objects.create(address=wider_match, driver=driver)
-            driver.pending_stand_lat = None
-            driver.pending_stand_lng = None
-            driver.pending_stand_since = None
-            driver.save(update_fields=['pending_stand_lat', 'pending_stand_lng', 'pending_stand_since'])
-            return
-
+        # Diqqat: kengroq radiusdagi (duplikat) manzil tekshiruvi endi
+        # yuqorida, har yangilanishda bajariladi — bu yerga faqat
+        # AUTO_ADDRESS_DEDUPE_RADIUS_KM ichida HECH QANDAY manzil yo'q
+        # bo'lganda kelinadi, shu sabab to'g'ridan-to'g'ri yangisi yaratiladi.
         name = reverse_geocode_address(lat, lng) or f'Nomsiz manzil ({lat:.4f}, {lng:.4f})'
         # Tuman ham avtomatik biriktiriladi — operator har bir avtomatik
         # manzilga qo'lda tuman tanlab o'tirmasin. Aniqlab bo'lmasa (masalan
