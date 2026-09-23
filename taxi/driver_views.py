@@ -243,8 +243,10 @@ def driver_home(request, driver):
     # bo'lsa ham navbatga chiqaveradi — u baribir buyurtmalarni ko'radi,
     # faqat balans yetmasa qabul qila olmaydi (order_status'dagi tekshiruv).
     if not driver.is_on_duty:
+        from .utils import grant_duty_on_grace
         driver.is_on_duty = True
         driver.save(update_fields=['is_on_duty'])
+        grant_duty_on_grace(driver)
 
     # Dispatch muddati o'tgan buyurtmalar (masalan, avtomatik qayta-yuborish
     # jarayoni server qayta ishga tushishi/ishchi jarayon almashinishi sababli
@@ -1450,7 +1452,10 @@ def driver_duty_toggle(request, driver):
     # (order_status'dagi alohida tekshiruv shu ishni qiladi).
     driver.is_on_duty = not driver.is_on_duty
     driver.save(update_fields=['is_on_duty'])
-    if not driver.is_on_duty:
+    if driver.is_on_duty:
+        from .utils import grant_duty_on_grace
+        grant_duty_on_grace(driver)
+    else:
         # Navbatdan chiqsa, manzil navbatida (bor bo'lsa) o'rnini ham bo'shatadi.
         from django.utils import timezone
         from .models import AddressQueueEntry

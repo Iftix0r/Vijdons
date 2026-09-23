@@ -1438,6 +1438,35 @@ def freeze_inactive_drivers():
 
 
 AUTO_OFFLINE_MINUTES = 10  # last_seen shuncha daqiqa yangilanmasa, avtomatik ish navbatidan chiqariladi
+DUTY_ON_GRACE_MINUTES = 5  # onlayn bo'lgach birinchi GPS nuqtasini kutish uchun muhlat
+
+
+def grant_duty_on_grace(driver):
+    """Haydovchi onlayn bo'lganda (is_on_duty=True) chaqiriladi.
+
+    Muammo: oflayn turgan haydovchining last_seen'i odatda ancha eski
+    (soatlab oldingi) bo'ladi. U "Onlayn bo'lish"ni bosgach, birinchi aniq
+    GPS nuqtasi (ilova faqat accuracy <= 100m bo'lganda yuboradi) kelguncha
+    bir necha o'n soniya o'tishi mumkin — shu orada scheduler (har 30s)
+    auto_offline_stale_drivers() orqali uni "10+ daqiqa signal kelmadi" deb
+    DARHOL qaytib oflayn qilib, navbat yozuvini yopib qo'yardi. Natijada
+    haydovchi onlayn bo'lsa ham navbatga qo'shilmay qolardi.
+
+    Yechim: last_seen eski bo'lsa, uni auto-offline chegarasidan
+    DUTY_ON_GRACE_MINUTES ichkariga suramiz. Ataylab `now` emas — aks holda
+    haydovchi GPS kelmasdan turib "oxirgi 120s ichida ko'ringan = onlayn"
+    tekshiruvlarida (dispatch, navbat ro'yxati) eski koordinata bilan onlayn
+    ko'rinib qolardi. Shu qiymat ADDRESS_QUEUE_STALE_MINUTES'dan ham eski,
+    ya'ni birinchi GPS nuqtasi `was_stale=True` bilan to'g'ri ishlanadi."""
+    from datetime import timedelta
+    from django.utils import timezone
+    from taxi.models import Driver
+
+    now = timezone.now()
+    if driver.last_seen and driver.last_seen >= now - timedelta(minutes=AUTO_OFFLINE_MINUTES - DUTY_ON_GRACE_MINUTES):
+        return
+    driver.last_seen = now - timedelta(minutes=AUTO_OFFLINE_MINUTES - DUTY_ON_GRACE_MINUTES)
+    Driver.objects.filter(pk=driver.pk).update(last_seen=driver.last_seen)
 
 
 def auto_offline_stale_drivers():
@@ -3094,7 +3123,9 @@ def ai_toggle_duty(driver):
 
     driver.is_on_duty = not driver.is_on_duty
     driver.save(update_fields=['is_on_duty'])
-    if not driver.is_on_duty:
+    if driver.is_on_duty:
+        grant_duty_on_grace(driver)
+    else:
         AddressQueueEntry.objects.filter(driver=driver, left_at__isnull=True).update(left_at=timezone.now())
     action = DriverActivityLog.ACTION_DUTY_ON if driver.is_on_duty else DriverActivityLog.ACTION_DUTY_OFF
     DriverActivityLog.objects.create(driver=driver, action=action, detail='AI-chat orqali', ip_address=None, user_agent='AI-chat')

@@ -155,11 +155,13 @@ def app_config(request):
 def duty_toggle(request, driver):
     from django.utils import timezone
     from .models import AddressQueueEntry
-    from .utils import tg_duty_changed
+    from .utils import tg_duty_changed, grant_duty_on_grace
 
     driver.is_on_duty = not driver.is_on_duty
     driver.save(update_fields=['is_on_duty'])
-    if not driver.is_on_duty:
+    if driver.is_on_duty:
+        grant_duty_on_grace(driver)
+    else:
         AddressQueueEntry.objects.filter(driver=driver, left_at__isnull=True).update(left_at=timezone.now())
     action = DriverActivityLog.ACTION_DUTY_ON if driver.is_on_duty else DriverActivityLog.ACTION_DUTY_OFF
     _log_activity(driver, action, 'Android ilovadan', request)
